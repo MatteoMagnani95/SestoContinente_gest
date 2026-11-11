@@ -7,5 +7,5 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 export default function RootLayout({children}:{children:React.ReactNode}) {
-  return <html lang="it"><body><SiteHeader/><main>{children}</main><footer className="footer">Sesto Continente · Gestionale indipendente · Progetto tecnico Fase 1</footer></body></html>;
+  return <html lang="it"><body><SiteHeader/><main>{children}</main><footer className="footer">Sesto Continente · Gestionale indipendente · Gestionale associativo</footer></body></html>;
 }

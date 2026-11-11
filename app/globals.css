@@ -135,3 +135,34 @@ td strong{color:#1c3441}
 .cards .panel{padding:25px}
 @media(max-width:850px){.hero-layout{gap:26px;grid-template-columns:1fr}.hero-card{max-width:550px}.kpi-grid{grid-template-columns:repeat(2,1fr)}.review-grid{grid-template-columns:1fr}.staff-layout{grid-template-columns:1fr;gap:22px}.staff-sidebar{border:0;min-height:auto;padding-right:0}.staff-nav{flex-direction:row;flex-wrap:wrap;margin-top:15px;gap:4px}.staff-nav a{background:white;border:1px solid var(--line)} }
 @media(max-width:560px){.site-header{padding:14px 16px;align-items:flex-start;flex-direction:column}.topnav{flex-wrap:wrap;gap:14px}.hero-layout{padding:45px 17px 65px}.hero h1{font-size:42px}.hero-card{padding:23px}.auth-shell{padding:26px 13px}.auth-panel{padding:25px}.container{padding:29px 16px 46px}.panel{padding:20px}.form-grid,.detail-grid{grid-template-columns:1fr}.span-2{grid-column:span 1}.application-form{padding:19px}.form-actions>.button{flex:1}.kpi-grid{gap:9px}.kpi{padding:15px}.kpi strong{font-size:25px}.staff-nav a{padding:8px}.table-panel{padding:0}.info-row{display:grid;gap:4px}.info-row strong{text-align:left}}
+/* Fase 2: navigazione e tabelle operative */
+.staff-layout{grid-template-columns:240px minmax(0,1fr);max-width:1480px;align-items:start}
+.staff-sidebar{position:sticky;top:15px;max-height:calc(100vh - 35px);overflow-y:auto}
+.staff-nav-section{border-top:1px solid var(--line);padding:10px 0 3px;margin-top:12px}
+.staff-nav-section>strong{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--teal);padding:6px 12px}
+.staff-nav-section>a{padding:7px 12px}
+.module-toolbar{display:flex;justify-content:space-between;gap:12px;align-items:center;margin:18px 0;flex-wrap:wrap}
+.search-line{display:flex;gap:8px;align-items:center;flex:1;max-width:550px}
+.search-line>input{max-width:350px}
+.module-editor{margin-bottom:20px}
+.module-editor>summary,.row-editor>summary{cursor:pointer;color:var(--teal);font-weight:700}
+.module-editor>form{margin-top:22px}
+.module-form .form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.row-editor{min-width:90px}
+.row-editor-pop{margin:12px 0;padding:16px;background:#f5faf9;border:1px solid var(--line);border-radius:10px;min-width:350px}
+.row-editor-pop .form-grid{grid-template-columns:1fr}
+.pager{display:flex;justify-content:space-between;align-items:center;margin-top:15px;color:var(--muted);font-size:12px}
+@media(max-width:1000px){.staff-layout{grid-template-columns:1fr}.staff-sidebar{position:static;max-height:none;overflow:visible;border:0;padding:0;min-height:0}.staff-nav{flex-flow:row wrap}.staff-nav-section{display:contents}.staff-nav-section>strong{flex-basis:100%}.staff-nav-section>a{padding:8px;background:white;border:1px solid var(--line)}}
+@media(max-width:650px){.module-form .form-grid{grid-template-columns:1fr}.module-toolbar{align-items:stretch}.search-line{max-width:none}.row-editor-pop{min-width:275px}.module-toolbar>a{justify-content:center}}
+.attendance-line{display:grid;grid-template-columns:minmax(130px,1fr) 110px minmax(150px,1.5fr) auto;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.attendance-line strong{font-size:12px}
+@media(max-width:720px){.attendance-line{grid-template-columns:1fr 1fr}.attendance-line strong{grid-column:span 2}}
+.calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:20px}
+.calendar-head{background:var(--navy);color:white;padding:10px;font-size:12px;font-weight:700;text-align:center}
+.calendar-day{min-height:240px;background:white;padding:9px;min-width:0}
+.calendar-month .calendar-day{min-height:135px}
+.calendar-date{font-size:16px;font-weight:800;margin-bottom:10px}.calendar-date small{font-size:10px;color:var(--muted);font-weight:400}
+.calendar-muted{background:#f3f6f6;color:#8a9c9f}
+.calendar-event{display:flex;flex-direction:column;gap:4px;background:var(--teal-light);border-left:3px solid var(--teal);padding:7px;border-radius:5px;margin-bottom:6px;font-size:11px;overflow-wrap:anywhere}
+.calendar-event strong{font-size:10px;color:var(--teal)}.calendar-event small{color:var(--muted)}
+@media(max-width:750px){.calendar-grid{grid-template-columns:repeat(7,minmax(36px,1fr));overflow-x:auto}.calendar-day{padding:3px;min-height:125px}.calendar-event{padding:3px;font-size:9px}.calendar-date{font-size:12px}.calendar-date small{display:none}.calendar-month .calendar-day{min-height:100px}}

@@ -1,16 +1,30 @@
 import Link from 'next/link';
 import {requireStaff} from '@/lib/security';
+import {formatValue} from '@/lib/format';
 export default async function Dashboard(){
-  const {supabase}=await requireStaff();
-  const [{count:pending},{count:review},{count:approved},{count:members}] = await Promise.all([
-    supabase.from('richieste').select('*',{head:true,count:'exact'}).eq('stato','inviata'),
-    supabase.from('richieste').select('*',{head:true,count:'exact'}).eq('stato','in_verifica'),
-    supabase.from('richieste').select('*',{head:true,count:'exact'}).eq('stato','approvata'),
-    supabase.from('adesioni').select('*',{head:true,count:'exact'}),
-  ]);
-  return <><div className="page-intro"><p className="eyebrow">Segreteria · Panoramica</p><h1>Buon lavoro</h1><p>Le richieste di adesione e la situazione delle anagrafiche, in un unico posto.</p></div>
-    <div className="kpi-grid"><article className="kpi"><span>Domande da prendere in carico</span><strong>{pending??'—'}</strong></article><article className="kpi"><span>In verifica</span><strong>{review??'—'}</strong></article><article className="kpi"><span>Domande approvate</span><strong>{approved??'—'}</strong></article><article className="kpi"><span>Adesioni inserite</span><strong>{members??'—'}</strong></article></div>
-    <section className="panel"><h2>Operazioni rapide</h2><p className="muted">Consulta le domande, esamina le integrazioni e verifica le anagrafiche.</p><div className="buttons"><Link className="button" href="/gestionale/richieste">Gestisci le domande</Link><Link className="button ghost" href="/gestionale/soci">Consulta anagrafica</Link></div></section>
-    <p className="muted tiny">I dati vengono letti da PostgreSQL con i permessi della segreteria.</p>
-  </>;
+ const {supabase,user}=await requireStaff();
+ const counts=await Promise.all([
+  supabase.from('richieste').select('*',{head:true,count:'exact'}).in('stato',['inviata','in_verifica','integrazione_richiesta']),
+  supabase.from('adesioni').select('*',{head:true,count:'exact'}),
+  supabase.from('edizioni_corsi').select('*',{head:true,count:'exact'}).eq('stato','attivo'),
+  supabase.from('iscrizioni_corsi').select('*',{head:true,count:'exact'}).eq('stato','iscritto'),
+  supabase.from('attrezzature').select('*',{head:true,count:'exact'}),
+  supabase.from('certificati_medici').select('*',{head:true,count:'exact'}),
+  supabase.from('ruoli_utente').select('ruolo').eq('utente_id',user.id).eq('ruolo','amministratore').maybeSingle(),
+ ]);
+ const titles=['Richieste da gestire','Adesioni registrate','Corsi attivi','Allievi iscritti','Attrezzature','Certificati registrati'];
+ const {data:nextLessons}=await supabase.from('lezioni').select('id,titolo,inizio').gte('inizio',new Date().toISOString()).order('inizio').limit(8);
+ return <><div className="page-intro"><p className="eyebrow">Segreteria · Panoramica</p><h1>Gestione Sesto Continente</h1><p>La situazione associativa, didattica e organizzativa in un'unica schermata.</p></div>
+ <div className="kpi-grid">{titles.map((title,i)=><article className="kpi" key={title}><span>{title}</span><strong>{counts[i].count??'—'}</strong></article>)}</div>
+ <div className="cards"><section className="panel"><h2>Azioni rapide</h2><div className="buttons">
+ <Link className="button" href="/gestionale/richieste">Esamina domande</Link>
+ <Link className="button ghost" href="/gestionale/moduli/anagrafiche">Anagrafiche</Link>
+ <Link className="button ghost" href="/gestionale/moduli/edizioni">Crea un corso</Link>
+ <Link className="button ghost" href="/gestionale/calendario-visivo">Calendario</Link>
+ <Link className="button ghost" href="/gestionale/report">Scadenze e report</Link>
+ <Link className="button ghost" href="/documenti">Documenti</Link>
+ </div></section><section className="panel"><h2>Prossime lezioni</h2>{nextLessons?.map(l=><p key={l.id}>{formatValue(l.inizio)} · {l.titolo}</p>)}{!nextLessons?.length&&<p className="muted">Nessuna attività programmata.</p>}</section></div>
+ {counts[6].data&&<section className="panel"><h2>Amministrazione</h2><p className="muted">Accesso riservato all'amministratore.</p><div className="buttons"><Link className="button" href="/gestionale/moduli/contabilita">Movimenti contabili</Link><Link className="button ghost" href="/gestionale/utenti">Ruoli utenti</Link><Link className="button ghost" href="/gestionale/moduli/stagioni">Stagioni</Link></div></section>}
+ <p className="muted tiny">I dati vengono letti in tempo reale dal database, in base ai permessi dell'account.</p>
+ </>;
 }
