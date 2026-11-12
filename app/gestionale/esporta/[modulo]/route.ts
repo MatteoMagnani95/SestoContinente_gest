@@ -18,6 +18,10 @@ export async function GET(_request:Request,{params}:{params:Promise<{modulo:stri
  const columns=['id',...module.fields.map(x=>x.name)];
  const {data,error}=await supabase.from(module.table).select(columns.join(',')).limit(5000);
  if(error)return new Response('Errore lettura',{status:500});
- const csv='\uFEFF'+[columns.map(escapeCSV).join(';'),...(data??[]).map(row=>columns.map(k=>escapeCSV((row as Record<string,unknown>)[k])).join(';'))].join('\r\n');
+ const csv='\uFEFF'+[columns.map(escapeCSV).join(';'),...(data??[]).map((row:unknown)=>{
+  const record:Record<string,unknown>=row!==null && typeof row==='object' && !Array.isArray(row)
+   ? row as Record<string,unknown> : {};
+  return columns.map(k=>escapeCSV(record[k])).join(';');
+ })].join('\r\n');
  return new Response(csv,{headers:{'Content-Type':'text/csv; charset=utf-8','Content-Disposition':`attachment; filename="sesto-${modulo}.csv"`,'Cache-Control':'no-store'}});
 }
