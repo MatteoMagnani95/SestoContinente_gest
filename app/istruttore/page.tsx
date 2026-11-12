@@ -14,7 +14,7 @@ export default async function Instructor({searchParams}:{searchParams:Promise<{m
  const editionIds=[...new Set(assignments?.map(a=>a.edizione_id)??[])];
  const [{data:editions},{data:lessons},{data:students},{data:gear}]=await Promise.all([
  editionIds.length?supabase.from('edizioni_corsi').select('id,nome,inizio,fine,stato').in('id',editionIds):Promise.resolve({data:[]}),
- editionIds.length?supabase.from('lezioni').select('id,edizione_id,titolo,inizio,fine,materiale').in('edizione_id',editionIds).order('inizio',{ascending:true}).limit(150):Promise.resolve({data:[]}),
+ editionIds.length?supabase.from('lezioni').select('id,edizione_id,titolo,inizio,fine,materiale').in('edizione_id',editionIds).is('annullata_il',null).order('inizio',{ascending:true}).limit(150):Promise.resolve({data:[]}),
  editionIds.length?supabase.from('iscrizioni_corsi').select('edizione_id,persona_id,stato').in('edizione_id',editionIds).eq('stato','iscritto').limit(300):Promise.resolve({data:[]}),
  supabase.from('attrezzature').select('id,codice,categoria,stato,prossima_revisione').limit(50)
  ]);

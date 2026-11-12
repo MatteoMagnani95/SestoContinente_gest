@@ -39,7 +39,7 @@ export default async function EditionDetail({params,searchParams}:{params:Promis
   supabase.from('stagioni').select('nome,attiva').eq('id',ed.stagione_id).maybeSingle(),
   supabase.from('iscrizioni_corsi').select('id,persona_id,edizione_id,stato,iscritta_il').eq('edizione_id',id).order('iscritta_il',{ascending:false}).limit(501),
   supabase.from('assegnazioni_istruttori').select('id,persona_id,ruolo').eq('edizione_id',id).limit(101),
-  supabase.from('lezioni').select('id,titolo,inizio,fine,piscina_id,esercizi,materiale').eq('edizione_id',id).order('inizio',{ascending:true}).limit(201),
+  supabase.from('lezioni').select('id,titolo,inizio,fine,piscina_id,esercizi,materiale').eq('edizione_id',id).is('annullata_il',null).order('inizio',{ascending:true}).limit(201),
   supabase.from('persone').select('id,nome,cognome').order('cognome').order('nome').limit(500),
   supabase.from('qualifiche_istruttori').select('persona_id,titolo,scade_il').limit(500),
   supabase.from('piscine').select('id,nome').order('nome').limit(100),
@@ -111,7 +111,7 @@ export default async function EditionDetail({params,searchParams}:{params:Promis
     <Link href="/gestionale/moduli/versioni">Gestisci programmi e versioni</Link>
    </Section>
    <Section id="lezioni" title="Calendario e nuove lezioni">
-    <div className="course-list">{lessons.map(l=><div className="course-list-row" key={l.id}><div><strong>{l.titolo}</strong><p className="tiny muted">{formatRome(l.inizio)} – {formatRome(l.fine)}{l.piscina_id?` · ${pools?.find(x=>x.id===l.piscina_id)?.nome??'Piscina'}`:''}</p></div><a href={`?lezione=${l.id}#presenze`}>Presenze</a></div>)}
+    <div className="course-list">{lessons.map(l=><div className="course-list-row" key={l.id}><div><strong>{l.titolo}</strong><p className="tiny muted">{formatRome(l.inizio)} – {formatRome(l.fine)}{l.piscina_id?` · ${pools?.find(x=>x.id===l.piscina_id)?.nome??'Piscina'}`:''}</p></div><div className="buttons"><Link href={`/gestionale/calendario-visivo/${l.id}`}>Modifica</Link><a href={`?lezione=${l.id}#presenze`}>Presenze</a></div></div>)}
     {!lessons.length&&<p className="muted">Nessuna lezione pianificata.</p>}</div>
     {canEdit&&<form action={createLesson} className="stack course-lesson-form"><input type="hidden" name="edizione_id" value={id}/>
     <h3>Programma una lezione</h3><label>Titolo<input name="titolo" maxLength={160} required placeholder="Es. Esercitazione ARA in piscina"/></label>

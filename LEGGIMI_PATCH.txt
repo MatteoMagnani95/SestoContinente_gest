@@ -1,0 +1,1 @@
+Patch incrementale sopra Fase 3.2. Estrai ZIP e copia i file, mantenendo i percorsi. Leggi FASE3_3_INSTALLAZIONE.md e applica 0005 in staging prima del deploy.

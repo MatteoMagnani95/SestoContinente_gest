@@ -11,5 +11,6 @@ export default function StaffNav({isAdmin=false}:{isAdmin?:boolean}){return <nav
  <Link href="/documenti">Archivio documenti</Link>
  {isAdmin&&<Link href="/gestionale/utenti">Permessi utenti</Link>}
  <Link href="/gestionale/report">Report e scadenze</Link>
+ {isAdmin&&<Link href="/gestionale/economia">Rendiconto economico</Link>}
  </div>
  </nav>}

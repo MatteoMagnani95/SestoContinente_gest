@@ -14,7 +14,7 @@ export default async function MyCourses({searchParams}:{searchParams:Promise<{ms
  const [{data:people},{data:enrollments},{data:lessons}]=await Promise.all([
  ids.length?supabase.from('persone').select('id,nome,cognome').in('id',ids):Promise.resolve({data:[]}),
  ids.length?supabase.from('iscrizioni_corsi').select('id,persona_id,edizione_id,stato').in('persona_id',ids).limit(250):Promise.resolve({data:[]}),
- supabase.from('lezioni').select('id,edizione_id,titolo,inizio,fine').gte('inizio',new Date().toISOString()).order('inizio').limit(50),
+ supabase.from('lezioni').select('id,edizione_id,titolo,inizio,fine').is('annullata_il',null).gte('inizio',new Date().toISOString()).order('inizio').limit(50),
  ]);
  return <div className="container"><Link className="back-link" href="/area-personale">← Area personale</Link>
  <div className="page-intro"><p className="eyebrow">Attività</p><h1>I miei corsi</h1><p>Puoi richiedere l'iscrizione; la segreteria dovrà approvarla prima che sia confermata.</p></div>

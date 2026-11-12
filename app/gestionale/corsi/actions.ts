@@ -156,7 +156,7 @@ export async function createLesson(form:FormData){
 export async function recordClassAttendance(form:FormData){
  const {supabase}=await requireStaff();let id='',lesson_id='';
  try{id=uuidValue(form,'edizione_id');lesson_id=uuidValue(form,'lezione_id');}catch{redirect('/gestionale/corsi?msg=dati');}
- const {data:lesson}=await supabase.from('lezioni').select('id').eq('id',lesson_id).eq('edizione_id',id).maybeSingle();
+ const {data:lesson}=await supabase.from('lezioni').select('id').eq('id',lesson_id).eq('edizione_id',id).is('annullata_il',null).maybeSingle();
  if(!lesson)redirect(detailHref(id,'vincolo'));
  const {data:learners,error:listError}=await supabase.from('iscrizioni_corsi').select('persona_id')
   .eq('edizione_id',id).in('stato',['iscritto','concluso']).limit(501);

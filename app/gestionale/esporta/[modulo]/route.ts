@@ -16,12 +16,23 @@ export async function GET(_request:Request,{params}:{params:Promise<{modulo:stri
   if(!data)return new Response('Non autorizzato',{status:403});
  }
  const columns=['id',...module.fields.map(x=>x.name)];
- const {data,error}=await supabase.from(module.table).select(columns.join(',')).limit(5000);
- if(error)return new Response('Errore lettura',{status:500});
- const csv='\uFEFF'+[columns.map(escapeCSV).join(';'),...(data??[]).map((row:unknown)=>{
-  const record:Record<string,unknown>=row!==null && typeof row==='object' && !Array.isArray(row)
-   ? row as Record<string,unknown> : {};
-  return columns.map(k=>escapeCSV(record[k])).join(';');
- })].join('\r\n');
+ // Paginazione ordinata, senza taglio silenzioso a 5.000 righe.
+ // Il limite esplicito evita timeout/memoria e segnala quando serve un export dedicato.
+ const PAGE_SIZE=500;const MAX_ROWS=50000;
+ const lines:string[]=[columns.map(escapeCSV).join(';')];
+ for(let offset=0;;offset+=PAGE_SIZE){
+  const {data,error}=await supabase.from(module.table).select(columns.join(','))
+   .order('id',{ascending:true}).range(offset,offset+PAGE_SIZE-1);
+  if(error)return new Response('Errore lettura',{status:500});
+  if(offset+(data?.length??0)>MAX_ROWS)return new Response('Esportazione troppo grande: supera 50.000 righe. Richiedere un export dedicato.',{status:413});
+  for(const rawRow of data??[]){
+   const row:unknown=rawRow;
+   const record:Record<string,unknown>=row!==null && typeof row==='object' && !Array.isArray(row)
+    ? row as Record<string,unknown> : {};
+   lines.push(columns.map(k=>escapeCSV(record[k])).join(';'));
+  }
+  if((data?.length??0)<PAGE_SIZE)break;
+ }
+ const csv='\uFEFF'+lines.join('\r\n');
  return new Response(csv,{headers:{'Content-Type':'text/csv; charset=utf-8','Content-Disposition':`attachment; filename="sesto-${modulo}.csv"`,'Cache-Control':'no-store'}});
 }
