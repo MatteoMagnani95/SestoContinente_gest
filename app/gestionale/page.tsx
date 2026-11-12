@@ -19,7 +19,7 @@ export default async function Dashboard(){
  <div className="cards"><section className="panel"><h2>Azioni rapide</h2><div className="buttons">
  <Link className="button" href="/gestionale/richieste">Esamina domande</Link>
  <Link className="button ghost" href="/gestionale/moduli/anagrafiche">Anagrafiche</Link>
- <Link className="button ghost" href="/gestionale/moduli/edizioni">Crea un corso</Link>
+ <Link className="button ghost" href="/gestionale/corsi/nuovo">Crea un corso</Link>
  <Link className="button ghost" href="/gestionale/calendario-visivo">Calendario</Link>
  <Link className="button ghost" href="/gestionale/report">Scadenze e report</Link>
  <Link className="button ghost" href="/documenti">Documenti</Link>
