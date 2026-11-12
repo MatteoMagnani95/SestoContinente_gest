@@ -46,6 +46,7 @@ function bookingConflictText(corsia?:string,inizio?:string,fine?:string):string{
 export default async function ModulePage({params,searchParams}:{params:Promise<{modulo:string}>;searchParams:Promise<{q?:string;msg?:string;p?:string;corsia?:string;inizio?:string;fine?:string}>}){
  const {modulo}=await params;
  if(!isModuleKey(modulo))notFound();
+ if(modulo==='pagamenti')redirect('/gestionale/incassi');
  const module:Module=modules[modulo];
  const {supabase,user}=await requireStaff();
  if(module.adminOnly){

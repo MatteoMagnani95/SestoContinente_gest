@@ -11,6 +11,7 @@ const errorPath=(key:string,code:string)=>`/gestionale/moduli/${encodeURICompone
 export async function saveModuleRecord(form:FormData) {
  const key=text(form,'modulo');
  if(!isModuleKey(key)) redirect('/gestionale?msg=permessi');
+ if(key==='pagamenti') redirect('/gestionale/incassi');
  const module:Module=modules[key];
  const {supabase,user}=await requireStaff();
  if(module.adminOnly){

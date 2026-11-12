@@ -238,3 +238,18 @@ td strong{color:#1c3441}
 .finance-bar-in{background:#087c84}
 .finance-bar-out{background:#c98132}
 @media(max-width:750px){.calendar-filter-form label{min-width:100%}.finance-month{grid-template-columns:75px 1fr}.finance-month-total{grid-column:2;text-align:left}.calendar-range{font-size:12px}}
+/* Fase 3.4 — incassi guidati con saldi calcolati in PostgreSQL */
+.payment-filters{display:flex;gap:13px;flex-wrap:wrap;align-items:end;margin-bottom:20px}
+.payment-filters label{flex:1;min-width:140px;max-width:255px;font-size:12px}
+.payment-table{overflow:auto}
+.payment-table table{min-width:1050px}
+.payment-table td{vertical-align:top}
+.payment-form{display:grid;grid-template-columns:repeat(2,minmax(115px,1fr));gap:8px;min-width:260px}
+.payment-form label{display:flex;flex-direction:column;gap:4px;font-size:11px}
+.payment-form input,.payment-form select{padding:7px;font-size:12px;width:100%}
+.payment-form button{grid-column:1/-1;width:100%}
+.payment-paid{color:#27884f;font-size:12px;white-space:nowrap}
+@media(max-width:750px){.payment-filters label{min-width:100%}.payment-table table{min-width:920px}}
+
+.payment-form .payment-confirm{grid-column:1/-1;display:flex;align-items:flex-start;gap:8px;font-size:11px;line-height:1.35}
+.payment-form .payment-confirm input{width:auto;flex:none;align-self:flex-start;margin-top:1px}

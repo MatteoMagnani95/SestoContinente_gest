@@ -170,7 +170,7 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
       <td>{ed?`${formatValue(ed.inizio)} – ${formatValue(ed.fine)}`:'—'}</td><td>{statusLabel(e.stato)}</td></tr>;})}
     </tbody></table></div>:<None>Nessuna iscrizione a corsi registrata.</None>}
    </Section>
-   <Section id="pagamenti" title="Quote associative e versamenti" href="/gestionale/moduli/quote">
+   <Section id="pagamenti" title="Quote associative e versamenti" href={`/gestionale/incassi?persona=${id}`}>
     {balances.length?<div className="table-panel"><table><thead><tr><th>Stagione</th><th>Dovuto</th><th>Versato</th><th>Residuo</th><th>Stato</th></tr></thead><tbody>
      {balances.map(b=><tr key={b.id}><td>{seasonName(b.stagione_id)}</td><td>{euro(b.importo_dovuto)}</td>
       <td>{euro(b.versato)}</td><td><strong>{euro(b.residuo)}</strong></td><td>{statusLabel(b.stato)}</td></tr>)}

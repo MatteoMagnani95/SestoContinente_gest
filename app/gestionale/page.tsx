@@ -22,6 +22,7 @@ export default async function Dashboard(){
  <Link className="button ghost" href="/gestionale/corsi/nuovo">Crea un corso</Link>
  <Link className="button ghost" href="/gestionale/calendario-visivo">Calendario</Link>
  <Link className="button ghost" href="/gestionale/report">Scadenze e report</Link>
+ <Link className="button ghost" href="/gestionale/incassi">Incassi e saldi</Link>
  <Link className="button ghost" href="/documenti">Documenti</Link>
  </div></section><section className="panel"><h2>Prossime lezioni</h2>{nextLessons?.map(l=><p key={l.id}>{formatValue(l.inizio)} · {l.titolo}</p>)}{!nextLessons?.length&&<p className="muted">Nessuna attività programmata.</p>}</section></div>
  {counts[6].data&&<section className="panel"><h2>Amministrazione</h2><p className="muted">Accesso riservato all'amministratore.</p><div className="buttons"><Link className="button" href="/gestionale/moduli/contabilita">Movimenti contabili</Link><Link className="button ghost" href="/gestionale/utenti">Ruoli utenti</Link><Link className="button ghost" href="/gestionale/moduli/stagioni">Stagioni</Link></div></section>}
