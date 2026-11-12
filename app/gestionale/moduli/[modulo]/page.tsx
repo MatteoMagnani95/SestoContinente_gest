@@ -3,11 +3,13 @@ import {notFound,redirect} from 'next/navigation';
 import {requireStaff} from '@/lib/security';
 import {modules,isModuleKey,type Module,type Field} from '@/lib/modules';
 import {formatValue,datetimeForInput} from '@/lib/format';
+import {formatRome} from '@/lib/course-tools';
 import {saveModuleRecord} from '@/app/module-actions';
 
 type Row=Record<string,unknown> & {id:string};
 const status:Record<string,string>={salvato:'Dati salvati nel database.',vincolo:'Operazione non consentita: controlla duplicati, capienza, date e collegamenti.',
- dati:'Controlla i campi obbligatori e i formati.',database:'Impossibile salvare. Verifica le autorizzazioni e la migrazione SQL.',permessi:'Operazione non consentita.'};
+ dati:'Controlla i campi obbligatori e i formati.',database:'Impossibile salvare. Verifica le autorizzazioni e la migrazione SQL.',permessi:'Operazione non consentita.',
+ corsia_duplicata:'Questa corsia è già associata alla stessa lezione. Controlla le prenotazioni esistenti.'};
 function labelOf(record:Row,labels:readonly string[]){
  return labels.map(k=>String(record[k]??'')).join(' ').trim().slice(0,100);
 }
@@ -34,7 +36,14 @@ function Editor({module,moduleKey,record,references}:{module:Module;moduleKey:st
  <div className="form-actions"><button type="submit" className="button">{record?'Salva modifiche':'Crea nuovo'}</button></div>
  </form>;
 }
-export default async function ModulePage({params,searchParams}:{params:Promise<{modulo:string}>;searchParams:Promise<{q?:string;msg?:string;p?:string}>}){
+function bookingConflictText(corsia?:string,inizio?:string,fine?:string):string{
+ const numero=corsia&&/^\d{1,4}$/.test(corsia)?` ${corsia}`:'';
+ const safeDate=(value?:string)=>value&&value.length<=35&&/^\d{4}-\d{2}-\d{2}T/.test(value)&&Number.isFinite(Date.parse(value))?formatRome(value):null;
+ const dal=safeDate(inizio),al=safeDate(fine);
+ const fascia=dal&&al?` dalle ${dal} alle ${al}`:' nell’intervallo richiesto';
+ return `Corsia${numero} già prenotata${fascia}. Scegli un’altra corsia o modifica l’orario.`;
+}
+export default async function ModulePage({params,searchParams}:{params:Promise<{modulo:string}>;searchParams:Promise<{q?:string;msg?:string;p?:string;corsia?:string;inizio?:string;fine?:string}>}){
  const {modulo}=await params;
  if(!isModuleKey(modulo))notFound();
  const module:Module=modules[modulo];
@@ -43,7 +52,8 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
   const {data}=await supabase.from('ruoli_utente').select('ruolo').eq('utente_id',user.id).eq('ruolo','amministratore').maybeSingle();
   if(!data)redirect('/gestionale?msg=permessi');
  }
- const {q='',msg='',p='1'}=await searchParams;
+ const {q='',msg='',p='1',corsia,inizio,fine}=await searchParams;
+ const feedback=msg==='corsia_occupata'&&modulo==='prenotazioni'?bookingConflictText(corsia,inizio,fine):status[msg];
  const page=Math.min(100,Math.max(1,Number.parseInt(p,10)||1));
  const perPage=30;
  let query=supabase.from(module.table).select('*',{count:'exact'});
@@ -62,7 +72,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  const rows=(data??[]) as Row[];
  return <>
  <div className="page-intro"><p className="eyebrow">Gestionale · {module.label}</p><h1>{module.label}</h1><p>{module.description}</p></div>
- {msg&&status[msg]&&<p className={`notice ${msg==='salvato'?'success': 'warning'}`} role="status">{status[msg]}</p>}
+ {feedback&&<p className={`notice ${msg==='salvato'?'success': 'warning'}`} role="status">{feedback}</p>}
  <div className="module-toolbar">
   <form method="get" className="search-line"><input name="q" aria-label="Cerca" placeholder="Cerca nel campo principale" defaultValue={q}/><button className="button ghost">Cerca</button></form>
   <Link className="button ghost" href={`/gestionale/esporta/${modulo}`}>Esporta CSV</Link>

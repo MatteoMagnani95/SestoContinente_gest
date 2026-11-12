@@ -55,6 +55,18 @@ export async function saveModuleRecord(form:FormData) {
  else query=supabase.from(module.table).insert(changes).select('id').single();
  const {error}=await query;
  if(error) {
+  // 23P01: violazione del vincolo PostgreSQL EXCLUDE sull'occupazione corsie.
+  // Mostrare un'indicazione comprensibile senza esporre dettagli SQL.
+  if(key==='prenotazioni'&&error.code==='23P01'){
+   const corsiaId=String(changes.corsia_id??'');
+   const {data:corsia}=await supabase.from('corsie').select('numero').eq('id',corsiaId).maybeSingle();
+   const params=new URLSearchParams({msg:'corsia_occupata'});
+   if(corsia?.numero!==undefined&&corsia.numero!==null)params.set('corsia',String(corsia.numero));
+   if(typeof changes.inizio==='string')params.set('inizio',changes.inizio);
+   if(typeof changes.fine==='string')params.set('fine',changes.fine);
+   redirect(`/gestionale/moduli/${encodeURIComponent(key)}?${params.toString()}`);
+  }
+  if(key==='prenotazioni'&&error.code==='23505')redirect(errorPath(key,'corsia_duplicata'));
   const constraint=['23505','23P01','23503','23514'].includes(error.code??'');
   redirect(errorPath(key,constraint?'vincolo':'database'));
  }
