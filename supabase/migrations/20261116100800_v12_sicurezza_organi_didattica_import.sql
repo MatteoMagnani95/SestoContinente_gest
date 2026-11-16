@@ -1,5 +1,6 @@
 -- Sesto Continente v12 · Eseguire DOPO 0007 (in una transazione distinta).
--- Non altera / cancella record storici. Convalidare su clone del database.
+-- Non cancella record storici, ma aggiorna canale e data versamento dei pagamenti esistenti.
+-- Non eseguire senza un backup ripristinabile. Testare possibilmente su un clone.
 begin;
 
 -- MOD 01-06, 09-13: schema incrementale.
@@ -52,14 +53,35 @@ drop trigger if exists memorizza_prezzo_corso_v12 on public.edizioni_corsi;
 create trigger memorizza_prezzo_corso_v12 after insert or update of costo_corso on public.edizioni_corsi for each row execute function public.memorizza_prezzo_corso();
 
 -- Inviare solo dopo accettazione esplicita delle due dichiarazioni obbligatorie.
-create or replace function public.verifica_dichiarazioni_domanda_v12() returns trigger language plpgsql set search_path='' as $$
+-- Compatibilita delle pratiche storiche gia approvate al momento dell'installazione.
+-- I consensi nuovi sono SEMPRE obbligatori alle nuove presentazioni e ai cambi di stato.
+-- Una pratica pre-v12 gia nello stato inviata/in_verifica/approvata puo
+-- essere aggiornata senza dichiarazioni retroattive SOLO quando rimangono
+-- invariati stato, flag e versioni delle informative.
+create or replace function public.verifica_dichiarazioni_domanda_v12()
+returns trigger language plpgsql set search_path='' as $$
 begin
- if new.stato in ('inviata','in_verifica','approvata') and
-    (new.flag_statuto is not true or new.flag_privacy is not true or
-     new.versione_statuto is null or new.versione_privacy is null) then
-  raise exception 'Dichiarazioni Statuto / informativa obbligatorie prima dell’invio';
- end if;
- return new;
+  if new.stato in ('inviata','in_verifica','approvata')
+     and (new.flag_statuto is not true or new.flag_privacy is not true
+          or nullif(btrim(new.versione_statuto),'') is null
+          or nullif(btrim(new.versione_privacy),'') is null
+          or new.versione_statuto = 'DA_CONFIGURARE'
+          or new.versione_privacy = 'DA_CONFIGURARE') then
+    if tg_op = 'INSERT' then
+      raise exception 'Dichiarazioni Statuto / informativa obbligatorie prima dell’invio';
+    end if;
+    -- UPDATE: consentita solo la manutenzione di pratiche storiche gia
+    -- presentate, a condizione di non modificare gli elementi di consenso
+    -- e di non effettuare una transizione di stato.
+    if old.stato is distinct from new.stato
+       or old.flag_statuto is distinct from new.flag_statuto
+       or old.flag_privacy is distinct from new.flag_privacy
+       or old.versione_statuto is distinct from new.versione_statuto
+       or old.versione_privacy is distinct from new.versione_privacy then
+      raise exception 'Dichiarazioni Statuto / informativa obbligatorie prima dell’invio';
+    end if;
+  end if;
+  return new;
 end $$;
 drop trigger if exists dichiarazioni_obbligatorie_v12 on public.richieste;
 create trigger dichiarazioni_obbligatorie_v12 before insert or update on public.richieste
