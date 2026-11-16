@@ -1,0 +1,79 @@
+// Unica whitelist condivisa da menu, moduli di editing, esportazioni e azioni server.
+export type FieldType = 'text'|'email'|'number'|'date'|'datetime'|'textarea'|'select'|'reference'|'checkbox'|'days';
+export type Field = {name:string;label:string;type?:FieldType;required?:boolean;options?:readonly string[];
+  ref?:{table:string;labels:readonly string[];order?:string};min?:number;step?:string;hint?:string};
+export type Module = {name:string;table:string;label:string;description:string;fields:readonly Field[];
+  columns:readonly string[];adminOnly?:boolean;appendOnly?:boolean;order?:string};
+const t=(name:string,label:string,required=false):Field=>({name,label,type:'text',required});
+const d=(name:string,label:string,required=false):Field=>({name,label,type:'date',required});
+const dt=(name:string,label:string,required=false):Field=>({name,label,type:'datetime',required,hint:'Orario italiano (Europe/Rome)'});
+const n=(name:string,label:string,required=false):Field=>({name,label,type:'number',required,min:0,step:'0.01'});
+const s=(name:string,label:string,options:readonly string[],required=false):Field=>({name,label,type:'select',options,required});
+const r=(name:string,label:string,table:string,labels:string[],required=false):Field=>({name,label,type:'reference',required,ref:{table,labels}});
+const a=(name:string,label:string,required=false):Field=>({name,label,type:'textarea',required});
+const b=(name:string,label:string):Field=>({name,label,type:'checkbox'});
+export const modules = {
+  anagrafiche:{name:'anagrafiche',table:'persone',label:'Persone e anagrafiche',description:'Archivio unico. Non duplicare i dati di soci, allievi e istruttori.',
+    fields:[t('nome','Nome',true),t('cognome','Cognome',true),d('data_nascita','Data di nascita'),t('luogo_nascita','Luogo di nascita'),t('provincia_nascita','Provincia nascita'),t('stato_nascita','Stato nascita',true),s('sesso_cf','Sesso (solo ai fini del CF)',['M','F']),t('codice_catastale_nascita','Codice catastale nascita'),t('codice_fiscale','Codice fiscale'),b('cf_omocodia_verificata','Omocodia verificata con documento'),t('cf_override_motivo','Motivazione verifica CF'),t('indirizzo','Indirizzo'),t('cap','CAP'),t('comune','Comune'),t('provincia_residenza','Provincia residenza'),t('stato_residenza','Stato residenza',true),{name:'email',label:'Email',type:'email'},t('telefono','Telefono')],columns:['cognome','nome','codice_fiscale','email','telefono'],order:'cognome'},
+  adesioni:{name:'adesioni',table:'adesioni',label:'Adesioni associative',description:'Stato e storico delle adesioni per stagione.',
+    fields:[r('persona_id','Persona','persone',['cognome','nome'],true),r('stagione_id','Stagione','stagioni',['nome'],true),s('stato','Stato',['da_perfezionare','attiva','sospesa','cessata'],true),r('verbale_cda_id','Delibera CdA','cda_verbali',['data_consiglio']),a('note','Note')],columns:['persona_id','stagione_id','stato'],order:'data_approvazione'},
+  tesseramenti:{name:'tesseramenti',table:'tesseramenti',label:'Tesseramenti',description:'Numero, ente, stato e scadenza delle tessere per ogni adesione.',
+    fields:[r('adesione_id','Adesione','adesioni',['id'],true),t('ente','Ente',true),t('numero_tessera','Numero tessera'),d('emessa_il','Emissione'),d('scade_il','Scadenza',true),s('stato','Stato',['da_emettere','attiva','sospesa','scaduta'],true),a('note','Note')],columns:['adesione_id','ente','numero_tessera','scade_il','stato']},
+  stagioni:{name:'stagioni',table:'stagioni',label:'Stagioni',description:'Configurazione stagione sportiva. Una sola può essere attiva.',adminOnly:true,
+    fields:[t('nome','Nome stagione',true),d('dal','Data di inizio',true),d('al','Data di fine',true),b('attiva','Stagione attiva')],columns:['nome','dal','al','attiva'],order:'dal'},
+  corsi:{name:'corsi',table:'corsi',label:'Catalogo corsi',description:'Tipi di attività: ARA, apnea, nuoto libero.',
+    fields:[t('nome','Nome',true),s('tipo','Tipo',['ARA','APNEA','NUOTO_LIBERO'],true),{name:'livello',label:'Livello ARA (1–5)',type:'number',step:'1',min:1},a('descrizione','Descrizione')],columns:['nome','tipo','livello'],order:'nome'},
+  edizioni:{name:'edizioni',table:'edizioni_corsi',label:'Corsi della stagione',description:'Edizioni effettive, date, capienza, stato e programma associato.',
+    fields:[r('corso_id','Corso','corsi',['nome'],true),r('stagione_id','Stagione','stagioni',['nome'],true),t('nome','Nome edizione',true),d('inizio','Inizio',true),d('fine','Fine',true),{name:'massimo_partecipanti',label:'Numero massimo allievi',type:'number',min:1,step:'1',required:true},s('stato','Stato',['programmato','attivo','concluso','annullato'],true),r('programma_versione_id','Versione programma','versioni_programmi',['versione']),n('costo_corso','Costo corso (€)'),a('note','Note')],columns:['nome','corso_id','inizio','fine','stato','massimo_partecipanti'],order:'inizio'},
+  iscrizioni:{name:'iscrizioni',table:'iscrizioni_corsi',label:'Iscrizioni ai corsi',description:'Iscrizioni e richieste da approvare, con controllo automatico della capienza.',
+    fields:[r('edizione_id','Edizione','edizioni_corsi',['nome'],true),r('persona_id','Allievo','persone',['cognome','nome'],true),s('stato','Stato',['in_attesa','iscritto','ritirato','concluso','respinto'],true),a('note','Note')],columns:['edizione_id','persona_id','stato','iscritta_il'],order:'iscritta_il'},
+  istruttori:{name:'istruttori',table:'assegnazioni_istruttori',label:'Istruttori nei corsi',description:'Responsabili e aiuto istruttori; ogni corso può avere un solo responsabile.',
+    fields:[r('edizione_id','Edizione','edizioni_corsi',['nome'],true),r('persona_id','Istruttore','persone',['cognome','nome'],true),s('ruolo','Ruolo',['responsabile','aiuto'],true)],columns:['edizione_id','persona_id','ruolo']},
+  qualifiche:{name:'qualifiche',table:'qualifiche_istruttori',label:'Qualifiche istruttori',description:'Brevetti e attestati di insegnamento.',
+    fields:[r('persona_id','Istruttore','persone',['cognome','nome'],true),t('titolo','Qualifica',true),t('ente','Ente'),t('numero_brevetto','Numero'),d('conseguito_il','Conseguito il'),d('scade_il','Scade il'),a('note','Note')],columns:['persona_id','titolo','ente','scade_il']},
+  brevetti:{name:'brevetti',table:'brevetti_allievi',label:'Brevetti allievi',description:'Titoli e certificazioni conseguite.',
+    fields:[r('persona_id','Allievo','persone',['cognome','nome'],true),t('titolo','Brevetto',true),t('ente','Ente'),t('numero_brevetto','Numero'),d('ottenuto_il','Data conseguimento'),d('scade_il','Scadenza'),a('note','Note')],columns:['persona_id','titolo','ente','ottenuto_il','scade_il']},
+  certificati:{name:'certificati',table:'certificati_medici',label:'Certificati medici',description:'Solo dati amministrativi di idoneità e scadenza: non inserire diagnosi.',
+    fields:[r('persona_id','Persona','persone',['cognome','nome'],true),d('rilasciato_il','Rilasciato il',true),d('scade_il','Scade il',true),b('idoneita_verificata','Idoneità verificata'),r('documento_id','Documento del certificato','documenti',['nome']),a('note_amministrative','Note amministrative (non cliniche)')],columns:['persona_id','rilasciato_il','scade_il','idoneita_verificata']},
+  programmi:{name:'programmi',table:'programmi_didattici',label:'Programmi didattici',description:'Dieci tracce iniziali da adattare ai programmi approvati dall’associazione.',
+    fields:[t('titolo','Titolo',true),s('tipo','Tipo',['ARA','APNEA','NUOTO_LIBERO'],true),a('descrizione','Descrizione')],columns:['titolo','tipo']},
+  versioni:{name:'versioni',table:'versioni_programmi',label:'Versioni programmi',description:'Archivio storico delle versioni e dei contenuti didattici.',
+    fields:[r('programma_id','Programma','programmi_didattici',['titolo'],true),{name:'versione',label:'Numero versione',type:'number',step:'1',min:1,required:true},a('obiettivi','Obiettivi'),a('teoria','Argomenti teorici'),a('pratica','Esercizi pratici'),a('sequenza_lezioni','Sequenza lezioni'),n('durata_ore','Durata in ore'),a('verifiche','Verifiche'),s('stato','Stato',['bozza','approvato','archiviato'],true)],columns:['programma_id','versione','stato']},
+  piscine:{name:'piscine',table:'piscine',label:'Piscine',description:'Sedi, disponibilità e limitazioni.',
+    fields:[t('nome','Nome',true),t('indirizzo','Indirizzo'),a('orari_disponibili','Orari disponibili'),a('limitazioni','Limitazioni'),a('note','Note')],columns:['nome','indirizzo','orari_disponibili']},
+  corsie:{name:'corsie',table:'corsie',label:'Corsie',description:'Corsie disponibili all’interno di ogni piscina.',
+    fields:[r('piscina_id','Piscina','piscine',['nome'],true),{name:'numero',label:'Numero corsia',type:'number',min:1,step:'1',required:true},a('note','Note')],columns:['piscina_id','numero']},
+  calendario:{name:'calendario',table:'lezioni',label:'Calendario lezioni',description:'Lezioni teoriche e pratiche per ogni edizione del corso.',
+    fields:[r('edizione_id','Edizione','edizioni_corsi',['nome'],true),t('titolo','Titolo lezione',true),dt('inizio','Inizio',true),dt('fine','Fine',true),r('piscina_id','Piscina','piscine',['nome']),a('esercizi','Esercizi programmati'),a('materiale','Materiale necessario'),a('note','Note')],columns:['titolo','edizione_id','inizio','fine','piscina_id'],order:'inizio'},
+  prenotazioni:{name:'prenotazioni',table:'prenotazioni_corsie',label:'Prenotazioni corsie',description:'Il database impedisce sovrapposizioni per corsia e orario.',
+    fields:[r('lezione_id','Lezione','lezioni',['titolo'],true),r('corsia_id','Corsia','corsie',['numero'],true),dt('inizio','Inizio prenotazione',true),dt('fine','Fine prenotazione',true),s('stato','Stato',['confermata','annullata'],true)],columns:['lezione_id','corsia_id','inizio','fine','stato'],order:'inizio'},
+  presenze:{name:'presenze',table:'presenze',label:'Presenze',description:'Registrazione delle presenze alle singole lezioni.',
+    fields:[r('lezione_id','Lezione','lezioni',['titolo'],true),r('persona_id','Allievo','persone',['cognome','nome'],true),b('presente','Presente'),a('nota_didattica','Nota didattica')],columns:['lezione_id','persona_id','presente','registrata_il']},
+  attrezzature:{name:'attrezzature',table:'attrezzature',label:'Inventario attrezzature',description:'Bombole, GAV, erogatori, mute e materiali tecnici.',
+    fields:[t('codice','Codice univoco',true),t('categoria','Categoria',true),t('marca','Marca'),t('modello','Modello'),t('matricola','Matricola'),d('acquistata_il','Acquisto'),s('stato','Stato',['disponibile','assegnata','in_manutenzione','fuori_servizio'],true),d('ultima_revisione','Ultima revisione'),d('prossima_revisione','Prossima revisione'),a('note','Note')],columns:['codice','categoria','marca','modello','stato','prossima_revisione']},
+  revisioni:{name:'revisioni',table:'revisioni_attrezzature',label:'Revisioni',description:'Storico manutenzioni e scadenze attrezzature.',
+    fields:[r('attrezzatura_id','Attrezzatura','attrezzature',['codice'],true),d('data_intervento','Intervento',true),d('prossimo_intervento','Prossimo intervento'),t('tipo','Tipo',true),t('esito','Esito'),n('costo','Costo'),a('note','Note')],columns:['attrezzatura_id','data_intervento','tipo','prossimo_intervento']},
+  consegne:{name:'consegne',table:'assegnazioni_attrezzature',label:'Consegne attrezzature',description:'Prestiti a persone o corsi, con restituzione.',
+    fields:[r('attrezzatura_id','Attrezzatura','attrezzature',['codice'],true),r('persona_id','Persona','persone',['cognome','nome']),r('edizione_id','Edizione','edizioni_corsi',['nome']),d('assegnata_il','Consegnata il',true),d('restituita_il','Restituita il'),a('note','Note')],columns:['attrezzatura_id','persona_id','assegnata_il','restituita_il']},
+  quote:{name:'quote',table:'quote_associative',label:'Quote associative',description:'Importo dovuto per persona e stagione; versamenti registrati separatamente.',
+    fields:[r('persona_id','Socio','persone',['cognome','nome'],true),r('stagione_id','Stagione','stagioni',['nome'],true),n('importo_dovuto','Importo dovuto (€)',true),d('scadenza','Scadenza'),a('note','Note')],columns:['persona_id','stagione_id','importo_dovuto','scadenza']},
+  addebiti:{name:'addebiti',table:'addebiti_corsi',label:'Quote corsi',description:'Importi dovuti per singola iscrizione.',
+    fields:[r('iscrizione_id','Iscrizione','iscrizioni_corsi',['id'],true),n('importo_dovuto','Importo dovuto (€)',true),d('scadenza','Scadenza'),a('note','Note')],columns:['iscrizione_id','importo_dovuto','scadenza']},
+  pagamenti:{name:'pagamenti',table:'pagamenti',label:'Pagamenti ricevuti',description:'Versamenti associativi o corsi. Registrazioni immutabili e contabilizzate automaticamente.',
+    fields:[r('persona_id','Persona','persone',['cognome','nome'],true),r('quota_id','Quota associativa (solo se pagamento quota)','quote_associative',['id']),r('addebito_corso_id','Addebito corso (solo se pagamento corso)','addebiti_corsi',['id']),n('importo','Importo (€)',true),d('data_pagamento','Data versamento',true),s('metodo','Modalità',['contanti','bonifico','pos','altro'],true),t('riferimento','Riferimento'),a('note','Note')],columns:['persona_id','importo','data_pagamento','metodo','quota_id','addebito_corso_id'],appendOnly:true,order:'data_pagamento'},
+  contabilita:{name:'contabilita',table:'movimenti_economici',label:'Contabilità interna',description:'Entrate e uscite; i versamenti soci sono inseriti automaticamente.',adminOnly:true,
+    fields:[d('data_movimento','Data',true),s('tipo','Tipo',['entrata','uscita'],true),t('categoria','Categoria',true),t('descrizione','Descrizione',true),n('importo','Importo (€)',true),t('metodo','Modalità pagamento'),a('note','Note')],columns:['data_movimento','tipo','categoria','importo','descrizione'],order:'data_movimento'},
+  comunicazioni:{name:'comunicazioni',table:'comunicazioni',label:'Comunicazioni',description:'Avvisi visibili agli utenti autorizzati nella propria area.',
+    fields:[t('titolo','Titolo',true),a('contenuto','Messaggio',true),s('destinatari','Destinatari',['tutti','soci','istruttori','staff'],true),b('attiva','Pubblicata')],columns:['titolo','destinatari','attiva','pubblicata_il'],order:'pubblicata_il'},
+  promemoria:{name:'promemoria',table:'impostazioni_promemoria',label:'Regole promemoria',description:'Configurazione anticipi. Le regole si applicano ai processi automatici.',adminOnly:true,
+    fields:[t('tipo','Tipo',true),{name:'giorni_anticipo',label:'Giorni di anticipo (es. 30, 15, 7)',type:'days',required:true,hint:'Numeri interi da 0 a 365 separati da virgola'},b('attivo','Attivo')],columns:['tipo','giorni_anticipo','attivo']},
+} as const satisfies Record<string,Module>;
+export type ModuleKey=keyof typeof modules;
+export function isModuleKey(value:string):value is ModuleKey{return Object.prototype.hasOwnProperty.call(modules,value);}
+export const staffSections:readonly {title:string;items:readonly ModuleKey[]}[]=[
+ {title:'Segreteria',items:['anagrafiche','adesioni','tesseramenti','quote','pagamenti','brevetti','certificati']},
+ {title:'Corsi e didattica',items:['corsi','edizioni','iscrizioni','istruttori','qualifiche','programmi','versioni','presenze']},
+ {title:'Impianti e calendario',items:['piscine','corsie','calendario','prenotazioni']},
+ {title:'Attrezzature',items:['attrezzature','revisioni','consegne']},
+ {title:'Amministrazione',items:['addebiti','contabilita','comunicazioni','stagioni','promemoria']}
+];
