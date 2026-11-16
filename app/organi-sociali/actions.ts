@@ -6,7 +6,7 @@ import {convertVerbaleDocx} from '@/lib/cda-pdf';
 const root='/organi-sociali';
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const val=(f:FormData,k:string)=>String(f.get(k)??'').trim();
-const fail=(reason:string)=>redirect(`${root}?msg=${reason}`);
+function fail(reason:string):never{return redirect(`${root}?msg=${reason}`);}
 export async function salvaComponente(form:FormData){
  const {supabase}=await requireStaff();const persona_id=val(form,'persona_id'),carica=val(form,'carica'),dal=val(form,'dal');
  if(!uuid.test(persona_id)||!['Presidente','Vice Presidente','Segretaria','Tesoriere','Consigliere'].includes(carica)||!/\d{4}-\d{2}-\d{2}/.test(dal))fail('dati');

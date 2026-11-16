@@ -22,7 +22,7 @@ export async function updateMemberProfile(form:FormData){
  const {supabase}=await requireStaff();
  const id=read(form,'id');
  if(!uuid.test(id))redirect('/gestionale/soci');
- let changes:Record<string,string|null>;
+ let changes:Record<string,string|boolean|null>;
  try{
   const nome=read(form,'nome');const cognome=read(form,'cognome');
   if(!nome||!cognome||nome.length>100||cognome.length>100)throw new Error('Nome o cognome non valido');

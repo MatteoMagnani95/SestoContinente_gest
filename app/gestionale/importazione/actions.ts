@@ -7,7 +7,7 @@ import {requireStaff} from '@/lib/security';
 import {headings,normalizzaRiga,erroriRiga,type TipoImportazione} from '@/lib/importazione';
 const where='/gestionale/importazione';
 function text(v:FormDataEntryValue|null){return typeof v==='string'?v.trim():'';}
-function q(msg:string){redirect(`${where}?msg=${encodeURIComponent(msg)}`);}
+function q(msg:string):never{return redirect(`${where}?msg=${encodeURIComponent(msg)}`);}
 export async function stageImport(form:FormData){
  const {supabase,user}=await requireStaff();
  const tipo=text(form.get('tipo')) as TipoImportazione;
@@ -19,7 +19,11 @@ export async function stageImport(form:FormData){
   if(file.name.toLowerCase().endsWith('.csv')){
    input=parseCsv(Buffer.from(await file.arrayBuffer()).toString('utf8').replace(/^\uFEFF/,''),{columns:true,skip_empty_lines:true,trim:true,bom:true}) as Record<string,unknown>[];
   }else{
-   const book=new ExcelJS.Workbook();await book.xlsx.load(Buffer.from(await file.arrayBuffer()));
+   const book=new ExcelJS.Workbook();
+   // ExcelJS e @types/node possono utilizzare dichiarazioni Buffer non allineate.
+   // Il valore è un Buffer Node.js valido; adeguiamo solo il tipo atteso da load().
+   const workbookBytes=Buffer.from(await file.arrayBuffer());
+   await book.xlsx.load(workbookBytes as Parameters<typeof book.xlsx.load>[0]);
    const sheet=book.worksheets[0];if(!sheet)throw Error('No sheet');
    const header=sheet.getRow(1).values as (string|undefined)[];
    for(let i=2;i<=sheet.rowCount;i++){
