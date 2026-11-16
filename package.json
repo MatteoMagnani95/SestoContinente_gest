@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "prebuild": "npm run check:source",
+    "check:source": "node scripts/check-v12-build-integrity.mjs",
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test:static": "node --test tests/*.test.mjs",
