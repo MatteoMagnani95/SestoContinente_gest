@@ -76,6 +76,10 @@ export async function saveApplicationAction(form: FormData) {
   if (minor && ['nome_tutore','cognome_tutore','parentela_tutore'].some(k => !asText(form,k))) {
     go('/richiesta/nuova', 'domanda');
   }
+  const flagStatuto=form.get('flag_statuto')==='on';
+  const flagPrivacy=form.get('flag_privacy')==='on';
+  if(!flagStatuto||!flagPrivacy||!process.env.STATUTO_VERSION||!process.env.PRIVACY_VERSION||
+    !process.env.NEXT_PUBLIC_STATUTO_URL||!process.env.NEXT_PUBLIC_PRIVACY_URL)go('/richiesta/nuova','domanda');
   const payload = {
     p_nome: asText(form, 'nome'), p_cognome: asText(form, 'cognome'),
     p_data_nascita: birth, p_luogo_nascita: asText(form,'luogo_nascita'),
@@ -83,9 +87,11 @@ export async function saveApplicationAction(form: FormData) {
     p_cap: asText(form,'cap'), p_comune: asText(form,'comune'), p_telefono: asText(form,'telefono'),
     p_nome_tutore: asText(form,'nome_tutore'), p_cognome_tutore: asText(form,'cognome_tutore'),
     p_parentela_tutore: asText(form,'parentela_tutore'),
-    p_presa_visione: form.get('presa_visione') === 'on', p_invia: send,
+    p_flag_statuto:flagStatuto,p_flag_privacy:flagPrivacy,p_flag_immagini:form.get('flag_immagini')==='on',
+    p_versione_statuto:process.env.STATUTO_VERSION??'DA_CONFIGURARE',
+    p_versione_privacy:process.env.PRIVACY_VERSION??'DA_CONFIGURARE',p_invia:send,
   };
-  const { error } = await supabase.rpc('salva_domanda', payload);
+  const { error } = await supabase.rpc('salva_domanda_v12', payload);
   if (error) {
     // Non esporre all'utente dettagli SQL o anagrafiche potenzialmente duplicate.
     go('/richiesta/nuova','database');

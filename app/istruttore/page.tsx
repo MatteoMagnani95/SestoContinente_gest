@@ -12,16 +12,14 @@ export default async function Instructor({searchParams}:{searchParams:Promise<{m
  const ids=links?.map(l=>l.persona_id)??[];
  const {data:assignments}=ids.length?await supabase.from('assegnazioni_istruttori').select('edizione_id,persona_id,ruolo').in('persona_id',ids):{data:[]};
  const editionIds=[...new Set(assignments?.map(a=>a.edizione_id)??[])];
- const [{data:editions},{data:lessons},{data:students},{data:gear}]=await Promise.all([
+ const [{data:editions},{data:lessons},{data:students},{data:studentCards}]=await Promise.all([
  editionIds.length?supabase.from('edizioni_corsi').select('id,nome,inizio,fine,stato').in('id',editionIds):Promise.resolve({data:[]}),
  editionIds.length?supabase.from('lezioni').select('id,edizione_id,titolo,inizio,fine,materiale').in('edizione_id',editionIds).is('annullata_il',null).order('inizio',{ascending:true}).limit(150):Promise.resolve({data:[]}),
  editionIds.length?supabase.from('iscrizioni_corsi').select('edizione_id,persona_id,stato').in('edizione_id',editionIds).eq('stato','iscritto').limit(300):Promise.resolve({data:[]}),
- supabase.from('attrezzature').select('id,codice,categoria,stato,prossima_revisione').limit(50)
+ supabase.rpc('allievi_del_mio_corso')
  ]);
- const allIds=[...new Set(students?.map(s=>s.persona_id)??[])];
- const {data:people}=allIds.length?await supabase.from('persone').select('id,nome,cognome').in('id',allIds):{data:[]};
- // I nomi degli iscritti assegnati possono essere consultati solo attraverso
- // una policy dedicata nel database (nessun accesso generico alle anagrafiche).
+ const allowed=(studentCards??[]) as {edizione_id:string;persona_id:string;nome:string;cognome:string;email:string|null;telefono:string|null;certificato_valido:boolean}[];
+ // La RPC non restituisce mai CF, quote o dettagli medici.
  return <div className="container"><div className="page-intro"><p className="eyebrow">Area istruttore</p><h1>I miei corsi</h1><p>Calendario, materiali e registrazione delle presenze per le lezioni assegnate.</p></div>
  {msg==='ok'&&<p className="notice success">Presenza registrata.</p>}{msg==='errore'&&<p className="notice error">Operazione non consentita. Verifica assegnazione e iscrizione dell'allievo.</p>}
  <div className="cards">{editions?.map(e=><article className="panel" key={e.id}><h2>{e.nome}</h2><p>{formatValue(e.inizio)} – {formatValue(e.fine)}</p><p>Stato: {e.stato}</p><p>Allievi iscritti: {students?.filter(s=>s.edizione_id===e.id).length??0}</p></article>)}
@@ -29,11 +27,11 @@ export default async function Instructor({searchParams}:{searchParams:Promise<{m
  <section className="panel"><h2>Lezioni e presenze</h2>{lessons?.map(l=><div key={l.id} className="timeline-item"><h3>{formatValue(l.inizio)} · {l.titolo}</h3><p className="muted">Materiale: {l.materiale||'Non specificato'}</p>
  {students?.filter(s=>s.edizione_id===l.edizione_id).map(s=><form action={recordAttendance} key={`${l.id}-${s.persona_id}`} className="attendance-line">
  <input type="hidden" name="lezione_id" value={l.id}/><input type="hidden" name="persona_id" value={s.persona_id}/>
- <strong>{people?.find(p=>p.id===s.persona_id)?.cognome??s.persona_id.slice(0,8)} {people?.find(p=>p.id===s.persona_id)?.nome??''}</strong>
+ <strong>{allowed.find(p=>p.edizione_id===l.edizione_id&&p.persona_id===s.persona_id)?.cognome??'Allievo'} {allowed.find(p=>p.edizione_id===l.edizione_id&&p.persona_id===s.persona_id)?.nome??''}</strong><span className="tiny">{allowed.find(p=>p.edizione_id===l.edizione_id&&p.persona_id===s.persona_id)?.email??''} · {allowed.find(p=>p.edizione_id===l.edizione_id&&p.persona_id===s.persona_id)?.telefono??''}</span><span className="status">{allowed.find(p=>p.edizione_id===l.edizione_id&&p.persona_id===s.persona_id)?.certificato_valido?'Certificato valido':'Certificato non valido / da verificare'}</span>
  <select name="presente"><option value="si">Presente</option><option value="no">Assente</option></select>
  <input type="text" name="nota_didattica" placeholder="Nota didattica (facoltativa)"/>
  <button type="submit" className="button ghost">Registra</button></form>)}
  </div>)}{!lessons?.length&&<p className="muted">Nessuna lezione associata.</p>}</section>
- <section className="panel"><h2>Attrezzature</h2><p className="muted">Consulta lo stato dell'inventario; la manutenzione è gestita dalla segreteria.</p><p>{gear?.length??0} attrezzature disponibili nella vista.</p><Link href="/documenti">Documenti didattici autorizzati</Link></section>
+ <section className="panel"><h2>Materiali didattici</h2><p>I documenti accessibili sono limitati ai corsi assegnati.</p><Link href="/area-personale/corsi">Materiali associati ai corsi</Link></section>
  </div>;
 }

@@ -4,9 +4,10 @@ import {createCatalogCourse,createEdition} from '../actions';
 import {courseName} from '@/lib/course-tools';
 export default async function NewEdition({searchParams}:{searchParams:Promise<{msg?:string}>}){
  const {supabase}=await requireStaff();const {msg}=await searchParams;
- const [{data:catalog},{data:seasons}]=await Promise.all([
+ const [{data:catalog},{data:seasons},{data:prices}]=await Promise.all([
   supabase.from('corsi').select('id,nome,tipo,livello').order('tipo').order('livello').limit(500),
-  supabase.from('stagioni').select('id,nome,dal,al,attiva').order('dal',{ascending:false}).limit(100)
+  supabase.from('stagioni').select('id,nome,dal,al,attiva').order('dal',{ascending:false}).limit(100),
+  supabase.from('listino_corsi').select('importo').order('importo').limit(100)
  ]);
  return <><Link href="/gestionale/corsi" className="back-link">← Gestione corsi</Link>
  <div className="page-intro"><p className="eyebrow">Creazione guidata</p><h1>Nuova edizione di corso</h1><p>Seleziona un'attività del catalogo e crea l'edizione della stagione. La prima volta puoi aggiungere l'attività al catalogo qui sotto.</p></div>
@@ -20,9 +21,11 @@ export default async function NewEdition({searchParams}:{searchParams:Promise<{m
  <label>Nome edizione<input name="nome" maxLength={160} required placeholder="Es. ARA 1 – Martedì sera"/></label>
  <div className="form-grid"><label>Dal<input type="date" name="inizio" required/></label><label>Al<input type="date" name="fine" required/></label></div>
  <label>Capienza massima<input type="number" name="massimo_partecipanti" min={1} max={500} step={1} required defaultValue={15}/></label>
+ <label>Costo del corso (€)<input name="costo_corso" list="listino-corso" type="number" step="0.01" min="0" required placeholder="Seleziona o inserisci un importo"/></label>
+ <datalist id="listino-corso">{prices?.map(p=><option key={p.importo} value={p.importo}/>)}</datalist>
  <label>Note organizzative<textarea name="note" maxLength={2000} rows={3}/></label>
  <div className="notice">La nuova edizione viene creata in stato <strong>programmato</strong>. Nella scheda potrai aggiungere istruttori, partecipanti e lezioni.</div>
- <button className="button" disabled={!catalog?.length||!seasons?.length}>Crea edizione</button>
+ <div className="form-actions"><button className="button" disabled={!catalog?.length||!seasons?.length}>Crea edizione</button><Link className="button ghost" href="/gestionale/corsi">Annulla / Torna indietro</Link></div>
  </form></section>
  <aside className="panel"><h2>2. Nuova attività di catalogo</h2><p className="muted tiny">Da usare solo se ARA, apnea o nuoto libero non sono già presenti nel catalogo.</p>
  <form action={createCatalogCourse} className="stack">
@@ -30,7 +33,7 @@ export default async function NewEdition({searchParams}:{searchParams:Promise<{m
  <label>Disciplina<select name="tipo" required><option value="ARA">ARA</option><option value="APNEA">Apnea</option><option value="NUOTO_LIBERO">Nuoto libero</option></select></label>
  <label>Livello ARA (solo per ARA)<select name="livello"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select></label>
  <label>Descrizione<textarea name="descrizione" maxLength={1000} rows={3}/></label>
- <button className="button ghost">Aggiungi al catalogo</button></form>
+ <div className="form-actions"><button className="button ghost">Aggiungi al catalogo</button><Link className="button ghost" href="/gestionale/corsi">Annulla / Torna indietro</Link></div></form>
  <p className="tiny muted">Le date e il livello vengono verificati anche sul server. Per creare una stagione, utilizza il modulo Stagioni.</p><Link href="/gestionale/moduli/stagioni">Gestisci stagioni</Link>
  </aside></div></>;
 }

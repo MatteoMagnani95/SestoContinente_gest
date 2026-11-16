@@ -2,6 +2,7 @@ import Link from 'next/link';
 import {notFound} from 'next/navigation';
 import {requireStaff} from '@/lib/security';
 import {formatValue} from '@/lib/format';
+import CodiceFiscaleAssist from '@/components/CodiceFiscaleAssist';
 import {updateMemberProfile,createMemberAdhesion} from '../actions';
 
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -46,15 +47,15 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
  if(!uuid.test(id))notFound();
  const {supabase}=await requireStaff();
  const {data:personData,error:personError}=await supabase.from('persone')
-  .select('id,nome,cognome,data_nascita,luogo_nascita,codice_fiscale,indirizzo,cap,comune,email,telefono').eq('id',id).maybeSingle();
+  .select('id,nome,cognome,data_nascita,luogo_nascita,codice_fiscale,indirizzo,cap,comune,email,telefono,provincia_nascita,stato_nascita,provincia_residenza,stato_residenza,sesso_cf,codice_catastale_nascita,cf_omocodia_verificata,cf_override_motivo').eq('id',id).maybeSingle();
  if(personError||!personData)notFound();
- const person=personData as unknown as Person;
+ const person=personData as unknown as (Person&{provincia_nascita:string|null;stato_nascita:string|null;provincia_residenza:string|null;stato_residenza:string|null;sesso_cf:string|null;codice_catastale_nascita:string|null;cf_omocodia_verificata:boolean;cf_override_motivo:string|null});
  const [{data:seasonsData},{data:membershipsData,error:memberError},{data:balancesData,error:balanceError},
   {data:paymentsData},{data:enrollmentsData},{data:certsData},{data:patentsData},
   {data:qualificationsData},{data:assignmentsData},{data:documentsData},
   {data:guardianData},{data:wardData},{data:equipmentData}]=await Promise.all([
   supabase.from('stagioni').select('id,nome,attiva').order('dal',{ascending:false}),
-  supabase.from('adesioni').select('id,stagione_id,stato,data_approvazione,note').eq('persona_id',id).order('data_approvazione',{ascending:false}).limit(100),
+  supabase.from('adesioni').select('id,stagione_id,stato,data_approvazione,note,verbale_cda_id').eq('persona_id',id).order('data_approvazione',{ascending:false}).limit(100),
   supabase.from('saldi_quote').select('id,stagione_id,importo_dovuto,versato,residuo,stato').eq('persona_id',id).limit(100),
   supabase.from('pagamenti').select('id,quota_id,addebito_corso_id,importo,data_pagamento,metodo').eq('persona_id',id).order('data_pagamento',{ascending:false}).limit(50),
   supabase.from('iscrizioni_corsi').select('id,edizione_id,stato,iscritta_il').eq('persona_id',id).order('iscritta_il',{ascending:false}).limit(100),
@@ -68,7 +69,9 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
   supabase.from('assegnazioni_attrezzature').select('id,attrezzatura_id,assegnata_il,restituita_il').eq('persona_id',id).order('assegnata_il',{ascending:false}).limit(50),
  ]);
  const seasons=(seasonsData??[]) as unknown as Season[];
- const memberships=(membershipsData??[]) as unknown as Membership[];
+ const memberships=(membershipsData??[]) as unknown as (Membership&{verbale_cda_id:string|null})[];
+ const vIds=[...new Set(memberships.map(m=>m.verbale_cda_id).filter((v):v is string=>Boolean(v)))];
+ const {data:boardMinutes}=vIds.length?await supabase.from('cda_verbali').select('id,data_consiglio').in('id',vIds):{data:[]};
  const balances=(balancesData??[]) as unknown as Balance[];
  const payments=(paymentsData??[]) as unknown as Payment[];
  const enrollments=(enrollmentsData??[]) as unknown as Enrollment[];
@@ -145,14 +148,22 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
          <input name={key} type={key==='email'?'email':'text'} maxLength={key==='email'?254:key==='indirizzo'?250:key==='luogo_nascita'?150:100}
           required={key==='nome'||key==='cognome'} defaultValue={person[key]??''}/></label>)}
        <label>Data di nascita<input name="data_nascita" type="date" defaultValue={person.data_nascita??''}/></label>
-      </div><div className="form-actions"><button type="submit" className="button">Salva anagrafica</button></div>
+       <label>Provincia nascita<input name="provincia_nascita" maxLength={2} defaultValue={person.provincia_nascita??''}/></label>
+       <label>Stato nascita<input name="stato_nascita" maxLength={15} defaultValue={person.stato_nascita??''}/></label>
+       <label>Provincia residenza<input name="provincia_residenza" maxLength={2} defaultValue={person.provincia_residenza??''}/></label>
+       <label>Stato residenza<input name="stato_residenza" maxLength={15} defaultValue={person.stato_residenza??''}/></label>
+       <label>Sesso per CF<select name="sesso_cf" defaultValue={person.sesso_cf??''}><option value="">Non indicato</option><option value="M">M</option><option value="F">F</option></select></label>
+       <label>Codice catastale nascita<input name="codice_catastale_nascita" maxLength={4} defaultValue={person.codice_catastale_nascita??''}/></label>
+       <label className="check-label"><input type="checkbox" name="cf_omocodia_verificata" defaultChecked={person.cf_omocodia_verificata}/><span>Omocodia verificata con documentazione</span></label>
+       <label>Motivazione del bypass CF<input name="cf_override_motivo" maxLength={500} defaultValue={person.cf_override_motivo??''} placeholder="Es. omocodia attestata da tessera sanitaria"/></label>
+      </div><div className="form-actions"><button type="submit" className="button">Salva anagrafica</button><CodiceFiscaleAssist/><Link className="button ghost" href={`/gestionale/soci/${id}`}>Annulla / Torna indietro</Link></div>
       <p className="tiny muted">Le rettifiche vengono registrate nel registro operazioni, senza copiare i dati anagrafici nel log.</p>
      </form></details>
    </Section>
    <Section id="adesioni" title="Adesioni e tesseramenti" href="/gestionale/moduli/adesioni">
-    {memberships.length?<div className="table-panel"><table><thead><tr><th>Stagione</th><th>Stato</th><th>Data</th><th>Tessere</th></tr></thead><tbody>
+    {memberships.length?<div className="table-panel"><table><thead><tr><th>Stagione</th><th>Stato</th><th>Data</th><th>Delibera CdA</th><th>Tessere</th></tr></thead><tbody>
      {memberships.map(m=><tr key={m.id}><td>{seasonName(m.stagione_id)}</td><td><span className="status">{statusLabel(m.stato)}</span></td>
-      <td>{formatValue(m.data_approvazione)}</td><td>{cards.filter(c=>c.adesione_id===m.id).map(c=><div key={c.id} className="member-mini-row">
+      <td>{formatValue(m.data_approvazione)}</td><td>{m.verbale_cda_id?<Link href={`/organi-sociali/documento/${m.verbale_cda_id}?tipo=pdf`}>{formatValue(boardMinutes?.find(x=>x.id===m.verbale_cda_id)?.data_consiglio??null)}</Link>:'In attesa di delibera'}</td><td>{cards.filter(c=>c.adesione_id===m.id).map(c=><div key={c.id} className="member-mini-row">
        {c.ente} · {c.numero_tessera??'Numero non indicato'} · {formatValue(c.scade_il)} ({statusLabel(c.stato)})</div>)}
        {!cards.some(c=>c.adesione_id===m.id)&&'Nessuna tessera'}</td></tr>)}
     </tbody></table></div>:<None>Non risultano adesioni per questa persona.</None>}

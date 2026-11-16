@@ -95,8 +95,8 @@ export default async function Incassi({searchParams}:{searchParams:Promise<{tab?
        <input type="hidden" name="stagione" value={selectedSeason}/><input type="hidden" name="filtro_persona" value={personFilter}/>
        <input type="hidden" name="stato" value={status}/>
        <label>Importo (€)<input name="importo" type="number" required min="0.01" step="0.01" max={Number(b.residuo).toFixed(2)} defaultValue={Number(b.residuo).toFixed(2)}/></label>
-       <label>Data<input name="data_pagamento" type="date" required defaultValue={todayInRome()}/></label>
-       <label>Metodo<select name="metodo" required defaultValue="bonifico"><option value="bonifico">Bonifico</option><option value="contanti">Contanti</option><option value="pos">POS</option><option value="altro">Altro</option></select></label>
+       <label>Data di versamento<input name="data_pagamento" type="date" required defaultValue={todayInRome()}/></label>
+       <label>Canale di pagamento<select name="metodo" required defaultValue="bonifico"><option value="bonifico">Bonifico Bancario</option><option value="contanti">Cassa</option><option value="pos">POS</option></select></label>
        <label>Riferimento<input name="riferimento" type="text" maxLength={150} placeholder="Facoltativo"/></label>
        <label>Note<input name="note" type="text" maxLength={1000} placeholder="Facoltative"/></label>
        <label className="payment-confirm"><input type="checkbox" name="conferma" required/> Confermo che il versamento è stato realmente ricevuto</label>

@@ -6,7 +6,7 @@ type RequestDraft = {
   nome: string; cognome: string; data_nascita: string; luogo_nascita: string;
   codice_fiscale: string | null; indirizzo: string; cap: string; comune: string;
   telefono: string; nome_tutore: string | null; cognome_tutore: string | null;
-  parentela_tutore: string | null; presa_visione: boolean;
+  parentela_tutore: string | null; presa_visione: boolean;flag_statuto?:boolean;flag_privacy?:boolean;flag_immagini?:boolean;
 };
 function minorAge(birth: string) {
   if (!birth) return false;
@@ -43,7 +43,9 @@ export default function ApplicationForm({ saved }: {saved?:RequestDraft|null}) {
       </div>
     </div>}
     <div className="section-head"><span className="step">{minor?'04':'03'}</span><div><h2>Conferma</h2><p className="muted">Ambiente di prova: inserire esclusivamente dati inventati.</p></div></div>
-    <label className="check-label"><input name="presa_visione" type="checkbox" defaultChecked={saved?.presa_visione ?? false}/><span>Confermo che i dati sono fittizi e che questa è una simulazione tecnica. Prima della raccolta di dati reali saranno disponibili documentazione associativa e informativa privacy.</span></label>
-    <div className="form-actions"><button className="button ghost" type="submit" name="intent" value="bozza">Salva bozza</button><button className="button" type="submit" name="intent" value="invia">Invia alla segreteria</button></div>
+    <label className="check-label"><input name="flag_statuto" type="checkbox" required defaultChecked={saved?.flag_statuto??false}/><span>Dichiaro di aver preso visione dello <a href={process.env.NEXT_PUBLIC_STATUTO_URL||'#'} target="_blank" rel="noopener noreferrer">Statuto associativo</a> e di accettarne le disposizioni. *</span></label>
+    <label className="check-label"><input name="flag_privacy" type="checkbox" required defaultChecked={saved?.flag_privacy??false}/><span>Dichiaro di aver ricevuto e letto l’<a href={process.env.NEXT_PUBLIC_PRIVACY_URL||'#'} target="_blank" rel="noopener noreferrer">informativa privacy</a> (presa visione, non consenso generico al trattamento). *</span></label>
+    <label className="check-label"><input name="flag_immagini" type="checkbox" defaultChecked={saved?.flag_immagini??false}/><span>Acconsento facoltativamente all’utilizzo di fotografie e video per le finalità specificate nell’informativa. Il rifiuto non impedisce l’adesione.</span></label>
+    <div className="form-actions"><button className="button ghost" type="submit" name="intent" value="bozza">Salva bozza</button><button className="button" type="submit" name="intent" value="invia">Invia alla segreteria</button><a className="button ghost" href="/area-personale">Annulla / Torna indietro</a></div>
   </form>;
 }

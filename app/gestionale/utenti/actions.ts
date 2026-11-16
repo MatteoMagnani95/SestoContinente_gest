@@ -7,7 +7,7 @@ export async function grantRole(form:FormData){
  if(!data)redirect('/gestionale?msg=permessi');
  const email=String(form.get('email')??'').trim().toLowerCase();
  const ruolo=String(form.get('ruolo')??'').trim();
- if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)||!['amministratore','segreteria','istruttore','socio','tutore'].includes(ruolo))
+ if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)||!['amministratore','segreteria','istruttore','socio','tutore','consigliere_cda'].includes(ruolo))
   redirect('/gestionale/utenti?msg=dati');
  const {error}=await supabase.rpc('assegna_ruolo_email',{p_email:email,p_ruolo:ruolo});
  if(error)redirect('/gestionale/utenti?msg=errore');

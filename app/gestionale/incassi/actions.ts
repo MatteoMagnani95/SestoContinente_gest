@@ -6,7 +6,7 @@ import {paymentAmount,validPaymentDate} from '@/lib/payment-tools';
 
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const txt=(form:FormData,name:string)=>String(form.get(name)??'').trim();
-const methods=['contanti','bonifico','pos','altro'];
+const methods=['contanti','bonifico','pos'];
 function back(form:FormData,msg:string):never{
  const params=new URLSearchParams({msg});
  const tab=txt(form,'tab');

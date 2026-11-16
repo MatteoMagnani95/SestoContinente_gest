@@ -25,31 +25,31 @@ export async function createCatalogCourse(form:FormData){
 
 export async function createEdition(form:FormData){
  const {supabase}=await requireStaff();
- let corso_id='',stagione_id='',nome='',inizio='',fine='',capienza=0,note:string|null=null;
+ let corso_id='',stagione_id='',nome='',inizio='',fine='',capienza=0,costo_corso:number|null=null,note:string|null=null;
  try{
   corso_id=uuidValue(form,'corso_id');stagione_id=uuidValue(form,'stagione_id');
   nome=valueOf(form,'nome',160);if(!nome)throw Error();
   inizio=dateValue(form,'inizio');fine=dateValue(form,'fine');if(fine<inizio)throw Error();
   capienza=Number(valueOf(form,'massimo_partecipanti',4));if(!Number.isInteger(capienza)||capienza<1||capienza>500)throw Error();
-  note=valueOf(form,'note',2000)||null;
+  note=valueOf(form,'note',2000)||null;const raw=valueOf(form,'costo_corso',20);costo_corso=raw?Number(raw.replace(',','.')):null;if(costo_corso!==null&&(!Number.isFinite(costo_corso)||costo_corso<0||Math.round(costo_corso*100)!==costo_corso*100))throw Error();
  }catch{redirect(fail);}
  const {data:season}=await supabase.from('stagioni').select('dal,al').eq('id',stagione_id).maybeSingle();
  if(!season||inizio<season.dal||fine>season.al)redirect('/gestionale/corsi/nuovo?msg=stagione');
- const {data,error}=await supabase.from('edizioni_corsi').insert({corso_id,stagione_id,nome,inizio,fine,massimo_partecipanti:capienza,stato:'programmato',note}).select('id').single();
+ const {data,error}=await supabase.from('edizioni_corsi').insert({corso_id,stagione_id,nome,inizio,fine,massimo_partecipanti:capienza,costo_corso,stato:'programmato',note}).select('id').single();
  if(error||!data)redirect(fail);
  refresh(data.id);redirect(detailHref(data.id,'creato'));
 }
 
 export async function updateEdition(form:FormData){
  const {supabase}=await requireStaff();
- let id='',nome='',capienza=0,stato='',note:string|null=null;
+ let id='',nome='',capienza=0,stato='',costo_corso:number|null=null,note:string|null=null;
  try{
   id=uuidValue(form,'edizione_id');nome=valueOf(form,'nome',160);if(!nome)throw Error();
   capienza=Number(valueOf(form,'massimo_partecipanti',4));if(!Number.isInteger(capienza)||capienza<1||capienza>500)throw Error();
   stato=valueOf(form,'stato',20);if(!COURSE_STATES.some(s=>s===stato))throw Error();
-  note=valueOf(form,'note',2000)||null;
+  note=valueOf(form,'note',2000)||null;const raw=valueOf(form,'costo_corso',20);costo_corso=raw?Number(raw.replace(',','.')):null;if(costo_corso!==null&&(!Number.isFinite(costo_corso)||costo_corso<0||Math.round(costo_corso*100)!==costo_corso*100))throw Error();
  }catch{redirect('/gestionale/corsi?msg=dati');}
- const {error}=await supabase.from('edizioni_corsi').update({nome,massimo_partecipanti:capienza,stato,note}).eq('id',id).select('id').single();
+ const {error}=await supabase.from('edizioni_corsi').update({nome,massimo_partecipanti:capienza,costo_corso,stato,note}).eq('id',id).select('id').single();
  if(error)redirect(detailHref(id,'vincolo'));
  refresh(id);redirect(detailHref(id,'salvato'));
 }
@@ -184,4 +184,18 @@ export async function setCourseProgram(form:FormData){
  const {error}=await supabase.from('edizioni_corsi').update({programma_versione_id:version}).eq('id',id).select('id').single();
  if(error)redirect(detailHref(id,'programma'));
  refresh(id);redirect(detailHref(id,'programma_salvato'));
+}
+
+// MOD-22: sostituzione atomica dell'ordine dei moduli di una sola lezione.
+export async function saveLessonModules(form:FormData){
+ const {supabase}=await requireStaff();
+ let edizione='',lezione='';
+ try{edizione=uuidValue(form,'edizione_id');lezione=uuidValue(form,'lezione_id');}catch{redirect('/gestionale/corsi');}
+ const {data:lesson}=await supabase.from('lezioni').select('id').eq('id',lezione).eq('edizione_id',edizione).is('annullata_il',null).maybeSingle();
+ if(!lesson)redirect(detailHref(edizione,'lezione'));
+ const ids=form.getAll('modulo_id').map(String);
+ if(ids.length>50||ids.some(x=>!UUID_RE.test(x))||new Set(ids).size!==ids.length)redirect(detailHref(edizione,'moduli'));
+ const {error}=await supabase.rpc('imposta_moduli_lezione',{p_lezione:lezione,p_moduli:ids});
+ if(error)redirect(detailHref(edizione,'moduli'));
+ revalidatePath(`/gestionale/corsi/${edizione}`);redirect(detailHref(edizione,'moduli_salvati'));
 }

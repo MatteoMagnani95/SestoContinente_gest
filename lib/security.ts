@@ -48,3 +48,10 @@ export async function requireStaff() {
   }
   return { supabase, user };
 }
+
+export async function requireBoard(){
+ const {supabase,user}=await requireUser();
+ const {data}=await supabase.from('ruoli_utente').select('ruolo').eq('utente_id',user.id).in('ruolo',['amministratore','segreteria','consigliere_cda']);
+ if(!data?.length)redirect('/?msg=permessi');
+ return {supabase,user,isStaff:data.some(r=>['amministratore','segreteria'].includes(r.ruolo))};
+}

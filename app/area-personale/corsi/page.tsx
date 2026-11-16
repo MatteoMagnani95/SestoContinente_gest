@@ -11,6 +11,9 @@ export default async function MyCourses({searchParams}:{searchParams:Promise<{ms
  supabase.from('corsi').select('id,nome,tipo,livello').limit(250)
  ]);
  const ids=links?.map(l=>l.persona_id)??[];
+ const {data:myEnrollments}=ids.length?await supabase.from('iscrizioni_corsi').select('edizione_id').in('persona_id',ids).in('stato',['iscritto','concluso']):{data:[]};
+ const myCourseIds=[...new Set((myEnrollments??[]).map(x=>x.edizione_id))];
+ const {data:didacticFiles}=myCourseIds.length?await supabase.from('documenti').select('id,nome,edizione_id').in('edizione_id',myCourseIds).eq('ambito','didattica').eq('visibilita','soci').limit(150):{data:[]};
  const [{data:people},{data:enrollments},{data:lessons}]=await Promise.all([
  ids.length?supabase.from('persone').select('id,nome,cognome').in('id',ids):Promise.resolve({data:[]}),
  ids.length?supabase.from('iscrizioni_corsi').select('id,persona_id,edizione_id,stato').in('persona_id',ids).limit(250):Promise.resolve({data:[]}),
@@ -28,6 +31,7 @@ export default async function MyCourses({searchParams}:{searchParams:Promise<{ms
  <p className="muted">{courses?.find(c=>c.id===e.corso_id)?.tipo} · {formatValue(e.inizio)} – {formatValue(e.fine)}</p>
  <form action={askForCourse} className="stack"><input type="hidden" name="edizione_id" value={e.id}/><label>Iscrivi persona<select name="persona_id" required><option value="">Seleziona</option>{people?.map(p=><option key={p.id} value={p.id}>{p.nome} {p.cognome}</option>)}</select></label><button className="button" disabled={!people?.length}>Richiedi iscrizione</button></form></article>)}
  </div></section>
+ <section className="panel"><h2>Materiali didattici scaricabili</h2>{(didacticFiles??[]).map(doc=><p key={doc.id}><Link href={`/documenti/${doc.id}`} prefetch={false}>{doc.nome}</Link> · {editions?.find(e=>e.id===doc.edizione_id)?.nome??'Corso iscritto'}</p>)}{!didacticFiles?.length&&<p className="muted">Nessun materiale didattico pubblicato per i tuoi corsi.</p>}</section>
  <section className="panel"><h2>Prossime lezioni</h2>{lessons?.map(l=><p key={l.id}>{formatValue(l.inizio)} · {l.titolo}</p>)}{!lessons?.length&&<p className="muted">Nessuna lezione visibile.</p>}</section>
  </div>;
 }

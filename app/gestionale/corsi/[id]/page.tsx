@@ -4,6 +4,7 @@ import {requireStaff} from '@/lib/security';
 import {UUID_RE,courseName,formatRome,ENROLLMENT_STATES,COURSE_STATES} from '@/lib/course-tools';
 import {formatValue} from '@/lib/format';
 import CourseLanePicker from '@/components/CourseLanePicker';
+import LessonComposer from '@/components/LessonComposer';
 import {addEnrollment,addInstructor,createLesson,recordClassAttendance,removeInstructor,replaceResponsible,setCourseProgram,updateEdition,updateEnrollment} from '../actions';
 
 type Person={id:string;nome:string;cognome:string};
@@ -31,7 +32,7 @@ function Section({id,title,children}:{id:string;title:string;children:React.Reac
 export default async function EditionDetail({params,searchParams}:{params:Promise<{id:string}>;searchParams:Promise<{msg?:string;lezione?:string}>}){
  const {id}=await params;if(!UUID_RE.test(id))notFound();
  const {supabase}=await requireStaff();const p=await searchParams;
- const {data:ed,error:editionError}=await supabase.from('edizioni_corsi').select('id,corso_id,stagione_id,nome,inizio,fine,massimo_partecipanti,stato,note,programma_versione_id').eq('id',id).maybeSingle();
+ const {data:ed,error:editionError}=await supabase.from('edizioni_corsi').select('id,corso_id,stagione_id,nome,inizio,fine,massimo_partecipanti,costo_corso,stato,note,programma_versione_id').eq('id',id).maybeSingle();
  if(editionError||!ed)notFound();
  const [{data:cat},{data:season},{data:enrollData,error:enrollError},{data:teacherData,error:teacherError},{data:lessonData,error:lessonError},
   {data:allPeople},{data:qualifications},{data:pools},{data:lanes},{data:activeMemberships},{data:programVersions}]=await Promise.all([
@@ -48,6 +49,11 @@ export default async function EditionDetail({params,searchParams}:{params:Promis
   supabase.from('versioni_programmi').select('id,programma_id,versione,stato').eq('stato','approvato').limit(200)
  ]);
  const enrollments=(enrollData??[]) as Enrollment[];const assignments=(teacherData??[]) as Assignment[];
+ const [{data:moduleCatalog},{data:lessonModLinks},{data:prices}]=await Promise.all([
+  supabase.from('moduli_didattici').select('id,tipo,codice,titolo').order('pre_id'),
+  supabase.from('lezione_moduli').select('lezione_id,modulo_id,ordine').in('lezione_id',(lessonData??[]).map(l=>l.id)).order('ordine'),
+  supabase.from('listino_corsi').select('importo').order('importo')
+ ]);
  const lessons=(lessonData??[]) as Lesson[];const people=(allPeople??[]) as Person[];
  const instructors=(qualifications??[]) as Qualification[];const qualified=new Set(instructors.map(q=>q.persona_id));
  const currentIds=new Set(enrollments.map(e=>e.persona_id));const assignedIds=new Set(assignments.map(e=>e.persona_id));
@@ -80,8 +86,9 @@ export default async function EditionDetail({params,searchParams}:{params:Promis
    <Section id="configurazione" title="Configurazione dell'edizione"><form action={updateEdition} className="stack"><input type="hidden" name="edizione_id" value={id}/>
     <div className="form-grid"><label>Nome edizione<input name="nome" maxLength={160} required defaultValue={ed.nome}/></label><label>Stato<select name="stato" defaultValue={ed.stato}>{COURSE_STATES.map(s=><option key={s} value={s}>{s}</option>)}</select></label>
     <label>Capienza<input type="number" name="massimo_partecipanti" min={1} max={500} step={1} defaultValue={ed.massimo_partecipanti} required/></label><label>Stagione / periodo<input readOnly value={`${season?.nome??'—'} · ${ed.inizio} – ${ed.fine}`}/></label></div>
+    <label>Costo del corso (€)<input name="costo_corso" type="number" list="listino-edit" step="0.01" min="0" required defaultValue={ed.costo_corso??''}/></label><datalist id="listino-edit">{prices?.map(p=><option key={p.importo} value={p.importo}/>)}</datalist>
     <label>Note<textarea name="note" maxLength={2000} rows={2} defaultValue={ed.note??''}/></label>
-    <div className="actions"><button className="button">Salva modifiche</button><Link className="button ghost" href="/gestionale/moduli/edizioni">Modifica avanzata</Link></div>
+    <div className="actions"><button className="button">Salva modifiche</button><Link className="button ghost" href="/gestionale/moduli/edizioni">Modifica avanzata</Link><Link className="button ghost" href="/gestionale/corsi">Annulla / Torna indietro</Link></div>
     <p className="tiny muted">Non è possibile ridurre la capienza sotto gli iscritti confermati. Conclusione e annullamento bloccano le nuove iscrizioni dalla scheda guidata.</p>
    </form></Section>
    <Section id="istruttori" title="Istruttori assegnati">
@@ -122,6 +129,14 @@ export default async function EditionDetail({params,searchParams}:{params:Promis
     <p className="tiny muted">L'orario è interpretato come Europe/Rome; orari ambigui o inesistenti durante il cambio dell'ora saranno rifiutati. Conflitti di prenotazione annullano l'intera creazione.</p>
     </form>}
     <div className="buttons"><Link href="/gestionale/moduli/calendario">Modifica avanzata lezioni</Link><Link href="/gestionale/moduli/prenotazioni">Gestisci prenotazioni</Link></div>
+   </Section>
+   <Section id="composizione" title="Composizione e stampe lezioni">
+    {lessons.map(l=><details className="panel" key={l.id}><summary><strong>{l.titolo}</strong> · {formatRome(l.inizio)}</summary>
+     <LessonComposer edizioneId={id} lezioneId={l.id} moduli={moduleCatalog??[]} initial={(lessonModLinks??[]).filter(x=>x.lezione_id===l.id).sort((a,b)=>a.ordine-b.ordine).map(x=>x.modulo_id)}/>
+     <div className="buttons"><Link className="button ghost" href={`/gestionale/corsi/${id}/stampe?tipo=piscina&lezione=${l.id}`}>Stampa registro Piscina PDF</Link>
+     <Link className="button ghost" href={`/gestionale/corsi/${id}/stampe?tipo=teoria&lezione=${l.id}`}>Stampa registro Teoria PDF</Link></div>
+    </details>)}
+    <Link className="button" href={`/gestionale/corsi/${id}/stampe?tipo=programma`}>Stampa programma completo PDF</Link>
    </Section>
    <Section id="presenze" title="Registro presenze">
     {!selected?<p className="muted">Crea una lezione per iniziare a registrare le presenze.</p>:<>

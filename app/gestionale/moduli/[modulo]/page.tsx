@@ -5,6 +5,7 @@ import {modules,isModuleKey,type Module,type Field} from '@/lib/modules';
 import {formatValue,datetimeForInput} from '@/lib/format';
 import {formatRome} from '@/lib/course-tools';
 import {saveModuleRecord} from '@/app/module-actions';
+import CodiceFiscaleAssist from '@/components/CodiceFiscaleAssist';
 
 type Row=Record<string,unknown> & {id:string};
 const status:Record<string,string>={salvato:'Dati salvati nel database.',vincolo:'Operazione non consentita: controlla duplicati, capienza, date e collegamenti.',
@@ -33,7 +34,7 @@ function Editor({module,moduleKey,record,references}:{module:Module;moduleKey:st
  <input type="hidden" name="modulo" value={moduleKey}/>
  {record&&<input type="hidden" name="id" value={record.id}/>}
  <div className="form-grid">{module.fields.map(f=><FieldInput key={`${record?.id??'new'}-${f.name}`} field={f} value={record?.[f.name]} references={references}/>)}</div>
- <div className="form-actions"><button type="submit" className="button">{record?'Salva modifiche':'Crea nuovo'}</button></div>
+ <div className="form-actions"><button type="submit" className="button">{record?'Salva modifiche':'Crea nuovo'}</button>{moduleKey==='anagrafiche'&&<CodiceFiscaleAssist/>}<Link href={`/gestionale/moduli/${moduleKey}`} className="button ghost">Annulla / Torna indietro</Link></div>
  </form>;
 }
 function bookingConflictText(corsia?:string,inizio?:string,fine?:string):string{
@@ -68,7 +69,17 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
   const ref=module.fields.find(f=>f.ref?.table===table)?.ref;
   const cols=[...new Set(['id',...(ref?.labels??[])])].join(',');
   const {data:rows}=await supabase.from(table).select(cols).limit(500);
-  references[table]=(rows??[]) as unknown as Row[];
+  let selected=(rows??[]) as unknown as Row[];
+  if(modulo==='istruttori'&&table==='persone'){
+   const {data:allQualifications}=await supabase.from('qualifiche_istruttori').select('persona_id').limit(5000);
+   const ids=new Set((allQualifications??[]).map(q=>q.persona_id));
+   selected=selected.filter(person=>ids.has(person.id));
+  }
+  if(modulo==='adesioni'&&table==='cda_verbali'){
+   const {data:approved}=await supabase.from('cda_verbali').select('id').eq('stato','approvato').in('tipo',['Approvazione Adesioni Soci','Misto']);
+   const ids=new Set((approved??[]).map(v=>v.id));selected=selected.filter(row=>ids.has(row.id));
+  }
+  references[table]=selected;
  }));
  const rows=(data??[]) as Row[];
  return <>
