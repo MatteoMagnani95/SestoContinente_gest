@@ -6,7 +6,7 @@ export default function GlobalCancelButtons(){
  useEffect(()=>{
   const apply=()=>{
    document.querySelectorAll<HTMLFormElement>('form').forEach(form=>{
-    if(form.dataset.hasGlobalCancel==='1'||form.querySelector('[data-cancel-form]'))return;
+    if(form.dataset.hasGlobalCancel==='1'||form.querySelector('[data-cancel-form]')||[...form.querySelectorAll('a,button')].some(el=>/^(annulla(?:\s*\/\s*torna indietro)?|torna indietro)$/i.test((el.textContent??'').trim())))return;
     const submit=[...form.querySelectorAll<HTMLButtonElement>('button[type="submit"],button:not([type])')].filter(x=>!x.disabled);
     if(!submit.some(b=>/salva|crea |registra |aggiungi |invia alla segreteria|aggiorna |assegna |collega account|sostituisci/i.test(b.textContent??'')))return;
     if(submit.some(b=>/elimina|annulla lezione|conferma annullamento|storna/i.test(b.textContent??'')))return;

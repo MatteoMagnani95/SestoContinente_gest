@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { requireStaff, requireUser } from '@/lib/security';
+import {identityFromForm,verificaAnagrafica} from '@/lib/verifica-anagrafica';
 
 const asText = (form: FormData, field: string) => String(form.get(field) ?? '').trim();
 const go = (path: string, msg: string) => redirect(`${path}?msg=${msg}`);
@@ -80,10 +81,17 @@ export async function saveApplicationAction(form: FormData) {
   const flagPrivacy=form.get('flag_privacy')==='on';
   if(!flagStatuto||!flagPrivacy||!process.env.STATUTO_VERSION||!process.env.PRIVACY_VERSION||
     !process.env.NEXT_PUBLIC_STATUTO_URL||!process.env.NEXT_PUBLIC_PRIVACY_URL)go('/richiesta/nuova','domanda');
+  const cf=asText(form,'codice_fiscale').toUpperCase();
+  const paese=asText(form,'stato_nascita'),provincia=asText(form,'provincia_nascita').toUpperCase(),sesso=asText(form,'sesso_cf');
+  if(!paese||paese.length>100||(provincia&&!/^[A-Z]{2}$/.test(provincia))||(sesso&&!['M','F'].includes(sesso)))go('/richiesta/nuova','domanda');
+  const check=await verificaAnagrafica(identityFromForm(form));
+  if(cf&&!['ok','omocodia'].includes(check.status))go('/richiesta/nuova','cf');
+  if(!check.code&&['place','unavailable','incomplete'].includes(check.status)&&cf)go('/richiesta/nuova','cf');
   const payload = {
     p_nome: asText(form, 'nome'), p_cognome: asText(form, 'cognome'),
     p_data_nascita: birth, p_luogo_nascita: asText(form,'luogo_nascita'),
-    p_codice_fiscale: asText(form, 'codice_fiscale'), p_indirizzo: asText(form,'indirizzo'),
+    p_codice_fiscale: cf, p_indirizzo: asText(form,'indirizzo'),
+    p_provincia_nascita:provincia||null,p_stato_nascita:paese,p_sesso_cf:sesso||null,p_codice_catastale_nascita:check.code,
     p_cap: asText(form,'cap'), p_comune: asText(form,'comune'), p_telefono: asText(form,'telefono'),
     p_nome_tutore: asText(form,'nome_tutore'), p_cognome_tutore: asText(form,'cognome_tutore'),
     p_parentela_tutore: asText(form,'parentela_tutore'),
@@ -91,7 +99,7 @@ export async function saveApplicationAction(form: FormData) {
     p_versione_statuto:process.env.STATUTO_VERSION??'DA_CONFIGURARE',
     p_versione_privacy:process.env.PRIVACY_VERSION??'DA_CONFIGURARE',p_invia:send,
   };
-  const { error } = await supabase.rpc('salva_domanda_v12', payload);
+  const { error } = await supabase.rpc('salva_domanda_v13', payload);
   if (error) {
     // Non esporre all'utente dettagli SQL o anagrafiche potenzialmente duplicate.
     go('/richiesta/nuova','database');

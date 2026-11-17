@@ -1,10 +1,11 @@
 'use client';
 import { useState } from 'react';
 import { saveApplicationAction } from '@/app/actions';
+import CodiceFiscaleAssist from '@/components/CodiceFiscaleAssist';
 
 type RequestDraft = {
   nome: string; cognome: string; data_nascita: string; luogo_nascita: string;
-  codice_fiscale: string | null; indirizzo: string; cap: string; comune: string;
+  codice_fiscale: string | null; provincia_nascita?:string|null; stato_nascita?:string|null; sesso_cf?:string|null; indirizzo: string; cap: string; comune: string;
   telefono: string; nome_tutore: string | null; cognome_tutore: string | null;
   parentela_tutore: string | null; presa_visione: boolean;flag_statuto?:boolean;flag_privacy?:boolean;flag_immagini?:boolean;
 };
@@ -24,14 +25,18 @@ export default function ApplicationForm({ saved }: {saved?:RequestDraft|null}) {
       <label>Nome *<input name="nome" required minLength={2} defaultValue={saved?.nome}/></label>
       <label>Cognome *<input name="cognome" required minLength={2} defaultValue={saved?.cognome}/></label>
       <label>Data di nascita *<input name="data_nascita" type="date" required value={birth} onChange={e=>setBirth(e.target.value)}/></label>
-      <label>Luogo di nascita *<input name="luogo_nascita" required minLength={2} defaultValue={saved?.luogo_nascita}/></label>
-      <label className="span-2">Codice fiscale (se disponibile)<input name="codice_fiscale" autoCapitalize="characters" maxLength={16} defaultValue={saved?.codice_fiscale??''} placeholder="Codice fiscale italiano o identificativo valido"/><span className="hint">Se non possiedi un codice fiscale italiano, lascia vuoto: la segreteria verificherà la situazione.</span></label>
+      <label>Comune di nascita (o città estera) *<input name="luogo_nascita" required minLength={2} defaultValue={saved?.luogo_nascita}/></label>
+      <label>Provincia di nascita (sigla, per l'Italia)<input name="provincia_nascita" maxLength={2} autoCapitalize="characters" defaultValue={saved?.provincia_nascita??''}/></label>
+      <label>Stato di nascita *<input name="stato_nascita" required maxLength={100} defaultValue={saved?.stato_nascita??'Italia'}/></label>
+      <label>Sesso anagrafico per il CF<select name="sesso_cf" defaultValue={saved?.sesso_cf??''}><option value="">Non indicato</option><option value="M">M</option><option value="F">F</option></select></label>
+      <label className="span-2">Codice fiscale (se disponibile)<input name="codice_fiscale" autoCapitalize="characters" maxLength={16} defaultValue={saved?.codice_fiscale??''} placeholder="CF ufficiale di 16 caratteri"/><span className="hint">Se non possiedi un codice fiscale italiano, lascia vuoto: la segreteria verificherà la situazione.</span></label>
     </div>
+    <CodiceFiscaleAssist/>
     <div className="section-head"><span className="step">02</span><div><h2>Residenza e recapito</h2><p className="muted">I dati sono utilizzati per gestire la richiesta.</p></div></div>
     <div className="form-grid">
       <label className="span-2">Indirizzo di residenza *<input name="indirizzo" required defaultValue={saved?.indirizzo}/></label>
       <label>CAP *<input name="cap" required minLength={4} maxLength={10} defaultValue={saved?.cap}/></label>
-      <label>Comune *<input name="comune" required defaultValue={saved?.comune}/></label>
+      <label>Comune di residenza *<input name="comune" required defaultValue={saved?.comune}/></label>
       <label className="span-2">Telefono di contatto *<input name="telefono" type="tel" required minLength={5} defaultValue={saved?.telefono}/></label>
     </div>
     {minor && <div className="minor-panel">

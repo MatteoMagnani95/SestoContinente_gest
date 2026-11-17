@@ -7,12 +7,12 @@ import {createRequire} from 'node:module';
 const require=createRequire(import.meta.url);
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const read=(n)=>readFileSync(path.join(root,n),'utf8');
-const sql=read('supabase/migrations/0008_v12_sicurezza_organi_didattica_import.sql');
-const cert=read('supabase/migrations/0010_v12_riepilogo_cda_certificati.sql');
-const seed=read('supabase/migrations/0009_precaricamento_didattica.sql');
+const sql=read('supabase/migrations/20261116100800_v12_sicurezza_organi_didattica_import.sql');
+const cert=read('supabase/migrations/20261116101000_v12_riepilogo_cda_certificati.sql');
+const seed=read('supabase/migrations/20261116100900_precaricamento_didattica.sql');
 
 test('RBAC: ruolo consigliere separato e funzioni istruttore con sole colonne autorizzate',()=>{
- assert.match(read('supabase/migrations/0007_ruolo_cda.sql'),/consigliere_cda/);
+ assert.match(read('supabase/migrations/20261116100700_ruolo_cda.sql'),/consigliere_cda/);
  assert.match(sql,/returns table\(edizione_id uuid, persona_id uuid, nome text, cognome text, email text, telefono text, certificato_valido boolean\)/);
  for(let x of ['public.is_instructor()','public.insegna_edizione(i.edizione_id)','public.is_board()','enable row level security','storage.buckets']) assert.ok(sql.includes(x),x);
  assert.doesNotMatch(read('app/istruttore/page.tsx'),/supabase\.from\('persone'\)/);

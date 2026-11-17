@@ -1,0 +1,47 @@
+// Archivio Belfiore incorporato: nessun dato anagrafico viene inviato a servizi esterni.
+// Fonti del dataset: Ministero dell'Interno e AdE (CC BY 4.0), ISTAT (CC BY 3.0).
+import {generaCF,validaCF,confrontaCF} from './codice-fiscale';
+export const identityFields=['nome','cognome','data_nascita','luogo_nascita','provincia_nascita','stato_nascita','sesso_cf','codice_fiscale'] as const;
+export type Identity=Partial<Record<(typeof identityFields)[number],unknown>>;
+const str=(v:unknown)=>String(v??'').trim();
+const norm=(v:unknown)=>str(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ');
+export function identityFromForm(form:FormData):Identity{return Object.fromEntries(identityFields.map(k=>[k,str(form.get(k))]));}
+export function identityUnchanged(current:Identity,previous:Identity){return identityFields.every(k=>norm(current[k])===norm(previous[k]));}
+export type CFResult={code:string|null;status:'ok'|'omocodia'|'mismatch'|'invalid'|'incomplete'|'place'|'unavailable'|'empty';message:string};
+let loader:Promise<import('@marketto/codice-fiscale-utils').CodiceFiscaleUtils>|undefined;
+async function parser(){
+ if(!loader)loader=Promise.all([import('@marketto/codice-fiscale-utils'),import('@marketto/belfiore-connector-embedded')]).then(([{CodiceFiscaleUtils},connector])=>new CodiceFiscaleUtils(connector.default)).catch(e=>{loader=undefined;throw e;});
+ return (await loader).parser;
+}
+export async function verificaAnagrafica(d:Identity):Promise<CFResult>{
+ const cf=str(d.codice_fiscale).toUpperCase(),birth=str(d.data_nascita),country=norm(d.stato_nascita),province=norm(d.provincia_nascita),town=str(d.luogo_nascita),sex=norm(d.sesso_cf);
+ const italy=country==='ITALIA'||country==='IT';
+ const result=(status:CFResult['status'],message:string,code:string|null=null):CFResult=>({status,message,code});
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(birth)||!country||(italy&&(!town||!/^[A-Z]{2}$/.test(province)||province==='EE')))return result(cf?'incomplete':'empty','Inserisci data di nascita, Comune, provincia (sigla) e Stato di nascita.');
+ const date=new Date(`${birth}T12:00:00Z`);
+ if(!Number.isFinite(date.getTime())||date.toISOString().slice(0,10)!==birth||birth>new Date().toISOString().slice(0,10))return result('incomplete','Data di nascita non valida.');
+ let code:string;
+ try{
+  const found=await (await parser()).placeToCf(date,italy?town:str(d.stato_nascita));
+  const p=found as unknown as {belfioreCode?:string;province?:string;name?:string}|null;
+  if(!p||!p.belfioreCode||!/^[A-Z][0-9]{3}$/.test(p.belfioreCode)|| (italy ? p.province!==province||p.belfioreCode.startsWith('Z') : !p.belfioreCode.startsWith('Z')))
+   return result('place','Comune/Stato non individuato univocamente per provincia e data. Controlla la denominazione storica.');
+  code=p.belfioreCode;
+ }catch{return result('unavailable','Archivio dei luoghi non disponibile: verifica non completata.');}
+ if(cf&&!validaCF(cf))return result('invalid','Formato o carattere di controllo del codice fiscale non valido.',code);
+ if(!cf)return result('empty','Codice catastale individuato. Inserisci il codice fiscale ufficiale per verificarlo.',code);
+ if(!str(d.nome)||!str(d.cognome)||!['M','F'].includes(sex))return result('incomplete','Completa nome, cognome e sesso anagrafico ai fini del CF.',code);
+ const data={nome:str(d.nome),cognome:str(d.cognome),data_nascita:birth,sesso_cf:sex,codice_catastale_nascita:code};
+ try{generaCF(data);}catch{return result('incomplete','Dati anagrafici non validi.',code);}
+ const warning=confrontaCF(cf,data);
+ return warning.startsWith('Omocodia:')?result('omocodia','Omocodia coerente: verifica il documento ufficiale e registra la motivazione.',code):warning?result('mismatch','Il CF non coincide con nome, cognome, data, sesso e luogo di nascita.',code):result('ok','Codice fiscale coerente con i dati inseriti. Non è una verifica di attribuzione ufficiale.',code);
+}
+// I record storici incompleti possono essere aggiornati nei recapiti senza attribuire un nuovo CF.
+export async function validaSalvataggioAnagrafica(d:Identity,previous:(Identity&{codice_catastale_nascita?:unknown;cf_omocodia_verificata?:unknown;cf_override_motivo?:unknown})|null,attested:boolean,reason:string){
+ const result=await verificaAnagrafica(d);
+ if(previous&&identityUnchanged(d,previous)&&!['ok','omocodia'].includes(result.status))
+  return {error:null,code:str(previous.codice_catastale_nascita)||result.code,omocodia:previous.cf_omocodia_verificata===true,reason:str(previous.cf_override_motivo)||null};
+ if(result.status==='omocodia'&&(!attested||reason.length<8||reason.length>500))return {error:'omocodia',code:result.code,omocodia:false,reason:null};
+ if(str(d.codice_fiscale)&&!['ok','omocodia'].includes(result.status))return {error:'cf',code:result.code,omocodia:false,reason:null};
+ return {error:null,code:result.code,omocodia:result.status==='omocodia',reason:result.status==='omocodia'?reason:null};
+}

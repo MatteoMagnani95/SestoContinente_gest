@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-const sql=fs.readFileSync('supabase/migrations/0002_gestionale_completo.sql','utf8');
+const sql=fs.readFileSync('supabase/migrations/20261111210200_gestionale_completo.sql','utf8');
 const modules=fs.readFileSync('lib/modules.ts','utf8');
 const actions=fs.readFileSync('app/module-actions.ts','utf8');
 const docs=fs.readFileSync('app/documenti/actions.ts','utf8');
@@ -25,7 +25,7 @@ test('Fase 2: moduli principali con schema e RLS',()=>{
 test('Fase 2: tutti i moduli dell’editor hanno una tabella di origine',()=>{
  const tables=[...modules.matchAll(/^\s{2}\w+:\{name:'[^']+',table:'([^']+)'/gm)].map(x=>x[1]);
  assert.ok(tables.length>=25);
- const first=fs.readFileSync('supabase/migrations/0001_fase1.sql','utf8');
+ const first=fs.readFileSync('supabase/migrations/20261111210100_fase1.sql','utf8');
  for(const table of tables){
   assert.ok(first.includes(`create table public.${table}`)||sql.includes(`create table public.${table}`),`Tabella mancante: ${table}`);
  }

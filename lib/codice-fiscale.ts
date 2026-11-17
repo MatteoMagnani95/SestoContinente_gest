@@ -1,5 +1,5 @@
-// Generazione offline del codice fiscale italiano a partire da dati COMPLETI.
-// Il codice catastale non si ricava dal nome del comune: va verificato su fonte ufficiale.
+// Calcolo teorico interno del CF per il solo confronto. Non assegna il CF ufficiale.
+// Il codice Belfiore è individuato tramite verifica-anagrafica e archivio dei luoghi.
 const mesi='ABCDEHLMPRST';
 const pari='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const dispari=[1,0,5,7,9,13,15,17,19,21,1,0,5,7,9,13,15,17,19,21,2,4,18,20,11,3,6,8,12,14,16,10,22,25,24,23];
@@ -18,7 +18,7 @@ export function controlloCF(partial:string){
  },0);
  return String.fromCharCode(65+n%26);
 }
-export function validaCF(code:string){const cf=code.trim().toUpperCase();return /^[A-Z0-9]{16}$/.test(cf)&&controlloCF(cf.slice(0,15))===cf[15];}
+export function validaCF(code:string){const cf=code.trim().toUpperCase();return /^[A-Z]{6}[0-9LMNPQRSTUV]{2}[ABCDEHLMPRST][0-9LMNPQRSTUV]{2}[A-Z][0-9LMNPQRSTUV]{3}[A-Z]$/.test(cf)&&controlloCF(cf.slice(0,15))===cf[15];}
 export type DatiCF={nome:string;cognome:string;data_nascita:string;sesso_cf:string;codice_catastale_nascita:string};
 export function generaCF(d:DatiCF){
  const date=/^\d{4}-\d{2}-\d{2}$/.test(d.data_nascita)?new Date(`${d.data_nascita}T12:00:00Z`):null;
@@ -35,6 +35,6 @@ export function confrontaCF(cf:string,d:DatiCF){
   const expected=generaCF(d);
   const clean=cf.toUpperCase().trim();
   const norm=Array.from(clean.slice(0,15)).map((c,i)=>posOmocodia.includes(i)?(omocodia[c]??c):c).join('');
-  return norm===expected.slice(0,15)?(clean.slice(0,15)===expected.slice(0,15)?'':'Omocodia: confermare la verifica con documentazione'):`Il CF non coincide con quello calcolato (${expected}). Verificare l'eventuale omocodia con documentazione.`;
- }catch{return '';}
+  return norm===expected.slice(0,15)?(clean.slice(0,15)===expected.slice(0,15)?'':'Omocodia: confermare la verifica con documentazione'):'Il CF non coincide con i dati anagrafici.';
+ }catch{return 'Dati anagrafici incompleti: impossibile verificare il CF';}
 }

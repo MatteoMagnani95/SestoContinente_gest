@@ -12,6 +12,6 @@ test('v12: l’albero sorgente completo ha tutti i moduli ed export richiesti da
 });
 test('v12: prima della build vengono verificati i percorsi del repository',()=>{
  const p=JSON.parse(readFileSync(path.join(root,'package.json'),'utf8'));
- assert.equal(p.scripts.prebuild,'npm run check:source');
+ assert.equal(p.scripts.prebuild,'npm run check:source && npm run test:cf-data');
  assert.ok(p.scripts['check:source'].includes('check-v12-build-integrity.mjs'));
 });

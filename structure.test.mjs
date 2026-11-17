@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-const sql=readFileSync('supabase/migrations/0001_fase1.sql','utf8');
+const sql=readFileSync('supabase/migrations/20261111210100_fase1.sql','utf8');
 const read=(p)=>readFileSync(p,'utf8');
 test('RLS abilitata su tutte le tabelle con dati personali',()=>{
   for(const table of ['richieste','persone','collegamenti_persone','relazioni_tutori','adesioni','eventi_pratica','ruoli_utente'])

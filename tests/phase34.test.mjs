@@ -8,7 +8,7 @@ const require=createRequire(import.meta.url);
 const ts=require('typescript');
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const read=(name)=>fs.readFileSync(path.join(root,name),'utf8');
-const sql=read('supabase/migrations/0006_incassi_controllati.sql');
+const sql=read('supabase/migrations/20261111210600_incassi_controllati.sql');
 const code=read('app/gestionale/incassi/actions.ts');
 const page=read('app/gestionale/incassi/page.tsx');
 const pure={};

@@ -4,7 +4,7 @@ import {revalidatePath} from 'next/cache';
 import {requireStaff} from '@/lib/security';
 import {modules,isModuleKey,type Field,type Module} from '@/lib/modules';
 import {italianLocalToISO} from '@/lib/format';
-import {confrontaCF,validaCF} from '@/lib/codice-fiscale';
+import {identityFromForm,validaSalvataggioAnagrafica} from '@/lib/verifica-anagrafica';
 
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const text=(f:FormData,k:string)=>String(f.get(k)??'').trim();
@@ -59,15 +59,21 @@ export async function saveModuleRecord(form:FormData) {
   }
   for(const fld of ['stato_nascita','stato_residenza']){
    const val=String(changes[fld]??'');
-   if(val.length>15)redirect(errorPath(key,'dati'));
+   if(val.length>(fld==='stato_nascita'?100:15))redirect(errorPath(key,'dati'));
    changes[fld]=val?val[0].toUpperCase()+val.slice(1).toLowerCase():null;
   }
-  const cf=String(changes.codice_fiscale??'').toUpperCase();
-  if(cf){
-   const warning=confrontaCF(cf,{nome:String(changes.nome??''),cognome:String(changes.cognome??''),data_nascita:String(changes.data_nascita??''),sesso_cf:String(changes.sesso_cf??''),codice_catastale_nascita:String(changes.codice_catastale_nascita??'')});
-   if(!validaCF(cf)||(warning&&(!changes.cf_omocodia_verificata||String(changes.cf_override_motivo??'').trim().length<8)))redirect(errorPath(key,'dati'));
+  let previous:import('@/lib/verifica-anagrafica').Identity & {codice_catastale_nascita?:unknown;cf_omocodia_verificata?:unknown;cf_override_motivo?:unknown}|null=null;
+  if(id){
+   const {data,error}=await supabase.from('persone').select('nome,cognome,data_nascita,luogo_nascita,provincia_nascita,stato_nascita,sesso_cf,codice_fiscale,codice_catastale_nascita,cf_omocodia_verificata,cf_override_motivo').eq('id',id).single();
+   if(error||!data)redirect(errorPath(key,'database'));
+   previous=data;
   }
-  changes.codice_fiscale=cf||null;
+  const check=await validaSalvataggioAnagrafica(identityFromForm(form),previous,form.get('cf_omocodia_verificata')==='on',text(form,'cf_override_motivo'));
+  if(check.error)redirect(errorPath(key,check.error));
+  changes.codice_catastale_nascita=check.code;
+  changes.cf_omocodia_verificata=check.omocodia;
+  changes.cf_override_motivo=check.reason;
+  changes.codice_fiscale=String(changes.codice_fiscale??'').toUpperCase()||null;
  }
  if(key==='istruttori'){
   const person=String(changes.persona_id??'');

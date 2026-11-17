@@ -1,3 +1,4 @@
+import CancelEditButton from '@/components/CancelEditButton';
 import Link from 'next/link';
 import {notFound} from 'next/navigation';
 import {requireStaff} from '@/lib/security';
@@ -25,7 +26,7 @@ const euro=(n:number|string|null|undefined)=>new Intl.NumberFormat('it-IT',{styl
 const statusLabel=(s:string)=>s.replaceAll('_',' ');
 const statusMessage:Record<string,string>={salvato:'Anagrafica aggiornata. La modifica è tracciata nel registro amministrativo.',
  adesione_creata:'Adesione registrata in stato «da perfezionare». Verificare separatamente quota e tesseramento.',
- dati:'Alcuni dati non sono validi. Controlla la compilazione.',duplicato:'Esiste già un altro socio con questo codice fiscale.',
+ cf:'Codice fiscale non coerente con i dati anagrafici, oppure comune/Stato di nascita non identificato. Verifica i dati e usa il CF ufficiale.', omocodia:'Omocodia: conferma la verifica documentale e indica la motivazione.', dati:'Alcuni dati non sono validi. Controlla la compilazione.',duplicato:'Esiste già un altro socio con questo codice fiscale.',
  adesione_esistente:'Per questa stagione esiste già un’adesione.',errore:'Operazione non riuscita. Controlla le autorizzazioni o i vincoli del database.'};
 function dateState(value:string|null|undefined){
  if(!value)return {label:'Non indicata',kind:''};
@@ -137,26 +138,25 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
     <div className="detail-grid">
      <div><span className="k">Data e luogo di nascita</span><strong>{formatValue(person.data_nascita)} · {person.luogo_nascita??'—'}</strong></div>
      <div><span className="k">Codice fiscale</span><strong>{person.codice_fiscale??'—'}</strong></div>
-     <div><span className="k">Indirizzo</span><strong>{[person.indirizzo,person.cap,person.comune].filter(Boolean).join(' · ')||'—'}</strong></div>
+     <div><span className="k">Indirizzo di residenza</span><strong>{[person.indirizzo,person.cap,person.comune].filter(Boolean).join(' · ')||'—'}</strong></div>
      <div><span className="k">Recapiti</span><strong>{person.email??'—'} · {person.telefono??'—'}</strong></div>
     </div>
     <details className="member-edit"><summary>Modifica anagrafica e recapiti</summary>
      <form action={updateMemberProfile} className="stack"><input type="hidden" name="id" value={person.id}/>
       <div className="form-grid">
        {(['nome','cognome','codice_fiscale','luogo_nascita','indirizzo','cap','comune','telefono','email'] as const).map(key=>
-        <label key={key}>{({nome:'Nome',cognome:'Cognome',codice_fiscale:'Codice fiscale',luogo_nascita:'Luogo di nascita',indirizzo:'Indirizzo',cap:'CAP',comune:'Comune',telefono:'Telefono',email:'Email'})[key]}
+        <label key={key}>{({nome:'Nome',cognome:'Cognome',codice_fiscale:'Codice fiscale',luogo_nascita:'Comune di nascita (o città estera)',indirizzo:'Indirizzo di residenza',cap:'CAP',comune:'Comune di residenza',telefono:'Telefono',email:'Email'})[key]}
          <input name={key} type={key==='email'?'email':'text'} maxLength={key==='email'?254:key==='indirizzo'?250:key==='luogo_nascita'?150:100}
           required={key==='nome'||key==='cognome'} defaultValue={person[key]??''}/></label>)}
        <label>Data di nascita<input name="data_nascita" type="date" defaultValue={person.data_nascita??''}/></label>
        <label>Provincia nascita<input name="provincia_nascita" maxLength={2} defaultValue={person.provincia_nascita??''}/></label>
-       <label>Stato nascita<input name="stato_nascita" maxLength={15} defaultValue={person.stato_nascita??''}/></label>
+       <label>Stato di nascita<input name="stato_nascita" maxLength={100} defaultValue={person.stato_nascita??''}/></label>
        <label>Provincia residenza<input name="provincia_residenza" maxLength={2} defaultValue={person.provincia_residenza??''}/></label>
        <label>Stato residenza<input name="stato_residenza" maxLength={15} defaultValue={person.stato_residenza??''}/></label>
        <label>Sesso per CF<select name="sesso_cf" defaultValue={person.sesso_cf??''}><option value="">Non indicato</option><option value="M">M</option><option value="F">F</option></select></label>
-       <label>Codice catastale nascita<input name="codice_catastale_nascita" maxLength={4} defaultValue={person.codice_catastale_nascita??''}/></label>
        <label className="check-label"><input type="checkbox" name="cf_omocodia_verificata" defaultChecked={person.cf_omocodia_verificata}/><span>Omocodia verificata con documentazione</span></label>
-       <label>Motivazione del bypass CF<input name="cf_override_motivo" maxLength={500} defaultValue={person.cf_override_motivo??''} placeholder="Es. omocodia attestata da tessera sanitaria"/></label>
-      </div><div className="form-actions"><button type="submit" className="button">Salva anagrafica</button><CodiceFiscaleAssist/><Link className="button ghost" href={`/gestionale/soci/${id}`}>Annulla / Torna indietro</Link></div>
+       <label>Motivazione verifica documentale CF<input name="cf_override_motivo" maxLength={500} defaultValue={person.cf_override_motivo??''} placeholder="Es. omocodia attestata da tessera sanitaria"/></label>
+      </div><CodiceFiscaleAssist/><div className="form-actions"><button type="submit" className="button">Salva anagrafica</button><CancelEditButton/></div>
       <p className="tiny muted">Le rettifiche vengono registrate nel registro operazioni, senza copiare i dati anagrafici nel log.</p>
      </form></details>
    </Section>

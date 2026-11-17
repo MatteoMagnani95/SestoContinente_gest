@@ -8,7 +8,7 @@ const require=createRequire(import.meta.url);
 const ts=require('typescript');
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const read=(f)=>fs.readFileSync(path.join(root,f),'utf8');
-const migration=read('supabase/migrations/0005_calendario_economico.sql');
+const migration=read('supabase/migrations/20261111210500_calendario_economico.sql');
 const transpile=(f)=>ts.transpileModule(read(f),{compilerOptions:{target:ts.ScriptTarget.ES2020,module:ts.ModuleKind.CommonJS}}).outputText;
 const course={};new Function('exports',transpile('lib/course-tools.ts'))(course);
 const calendar={};new Function('require','exports',transpile('lib/calendar-tools.ts'))((name)=>{

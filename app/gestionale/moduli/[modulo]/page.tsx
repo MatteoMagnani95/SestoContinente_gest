@@ -1,3 +1,4 @@
+import CancelEditButton from '@/components/CancelEditButton';
 import Link from 'next/link';
 import {notFound,redirect} from 'next/navigation';
 import {requireStaff} from '@/lib/security';
@@ -9,7 +10,7 @@ import CodiceFiscaleAssist from '@/components/CodiceFiscaleAssist';
 
 type Row=Record<string,unknown> & {id:string};
 const status:Record<string,string>={salvato:'Dati salvati nel database.',vincolo:'Operazione non consentita: controlla duplicati, capienza, date e collegamenti.',
- dati:'Controlla i campi obbligatori e i formati.',database:'Impossibile salvare. Verifica le autorizzazioni e la migrazione SQL.',permessi:'Operazione non consentita.',
+ cf:'Codice fiscale non coerente, oppure luogo di nascita non identificato. Verifica i dati e il CF ufficiale.',omocodia:'Omocodia: conferma la verifica documentale e indica la motivazione.', dati:'Controlla i campi obbligatori e i formati.',database:'Impossibile salvare. Verifica le autorizzazioni e la migrazione SQL.',permessi:'Operazione non consentita.',
  corsia_duplicata:'Questa corsia è già associata alla stessa lezione. Controlla le prenotazioni esistenti.'};
 function labelOf(record:Row,labels:readonly string[]){
  return labels.map(k=>String(record[k]??'')).join(' ').trim().slice(0,100);
@@ -33,8 +34,8 @@ function Editor({module,moduleKey,record,references}:{module:Module;moduleKey:st
  return <form action={saveModuleRecord} className="module-form stack">
  <input type="hidden" name="modulo" value={moduleKey}/>
  {record&&<input type="hidden" name="id" value={record.id}/>}
- <div className="form-grid">{module.fields.map(f=><FieldInput key={`${record?.id??'new'}-${f.name}`} field={f} value={record?.[f.name]} references={references}/>)}</div>
- <div className="form-actions"><button type="submit" className="button">{record?'Salva modifiche':'Crea nuovo'}</button>{moduleKey==='anagrafiche'&&<CodiceFiscaleAssist/>}<Link href={`/gestionale/moduli/${moduleKey}`} className="button ghost">Annulla / Torna indietro</Link></div>
+ <div className="form-grid">{module.fields.map(f=><FieldInput key={`${record?.id??'new'}-${f.name}`} field={f} value={record?.[f.name]??(!record&&moduleKey==='anagrafiche'&&['stato_nascita','stato_residenza'].includes(f.name)?'Italia':undefined)} references={references}/>)}</div>
+ {moduleKey==='anagrafiche'&&<CodiceFiscaleAssist/>}<div className="form-actions"><button type="submit" className="button">{record?'Salva modifiche':'Crea nuovo'}</button><CancelEditButton/></div>
  </form>;
 }
 function bookingConflictText(corsia?:string,inizio?:string,fine?:string):string{

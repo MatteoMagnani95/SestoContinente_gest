@@ -17,7 +17,7 @@ export default async function Review({params,searchParams}:{params:Promise<{id:s
     {msg && <p role="status" className={`notice ${['presa','approvata','integrazione','respinta'].includes(msg)?'success':'error'}`}>{queryMessage(msg)}</p>}
     <div className="review-grid"><section className="panel"><h2>Dati forniti</h2>
       <Row label="Nome" value={`${r.nome} ${r.cognome}`}/><Row label="Data di nascita" value={formatDate(r.data_nascita)}/>
-      <Row label="Luogo di nascita" value={r.luogo_nascita}/><Row label="Codice fiscale" value={r.codice_fiscale??'Non indicato'}/>
+      <Row label="Comune / luogo di nascita" value={r.luogo_nascita}/><Row label="Provincia e Stato di nascita" value={[r.provincia_nascita,r.stato_nascita].filter(Boolean).join(" · ")}/><Row label="Sesso per CF" value={r.sesso_cf}/><Row label="Codice catastale" value={r.codice_catastale_nascita}/><Row label="Codice fiscale" value={r.codice_fiscale??'Non indicato'}/>
       <Row label="Residenza" value={`${r.indirizzo}, ${r.cap} ${r.comune}`}/><Row label="Telefono" value={r.telefono}/>
       <Row label="Tutore" value={r.nome_tutore?`${r.nome_tutore} ${r.cognome_tutore} (${r.parentela_tutore})`:'Non previsto'}/>
       <Row label="Presa visione" value={r.presa_visione?'Registrata (simulazione)':'Non registrata'}/>

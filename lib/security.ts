@@ -18,6 +18,7 @@ export function queryMessage(search?: string) {
     account:'Per procedere devi prima accedere.',
     email:'Devi verificare il tuo indirizzo email prima di inviare la domanda.',
     verifica:'Non è stato possibile confermare l’email. Richiedi un nuovo messaggio di verifica.',
+    cf:'Il CF inserito non coincide con i dati anagrafici oppure il luogo di nascita non è verificabile. Controlla il documento ufficiale, il Comune/Stato e la provincia.',
     domanda:'Controlla i dati obbligatori della domanda e riprova.',
     permessi:'Non hai i permessi per eseguire questa operazione.',
     stato:'Questa operazione non è consentita nello stato attuale.',

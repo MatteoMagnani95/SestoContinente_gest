@@ -7,7 +7,7 @@ import path from 'node:path';
 const require=createRequire(import.meta.url);
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 function file(name){return readFileSync(path.join(ROOT,name),'utf8');}
-const migration=file('supabase/migrations/0004_corsi_guidati.sql');
+const migration=file('supabase/migrations/20261111210400_corsi_guidati.sql');
 const actions=file('app/gestionale/corsi/actions.ts');
 const ui=file('app/gestionale/corsi/[id]/page.tsx');
 

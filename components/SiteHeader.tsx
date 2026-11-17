@@ -5,7 +5,7 @@ export default function SiteHeader() {
     <Link href="/" className="brand"><span className="brand-symbol">≈</span><span><strong>SESTO CONTINENTE</strong><small>Gestionale associativo</small></span></Link>
     <nav className="topnav" aria-label="Navigazione principale">
       <Link href="/richiesta/stato">La mia domanda</Link>
-      <Link href="/area-personale">Area personale</Link><Link href="/istruttore">Istruttori</Link><Link href="/documenti">Documenti</Link><Link href="/gestionale">Gestionale</Link>
+      <Link href="/area-personale">Area personale</Link><Link href="/istruttore">Istruttori</Link><Link href="/documenti">Documenti</Link><Link href="/smista">Home</Link>
       <form action={logoutAction}><button className="link-button" type="submit">Esci</button></form>
     </nav>
   </header>;

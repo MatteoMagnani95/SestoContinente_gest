@@ -4,7 +4,7 @@ import {readFileSync,existsSync} from 'node:fs';
 const root=new URL('../',import.meta.url);
 const file=(path)=>readFileSync(new URL(path,root),'utf8');
 test('view con sicurezza invoker e senza privilegi anon',()=>{
- const sql=file('supabase/migrations/0003_schede_soci.sql');
+ const sql=file('supabase/migrations/20261111210300_schede_soci.sql');
  assert.match(sql,/security_invoker\s*=\s*true/i);
  assert.match(sql,/revoke all on public\.schede_soci from public, anon/i);
  assert.match(sql,/grant select on public\.schede_soci to authenticated/i);
