@@ -24,6 +24,21 @@ test('CF: lookup Belfiore (mock), coerenza completa e provincia errata',async()=
  assert.equal((await verify.verificaAnagrafica({...identity,sesso_cf:''})).status,'incomplete');
  const france=await verify.verificaAnagrafica({...identity,stato_nascita:'Francia',luogo_nascita:'Parigi',provincia_nascita:'',codice_fiscale:''});assert.equal(france.code,'Z110');
 });
+test('CF: fallback del dataset, validità storica e risultati discordanti',async()=>{
+ const record={belfioreCode:'H501',province:' rm ',creationDate:new Date('1884-09-11'),expirationDate:new Date('9999-12-31')};
+ const make=fn=>load('lib/verifica-anagrafica.ts',{'./codice-fiscale':cf,'@marketto/belfiore-connector-embedded':{},'@marketto/codice-fiscale-utils':{CodiceFiscaleUtils:class {parser={placeToCf:fn};}}});
+ const isoOnly=make(async(date,name)=>date==='1980-01-01'&&name?.toUpperCase()==='ROMA'?record:null);
+ assert.equal((await isoOnly.verificaAnagrafica(identity)).status,'ok');
+ const fallback=make(async(...args)=>args.length===1&&args[0].toUpperCase()==='ROMA'?record:null);
+ assert.equal((await fallback.verificaAnagrafica(identity)).status,'ok');
+ assert.equal((await fallback.verificaAnagrafica({...identity,provincia_nascita:'BO'})).status,'place');
+ const expired=make(async(...args)=>args.length===1?{...record,expirationDate:new Date('1979-12-31')}:null);
+ assert.equal((await expired.verificaAnagrafica(identity)).status,'place');
+ const missingDates=make(async(...args)=>args.length===1?{province:'RM',belfioreCode:'H501'}:null);
+ assert.equal((await missingDates.verificaAnagrafica(identity)).status,'place');
+ const conflict=make(async(...args)=>args.length===1?{...record,belfioreCode:'H502'}:record);
+ assert.equal((await conflict.verificaAnagrafica(identity)).status,'place');
+});
 test('CF: omocodia vera e incongruenza non aggirabile con flag',async()=>{
  const partial=identity.codice_fiscale.slice(0,14)+'M';const omocode=partial+cf.controlloCF(partial);const d={...identity,codice_fiscale:omocode};
  assert.equal((await verify.verificaAnagrafica(d)).status,'omocodia');

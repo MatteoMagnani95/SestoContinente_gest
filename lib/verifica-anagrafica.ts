@@ -22,11 +22,41 @@ export async function verificaAnagrafica(d:Identity):Promise<CFResult>{
  if(!Number.isFinite(date.getTime())||date.toISOString().slice(0,10)!==birth||birth>new Date().toISOString().slice(0,10))return result('incomplete','Data di nascita non valida.');
  let code:string;
  try{
-  const found=await (await parser()).placeToCf(date,italy?town:str(d.stato_nascita));
-  const p=found as unknown as {belfioreCode?:string;province?:string;name?:string}|null;
-  if(!p||!p.belfioreCode||!/^[A-Z][0-9]{3}$/.test(p.belfioreCode)|| (italy ? p.province!==province||p.belfioreCode.startsWith('Z') : !p.belfioreCode.startsWith('Z')))
-   return result('place','Comune/Stato non individuato univocamente per provincia e data. Controlla la denominazione storica.');
-  code=p.belfioreCode;
+  const lookup=await parser();
+  const place=italy?town:str(d.stato_nascita);
+  // Le versioni del parser non trattano sempre Date e date ISO allo stesso modo.
+  // Se la ricerca con data non riesce, la ricerca per nome è ammessa soltanto
+  // quando il record contiene un intervallo storico che comprende la nascita.
+  type Place={belfioreCode?:unknown;province?:unknown;creationDate?:unknown;expirationDate?:unknown};
+  const candidates=new Set<string>();
+  let completed=0;
+  const timestamp=(value:unknown)=>value instanceof Date?value.getTime():typeof value==='string'?Date.parse(value):NaN;
+  function accept(found:unknown,dated:boolean){
+   const p=found as Place|null;
+   if(!p||typeof p!=='object')return;
+   const candidate=norm(p.belfioreCode);
+   if(!/^[A-Z][0-9]{3}$/.test(candidate)||(italy?(norm(p.province)!==province||candidate.startsWith('Z')):!candidate.startsWith('Z')))return;
+   const start=timestamp(p.creationDate),end=timestamp(p.expirationDate),when=date.getTime();
+   if((Number.isFinite(start)&&when<start)||(Number.isFinite(end)&&when>end))return;
+   if(!dated&&(!Number.isFinite(start)||!Number.isFinite(end)))return;
+   candidates.add(candidate);
+  }
+  const names=Array.from(new Set([place,place.toUpperCase()]));
+  for(const name of names){
+   const attempts: Array<[()=>Promise<unknown>,boolean]>=[
+    [()=>lookup.placeToCf(birth,name),true],
+    [()=>lookup.placeToCf([date.getUTCFullYear(),date.getUTCMonth(),date.getUTCDate()],name),true],
+    [()=>lookup.placeToCf(date,name),true],
+    [()=>lookup.placeToCf(name),false],
+   ];
+   for(const [attempt,dated] of attempts){
+    try{const found=await attempt();completed++;accept(found,dated);}catch{/* Prova il successivo formato supportato. */}
+   }
+   if(candidates.size>0)break;
+  }
+  if(!completed)return result('unavailable','Archivio dei luoghi non disponibile: verifica non completata.');
+  if(candidates.size!==1)return result('place','Comune/Stato non individuato univocamente per provincia e data. Controlla la denominazione storica.');
+  code=Array.from(candidates)[0];
  }catch{return result('unavailable','Archivio dei luoghi non disponibile: verifica non completata.');}
  if(cf&&!validaCF(cf))return result('invalid','Formato o carattere di controllo del codice fiscale non valido.',code);
  if(!cf)return result('empty','Codice catastale individuato. Inserisci il codice fiscale ufficiale per verificarlo.',code);
