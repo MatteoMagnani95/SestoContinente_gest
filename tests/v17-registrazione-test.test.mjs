@@ -14,12 +14,17 @@ test('Collaudo disattivato per default; configurazione reali ancora obbligatoria
  assert.equal(config(a,{...real,STATUTO_VERSION:'TEST-COLLAUDO-1'}).configured,false);
  assert.equal(config(a,{...real,NEXT_PUBLIC_PRIVACY_URL:'javascript:alert(1)'}).configured,false);
 });
-test('Allowlist UUID esatta, no wildcard; documenti di prova separati dalle versioni reali',()=>{
- const env={SESTO_TEST_USER_IDS:` ${a}, ${b} `};const c=config(a,env);
+test('Collaudo globale per ogni UUID autenticato; documenti di prova separati dalle versioni reali',()=>{
+ const env={SESTO_TEST_MODE:'true'};const c=config(a,env);
  assert.equal(c.configured,true);assert.equal(c.testMode,true);assert.equal(c.statutoVersion,'TEST-COLLAUDO-1');assert.match(c.privacyUrl,/documenti-test/);
- assert.equal(config(b,env).testMode,true);assert.equal(config(a,{SESTO_TEST_USER_IDS:'*'}).testMode,false);assert.equal(config('11111111-1111-4111-8111-111111111112',env).configured,false);
+ assert.equal(config(b,env).testMode,true);assert.equal(config('',env).testMode,false);assert.equal(config('not-an-id',env).testMode,false);
  assert.equal(config(a,{...real,...env}).testMode,true);assert.equal(config(a,real).testMode,false);
  assert.equal(isTestApplication({versione_statuto:c.statutoVersion}),true);assert.equal(isTestApplication({versione_statuto:'1'}),false);
+});
+test('Disattivazione esplicita; vecchia allowlist ignorata e nessun valore ambiguo abilita il collaudo',()=>{
+ for(const value of ['false','0','1','yes','',undefined])assert.equal(config(a,{SESTO_TEST_MODE:value,SESTO_TEST_USER_IDS:a}).testMode,false);
+ assert.equal(config(a,{...real,SESTO_TEST_MODE:'false',SESTO_TEST_USER_IDS:a}).configured,true);
+ assert.equal(config(a,{SESTO_TEST_MODE:'false'}).configured,false);
 });
 test('Identità dal server, documenti fittizi protetti, tracciatura nelle schermate',()=>{
  const action=read('app/actions.ts'),page=read('app/richiesta/documenti-test/page.tsx');
