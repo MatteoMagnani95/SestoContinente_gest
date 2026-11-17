@@ -21,7 +21,7 @@ export default async function Instructor({searchParams}:{searchParams:Promise<{m
  const allowed=(studentCards??[]) as {edizione_id:string;persona_id:string;nome:string;cognome:string;email:string|null;telefono:string|null;certificato_valido:boolean}[];
  const display=(id:string,edition:string)=>{const p=allowed.find(x=>x.persona_id===id&&x.edizione_id===edition);return `${p?.cognome??''} ${p?.nome??''}`;};
  // La RPC non restituisce mai CF, quote o dettagli medici.
- return <div className="container"><div className="page-intro"><p className="eyebrow">Area istruttore</p><h1>I miei corsi</h1><p>Calendario, materiali e registrazione delle presenze per le lezioni assegnate.</p></div>
+ return <div className="container"><div className="page-intro"><p className="eyebrow">Area istruttore</p><h1>I miei corsi</h1><Link className="button" href="/gestione-eventi">Gestisci eventi soci</Link><p>Calendario, materiali e registrazione delle presenze per le lezioni assegnate.</p></div>
  {msg==='ok'&&<p className="notice success">Presenza registrata.</p>}{msg==='errore'&&<p className="notice error">Operazione non consentita. Verifica assegnazione e iscrizione dell'allievo.</p>}
  <div className="cards">{editions?.map(e=><article className="panel" key={e.id}><h2>{e.nome}</h2><p>{formatValue(e.inizio)} – {formatValue(e.fine)}</p><p>Stato: {e.stato}</p><p>Allievi iscritti: {students?.filter(s=>s.edizione_id===e.id).length??0}</p></article>)}
  {!editions?.length&&<div className="notice">Non risulti assegnato ad alcuna edizione di corso. Chiedi alla segreteria di collegare la tua anagrafica e assegnare il ruolo di istruttore.</div>}</div>

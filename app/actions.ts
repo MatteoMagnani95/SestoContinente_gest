@@ -4,7 +4,8 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { requireStaff, requireUser } from '@/lib/security';
-import {identityFromForm,verificaAnagrafica} from '@/lib/verifica-anagrafica';
+import {applicationLegalConfigured} from '@/lib/application-config';
+import {identityFromForm,identityFields,verificaAnagrafica,type Identity,type CFResult} from '@/lib/verifica-anagrafica';
 
 const asText = (form: FormData, field: string) => String(form.get(field) ?? '').trim();
 const go = (path: string, msg: string) => redirect(`${path}?msg=${msg}`);
@@ -65,28 +66,29 @@ export async function newPasswordAction(form: FormData) {
 
 export async function saveApplicationAction(form: FormData) {
   const { supabase, user } = await requireUser();
-  if (!user.email_confirmed_at) go('/richiesta/nuova','email');
+  if (!user.email_confirmed_at) return {error:'Conferma prima l’indirizzo email.'};
   const birth = asText(form, 'data_nascita');
   const send = asText(form, 'intent') === 'invia';
+  if(!birth || birth<'1900-01-01'||birth>new Date().toISOString().slice(0,10))return {error:'Data di nascita non valida.'};
   const required = ['nome','cognome','luogo_nascita','indirizzo','cap','comune','telefono'];
   if (required.some(k => asText(form, k).length < 2) || !/^\d{4}-\d{2}-\d{2}$/.test(birth)) {
-    go('/richiesta/nuova', 'domanda');
+    return {error:'Completa correttamente i dati obbligatori, inclusi quelli del tutore se necessario.'};
   }
   const minor = new Date(`${birth}T12:00:00`).getTime() >
     new Date(new Date().setFullYear(new Date().getFullYear()-18)).getTime();
   if (minor && ['nome_tutore','cognome_tutore','parentela_tutore'].some(k => !asText(form,k))) {
-    go('/richiesta/nuova', 'domanda');
+    return {error:'Completa correttamente i dati obbligatori, inclusi quelli del tutore se necessario.'};
   }
   const flagStatuto=form.get('flag_statuto')==='on';
   const flagPrivacy=form.get('flag_privacy')==='on';
-  if(!flagStatuto||!flagPrivacy||!process.env.STATUTO_VERSION||!process.env.PRIVACY_VERSION||
-    !process.env.NEXT_PUBLIC_STATUTO_URL||!process.env.NEXT_PUBLIC_PRIVACY_URL)go('/richiesta/nuova','domanda');
+  if(!flagStatuto||!flagPrivacy)return {error:'Conferma la presa visione di statuto e informativa privacy.'};
+  if(!applicationLegalConfigured())return {error:'Registrazione temporaneamente non disponibile: statuto o informativa privacy non configurati. Contatta la segreteria.'};
   const cf=asText(form,'codice_fiscale').toUpperCase();
   const paese=asText(form,'stato_nascita'),provincia=asText(form,'provincia_nascita').toUpperCase(),sesso=asText(form,'sesso_cf');
-  if(!paese||paese.length>100||(provincia&&!/^[A-Z]{2}$/.test(provincia))||(sesso&&!['M','F'].includes(sesso)))go('/richiesta/nuova','domanda');
+  if(!paese||paese.length>100||(provincia&&!/^[A-Z]{2}$/.test(provincia))||(sesso&&!['M','F'].includes(sesso)))return {error:'Completa Stato, provincia e sesso anagrafico.'};
   const check=await verificaAnagrafica(identityFromForm(form));
-  if(cf&&!['ok','omocodia'].includes(check.status))go('/richiesta/nuova','cf');
-  if(!check.code&&['place','unavailable','incomplete'].includes(check.status)&&cf)go('/richiesta/nuova','cf');
+  if(cf&&!['ok','omocodia'].includes(check.status))return {error:check.message};
+  if(!check.code&&['place','unavailable','incomplete'].includes(check.status)&&cf)return {error:check.message};
   const payload = {
     p_nome: asText(form, 'nome'), p_cognome: asText(form, 'cognome'),
     p_data_nascita: birth, p_luogo_nascita: asText(form,'luogo_nascita'),
@@ -102,10 +104,11 @@ export async function saveApplicationAction(form: FormData) {
   const { error } = await supabase.rpc('salva_domanda_v13', payload);
   if (error) {
     // Non esporre all'utente dettagli SQL o anagrafiche potenzialmente duplicate.
-    go('/richiesta/nuova','database');
+    console.error('salva_domanda_v13 non completata', {code:error.code});
+    return {error:error.code==='PGRST202'?'Funzione di registrazione non disponibile: la segreteria deve verificare l’allineamento delle migrazioni.':error.code==='23505'?'Esiste già una pratica o un record con questi dati. Contatta la segreteria.':error.code==='23514'?'Uno o più dati non rispettano i requisiti della domanda.':error.code==='42501'?'La sessione non è autorizzata a salvare questa domanda.': 'Domanda non salvata. Verifica i dati e lo stato della pratica; se persiste, contatta la segreteria.'};
   }
   revalidatePath('/richiesta/stato');
-  redirect(`/richiesta/stato?msg=${send ? 'inviata' : 'salvata'}`);
+  return {next:`/richiesta/stato?msg=${send ? 'inviata' : 'salvata'}`};
 }
 
 export async function takeApplicationAction(form: FormData) {
@@ -137,4 +140,12 @@ export async function decideApplicationAction(form: FormData) {
   revalidatePath('/gestionale/soci');
   revalidatePath('/richiesta/stato');
   redirect(`/gestionale/richieste/${id}?msg=${action}`);
+}
+
+// Authenticated lookup on the server, with the same data and algorithm used at submission.
+export async function checkIdentityAction(input:Identity):Promise<CFResult>{
+ const client=await createClient();const {data:{user}}=await client.auth.getUser();
+ if(!user)return {status:'unavailable',code:null,message:'Sessione scaduta: accedi di nuovo.'};
+ const identity=Object.fromEntries(identityFields.map(k=>[k,String(input?.[k]??'').trim().slice(0,250)]));
+ return verificaAnagrafica(identity);
 }

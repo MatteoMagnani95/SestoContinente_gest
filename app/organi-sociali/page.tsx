@@ -35,7 +35,7 @@ export default async function OrganiSociali({searchParams}:{searchParams:Promise
  <p>Componenti in carica, deliberazioni, voto individuale e documenti riservati.</p><div className="buttons"><Link className="button" href="/organi-sociali/archivio">Archivio verbali e PDF</Link><Link className="button ghost" href="/organi-sociali/riepilogo">Riepilogo aggregato CdA</Link></div><Link href={isStaff?'/gestionale':'/smista'}>Torna indietro</Link></div>
  {msg&&<p className="notice">Esito operazione: {msg}. Se compare un errore, controlla la configurazione o l'esito della migrazione.</p>}
  <section className="panel"><h2>Componenti CdA</h2><div className="table-panel"><table><thead><tr><th>Socio</th><th>Carica</th><th>Quadriennio</th>{isStaff&&<th>Azioni</th>}</tr></thead><tbody>
- {membriCda.map(m=><tr key={`${m.persona_id}-${m.dal}`}><td>{m.cognome} {m.nome}</td><td>{m.carica}</td><td>{m.dal} – {m.al}</td>{isStaff&&<td>{(()=>{const entry=memberIds?.find(x=>x.persona_id===m.persona_id&&x.dal===m.dal);return entry?<RemoveRecord moduleKey="cda_componenti" id={entry.id} back="organi"/>:null;})()}</td>}</tr>)}</tbody></table></div>
+ {membriCda.map(m=><tr key={`${m.persona_id}-${m.dal}`}><td>{m.cognome} {m.nome}</td><td>{m.carica}</td><td>{m.dal} – {m.al}</td>{isStaff&&<td>{(()=>{const entry=memberIds?.find(x=>x.persona_id===m.persona_id&&x.dal===m.dal);return entry?<details><summary>Modifica</summary><RemoveRecord moduleKey="cda_componenti" id={entry.id} back="organi"/></details>:null;})()}</td>}</tr>)}</tbody></table></div>
  {isStaff&&<form action={salvaComponente} className="stack"><h3>Registra componente</h3><div className="form-grid"><label>Socio<select name="persona_id" required><option value="">Seleziona...</option>{persone.map(p=><option value={p.id} key={p.id}>{p.cognome} {p.nome}</option>)}</select></label>
  <label>Carica<select name="carica">{roles.map(r=><option key={r}>{r}</option>)}</select></label><label>Inizio mandato<input name="dal" type="date" required/></label></div>
  <div className="form-actions"><button className="button">Registra</button><Link className="button ghost" href="/organi-sociali">Annulla / Torna indietro</Link></div></form>}
@@ -51,7 +51,7 @@ export default async function OrganiSociali({searchParams}:{searchParams:Promise
  <p>Tipo: {v.tipo} · Stato: <strong>{v.stato}</strong> · Voti: {p?.approvati??0}/{p?.totali??0}</p>
  <div className="buttons"><Link href={`/organi-sociali/documento/${v.id}?tipo=docx`}>Scarica Word</Link>
  {v.stato==='approvato'?<Link href={`/organi-sociali/documento/${v.id}?tipo=pdf`}>PDF definitivo</Link>:<Link href={`/organi-sociali/documento/${v.id}?tipo=anteprima`}>PDF bozza</Link>}</div>
- {v.stato==='bozza'&&isStaff&&<RemoveRecord moduleKey="cda_verbali" id={v.id} back="organi"/>}
+ {v.stato==='bozza'&&isStaff&&<Link href={`/organi-sociali/archivio?edit=${v.id}`}>Modifica bozza</Link>}
  {v.stato==='bozza'&&isStaff&&<form action={avviaApprovazione} className="stack"><input type="hidden" name="verbale_id" value={v.id}/>
  {v.tipo!=='Gestione Ordinaria / Altro'&&<fieldset><legend>Adesioni da ammettere</legend>{adesioni.map(a=><label className="check-label" key={a.id}><input type="checkbox" name="adesione_id" value={a.id}/>{names.get(a.persona_id)??a.persona_id.slice(0,8)}</label>)}</fieldset>}
  <button className="button">Apri votazione (quorum completo)</button></form>}

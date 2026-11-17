@@ -1,4 +1,3 @@
-import RemoveRecord from '@/components/RemoveRecord';
 import Link from 'next/link';
 import {requireStaff} from '@/lib/security';
 import {formatValue} from '@/lib/format';
@@ -56,7 +55,7 @@ export default async function SociPage({searchParams}:{searchParams:Promise<{q?:
     <td><strong>{row.cognome} {row.nome}</strong></td><td>{row.codice_fiscale??'—'}</td>
     <td>{row.email??row.telefono??'—'}</td><td>{row.stagione}</td>
     <td><span className={`status status-${row.stato}`}>{String(row.stato).replaceAll('_',' ')}</span></td>
-    <td><Link href={`/gestionale/soci/${row.persona_id}`}>Apri scheda</Link><RemoveRecord moduleKey="adesioni" id={row.adesione_id} back="soci"/></td>
+    <td><Link href={`/gestionale/soci/${row.persona_id}`}>Apri scheda</Link></td>
    </tr>)}
    {rows.length===0&&<tr><td colSpan={6} className="empty-cell">Nessun socio trovato con questi filtri.</td></tr>}
    </tbody></table></div>}

@@ -9,7 +9,7 @@ export default function GlobalCancelButtons(){
     if(form.dataset.hasGlobalCancel==='1'||form.querySelector('[data-cancel-form]')||[...form.querySelectorAll('a,button')].some(el=>/^(annulla(?:\s*\/\s*torna indietro)?|torna indietro)$/i.test((el.textContent??'').trim())))return;
     const submit=[...form.querySelectorAll<HTMLButtonElement>('button[type="submit"],button:not([type])')].filter(x=>!x.disabled);
     if(!submit.some(b=>/salva|crea |registra |aggiungi |invia alla segreteria|aggiorna |assegna |collega account|sostituisci/i.test(b.textContent??'')))return;
-    if(submit.some(b=>/elimina|annulla lezione|conferma annullamento|storna/i.test(b.textContent??'')))return;
+    if(submit.some(b=>/elimina|rimuovi|disiscriviti|annulla lezione|conferma annullamento|storna/i.test(b.textContent??'')))return;
     form.dataset.hasGlobalCancel='1';
     const button=document.createElement('button');button.type='button';button.className='button ghost global-cancel';button.textContent='Annulla / Torna indietro';
     button.addEventListener('click',()=>{

@@ -71,11 +71,12 @@ export async function addInstructor(form:FormData){
 export async function removeInstructor(form:FormData){
  const {supabase}=await requireStaff();let id='',assignment='';
  try{id=uuidValue(form,'edizione_id');assignment=uuidValue(form,'assegnazione_id');}catch{redirect('/gestionale/corsi?msg=dati');}
+ if(form.get('conferma')!=='on')redirect(detailHref(id,'elimina_conferma'));
  const {data:row}=await supabase.from('assegnazioni_istruttori').select('ruolo').eq('id',assignment).eq('edizione_id',id).maybeSingle();
  if(!row)redirect(detailHref(id,'vincolo'));
  // Prima di togliere il responsabile di un'edizione attiva, bisogna concludere/sospendere la gestione del corso.
  if(row.ruolo==='responsabile')redirect(detailHref(id,'responsabile'));
- const {error}=await supabase.from('assegnazioni_istruttori').delete().eq('id',assignment).eq('edizione_id',id);
+ const {error}=await supabase.rpc('rimuovi_record_gestionale',{p_tabella:'assegnazioni_istruttori',p_id:assignment});
  if(error)redirect(detailHref(id,'vincolo'));
  refresh(id);redirect(detailHref(id,'istruttore'));
 }

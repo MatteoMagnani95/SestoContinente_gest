@@ -1,3 +1,4 @@
+import RemoveRecord from '@/components/RemoveRecord';
 import Link from 'next/link';
 import {notFound} from 'next/navigation';
 import {requireStaff,formatDate,statoLabel,type Stato,queryMessage} from '@/lib/security';
@@ -34,7 +35,7 @@ export default async function Review({params,searchParams}:{params:Promise<{id:s
           <div className="form-actions wrap"><button className="button" name="action" value="approvata" type="submit">Approva</button><button className="button ghost" name="action" value="integrazione" type="submit">Chiedi integrazione</button><button className="button danger" name="action" value="respinta" type="submit">Respingi</button></div>
         </form>
       </>}
-    </section><aside className="panel"><h2>Storico delle operazioni</h2>
+    <details><summary>Gestisci pratica</summary><RemoveRecord moduleKey="richieste" id={r.id} back="richieste"/></details></section><aside className="panel"><h2>Storico delle operazioni</h2>
       {events?.map((e,i)=><div className="timeline-item" key={i}><strong>{e.evento.replaceAll('_',' ')}</strong><small>{formatDate(e.creato_il)}</small>{e.nota_interna && <p className="muted">Nota interna: {e.nota_interna}</p>}</div>)}
       {!events?.length && <p className="muted">Nessuna operazione registrata.</p>}
       <p className="muted tiny">Le note interne non sono leggibili dal richiedente.</p>

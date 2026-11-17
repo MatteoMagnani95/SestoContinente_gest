@@ -12,7 +12,7 @@ test('Eliminazione corsi: conferma, autorizzazioni staff, cancellazione mirata e
  const actions=read('app/gestionale/corsi/actions.ts');
  assert.match(actions,/deleteEdition[\s\S]*requireStaff\(\)[\s\S]*form\.get\('conferma'\)[\s\S]*\.rpc\('rimuovi_record_gestionale'/);
  assert.match(moduleActions,/deleteModuleRecord[\s\S]*requireStaff\(\)[\s\S]*rimuovi_record_gestionale/);
- assert.match(page,/<RemoveRecord moduleKey=\{modulo\}/);assert.match(read('components/RemoveRecord.tsx'),/action=\{deleteModuleRecord\}/);
+ assert.match(page,/<RemoveRecord moduleKey=\{moduleKey\}/);assert.match(read('components/RemoveRecord.tsx'),/action=\{deleteModuleRecord\}/);
 });
 test('Quote corsi: selezione attiva, nomi leggibili, storico non riassegnabile',()=>{
  for(const source of [page,moduleActions]){

@@ -1,4 +1,3 @@
-import RemoveRecord from '@/components/RemoveRecord';
 import Link from 'next/link';
 import {notFound} from 'next/navigation';
 import {requireStaff} from '@/lib/security';
@@ -103,7 +102,7 @@ export default async function EditionDetail({params,searchParams}:{params:Promis
    </form></details></Section>
    <Section id="istruttori" title="Istruttori assegnati">
     <div className="course-list">{assignments.map(a=><div key={a.id} className="course-list-row"><div><strong>{displayPerson(a.persona_id,people)}</strong><p className="tiny muted">{a.ruolo==='responsabile'?'Responsabile':'Aiuto istruttore'}</p></div>
-    {a.ruolo==='aiuto'&&<form action={removeInstructor}><input type="hidden" name="edizione_id" value={id}/><input type="hidden" name="assegnazione_id" value={a.id}/><button className="button ghost" type="submit">Rimuovi</button></form>}</div>)}
+    {a.ruolo==='aiuto'&&<details><summary>Modifica incarico</summary><form action={removeInstructor}><input type="hidden" name="edizione_id" value={id}/><input type="hidden" name="assegnazione_id" value={a.id}/><label><input type="checkbox" name="conferma" required/> Confermo la rimozione</label><button className="button danger" type="submit">Rimuovi</button></form></details>}</div>)}
     {!assignments.length&&<p className="muted">Non è ancora stato assegnato un istruttore.</p>}</div>
     {canEdit&&<form className="course-inline-form" action={addInstructor}><input type="hidden" name="edizione_id" value={id}/><label>Istruttore con qualifica registrata<select name="persona_id" required defaultValue=""><option value="">Seleziona...</option>{teacherCandidates.map(t=><option key={t.id} value={t.id}>{t.cognome} {t.nome}</option>)}</select></label>
     <label>Ruolo<select name="ruolo" required><option value="aiuto">Aiuto istruttore</option><option value="responsabile">Responsabile</option></select></label><button className="button" disabled={!teacherCandidates.length}>Assegna</button></form>}
@@ -115,7 +114,7 @@ export default async function EditionDetail({params,searchParams}:{params:Promis
     {enrollments.map(i=>{const cert=certificateList.find(x=>x.persona_id===i.persona_id);const valid=cert?.idoneita_verificata&&cert.scade_il>=new Date().toISOString().slice(0,10);return <tr key={i.id}>
      <td>{displayPerson(i.persona_id,people)}</td><td>{activeIds.has(i.persona_id)?'Tesserato':'Non iscrivibile'}</td><td>{cert?(valid?'Verificato':'Da verificare'):'Non presente'}</td>
      <td><form action={updateEnrollment} className="course-state-form"><input type="hidden" name="edizione_id" value={id}/><input type="hidden" name="iscrizione_id" value={i.id}/><select name="stato" defaultValue={i.stato} aria-label={`Stato iscrizione ${displayPerson(i.persona_id,people)}`}>{ENROLLMENT_STATES.map(s=><option key={s} value={s} disabled={s!==i.stato&&['in_attesa','iscritto'].includes(s)&&(!canEdit||!activeIds.has(i.persona_id))}>{s.replaceAll('_',' ')}</option>)}</select><button className="button ghost">Salva</button></form></td>
-     <td><Link href={`/gestionale/soci/${i.persona_id}`}>Scheda</Link><RemoveRecord moduleKey="iscrizioni" id={i.id} back={`corso:${id}`}/></td>
+     <td><Link href={`/gestionale/soci/${i.persona_id}`}>Scheda</Link><Link href={`/gestionale/moduli/${"iscrizioni"}?edit=${i.id}`}>Modifica</Link></td>
      </tr>;})}
     {!enrollments.length&&<tr><td colSpan={5} className="empty-cell">Nessuna iscrizione registrata.</td></tr>}
     </tbody></table></div>
@@ -128,7 +127,7 @@ export default async function EditionDetail({params,searchParams}:{params:Promis
     <Link href="/gestionale/moduli/versioni">Gestisci programmi e versioni</Link>
    </Section>
    <Section id="lezioni" title="Calendario e nuove lezioni">
-    <div className="course-list">{lessons.map(l=><div className="course-list-row" key={l.id}><div><strong>{l.titolo}</strong><p className="tiny muted">{formatRome(l.inizio)} – {formatRome(l.fine)}{l.piscina_id?` · ${pools?.find(x=>x.id===l.piscina_id)?.nome??'Piscina'}`:''}</p></div><div className="buttons"><Link href={`/gestionale/calendario-visivo/${l.id}`}>Modifica</Link><a href={`?lezione=${l.id}#presenze`}>Presenze</a><RemoveRecord moduleKey="calendario" id={l.id} back={`corso:${id}`}/></div></div>)}
+    <div className="course-list">{lessons.map(l=><div className="course-list-row" key={l.id}><div><strong>{l.titolo}</strong><p className="tiny muted">{formatRome(l.inizio)} – {formatRome(l.fine)}{l.piscina_id?` · ${pools?.find(x=>x.id===l.piscina_id)?.nome??'Piscina'}`:''}</p></div><div className="buttons"><Link href={`/gestionale/calendario-visivo/${l.id}`}>Modifica calendario</Link><a href={`?lezione=${l.id}#presenze`}>Presenze</a><Link href={`/gestionale/moduli/${"calendario"}?edit=${l.id}`}>Modifica</Link></div></div>)}
     {!lessons.length&&<p className="muted">Nessuna lezione pianificata.</p>}</div>
     {canEdit&&<form action={createLesson} className="stack course-lesson-form"><input type="hidden" name="edizione_id" value={id}/>
     <h3>Programma una lezione</h3><label>Titolo<input name="titolo" maxLength={160} required placeholder="Es. Esercitazione ARA in piscina"/></label>

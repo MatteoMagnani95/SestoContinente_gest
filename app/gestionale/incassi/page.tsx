@@ -1,4 +1,3 @@
-import RemoveRecord from '@/components/RemoveRecord';
 import Link from 'next/link';
 import {randomUUID} from 'node:crypto';
 import {requireStaff} from '@/lib/security';
@@ -104,7 +103,7 @@ export default async function Incassi({searchParams}:{searchParams:Promise<{tab?
        <button className="button" type="submit">Registra definitivamente</button>
       </form>
       :<strong className="payment-paid">Saldo completo</strong>}
-     <RemoveRecord moduleKey={tab==='quota'?'quote':'addebiti'} id={b.id} back="incassi"/></td></tr>)}
+     <Link href={`/gestionale/moduli/${(tab==='quota'?'quote':'addebiti')}?edit=${b.id}`}>Modifica</Link></td></tr>)}
     {!balances.length&&<tr><td colSpan={6}>Nessun addebito trovato per i filtri selezionati.</td></tr>}
    </tbody></table></div>
    <div className="pager"><span>{count} posizioni</span><div className="buttons">

@@ -9,6 +9,7 @@ export default async function PersonalArea() {
  const {data:links}=await supabase.from('collegamenti_persone').select('persona_id,relazione').eq('utente_id',user.id);
  if(request?.stato!=='approvata'&&(!links||links.length===0))redirect('/richiesta/stato');
  const ids=links?.map(x=>x.persona_id)??[];
+ const {data:areaSociAccess}=await supabase.rpc('area_soci_accesso');
  const [{data:people},{data:memberships},{data:certs},{data:brevetti},{data:quotes},{data:payments},{data:news},{data:alerts}]=await Promise.all([
   ids.length?supabase.from('persone').select('id,nome,cognome,email,telefono').in('id',ids):Promise.resolve({data:[]}),
   ids.length?supabase.from('adesioni').select('persona_id,stato').in('persona_id',ids):Promise.resolve({data:[]}),
@@ -20,7 +21,7 @@ export default async function PersonalArea() {
   supabase.from('notifiche').select('id,titolo,messaggio,creata_il').eq('utente_id',user.id).is('letta_il',null).order('creata_il',{ascending:false}).limit(20),
  ]);
  return <div className="container"><div className="page-intro"><p className="eyebrow">Area personale</p><h1>La tua associazione</h1><p>Adesioni, corsi, brevetti, documenti e comunicazioni in un unico posto.</p></div>
- <div className="buttons" style={{marginBottom:25}}><Link className="button" href="/area-personale/corsi">I miei corsi e iscrizioni</Link><Link className="button ghost" href="/documenti">Documenti personali</Link><Link className="button ghost" href="/area-personale/certificato">Carica certificato medico</Link><Link className="button ghost" href="/area-personale/profilo">Modifica recapiti</Link><Link className="button ghost" href="/richiesta/stato">Domanda di adesione</Link></div>
+ <div className="buttons" style={{marginBottom:25}}>{areaSociAccess===true&&<Link className="button" href="/area-soci">Area soci</Link>}<Link className="button" href="/area-personale/corsi">I miei corsi e iscrizioni</Link><Link className="button ghost" href="/documenti">Documenti personali</Link><Link className="button ghost" href="/area-personale/certificato">Carica certificato medico</Link><Link className="button ghost" href="/area-personale/profilo">Modifica recapiti</Link><Link className="button ghost" href="/richiesta/stato">Domanda di adesione</Link></div>
  <div className="cards">{people?.map(p=>{
  const quota=quotes?.find(q=>q.persona_id===p.id);
  const paid=quota?payments?.filter(x=>x.quota_id===quota.id).reduce((a,x)=>a+Number(x.importo),0)??0:0;

@@ -1,5 +1,6 @@
 'use client';
-import { useState } from 'react';
+import { useState,useRef,type FormEvent } from 'react';
+import {useRouter} from 'next/navigation';
 import { saveApplicationAction } from '@/app/actions';
 import CodiceFiscaleAssist from '@/components/CodiceFiscaleAssist';
 
@@ -16,10 +17,24 @@ function minorAge(birth: string) {
   age18.setFullYear(age18.getFullYear() + 18);
   return age18 > new Date();
 }
-export default function ApplicationForm({ saved }: {saved?:RequestDraft|null}) {
+export default function ApplicationForm({ saved,legalConfigured,statutoUrl,privacyUrl }: {saved?:RequestDraft|null;legalConfigured:boolean;statutoUrl:string;privacyUrl:string}) {
   const [birth, setBirth] = useState(saved?.data_nascita ?? '');
   const minor = minorAge(birth);
-  return <form action={saveApplicationAction} className="panel application-form">
+  const router=useRouter();
+  const [error,setError]=useState('');const [pending,setPending]=useState(false);const [cfBlocked,setCfBlocked]=useState(Boolean(saved?.codice_fiscale));const submitting=useRef(false);
+  async function submit(e:FormEvent<HTMLFormElement>){
+   e.preventDefault();if(submitting.current)return;
+   const form=e.currentTarget;
+   if(!legalConfigured){setError('Statuto e informativa privacy non configurati: contatta la segreteria.');return;}
+   if(cfBlocked){setError('Completa la verifica del codice fiscale prima di proseguire.');return;}
+   const data=new FormData(form);const button=(e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement|null;data.set('intent',button?.value==='bozza'?'bozza':'invia');
+   submitting.current=true;setPending(true);setError('');
+   try{const result=await saveApplicationAction(data);if(result.error){setError(result.error);return;}if(result.next){router.push(result.next);router.refresh();}}
+   catch{setError('Invio non riuscito. I dati compilati sono ancora presenti: riprova o contatta la segreteria.');}
+   finally{submitting.current=false;setPending(false);}
+  }
+  return <form onSubmit={submit} className="panel application-form">
+    {!legalConfigured&&<div className="notice error" role="alert">Registrazione non disponibile: la segreteria deve configurare statuto e informativa privacy prima di raccogliere le adesioni.</div>}
     <div className="section-head"><span className="step">01</span><div><h2>Dati della persona da iscrivere</h2><p className="muted">Se l'allievo è minorenne, inserisci qui i suoi dati.</p></div></div>
     <div className="form-grid">
       <label>Nome *<input name="nome" required minLength={2} defaultValue={saved?.nome}/></label>
@@ -31,7 +46,7 @@ export default function ApplicationForm({ saved }: {saved?:RequestDraft|null}) {
       <label>Sesso anagrafico per il CF<select name="sesso_cf" defaultValue={saved?.sesso_cf??''}><option value="">Non indicato</option><option value="M">M</option><option value="F">F</option></select></label>
       <label className="span-2">Codice fiscale (se disponibile)<input name="codice_fiscale" autoCapitalize="characters" maxLength={16} defaultValue={saved?.codice_fiscale??''} placeholder="CF ufficiale di 16 caratteri"/><span className="hint">Se non possiedi un codice fiscale italiano, lascia vuoto: la segreteria verificherà la situazione.</span></label>
     </div>
-    <CodiceFiscaleAssist/>
+    <CodiceFiscaleAssist onBlocked={setCfBlocked}/>
     <div className="section-head"><span className="step">02</span><div><h2>Residenza e recapito</h2><p className="muted">I dati sono utilizzati per gestire la richiesta.</p></div></div>
     <div className="form-grid">
       <label className="span-2">Indirizzo di residenza *<input name="indirizzo" required defaultValue={saved?.indirizzo}/></label>
@@ -48,9 +63,10 @@ export default function ApplicationForm({ saved }: {saved?:RequestDraft|null}) {
       </div>
     </div>}
     <div className="section-head"><span className="step">{minor?'04':'03'}</span><div><h2>Conferma</h2><p className="muted">Ambiente di prova: inserire esclusivamente dati inventati.</p></div></div>
-    <label className="check-label"><input name="flag_statuto" type="checkbox" required defaultChecked={saved?.flag_statuto??false}/><span>Dichiaro di aver preso visione dello <a href={process.env.NEXT_PUBLIC_STATUTO_URL||'#'} target="_blank" rel="noopener noreferrer">Statuto associativo</a> e di accettarne le disposizioni. *</span></label>
-    <label className="check-label"><input name="flag_privacy" type="checkbox" required defaultChecked={saved?.flag_privacy??false}/><span>Dichiaro di aver ricevuto e letto l’<a href={process.env.NEXT_PUBLIC_PRIVACY_URL||'#'} target="_blank" rel="noopener noreferrer">informativa privacy</a> (presa visione, non consenso generico al trattamento). *</span></label>
+    <label className="check-label"><input name="flag_statuto" type="checkbox" required defaultChecked={saved?.flag_statuto??false}/><span>Dichiaro di aver preso visione dello <a href={statutoUrl||'#'} target="_blank" rel="noopener noreferrer">Statuto associativo</a> e di accettarne le disposizioni. *</span></label>
+    <label className="check-label"><input name="flag_privacy" type="checkbox" required defaultChecked={saved?.flag_privacy??false}/><span>Dichiaro di aver ricevuto e letto l’<a href={privacyUrl||'#'} target="_blank" rel="noopener noreferrer">informativa privacy</a> (presa visione, non consenso generico al trattamento). *</span></label>
     <label className="check-label"><input name="flag_immagini" type="checkbox" defaultChecked={saved?.flag_immagini??false}/><span>Acconsento facoltativamente all’utilizzo di fotografie e video per le finalità specificate nell’informativa. Il rifiuto non impedisce l’adesione.</span></label>
-    <div className="form-actions"><button className="button ghost" type="submit" name="intent" value="bozza">Salva bozza</button><button className="button" type="submit" name="intent" value="invia">Invia alla segreteria</button><a className="button ghost" href="/area-personale">Annulla / Torna indietro</a></div>
+    <div aria-live="polite">{error&&<p className="notice error" role="alert">{error}</p>}{pending&&<p>Salvataggio in corso…</p>}{cfBlocked&&<p className="tiny muted">Completa o correggi il CF per abilitare il salvataggio.</p>}</div>
+    <div className="form-actions"><button className="button ghost" type="submit" name="intent" value="bozza" disabled={pending||cfBlocked||!legalConfigured}>Salva bozza</button><button className="button" type="submit" name="intent" value="invia" disabled={pending||cfBlocked||!legalConfigured}>Invia alla segreteria</button><a className="button ghost" href="/area-personale">Annulla / Torna indietro</a></div>
   </form>;
 }

@@ -16,6 +16,7 @@ export async function uploadDocument(form:FormData){
  const {supabase,user}=await requireUser();
  const {data:roles}=await supabase.from('ruoli_utente').select('ruolo').eq('utente_id',user.id);
  const isStaff=roles?.some(x=>['amministratore','segreteria'].includes(x.ruolo))??false;
+ const isAdmin=roles?.some(x=>x.ruolo==='amministratore')??false;
  const file=form.get('file');
  if(!(file instanceof File)||file.size<=0||file.size>10*1024*1024||!mimeToExt[file.type])redirect('/documenti?msg=file');
  const buffer=Buffer.from(await file.arrayBuffer());
@@ -29,6 +30,7 @@ export async function uploadDocument(form:FormData){
  const edizione=isStaff?String(form.get('edizione_id')||'').trim():'';
  const versione=isStaff?String(form.get('programma_versione_id')||'').trim():'';
  const conservazione=String(form.get('scadenza_conservazione')||'').trim();
+ if(ambito==='associazione'&&visibilita==='soci'&&(!isAdmin||utente||persona||edizione||versione))redirect('/documenti?msg=permessi');
  if(!nome||!categoria||!['associazione','personale','didattica','amministrativo'].includes(ambito)||
  !['staff','proprietario','soci','istruttori'].includes(visibilita)||
  (ambito==='personale'&&(!utente||!['staff','proprietario'].includes(visibilita)))||
@@ -60,4 +62,14 @@ export async function deleteDocument(form:FormData){
  const {error:storageError}=await supabase.storage.from('sesto-documenti').remove([doc.percorso_storage]);
  if(storageError){revalidatePath('/documenti');redirect('/documenti?msg=storage_residuo');}
  revalidatePath('/documenti');redirect('/documenti?msg=eliminato');
+}
+
+export async function editDocumentMetadata(form:FormData){
+ const {supabase,user}=await requireUser();
+ const {data:role}=await supabase.from('ruoli_utente').select('ruolo').eq('utente_id',user.id).eq('ruolo','amministratore').maybeSingle();
+ if(!role)redirect('/documenti?msg=permessi');
+ const id=String(form.get('id')??''),nome=String(form.get('nome')??'').trim(),categoria=String(form.get('categoria')??'').trim();
+ if(!uuid.test(id)||!nome||nome.length>150||!categoria||categoria.length>80)redirect('/documenti?msg=dati');
+ const {data,error}=await supabase.from('documenti').update({nome,categoria}).eq('id',id).select('id').maybeSingle();
+ revalidatePath('/documenti');revalidatePath('/area-soci');redirect(`/documenti?msg=${error||!data?'errore':'modificato'}`);
 }
