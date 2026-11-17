@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { requireStaff, requireUser } from '@/lib/security';
-import {applicationLegalConfigured} from '@/lib/application-config';
+import {applicationLegalConfig,isTestApplication} from '@/lib/application-config';
 import {identityFromForm,identityFields,verificaAnagrafica,type Identity,type CFResult} from '@/lib/verifica-anagrafica';
 
 const asText = (form: FormData, field: string) => String(form.get(field) ?? '').trim();
@@ -82,7 +82,11 @@ export async function saveApplicationAction(form: FormData) {
   const flagStatuto=form.get('flag_statuto')==='on';
   const flagPrivacy=form.get('flag_privacy')==='on';
   if(!flagStatuto||!flagPrivacy)return {error:'Conferma la presa visione di statuto e informativa privacy.'};
-  if(!applicationLegalConfigured())return {error:'Registrazione temporaneamente non disponibile: statuto o informativa privacy non configurati. Contatta la segreteria.'};
+  const legal=applicationLegalConfig(user.id);
+  if(!legal.configured)return {error:'Registrazione temporaneamente non disponibile: statuto o informativa privacy non configurati. Contatta la segreteria.'};
+  const {data:prior,error:priorError}=await supabase.from('richieste').select('versione_statuto,versione_privacy').eq('utente_id',user.id).maybeSingle();
+  if(priorError)return {error:'Impossibile verificare la pratica esistente.'};
+  if(prior&&(prior.versione_statuto||prior.versione_privacy)&&isTestApplication(prior)!==legal.testMode)return {error:'Non è possibile convertire una pratica reale in collaudo o viceversa. Contatta la segreteria.'};
   const cf=asText(form,'codice_fiscale').toUpperCase();
   const paese=asText(form,'stato_nascita'),provincia=asText(form,'provincia_nascita').toUpperCase(),sesso=asText(form,'sesso_cf');
   if(!paese||paese.length>100||(provincia&&!/^[A-Z]{2}$/.test(provincia))||(sesso&&!['M','F'].includes(sesso)))return {error:'Completa Stato, provincia e sesso anagrafico.'};
@@ -97,9 +101,9 @@ export async function saveApplicationAction(form: FormData) {
     p_cap: asText(form,'cap'), p_comune: asText(form,'comune'), p_telefono: asText(form,'telefono'),
     p_nome_tutore: asText(form,'nome_tutore'), p_cognome_tutore: asText(form,'cognome_tutore'),
     p_parentela_tutore: asText(form,'parentela_tutore'),
-    p_flag_statuto:flagStatuto,p_flag_privacy:flagPrivacy,p_flag_immagini:form.get('flag_immagini')==='on',
-    p_versione_statuto:process.env.STATUTO_VERSION??'DA_CONFIGURARE',
-    p_versione_privacy:process.env.PRIVACY_VERSION??'DA_CONFIGURARE',p_invia:send,
+    p_flag_statuto:flagStatuto,p_flag_privacy:flagPrivacy,p_flag_immagini:!legal.testMode&&form.get('flag_immagini')==='on',
+    p_versione_statuto:legal.statutoVersion,
+    p_versione_privacy:legal.privacyVersion,p_invia:send,
   };
   const { error } = await supabase.rpc('salva_domanda_v13', payload);
   if (error) {

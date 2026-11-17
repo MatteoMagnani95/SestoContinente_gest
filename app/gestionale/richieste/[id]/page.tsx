@@ -1,3 +1,4 @@
+import {isTestApplication} from '@/lib/application-config';
 import RemoveRecord from '@/components/RemoveRecord';
 import Link from 'next/link';
 import {notFound} from 'next/navigation';
@@ -15,13 +16,14 @@ export default async function Review({params,searchParams}:{params:Promise<{id:s
   const {data:events}=await supabase.from('eventi_pratica').select('evento,creato_il,nota_interna').eq('richiesta_id',r.id).order('creato_il',{ascending:false});
   return <><Link href="/gestionale/richieste" className="back-link">← Torna alle domande</Link>
     <div className="page-intro"><p className="eyebrow">Dettaglio della pratica #{r.id.slice(0,8).toUpperCase()}</p><h1>{r.nome} {r.cognome}</h1><span className={`status status-${r.stato}`}>{statoLabel[r.stato as Stato]}</span></div>
+    {isTestApplication(r)&&<div className="notice warning">COLLAUDO — pratica simulata. Utilizzare solo per test; nessuna presa visione ufficiale.</div>}
     {msg && <p role="status" className={`notice ${['presa','approvata','integrazione','respinta'].includes(msg)?'success':'error'}`}>{queryMessage(msg)}</p>}
     <div className="review-grid"><section className="panel"><h2>Dati forniti</h2>
       <Row label="Nome" value={`${r.nome} ${r.cognome}`}/><Row label="Data di nascita" value={formatDate(r.data_nascita)}/>
       <Row label="Comune / luogo di nascita" value={r.luogo_nascita}/><Row label="Provincia e Stato di nascita" value={[r.provincia_nascita,r.stato_nascita].filter(Boolean).join(" · ")}/><Row label="Sesso per CF" value={r.sesso_cf}/><Row label="Codice catastale" value={r.codice_catastale_nascita}/><Row label="Codice fiscale" value={r.codice_fiscale??'Non indicato'}/>
       <Row label="Residenza" value={`${r.indirizzo}, ${r.cap} ${r.comune}`}/><Row label="Telefono" value={r.telefono}/>
       <Row label="Tutore" value={r.nome_tutore?`${r.nome_tutore} ${r.cognome_tutore} (${r.parentela_tutore})`:'Non previsto'}/>
-      <Row label="Presa visione" value={r.presa_visione?'Registrata (simulazione)':'Non registrata'}/>
+      <Row label="Presa visione" value={r.presa_visione?(isTestApplication(r)?'Simulata (collaudo)':'Registrata'):'Non registrata'}/>
       <Row label="Data invio" value={formatDate(r.inviata_il)}/>
       {r.nota_pubblica && <div className="notice">Comunicazione al richiedente: {r.nota_pubblica}</div>}
       {r.stato==='inviata' && <form action={takeApplicationAction} className="actions"><input type="hidden" name="id" value={id}/><button type="submit" className="button">Prendi in carico</button></form>}

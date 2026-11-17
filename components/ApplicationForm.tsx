@@ -17,7 +17,7 @@ function minorAge(birth: string) {
   age18.setFullYear(age18.getFullYear() + 18);
   return age18 > new Date();
 }
-export default function ApplicationForm({ saved,legalConfigured,statutoUrl,privacyUrl }: {saved?:RequestDraft|null;legalConfigured:boolean;statutoUrl:string;privacyUrl:string}) {
+export default function ApplicationForm({ saved,legalConfigured,testMode,statutoUrl,privacyUrl }: {saved?:RequestDraft|null;legalConfigured:boolean;testMode:boolean;statutoUrl:string;privacyUrl:string}) {
   const [birth, setBirth] = useState(saved?.data_nascita ?? '');
   const minor = minorAge(birth);
   const router=useRouter();
@@ -34,6 +34,7 @@ export default function ApplicationForm({ saved,legalConfigured,statutoUrl,priva
    finally{submitting.current=false;setPending(false);}
   }
   return <form onSubmit={submit} className="panel application-form">
+    {testMode&&<div className="notice warning" role="status"><strong>COLLAUDO — pratica simulata.</strong> Usa esclusivamente dati inventati. Le dichiarazioni sotto simulano il flusso di adesione: non costituiscono una presa visione di documenti ufficiali.</div>}
     {!legalConfigured&&<div className="notice error" role="alert">Registrazione non disponibile: la segreteria deve configurare statuto e informativa privacy prima di raccogliere le adesioni.</div>}
     <div className="section-head"><span className="step">01</span><div><h2>Dati della persona da iscrivere</h2><p className="muted">Se l'allievo è minorenne, inserisci qui i suoi dati.</p></div></div>
     <div className="form-grid">
@@ -63,9 +64,9 @@ export default function ApplicationForm({ saved,legalConfigured,statutoUrl,priva
       </div>
     </div>}
     <div className="section-head"><span className="step">{minor?'04':'03'}</span><div><h2>Conferma</h2><p className="muted">Ambiente di prova: inserire esclusivamente dati inventati.</p></div></div>
-    <label className="check-label"><input name="flag_statuto" type="checkbox" required defaultChecked={saved?.flag_statuto??false}/><span>Dichiaro di aver preso visione dello <a href={statutoUrl||'#'} target="_blank" rel="noopener noreferrer">Statuto associativo</a> e di accettarne le disposizioni. *</span></label>
-    <label className="check-label"><input name="flag_privacy" type="checkbox" required defaultChecked={saved?.flag_privacy??false}/><span>Dichiaro di aver ricevuto e letto l’<a href={privacyUrl||'#'} target="_blank" rel="noopener noreferrer">informativa privacy</a> (presa visione, non consenso generico al trattamento). *</span></label>
-    <label className="check-label"><input name="flag_immagini" type="checkbox" defaultChecked={saved?.flag_immagini??false}/><span>Acconsento facoltativamente all’utilizzo di fotografie e video per le finalità specificate nell’informativa. Il rifiuto non impedisce l’adesione.</span></label>
+    <label className="check-label"><input name="flag_statuto" type="checkbox" required defaultChecked={saved?.flag_statuto??false}/><span>{testMode?"Simulo la presa visione dello ":"Dichiaro di aver preso visione dello "}<a href={statutoUrl||'#'} target="_blank" rel="noopener noreferrer">{testMode?"Statuto di prova":"Statuto associativo"}</a>{testMode?" (solo collaudo).":" e di accettarne le disposizioni."} *</span></label>
+    <label className="check-label"><input name="flag_privacy" type="checkbox" required defaultChecked={saved?.flag_privacy??false}/><span>{testMode?"Simulo la lettura dell’":"Dichiaro di aver ricevuto e letto l’"}<a href={privacyUrl||'#'} target="_blank" rel="noopener noreferrer">{testMode?"informativa di prova":"informativa privacy"}</a>{testMode?" (solo collaudo).":" (presa visione, non consenso generico al trattamento)."} *</span></label>
+    {!testMode&&<label className="check-label"><input name="flag_immagini" type="checkbox" defaultChecked={saved?.flag_immagini??false}/><span>Acconsento facoltativamente all’utilizzo di fotografie e video per le finalità specificate nell’informativa. Il rifiuto non impedisce l’adesione.</span></label>}
     <div aria-live="polite">{error&&<p className="notice error" role="alert">{error}</p>}{pending&&<p>Salvataggio in corso…</p>}{cfBlocked&&<p className="tiny muted">Completa o correggi il CF per abilitare il salvataggio.</p>}</div>
     <div className="form-actions"><button className="button ghost" type="submit" name="intent" value="bozza" disabled={pending||cfBlocked||!legalConfigured}>Salva bozza</button><button className="button" type="submit" name="intent" value="invia" disabled={pending||cfBlocked||!legalConfigured}>Invia alla segreteria</button><a className="button ghost" href="/area-personale">Annulla / Torna indietro</a></div>
   </form>;
