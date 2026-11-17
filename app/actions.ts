@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { requireStaff, requireUser } from '@/lib/security';
 import {applicationLegalConfig,isTestApplication} from '@/lib/application-config';
+import {decisionValidation,isReviewDecision,reviewError,type DecisionResult} from '@/lib/application-review';
 import {identityFromForm,identityFields,verificaAnagrafica,type Identity,type CFResult} from '@/lib/verifica-anagrafica';
 
 const asText = (form: FormData, field: string) => String(form.get(field) ?? '').trim();
@@ -124,26 +125,32 @@ export async function takeApplicationAction(form: FormData) {
   redirect(`/gestionale/richieste/${id}?msg=presa`);
 }
 
-export async function decideApplicationAction(form: FormData) {
+export async function decideApplicationAction(form: FormData): Promise<DecisionResult> {
   const { supabase } = await requireStaff();
   const id = asText(form, 'id');
   const action = asText(form, 'action');
-  if (!['approvata','integrazione','respinta'].includes(action)) {
-    go(`/gestionale/richieste/${id}`, 'stato');
-  }
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return {error:'Riferimento della pratica non valido.'};
   const message = asText(form,'messaggio');
   const internal = asText(form,'motivo_interno');
-  if (action === 'integrazione' && message.length < 10) go(`/gestionale/richieste/${id}`,'domanda');
-  if (action === 'respinta' && internal.length < 10) go(`/gestionale/richieste/${id}`,'domanda');
+  const confirmed = form.get('verifiche_confermate') === 'on';
+  const validation = decisionValidation(action,confirmed,message,internal);
+  if(validation || !isReviewDecision(action)) return {error:validation??'Seleziona una decisione valida.'};
   const { error } = await supabase.rpc('valuta_domanda', {
     p_id: id, p_esito: action, p_messaggio: message || null, p_nota_interna: internal || null,
-    p_verifiche_confermate: form.get('verifiche_confermate') === 'on',
+    p_verifiche_confermate: confirmed,
   });
-  if (error) go(`/gestionale/richieste/${id}`, 'database');
+  if (error) {
+    const mapped=reviewError(error);
+    const reference=id.slice(0,8).toUpperCase();
+    // Do not log raw SQL errors, application data, consents or internal notes.
+    console.error('valuta_domanda non completata',{pratica:reference,esito:action,code:error.code,reason:mapped.key});
+    return {error:`${mapped.message} (Pratica ${reference})`};
+  }
   revalidatePath('/gestionale/richieste');
+  revalidatePath(`/gestionale/richieste/${id}`);
   revalidatePath('/gestionale/soci');
   revalidatePath('/richiesta/stato');
-  redirect(`/gestionale/richieste/${id}?msg=${action}`);
+  return {next:`/gestionale/richieste/${id}?msg=${action}`};
 }
 
 // Authenticated lookup on the server, with the same data and algorithm used at submission.
