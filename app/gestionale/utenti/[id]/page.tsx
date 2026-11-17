@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import {notFound} from 'next/navigation';
+import {notFound,redirect} from 'next/navigation';
 import {requireAdmin,formatDate} from '@/lib/security';
 import {accountUuid,accountMessages,accountState,accountRoles,type AccountRow} from '@/lib/admin-accounts';
 import {authAdminConfigured} from '@/lib/supabase/admin';
@@ -13,6 +13,8 @@ export default async function EditAccount({params,searchParams}:{params:Promise<
   supabase.from('persone').select('id,nome,cognome').order('cognome').order('nome').limit(1000)]);
  if(error)return <p className="notice error">Impossibile leggere l’account.</p>;
  const a=(data as AccountRow[]|null)?.[0];if(!a)notFound();
+ const {data:pending}=await supabase.from('eliminazioni_account_pendenti').select('utente_id').eq('utente_id',id).maybeSingle();
+ if(pending)redirect(`/gestionale/utenti/${id}/elimina`);
  const protectedAccount=id===user.id||a.ruoli.includes('amministratore');const configured=authAdminConfigured(),removed=Boolean(a.rimosso_il),disabled=Boolean(a.bloccato_fino&&new Date(a.bloccato_fino)>new Date());
  const historical=(deps??[]).some((d:{tabella:string})=>!['ruoli_utente','collegamenti_persone'].includes(d.tabella));
  return <><Link href="/gestionale/utenti" className="back-link">← Torna agli utenti</Link><div className="page-intro"><p className="eyebrow">Gestione account</p><h1>{[a.cognome,a.nome].filter(Boolean).join(' ')||a.email||'Account rimosso'}</h1><p>{a.email??'—'} · {accountState(a)}</p></div>
@@ -26,5 +28,6 @@ export default async function EditAccount({params,searchParams}:{params:Promise<
  {!protectedAccount&&<section className="panel"><h2>{disabled?'Riattiva':'Disattiva'} account</h2><form action={manageAccount} className="stack"><input type="hidden" name="utente_id" value={id}/><input type="hidden" name="operazione" value={disabled?'enable':'disable'}/><p>{disabled?'Ripristina la possibilità di accesso.':'Blocca nuovi accessi mantenendo anagrafica e storico.'}</p><label><input name="conferma" type="checkbox" required/> Confermo l’operazione</label><button className="button" disabled={!configured}>{disabled?'Riattiva':'Disattiva'}</button></form></section>}</>}
  <section className="panel"><h2>Dati collegati</h2>{depsError?<p className="notice warning">Controllo delle dipendenze non disponibile.</p>:deps?.length?<ul>{deps.map((d:{tabella:string;vincolo:string;numero:number})=><li key={`${d.tabella}:${d.vincolo}`}>{d.tabella}: {d.numero} ({d.vincolo})</li>)}</ul>:<p>Nessun riferimento applicativo rilevato.</p>}</section>
  {!protectedAccount&&<section className="panel calendar-danger"><h2>Rimozione account</h2><p>L’anagrafica e i dati associativi restano distinti dall’account. La rimozione conservativa è irreversibile e mantiene la riga tecnica di Auth per lo storico; quella definitiva libera l’account solo se non contiene riferimenti protetti.</p><form action={manageAccount} className="stack"><input type="hidden" name="utente_id" value={id}/><label>Tipo di rimozione<select name="operazione" defaultValue={removed?'delete':'soft_delete'}>{!removed&&<option value="soft_delete">Rimuovi conservando lo storico</option>}<option value="delete" disabled={historical||Boolean(depsError)}>Elimina definitivamente (solo senza dati storici)</option></select></label><label>Scrivi RIMUOVI per confermare<input name="conferma_testo" required pattern="RIMUOVI" autoComplete="off"/></label><label><input name="conferma" type="checkbox" required/> Confermo la rimozione irreversibile dell’account</label><button className="button danger" disabled={!configured||(removed&&(historical||Boolean(depsError)))}>Rimuovi</button></form></section>}
+ {!protectedAccount&&<section className="panel calendar-danger"><h2>Eliminazione completa</h2><p>Rimuove l’account e i dati esclusivi associati, con anteprima e conferma separata.</p><Link className="button danger" href={`/gestionale/utenti/${id}/elimina`}>Elimina account e dati collegati</Link></section>}
  </>;
 }

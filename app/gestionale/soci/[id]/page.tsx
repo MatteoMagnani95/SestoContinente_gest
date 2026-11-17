@@ -48,6 +48,8 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
  const {id}=await params;
  if(!uuid.test(id))notFound();
  const {supabase}=await requireStaff();
+ const {data:isAdmin}=await supabase.rpc('is_admin');
+ const {data:accountLinks}=isAdmin===true?await supabase.from('collegamenti_persone').select('utente_id,relazione').eq('persona_id',id):{data:[]};
  const {data:personData,error:personError}=await supabase.from('persone')
   .select('id,nome,cognome,data_nascita,luogo_nascita,codice_fiscale,indirizzo,cap,comune,email,telefono,provincia_nascita,stato_nascita,provincia_residenza,stato_residenza,sesso_cf,codice_catastale_nascita,cf_omocodia_verificata,cf_override_motivo').eq('id',id).maybeSingle();
  if(personError||!personData)notFound();
@@ -159,7 +161,7 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
        <label>Motivazione verifica documentale CF<input name="cf_override_motivo" maxLength={500} defaultValue={person.cf_override_motivo??''} placeholder="Es. omocodia attestata da tessera sanitaria"/></label>
       </div><CodiceFiscaleAssist/><div className="form-actions"><button type="submit" className="button">Salva anagrafica</button><CancelEditButton/></div>
       <p className="tiny muted">Le rettifiche vengono registrate nel registro operazioni, senza copiare i dati anagrafici nel log.</p>
-     </form><RemoveRecord moduleKey="anagrafiche" id={person.id} back="soci"/></details>
+     </form><RemoveRecord moduleKey="anagrafiche" id={person.id} back="soci"/>{isAdmin===true&&Boolean(accountLinks?.length)&&<div className="stack"><p className="muted tiny">Per rimuovere l’account insieme ai dati esclusivi collegati, usa la cancellazione completa. I profili condivisi sono conservati.</p>{accountLinks?.map(a=><Link key={a.utente_id} href={`/gestionale/utenti/${a.utente_id}/elimina`} className="button danger">Elimina account e dati ({a.relazione})</Link>)}</div>}</details>
    </Section>
    <Section id="adesioni" title="Adesioni e tesseramenti" href="/gestionale/moduli/adesioni">
     {memberships.length?<div className="table-panel"><table><thead><tr><th>Stagione</th><th>Stato</th><th>Data</th><th>Delibera CdA</th><th>Tessere</th><th>Azioni</th></tr></thead><tbody>

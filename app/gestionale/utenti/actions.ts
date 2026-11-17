@@ -58,6 +58,9 @@ export async function manageAccount(form:FormData){
  if(!accountUuid.test(id))destination('','dati');
  if(!admin)destination(id,'config');
  if(id===user.id)destination(id,'protetto');
+ const {data:pending,error:pendingError}=await supabase.from('eliminazioni_account_pendenti').select('utente_id').eq('utente_id',id).maybeSingle();
+ if(pendingError)destination(id,'errore');
+ if(pending)redirect(`${index}/${id}/elimina`);
  if(!['update','password','disable','enable','soft_delete','delete'].includes(op)||form.get('conferma')!=='on')destination(id,'dati');
  const {data:rows,error:readError}=await supabase.rpc('admin_elenco_account',{p_q:'',p_offset:0,p_limit:1,p_id:id});
  const target=(rows as AccountRow[]|null)?.[0];if(readError||!target)destination('','errore');
