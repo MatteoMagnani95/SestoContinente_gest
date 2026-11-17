@@ -10,9 +10,9 @@ test('Eliminazione corsi: conferma, autorizzazioni staff, cancellazione mirata e
  const old=read('supabase/migrations/20261111210200_gestionale_completo.sql');
  for(const match of old.matchAll(/references public\.(edizioni_corsi|corsi)\(id\)([^,\n]*)/gi))assert.doesNotMatch(match[2],/on delete cascade/i);
  const actions=read('app/gestionale/corsi/actions.ts');
- assert.match(actions,/deleteEdition[\s\S]*requireStaff\(\)[\s\S]*form\.get\('conferma'\)[\s\S]*\.delete\(\)\.eq\('id',id\)/);
- assert.match(moduleActions,/deleteCourseRecord[\s\S]*key!=='corsi'&&key!=='edizioni'[\s\S]*requireStaff\(\)/);
- assert.match(page,/action=\{deleteCourseRecord\}/);
+ assert.match(actions,/deleteEdition[\s\S]*requireStaff\(\)[\s\S]*form\.get\('conferma'\)[\s\S]*\.rpc\('rimuovi_record_gestionale'/);
+ assert.match(moduleActions,/deleteModuleRecord[\s\S]*requireStaff\(\)[\s\S]*rimuovi_record_gestionale/);
+ assert.match(page,/<RemoveRecord moduleKey=\{modulo\}/);assert.match(read('components/RemoveRecord.tsx'),/action=\{deleteModuleRecord\}/);
 });
 test('Quote corsi: selezione attiva, nomi leggibili, storico non riassegnabile',()=>{
  for(const source of [page,moduleActions]){

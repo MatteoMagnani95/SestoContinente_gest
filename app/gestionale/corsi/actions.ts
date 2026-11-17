@@ -99,17 +99,17 @@ export async function replaceResponsible(form:FormData){
 
 export async function addEnrollment(form:FormData){
  const {supabase}=await requireStaff();let id='',person='',stato='';
- try{id=uuidValue(form,'edizione_id');person=uuidValue(form,'persona_id');stato=valueOf(form,'stato',20);if(!['in_attesa','iscritto'].includes(stato))throw Error();}
+ try{id=uuidValue(form,'edizione_id');person=uuidValue(form,'persona_id');stato=valueOf(form,'stato',20);if(stato!=='iscritto')throw Error();}
  catch{redirect('/gestionale/corsi?msg=dati');}
  const {data:edition}=await supabase.from('edizioni_corsi').select('stagione_id,stato').eq('id',id).maybeSingle();
  if(!edition||!['programmato','attivo'].includes(edition.stato))redirect(detailHref(id,'stato'));
- // L'adesione attiva nella stagione è richiesta per la conferma, non per la richiesta in attesa.
+ // Solo soci con adesione e tessera valide possono essere iscritti.
  if(stato==='iscritto'){
-  const {data:member}=await supabase.from('adesioni').select('id').eq('persona_id',person).eq('stagione_id',edition.stagione_id).eq('stato','attiva').limit(1);
+  const {data:member}=await supabase.from('gest_soci_iscrivibili').select('persona_id').eq('persona_id',person).eq('stagione_id',edition.stagione_id).limit(1);
   if(!member?.length)redirect(detailHref(id,'adesione'));
  }
  const {error}=await supabase.from('iscrizioni_corsi').insert({edizione_id:id,persona_id:person,stato});
- if(error)redirect(detailHref(id,'iscrizione'));
+ if(error)redirect(detailHref(id,error.code==='P3413'?'adesione':'iscrizione'));
  refresh(id);redirect(detailHref(id,'iscritto'));
 }
 
@@ -122,14 +122,14 @@ export async function updateEnrollment(form:FormData){
   supabase.from('iscrizioni_corsi').select('persona_id,stato').eq('edizione_id',id).eq('id',iscrizione).maybeSingle()
  ]);
  if(!edition||!row)redirect(detailHref(id,'vincolo'));
- if(stato==='iscritto'){
+ if(['in_attesa','iscritto'].includes(stato)&&stato!==row.stato){
   if(!['programmato','attivo'].includes(edition.stato))redirect(detailHref(id,'stato'));
-  const {data:member}=await supabase.from('adesioni').select('id').eq('persona_id',row.persona_id).eq('stagione_id',edition.stagione_id).eq('stato','attiva').limit(1);
+  const {data:member}=await supabase.from('gest_soci_iscrivibili').select('persona_id').eq('persona_id',row.persona_id).eq('stagione_id',edition.stagione_id).limit(1);
   if(!member?.length)redirect(detailHref(id,'adesione'));
  }
  if(row.stato==='concluso'&&stato!=='concluso')redirect(detailHref(id,'stato'));
  const {error}=await supabase.from('iscrizioni_corsi').update({stato}).eq('id',iscrizione).eq('edizione_id',id).select('id').single();
- if(error)redirect(detailHref(id,'iscrizione'));
+ if(error)redirect(detailHref(id,error.code==='P3413'?'adesione':'iscrizione'));
  refresh(id);redirect(detailHref(id,'iscritto'));
 }
 
@@ -205,8 +205,8 @@ export async function deleteEdition(form:FormData){
  const {supabase}=await requireStaff();let id='';
  try{id=uuidValue(form,'edizione_id');}catch{redirect('/gestionale/corsi?msg=dati');}
  if(form.get('conferma')!=='on')redirect(detailHref(id,'elimina_conferma'));
- const {data,error}=await supabase.from('edizioni_corsi').delete().eq('id',id).select('id').maybeSingle();
- if(error||!data)redirect(detailHref(id,error?.code==='23503'?'elimina_collegati':'elimina_errore'));
+ const {error}=await supabase.rpc('rimuovi_record_gestionale',{p_tabella:'edizioni_corsi',p_id:id});
+ if(error)redirect(detailHref(id,['23503','P3414'].includes(error.code)?'elimina_collegati':'elimina_errore'));
  refresh(id);revalidatePath('/gestionale/moduli/edizioni');revalidatePath('/gestionale/moduli/addebiti');
  redirect('/gestionale/corsi?msg=eliminato');
 }

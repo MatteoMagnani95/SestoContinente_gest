@@ -1,3 +1,4 @@
+import RemoveRecord from '@/components/RemoveRecord';
 import Link from 'next/link';
 import {randomUUID} from 'node:crypto';
 import {requireStaff} from '@/lib/security';
@@ -9,7 +10,7 @@ type Course={id:string;nome:string};
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const euros=(amount:string|number)=>Number(amount).toLocaleString('it-IT',{style:'currency',currency:'EUR'});
 const fmtDate=(date:string|null)=>date?date.split('-').reverse().join('/'):'—';
-const feedback:Record<string,string>={
+const feedback:Record<string,string>={eliminato:'Quota rimossa.',elimina_collegati:'Quota non rimovibile: contiene dati collegati o versamenti.',elimina_conferma:'Conferma la rimozione.',
  salvato:'Versamento registrato e movimento economico contabilizzato. Il saldo è stato aggiornato.',
  dati:'Controlla importo, data, metodo e dati del versamento.',
  eccede:'L’importo supera il residuo dovuto. Aggiorna la pagina e controlla il saldo.',
@@ -41,10 +42,10 @@ export default async function Incassi({searchParams}:{searchParams:Promise<{tab?
  let count=0;
  let errorMessage='';
  if(selectedSeason){
-  let query=supabase.from(tab==='quota'?'saldi_quote':'saldi_corsi').select('*',{count:'exact'}).eq('stagione_id',selectedSeason);
+  let query=supabase.from(tab==='quota'?'gest_elenco_saldi_quote':'gest_elenco_saldi_corsi').select('*',{count:'exact'}).eq('stagione_id',selectedSeason);
   if(status!=='tutte')query=query.eq('stato',status);
   if(personFilter)query=query.eq('persona_id',personFilter);
-  const {data,error,count:total}=await query.order('id',{ascending:true}).range((page-1)*perPage,page*perPage-1);
+  const {data,error,count:total}=await query.order('sort_cognome').order('sort_nome').order('id',{ascending:true}).range((page-1)*perPage,page*perPage-1);
   if(error)errorMessage='Impossibile leggere i saldi. Verifica le migrazioni 0002 e 0006 e i permessi sul database.';
   else {balances=(data??[]) as unknown as Balance[];count=total??0;}
  }
@@ -103,7 +104,7 @@ export default async function Incassi({searchParams}:{searchParams:Promise<{tab?
        <button className="button" type="submit">Registra definitivamente</button>
       </form>
       :<strong className="payment-paid">Saldo completo</strong>}
-     </td></tr>)}
+     <RemoveRecord moduleKey={tab==='quota'?'quote':'addebiti'} id={b.id} back="incassi"/></td></tr>)}
     {!balances.length&&<tr><td colSpan={6}>Nessun addebito trovato per i filtri selezionati.</td></tr>}
    </tbody></table></div>
    <div className="pager"><span>{count} posizioni</span><div className="buttons">
@@ -114,7 +115,7 @@ export default async function Incassi({searchParams}:{searchParams:Promise<{tab?
   <section className="panel"><h2>Ultimi 15 versamenti {personFilter?'del socio':'registrati'}</h2>
    <p className="tiny muted">È un elenco delle registrazioni più recenti, non un rendiconto completo. Per il rendiconto usa l'area amministrativa.</p>
    {recentError?<p className="notice error">Impossibile leggere gli ultimi incassi.</p>:<div className="table-panel"><table><thead><tr><th>Data</th><th>Socio</th><th>Tipo</th><th>Importo</th><th>Metodo</th><th>Riferimento</th></tr></thead><tbody>
-    {(recent??[]).map(r=><tr key={r.id}><td>{fmtDate(r.data_pagamento)}</td><td>{historyNames.get(r.persona_id)??r.persona_id.slice(0,8)}</td><td>{r.quota_id?'Quota':'Corso'}</td><td>{euros(r.importo)}</td><td>{r.metodo}</td><td>{r.riferimento??'—'}</td></tr>)}
+    {[...(recent??[])].sort((a,b)=>(historyNames.get(a.persona_id)??'').localeCompare(historyNames.get(b.persona_id)??'','it')).map(r=><tr key={r.id}><td>{fmtDate(r.data_pagamento)}</td><td>{historyNames.get(r.persona_id)??r.persona_id.slice(0,8)}</td><td>{r.quota_id?'Quota':'Corso'}</td><td>{euros(r.importo)}</td><td>{r.metodo}</td><td>{r.riferimento??'—'}</td></tr>)}
     {!recent?.length&&<tr><td colSpan={6}>Nessun pagamento registrato.</td></tr>}
    </tbody></table></div>}
   </section>

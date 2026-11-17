@@ -29,8 +29,8 @@ export async function GET(req:NextRequest,{params}:{params:Promise<{id:string}>}
   for(const item of ids){const m=moduli?.find(x=>x.id===item.modulo_id);if(m)lines.push({text:`${m.tipo}: ${m.codice} - ${m.titolo}`,large:true},{text:m.descrizione,space:5});}
   if(tipo!=='programma'){
    lines.push({text:tipo==='piscina'?'REGISTRO FIRME - PISCINA':'REGISTRO FIRME - TEORIA',large:true});
-   for(const student of students??[])lines.push({text:`${display(student.persona_id).padEnd(40,' ')} Firma: _______________________________________`,space:13});
-   lines.push({text:'ISTRUTTORI / RELATORI',large:true});for(const t of teachers??[])lines.push({text:`${display(t.persona_id)} (${t.ruolo})   Firma: ______________________________`,space:10});
+   for(const student of [...(students??[])].sort((a,b)=>display(a.persona_id).localeCompare(display(b.persona_id),'it')))lines.push({text:`${display(student.persona_id).padEnd(40,' ')} Firma: _______________________________________`,space:13});
+   lines.push({text:'ISTRUTTORI / RELATORI',large:true});for(const t of [...(teachers??[])].sort((a,b)=>display(a.persona_id).localeCompare(display(b.persona_id),'it')))lines.push({text:`${display(t.persona_id)} (${t.ruolo})   Firma: ______________________________`,space:10});
   }
   lines.push({text:'',space:22});
  }

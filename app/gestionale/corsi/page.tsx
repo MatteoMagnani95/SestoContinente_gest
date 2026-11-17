@@ -1,3 +1,4 @@
+import RemoveRecord from '@/components/RemoveRecord';
 import Link from 'next/link';
 import {requireStaff} from '@/lib/security';
 import {courseName,COURSE_STATES} from '@/lib/course-tools';
@@ -20,7 +21,7 @@ export default async function Courses({searchParams}:{searchParams:Promise<{q?:s
  if(stagione)query=query.eq('stagione_id',stagione);
  if(stato)query=query.eq('stato',stato);
  if(q)query=query.ilike('nome',`%${q.replace(/[%_\\]/g,'')}%`);
- const {data,error,count}=await query.order('inizio',{ascending:false}).range((requested-1)*pageSize,requested*pageSize-1);
+ const {data,error,count}=await query.order('nome').order('id').range((requested-1)*pageSize,requested*pageSize-1);
  const rows=(data??[]) as Edition[];const ids=rows.map(x=>x.id);
  const {data:enrollments}=ids.length?await supabase.from('iscrizioni_corsi').select('edizione_id').in('edizione_id',ids).eq('stato','iscritto').limit(10000):{data:[]};
  const counts=new Map<string,number>();for(const row of enrollments??[])counts.set(row.edizione_id,(counts.get(row.edizione_id)??0)+1);
@@ -35,8 +36,9 @@ export default async function Courses({searchParams}:{searchParams:Promise<{q?:s
    <label>Stato<select name="stato" defaultValue={stato}><option value="">Tutti</option>{COURSE_STATES.map(s=><option key={s} value={s}>{s}</option>)}</select></label>
    <button className="button">Filtra</button><Link className="button ghost" href="/gestionale/corsi">Azzera</Link>
   </form></div>
+  {p.msg&&['elimina_collegati','elimina_conferma','database'].includes(p.msg)&&<p className="notice">{p.msg==='eliminato'?'Edizione rimossa.':'Rimozione non consentita: verifica collegamenti e permessi.'}</p>}
   {error?<p className="notice error">Impossibile leggere le edizioni dal database.</p>:<div className="panel table-panel"><table><thead><tr><th>Edizione</th><th>Attività</th><th>Stagione</th><th>Periodo</th><th>Iscritti</th><th>Stato</th><th>Apri</th></tr></thead><tbody>
-   {rows.map(e=>{const c=(catalog??[]).find(c=>c.id===e.corso_id);const n=counts.get(e.id)??0;return <tr key={e.id}><td><strong>{e.nome}</strong></td><td>{c?courseName(c.tipo,c.livello):'Catalogo non trovato'}</td><td>{seasons?.find(s=>s.id===e.stagione_id)?.nome??'—'}</td><td>{formatValue(e.inizio)} – {formatValue(e.fine)}</td><td>{n} / {e.massimo_partecipanti}</td><td><span className="status">{e.stato}</span></td><td><Link href={`/gestionale/corsi/${e.id}`}>Gestisci</Link></td></tr>;})}
+   {rows.map(e=>{const c=(catalog??[]).find(c=>c.id===e.corso_id);const n=counts.get(e.id)??0;return <tr key={e.id}><td><strong>{e.nome}</strong></td><td>{c?courseName(c.tipo,c.livello):'Catalogo non trovato'}</td><td>{seasons?.find(s=>s.id===e.stagione_id)?.nome??'—'}</td><td>{formatValue(e.inizio)} – {formatValue(e.fine)}</td><td>{n} / {e.massimo_partecipanti}</td><td><span className="status">{e.stato}</span></td><td><Link href={`/gestionale/corsi/${e.id}`}>Gestisci</Link><RemoveRecord moduleKey="edizioni" id={e.id} back="corsi"/></td></tr>;})}
    {!rows.length&&<tr><td colSpan={7} className="empty-cell">Nessuna edizione trovata. Puoi crearne una dal pulsante in alto.</td></tr>}
   </tbody></table></div>}
   <div className="pager"><span>{count??0} edizioni · Pagina {requested} di {totalPages}</span><div className="buttons">{requested>1&&<Link className="button ghost" href={href(q,stato,stagione,requested-1)}>Precedente</Link>}{requested<totalPages&&<Link className="button ghost" href={href(q,stato,stagione,requested+1)}>Successiva</Link>}</div></div>

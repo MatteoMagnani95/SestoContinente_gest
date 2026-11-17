@@ -1,3 +1,4 @@
+import RemoveRecord from '@/components/RemoveRecord';
 import CancelEditButton from '@/components/CancelEditButton';
 import Link from 'next/link';
 import {notFound} from 'next/navigation';
@@ -24,7 +25,7 @@ type Document={id:string;nome:string;categoria:string;caricato_il:string};
 type Guardian={minore_id:string;tutore_id:string;parentela:string};
 const euro=(n:number|string|null|undefined)=>new Intl.NumberFormat('it-IT',{style:'currency',currency:'EUR'}).format(Number(n??0));
 const statusLabel=(s:string)=>s.replaceAll('_',' ');
-const statusMessage:Record<string,string>={salvato:'Anagrafica aggiornata. La modifica è tracciata nel registro amministrativo.',
+const statusMessage:Record<string,string>={eliminato:'Elemento rimosso.',elimina_collegati:'Rimozione non consentita: il record è collegato ad altri dati o è protetto.',elimina_conferma:'Conferma la rimozione.',database:'Rimozione non riuscita: verifica autorizzazioni e migrazione.',salvato:'Anagrafica aggiornata. La modifica è tracciata nel registro amministrativo.',
  adesione_creata:'Adesione registrata in stato «da perfezionare». Verificare separatamente quota e tesseramento.',
  cf:'Codice fiscale non coerente con i dati anagrafici, oppure comune/Stato di nascita non identificato. Verifica i dati e usa il CF ufficiale.', omocodia:'Omocodia: conferma la verifica documentale e indica la motivazione.', dati:'Alcuni dati non sono validi. Controlla la compilazione.',duplicato:'Esiste già un altro socio con questo codice fiscale.',
  adesione_esistente:'Per questa stagione esiste già un’adesione.',errore:'Operazione non riuscita. Controlla le autorizzazioni o i vincoli del database.'};
@@ -158,14 +159,14 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
        <label>Motivazione verifica documentale CF<input name="cf_override_motivo" maxLength={500} defaultValue={person.cf_override_motivo??''} placeholder="Es. omocodia attestata da tessera sanitaria"/></label>
       </div><CodiceFiscaleAssist/><div className="form-actions"><button type="submit" className="button">Salva anagrafica</button><CancelEditButton/></div>
       <p className="tiny muted">Le rettifiche vengono registrate nel registro operazioni, senza copiare i dati anagrafici nel log.</p>
-     </form></details>
+     </form></details><RemoveRecord moduleKey="anagrafiche" id={person.id} back="soci"/>
    </Section>
    <Section id="adesioni" title="Adesioni e tesseramenti" href="/gestionale/moduli/adesioni">
-    {memberships.length?<div className="table-panel"><table><thead><tr><th>Stagione</th><th>Stato</th><th>Data</th><th>Delibera CdA</th><th>Tessere</th></tr></thead><tbody>
+    {memberships.length?<div className="table-panel"><table><thead><tr><th>Stagione</th><th>Stato</th><th>Data</th><th>Delibera CdA</th><th>Tessere</th><th>Azioni</th></tr></thead><tbody>
      {memberships.map(m=><tr key={m.id}><td>{seasonName(m.stagione_id)}</td><td><span className="status">{statusLabel(m.stato)}</span></td>
       <td>{formatValue(m.data_approvazione)}</td><td>{m.verbale_cda_id?<Link href={`/organi-sociali/documento/${m.verbale_cda_id}?tipo=pdf`}>{formatValue(boardMinutes?.find(x=>x.id===m.verbale_cda_id)?.data_consiglio??null)}</Link>:'In attesa di delibera'}</td><td>{cards.filter(c=>c.adesione_id===m.id).map(c=><div key={c.id} className="member-mini-row">
-       {c.ente} · {c.numero_tessera??'Numero non indicato'} · {formatValue(c.scade_il)} ({statusLabel(c.stato)})</div>)}
-       {!cards.some(c=>c.adesione_id===m.id)&&'Nessuna tessera'}</td></tr>)}
+       {c.ente} · {c.numero_tessera??'Numero non indicato'} · {formatValue(c.scade_il)} ({statusLabel(c.stato)})<RemoveRecord moduleKey="tesseramenti" id={c.id} back={`socio:${id}`}/></div>)}
+       {!cards.some(c=>c.adesione_id===m.id)&&'Nessuna tessera'}</td><td><RemoveRecord moduleKey="adesioni" id={m.id} back={`socio:${id}`}/></td></tr>)}
     </tbody></table></div>:<None>Non risultano adesioni per questa persona.</None>}
     {newSeasons.length>0&&<details className="member-edit"><summary>Registra adesione per una nuova stagione</summary>
      <form action={createMemberAdhesion} className="stack"><input type="hidden" name="id" value={id}/>
@@ -176,15 +177,15 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
      </form></details>}
    </Section>
    <Section id="corsi" title="Corsi e iscrizioni" href="/gestionale/moduli/iscrizioni">
-    {enrollments.length?<div className="table-panel"><table><thead><tr><th>Corso</th><th>Periodo</th><th>Iscrizione</th></tr></thead><tbody>
+    {enrollments.length?<div className="table-panel"><table><thead><tr><th>Corso</th><th>Periodo</th><th>Iscrizione</th><th>Azioni</th></tr></thead><tbody>
      {enrollments.map(e=>{const ed=editions.find(x=>x.id===e.edizione_id);return <tr key={e.id}><td>{editionName(e.edizione_id)}</td>
-      <td>{ed?`${formatValue(ed.inizio)} – ${formatValue(ed.fine)}`:'—'}</td><td>{statusLabel(e.stato)}</td></tr>;})}
+      <td>{ed?`${formatValue(ed.inizio)} – ${formatValue(ed.fine)}`:'—'}</td><td>{statusLabel(e.stato)}</td><td><RemoveRecord moduleKey="iscrizioni" id={e.id} back={`socio:${id}`}/></td></tr>;})}
     </tbody></table></div>:<None>Nessuna iscrizione a corsi registrata.</None>}
    </Section>
    <Section id="pagamenti" title="Quote associative e versamenti" href={`/gestionale/incassi?persona=${id}`}>
-    {balances.length?<div className="table-panel"><table><thead><tr><th>Stagione</th><th>Dovuto</th><th>Versato</th><th>Residuo</th><th>Stato</th></tr></thead><tbody>
+    {balances.length?<div className="table-panel"><table><thead><tr><th>Stagione</th><th>Dovuto</th><th>Versato</th><th>Residuo</th><th>Stato</th><th>Azioni</th></tr></thead><tbody>
      {balances.map(b=><tr key={b.id}><td>{seasonName(b.stagione_id)}</td><td>{euro(b.importo_dovuto)}</td>
-      <td>{euro(b.versato)}</td><td><strong>{euro(b.residuo)}</strong></td><td>{statusLabel(b.stato)}</td></tr>)}
+      <td>{euro(b.versato)}</td><td><strong>{euro(b.residuo)}</strong></td><td>{statusLabel(b.stato)}</td><td><RemoveRecord moduleKey="quote" id={b.id} back={`socio:${id}`}/></td></tr>)}
     </tbody></table></div>:<None>Nessuna quota associativa registrata.</None>}
     <h3>Ultimi versamenti</h3>{payments.length?<div className="table-panel"><table><thead><tr><th>Data</th><th>Tipologia</th><th>Importo</th><th>Metodo</th></tr></thead><tbody>
      {payments.map(p=><tr key={p.id}><td>{formatValue(p.data_pagamento)}</td><td>{p.quota_id?'Quota associativa':'Iscrizione corso'}</td>
@@ -194,15 +195,15 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
    </Section>
    <Section id="certificati" title="Certificati medici — verifica amministrativa" href="/gestionale/moduli/certificati">
     <p className="tiny muted">Sono mostrate solo data di rilascio, scadenza e verifica amministrativa. Non inserire diagnosi o dati clinici.</p>
-    {certs.length?<div className="table-panel"><table><thead><tr><th>Rilasciato</th><th>Scadenza</th><th>Validità temporale</th><th>Verifica</th></tr></thead><tbody>
+    {certs.length?<div className="table-panel"><table><thead><tr><th>Rilasciato</th><th>Scadenza</th><th>Validità temporale</th><th>Verifica</th><th>Azioni</th></tr></thead><tbody>
      {certs.map(c=><tr key={c.id}><td>{formatValue(c.rilasciato_il)}</td><td>{formatValue(c.scade_il)}</td>
       <td><span className={`member-state ${dateState(c.scade_il).kind}`}>{dateState(c.scade_il).label}</span></td>
-      <td>{c.idoneita_verificata?'Verificato dalla segreteria':'Da verificare'}</td></tr>)}
+      <td>{c.idoneita_verificata?'Verificato dalla segreteria':'Da verificare'}</td><td><RemoveRecord moduleKey="certificati" id={c.id} back={`socio:${id}`}/></td></tr>)}
     </tbody></table></div>:<None>Nessun certificato registrato.</None>}
    </Section>
    <Section id="brevetti" title="Brevetti conseguiti" href="/gestionale/moduli/brevetti">
-    {patents.length?<div className="table-panel"><table><thead><tr><th>Brevetto</th><th>Ente</th><th>Conseguito</th><th>Scadenza</th></tr></thead><tbody>
-     {patents.map(p=><tr key={p.id}><td>{p.titolo}</td><td>{p.ente??'—'}</td><td>{formatValue(p.ottenuto_il)}</td><td>{formatValue(p.scade_il)}</td></tr>)}
+    {patents.length?<div className="table-panel"><table><thead><tr><th>Brevetto</th><th>Ente</th><th>Conseguito</th><th>Scadenza</th><th>Azioni</th></tr></thead><tbody>
+     {patents.map(p=><tr key={p.id}><td>{p.titolo}</td><td>{p.ente??'—'}</td><td>{formatValue(p.ottenuto_il)}</td><td>{formatValue(p.scade_il)}</td><td><RemoveRecord moduleKey="brevetti" id={p.id} back={`socio:${id}`}/></td></tr>)}
     </tbody></table></div>:<None>Nessun brevetto registrato.</None>}
    </Section>
    <Section id="documenti" title="Documenti collegati" href="/documenti">
@@ -211,19 +212,19 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
     <p className="tiny muted">Alcuni documenti caricati dall’account possono non essere ancora associati all'anagrafica: verifica nell'archivio.</p>
    </Section>
    <Section id="istruttore" title="Qualifiche e attività da istruttore" href="/gestionale/moduli/qualifiche">
-    {qualifications.map(q=><div className="info-row" key={q.id}><span>{q.titolo}{q.ente?` · ${q.ente}`:''}</span><strong>{q.scade_il?`Scade ${formatValue(q.scade_il)}`:'Nessuna scadenza'}</strong></div>)}
-    {assignments.map(a=><div className="info-row" key={a.id}><span>{editionName(a.edizione_id)}</span><strong>{statusLabel(a.ruolo)}</strong></div>)}
+    {qualifications.map(q=><div className="info-row" key={q.id}><span>{q.titolo}{q.ente?` · ${q.ente}`:''}</span><strong>{q.scade_il?`Scade ${formatValue(q.scade_il)}`:'Nessuna scadenza'}</strong><RemoveRecord moduleKey="qualifiche" id={q.id} back={`socio:${id}`}/></div>)}
+    {assignments.map(a=><div className="info-row" key={a.id}><span>{editionName(a.edizione_id)}</span><strong>{statusLabel(a.ruolo)}</strong><RemoveRecord moduleKey="istruttori" id={a.id} back={`socio:${id}`}/></div>)}
     {qualifications.length===0&&assignments.length===0&&<None>Nessuna qualifica o assegnazione da istruttore.</None>}
    </Section>
    <Section id="attrezzature" title="Prestiti e consegne attrezzature" href="/gestionale/moduli/consegne">
-    {equipment.length?<div className="table-panel"><table><thead><tr><th>Attrezzatura</th><th>Consegnata</th><th>Restituzione</th></tr></thead><tbody>
+    {equipment.length?<div className="table-panel"><table><thead><tr><th>Attrezzatura</th><th>Consegnata</th><th>Restituzione</th><th>Azioni</th></tr></thead><tbody>
      {equipment.map(e=><tr key={e.id}><td>{equipmentNames.find(x=>x.id===e.attrezzatura_id)?.codice??'Attrezzatura non trovata'}</td>
-      <td>{formatValue(e.assegnata_il)}</td><td>{formatValue(e.restituita_il)}</td></tr>)}
+      <td>{formatValue(e.assegnata_il)}</td><td>{formatValue(e.restituita_il)}</td><td><RemoveRecord moduleKey="consegne" id={e.id} back={`socio:${id}`}/></td></tr>)}
     </tbody></table></div>:<None>Nessun prestito di attrezzatura registrato.</None>}
    </Section>
    <Section id="famiglia" title="Genitori, tutori e minori collegati">
     {[...guardians.map(g=>({id:g.tutore_id,label:'Tutore',parentela:g.parentela})),...wards.map(g=>({id:g.minore_id,label:'Minore',parentela:g.parentela}))]
-     .map((f,i)=>{const related=family.find(x=>x.id===f.id);return <div className="info-row" key={`${f.id}-${i}`}>
+     .sort((a,b)=>{const n=(id:string)=>{const p=family.find(x=>x.id===id);return `${p?.cognome??''} ${p?.nome??''}`;};return n(a.id).localeCompare(n(b.id),'it');}).map((f,i)=>{const related=family.find(x=>x.id===f.id);return <div className="info-row" key={`${f.id}-${i}`}>
       <span>{f.label} · {f.parentela}</span><strong>{related?<Link href={`/gestionale/soci/${f.id}`}>{related.cognome} {related.nome}</Link>:'Persona collegata non trovata'}</strong>
      </div>;})}
     {guardians.length===0&&wards.length===0&&<None>Nessuna relazione familiare registrata.</None>}

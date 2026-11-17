@@ -75,6 +75,7 @@ export async function saveModuleRecord(form:FormData) {
   changes.cf_override_motivo=check.reason;
   changes.codice_fiscale=String(changes.codice_fiscale??'').toUpperCase()||null;
  }
+ if(key==='iscrizioni'&&!id&&changes.stato!=='iscritto')redirect(errorPath(key,'socio_non_iscrivibile'));
  if(key==='istruttori'){
   const person=String(changes.persona_id??'');
   const {data:qualified}=await supabase.from('qualifiche_istruttori').select('id').eq('persona_id',person).limit(1);
@@ -111,6 +112,7 @@ export async function saveModuleRecord(form:FormData) {
    redirect(`/gestionale/moduli/${encodeURIComponent(key)}?${params.toString()}`);
   }
   if(key==='prenotazioni'&&error.code==='23505')redirect(errorPath(key,'corsia_duplicata'));
+  if(key==='iscrizioni'&&error.code==='P3413')redirect(errorPath(key,'socio_non_iscrivibile'));
   if(key==='addebiti'&&error.code==='P3412')redirect(errorPath(key,id?'iscrizione_vincolata':'iscrizione_non_attiva'));
   const constraint=['23505','23P01','23503','23514'].includes(error.code??'');
   redirect(errorPath(key,constraint?'vincolo':'database'));
@@ -120,13 +122,16 @@ export async function saveModuleRecord(form:FormData) {
  redirect(errorPath(key,'salvato'));
 }
 
-export async function deleteCourseRecord(form:FormData){
- const key=text(form,'modulo'),id=text(form,'id');
- if((key!=='corsi'&&key!=='edizioni')||!uuid.test(id))redirect('/gestionale?msg=permessi');
+export async function deleteModuleRecord(form:FormData){
+ const key=text(form,'modulo'),id=text(form,'id'),back=text(form,'back');
  const {supabase}=await requireStaff();
- if(form.get('conferma')!=='on')redirect(errorPath(key,'elimina_conferma'));
- const {data,error}=await supabase.from(modules[key].table).delete().eq('id',id).select('id').maybeSingle();
- if(error||!data)redirect(errorPath(key,error?.code==='23503'?'elimina_collegati':'database'));
- revalidatePath('/gestionale/corsi');revalidatePath('/gestionale/moduli/corsi');revalidatePath('/gestionale/moduli/edizioni');revalidatePath('/gestionale/moduli/addebiti');revalidatePath('/gestionale');
- redirect(errorPath(key,'eliminato'));
+ const extra:Record<string,string>={richieste:'richieste',cda_componenti:'cda_componenti',cda_verbali:'cda_verbali',moduli_didattici:'moduli_didattici'};
+ const mod:Module|undefined=isModuleKey(key)?modules[key]:undefined;
+ const table=mod?.table??(Object.prototype.hasOwnProperty.call(extra,key)?extra[key]:undefined);
+ if(!table||mod?.appendOnly||!uuid.test(id))redirect('/gestionale?msg=permessi');
+ const path=back==='soci'?'/gestionale/soci':back==='richieste'?'/gestionale/richieste':back==='organi'?'/organi-sociali':back==='cda_archivio'?'/organi-sociali/archivio':back==='didattica'?'/gestionale/programmi-didattici':back==='corsi'?'/gestionale/corsi':back==='incassi'?'/gestionale/incassi':back.startsWith('corso:')&&uuid.test(back.slice(6))?`/gestionale/corsi/${back.slice(6)}`:back.startsWith('socio:')&&uuid.test(back.slice(6))?`/gestionale/soci/${back.slice(6)}`:`/gestionale/moduli/${key}`;
+ if(form.get('conferma')!=='on')redirect(`${path}?msg=elimina_conferma`);
+ const {error}=await supabase.rpc('rimuovi_record_gestionale',{p_tabella:table,p_id:id});
+ revalidatePath('/', 'layout');
+ redirect(`${path}?msg=${error?(['23503','P3414','P0001'].includes(error.code)?'elimina_collegati':'database'):'eliminato'}`);
 }

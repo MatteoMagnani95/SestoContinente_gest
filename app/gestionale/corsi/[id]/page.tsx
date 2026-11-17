@@ -1,3 +1,4 @@
+import RemoveRecord from '@/components/RemoveRecord';
 import Link from 'next/link';
 import {notFound} from 'next/navigation';
 import {requireStaff} from '@/lib/security';
@@ -8,8 +9,8 @@ import LessonComposer from '@/components/LessonComposer';
 import {addEnrollment,addInstructor,createLesson,deleteEdition,recordClassAttendance,removeInstructor,replaceResponsible,setCourseProgram,updateEdition,updateEnrollment} from '../actions';
 
 type Person={id:string;nome:string;cognome:string};
-type Enrollment={id:string;persona_id:string;edizione_id:string;stato:string;iscritta_il:string};
-type Assignment={id:string;persona_id:string;ruolo:string};
+type Enrollment={id:string;persona_id:string;edizione_id:string;stato:string;iscritta_il:string;sort_cognome:string;sort_nome:string};
+type Assignment={id:string;persona_id:string;ruolo:string;sort_cognome:string;sort_nome:string};
 type Lesson={id:string;titolo:string;inizio:string;fine:string;piscina_id:string|null;esercizi:string|null;materiale:string|null};
 type Certificate={persona_id:string;scade_il:string;idoneita_verificata:boolean};
 type Qualification={persona_id:string;titolo:string;scade_il:string|null};
@@ -17,9 +18,9 @@ const message:Record<string,string>={
  creato:'Edizione creata. Ora puoi completare istruttori, iscrizioni e calendario.',salvato:'Edizione aggiornata.',
  iscritto:'Iscrizione aggiornata.',istruttore:'Assegnazione istruttore aggiornata.',lezione_creata:'Lezione e corsie salvate.',
  presenze_salvate:'Presenze salvate.',programma_salvato:'Programma associato al corso.',
- elimina_conferma:'Conferma esplicitamente la rimozione.',elimina_collegati:'Il corso contiene dati collegati (iscrizioni, istruttori, lezioni, attrezzature o documenti). Imposta lo stato Annullato per conservarne lo storico.',elimina_errore:'Impossibile rimuovere il corso. Verifica i permessi e la migrazione 0012.',
+ elimina_conferma:'Conferma esplicitamente la rimozione.',elimina_collegati:'Rimozione non consentita: il record è protetto o contiene dati collegati. Per una lezione o un corso puoi usare l’annullamento.',elimina_errore:'Impossibile rimuovere il corso. Verifica i permessi e la migrazione 0012.',
  vincolo:'Operazione non eseguita: controlla la capienza, i duplicati o le autorizzazioni.',
- stato:'Operazione non consentita nello stato attuale del corso.',adesione:'Per confermare serve un’adesione attiva alla stessa stagione.',
+ stato:'Operazione non consentita nello stato attuale del corso.',adesione:'Servono adesione attiva e tessera attiva non scaduta nella stessa stagione.',eliminato:'Elemento rimosso.',database:'Rimozione non riuscita.',
  iscrizione:'Impossibile salvare l’iscrizione: controlla i duplicati e la capienza.',
  assegnazione:'Impossibile assegnare: potrebbe esserci già un responsabile o lo stesso istruttore.',
  qualifica:'L’istruttore selezionato non ha qualifiche registrate. Completa prima la sua scheda.',
@@ -39,14 +40,14 @@ export default async function EditionDetail({params,searchParams}:{params:Promis
   {data:allPeople},{data:qualifications},{data:pools},{data:lanes},{data:activeMemberships},{data:programVersions}]=await Promise.all([
   supabase.from('corsi').select('id,nome,tipo,livello').eq('id',ed.corso_id).maybeSingle(),
   supabase.from('stagioni').select('nome,attiva').eq('id',ed.stagione_id).maybeSingle(),
-  supabase.from('iscrizioni_corsi').select('id,persona_id,edizione_id,stato,iscritta_il').eq('edizione_id',id).order('iscritta_il',{ascending:false}).limit(501),
-  supabase.from('assegnazioni_istruttori').select('id,persona_id,ruolo').eq('edizione_id',id).limit(101),
+  supabase.from('gest_elenco_iscrizioni_corsi').select('id,persona_id,edizione_id,stato,iscritta_il,sort_cognome,sort_nome').eq('edizione_id',id).order('sort_cognome').order('sort_nome').order('id').limit(501),
+  supabase.from('gest_elenco_assegnazioni_istruttori').select('id,persona_id,ruolo,sort_cognome,sort_nome').eq('edizione_id',id).order('sort_cognome').order('sort_nome').order('id').limit(101),
   supabase.from('lezioni').select('id,titolo,inizio,fine,piscina_id,esercizi,materiale').eq('edizione_id',id).is('annullata_il',null).order('inizio',{ascending:true}).limit(201),
   supabase.from('persone').select('id,nome,cognome').order('cognome').order('nome').limit(500),
   supabase.from('qualifiche_istruttori').select('persona_id,titolo,scade_il').limit(500),
   supabase.from('piscine').select('id,nome').order('nome').limit(100),
   supabase.from('corsie').select('id,piscina_id,numero').limit(500),
-  supabase.from('adesioni').select('persona_id').eq('stagione_id',ed.stagione_id).eq('stato','attiva').limit(1000),
+  supabase.from('gest_soci_iscrivibili').select('persona_id,nome,cognome').eq('stagione_id',ed.stagione_id).order('cognome').order('nome').limit(1000),
   supabase.from('versioni_programmi').select('id,programma_id,versione,stato').eq('stato','approvato').limit(200)
  ]);
  const enrollments=(enrollData??[]) as Enrollment[];const assignments=(teacherData??[]) as Assignment[];
@@ -55,11 +56,15 @@ export default async function EditionDetail({params,searchParams}:{params:Promis
   supabase.from('lezione_moduli').select('lezione_id,modulo_id,ordine').in('lezione_id',(lessonData??[]).map(l=>l.id)).order('ordine'),
   supabase.from('listino_corsi').select('importo').order('importo')
  ]);
- const lessons=(lessonData??[]) as Lesson[];const people=(allPeople??[]) as Person[];
+ const lessons=(lessonData??[]) as Lesson[];const roster=[...enrollments,...assignments].map(r=>({id:r.persona_id,cognome:r.sort_cognome??'',nome:r.sort_nome??''}));
+ const eligiblePeople:Person[]=(activeMemberships??[]).map(r=>({id:r.persona_id,nome:r.nome,cognome:r.cognome}));
+ const people=[...new Map([...roster,...eligiblePeople,...((allPeople??[]) as Person[])].map(r=>[r.id,r])).values()].sort((a,b)=>a.cognome.localeCompare(b.cognome,'it')||a.nome.localeCompare(b.nome,'it'));
  const instructors=(qualifications??[]) as Qualification[];const qualified=new Set(instructors.map(q=>q.persona_id));
  const currentIds=new Set(enrollments.map(e=>e.persona_id));const assignedIds=new Set(assignments.map(e=>e.persona_id));
  const activeIds=new Set((activeMemberships??[]).map(a=>a.persona_id));
- const candidates=people.filter(person=>!currentIds.has(person.id));
+ const candidates=people.filter(person=>activeIds.has(person.id)&&!currentIds.has(person.id));
+ const byPerson=(a:{persona_id:string},b:{persona_id:string})=>displayPerson(a.persona_id,people).localeCompare(displayPerson(b.persona_id,people),'it');
+ enrollments.sort(byPerson);assignments.sort(byPerson);
  const teacherCandidates=people.filter(person=>qualified.has(person.id)&&!assignedIds.has(person.id));
  const confirmed=enrollments.filter(x=>x.stato==='iscritto');
  const {data:certs}=confirmed.length?await supabase.from('certificati_medici').select('persona_id,scade_il,idoneita_verificata').in('persona_id',confirmed.map(x=>x.persona_id)).order('scade_il',{ascending:false}).limit(500):{data:[]};
@@ -74,7 +79,7 @@ export default async function EditionDetail({params,searchParams}:{params:Promis
  return <>
   <Link className="back-link" href="/gestionale/corsi">← Tutte le edizioni</Link>
   <div className="page-intro course-header"><div><p className="eyebrow">Scheda corso · {cat?courseName(cat.tipo,cat.livello):'Attività'}</p><h1>{ed.nome}</h1><p>{season?.nome??'Stagione'} · {formatValue(ed.inizio)} – {formatValue(ed.fine)} · <strong>{ed.stato}</strong></p></div><Link className="button ghost" href="/gestionale/calendario-visivo">Calendario generale</Link></div>
-  {msg&&message[msg]&&<p role="status" className={`notice ${['creato','salvato','iscritto','istruttore','lezione_creata','presenze_salvate','programma_salvato'].includes(msg)?'success':'warning'}`}>{message[msg]}</p>}
+  {msg&&message[msg]&&<p role="status" className={`notice ${['eliminato','creato','salvato','iscritto','istruttore','lezione_creata','presenze_salvate','programma_salvato'].includes(msg)?'success':'warning'}`}>{message[msg]}</p>}
   {(enrollError||teacherError||lessonError)&&<p className="notice error">Una sezione non è stata caricata correttamente. Verifica Supabase e le migrazioni.</p>}
   <div className="course-overview">
    <div className="panel"><span className="k">Allievi confermati</span><strong>{confirmed.length} / {ed.massimo_partecipanti}</strong></div>
@@ -92,9 +97,9 @@ export default async function EditionDetail({params,searchParams}:{params:Promis
     <div className="actions"><button className="button">Salva modifiche</button><Link className="button ghost" href="/gestionale/moduli/edizioni">Modifica avanzata</Link><Link className="button ghost" href="/gestionale/corsi">Annulla / Torna indietro</Link></div>
     <p className="tiny muted">Non è possibile ridurre la capienza sotto gli iscritti confermati. Conclusione e annullamento bloccano le nuove iscrizioni dalla scheda guidata.</p>
    </form>
-   <details className="calendar-danger"><summary className="button danger">Rimuovi edizione</summary><form action={deleteEdition} className="stack">
+   <details className="calendar-danger"><summary className="button danger">Rimuovi</summary><form action={deleteEdition} className="stack">
     <input type="hidden" name="edizione_id" value={id}/><p>La rimozione è definitiva e possibile solo se non ci sono dati collegati. Per conservare lo storico usa lo stato Annullato.</p>
-    <label><input type="checkbox" name="conferma" required/> Confermo la rimozione di {ed.nome}</label><button type="submit" className="button danger">Elimina definitivamente</button>
+    <label><input type="checkbox" name="conferma" required/> Confermo la rimozione di {ed.nome}</label><button type="submit" className="button danger">Rimuovi</button>
    </form></details></Section>
    <Section id="istruttori" title="Istruttori assegnati">
     <div className="course-list">{assignments.map(a=><div key={a.id} className="course-list-row"><div><strong>{displayPerson(a.persona_id,people)}</strong><p className="tiny muted">{a.ruolo==='responsabile'?'Responsabile':'Aiuto istruttore'}</p></div>
@@ -105,25 +110,25 @@ export default async function EditionDetail({params,searchParams}:{params:Promis
     {canEdit&&assignments.some(a=>a.ruolo==='responsabile')&&<form className="course-inline-form" action={replaceResponsible}><input type="hidden" name="edizione_id" value={id}/><label>Sostituisci il responsabile<select name="persona_id" required defaultValue=""><option value="">Scegli un nuovo responsabile</option>{teacherCandidates.map(t=><option key={t.id} value={t.id}>{t.cognome} {t.nome}</option>)}</select></label><span className="tiny muted">Per scegliere un aiuto già assegnato, rimuovi prima il suo incarico di aiuto.</span><button className="button ghost" disabled={!teacherCandidates.length}>Sostituisci</button></form>}
     <p className="tiny muted">È ammesso un solo responsabile per edizione. La presenza di una qualifica in archivio non equivale alla verifica dell'abilitazione richiesta per la disciplina: confermala prima dell'assegnazione. <Link href="/gestionale/moduli/qualifiche">Gestisci qualifiche</Link>.</p>
    </Section>
-   <Section id="allievi" title="Iscrizioni e allievi"><p className="muted tiny">Puoi registrare una richiesta in attesa o confermare un allievo con adesione attiva per questa stagione. La capienza è controllata dal database.</p>
+   <Section id="allievi" title="Iscrizioni e allievi"><p className="muted tiny">Puoi iscrivere soltanto soci con adesione attiva e tessera valida per questa stagione. La capienza è controllata dal database.</p>
     <div className="panel table-panel"><table><thead><tr><th>Allievo</th><th>Adesione</th><th>Certificato</th><th>Stato iscrizione</th><th>Apri</th></tr></thead><tbody>
     {enrollments.map(i=>{const cert=certificateList.find(x=>x.persona_id===i.persona_id);const valid=cert?.idoneita_verificata&&cert.scade_il>=new Date().toISOString().slice(0,10);return <tr key={i.id}>
-     <td>{displayPerson(i.persona_id,people)}</td><td>{activeIds.has(i.persona_id)?'Attiva':'Da verificare'}</td><td>{cert?(valid?'Verificato':'Da verificare'):'Non presente'}</td>
-     <td><form action={updateEnrollment} className="course-state-form"><input type="hidden" name="edizione_id" value={id}/><input type="hidden" name="iscrizione_id" value={i.id}/><select name="stato" defaultValue={i.stato} aria-label={`Stato iscrizione ${displayPerson(i.persona_id,people)}`}>{ENROLLMENT_STATES.map(s=><option key={s} value={s}>{s.replaceAll('_',' ')}</option>)}</select><button className="button ghost">Salva</button></form></td>
-     <td><Link href={`/gestionale/soci/${i.persona_id}`}>Scheda</Link></td>
+     <td>{displayPerson(i.persona_id,people)}</td><td>{activeIds.has(i.persona_id)?'Tesserato':'Non iscrivibile'}</td><td>{cert?(valid?'Verificato':'Da verificare'):'Non presente'}</td>
+     <td><form action={updateEnrollment} className="course-state-form"><input type="hidden" name="edizione_id" value={id}/><input type="hidden" name="iscrizione_id" value={i.id}/><select name="stato" defaultValue={i.stato} aria-label={`Stato iscrizione ${displayPerson(i.persona_id,people)}`}>{ENROLLMENT_STATES.map(s=><option key={s} value={s} disabled={s!==i.stato&&['in_attesa','iscritto'].includes(s)&&(!canEdit||!activeIds.has(i.persona_id))}>{s.replaceAll('_',' ')}</option>)}</select><button className="button ghost">Salva</button></form></td>
+     <td><Link href={`/gestionale/soci/${i.persona_id}`}>Scheda</Link><RemoveRecord moduleKey="iscrizioni" id={i.id} back={`corso:${id}`}/></td>
      </tr>;})}
     {!enrollments.length&&<tr><td colSpan={5} className="empty-cell">Nessuna iscrizione registrata.</td></tr>}
     </tbody></table></div>
-    {canEdit&&<form action={addEnrollment} className="course-inline-form"><input type="hidden" name="edizione_id" value={id}/><label>Allievo<select name="persona_id" required defaultValue=""><option value="">Seleziona...</option>{candidates.map(x=><option key={x.id} value={x.id}>{x.cognome} {x.nome}{activeIds.has(x.id)?' · adesione attiva':''}</option>)}</select></label>
-    <label>Stato iniziale<select name="stato"><option value="in_attesa">In attesa</option><option value="iscritto">Iscritto (adesione attiva)</option></select></label><button className="button" disabled={!candidates.length}>Aggiungi allievo</button></form>}
-    <p className="tiny muted">La scadenza del certificato è solo un'indicazione amministrativa. Verifica anche i requisiti didattici e le norme applicabili prima delle attività in acqua. Elenco selezionabile fino a 500 anagrafiche: per archivi più grandi usa i moduli generici.</p>
+    {canEdit&&<form action={addEnrollment} className="course-inline-form"><input type="hidden" name="edizione_id" value={id}/><label>Allievo<select name="persona_id" required defaultValue=""><option value="">Seleziona...</option>{candidates.map(x=><option key={x.id} value={x.id}>{x.cognome} {x.nome} · tesserato</option>)}</select></label>
+    <input type="hidden" name="stato" value="iscritto"/><span>Stato: Iscritto</span><button className="button" disabled={!candidates.length}>Aggiungi allievo</button></form>}
+    <p className="tiny muted">La scadenza del certificato è solo un'indicazione amministrativa. Verifica anche i requisiti didattici e le norme applicabili prima delle attività in acqua. Elenco fino a 1.000 soci idonei: per archivi più grandi usa i moduli generici.</p>
    </Section>
    <Section id="didattica" title="Programma didattico"><p className="muted tiny">Puoi collegare soltanto una versione approvata della stessa disciplina. Le versioni approvate sono protette dalle modifiche.</p>
     <form action={setCourseProgram} className="course-inline-form"><input type="hidden" name="edizione_id" value={id}/><label>Versione approvata<select name="programma_versione_id" defaultValue={ed.programma_versione_id??''}><option value="">Nessun programma associato</option>{matchingPrograms.map(v=><option key={v.id} value={v.id}>{programNames?.find(x=>x.id===v.programma_id)?.titolo??'Programma'} · v{v.versione}</option>)}</select></label><button className="button">Salva programma</button></form>
     <Link href="/gestionale/moduli/versioni">Gestisci programmi e versioni</Link>
    </Section>
    <Section id="lezioni" title="Calendario e nuove lezioni">
-    <div className="course-list">{lessons.map(l=><div className="course-list-row" key={l.id}><div><strong>{l.titolo}</strong><p className="tiny muted">{formatRome(l.inizio)} – {formatRome(l.fine)}{l.piscina_id?` · ${pools?.find(x=>x.id===l.piscina_id)?.nome??'Piscina'}`:''}</p></div><div className="buttons"><Link href={`/gestionale/calendario-visivo/${l.id}`}>Modifica</Link><a href={`?lezione=${l.id}#presenze`}>Presenze</a></div></div>)}
+    <div className="course-list">{lessons.map(l=><div className="course-list-row" key={l.id}><div><strong>{l.titolo}</strong><p className="tiny muted">{formatRome(l.inizio)} – {formatRome(l.fine)}{l.piscina_id?` · ${pools?.find(x=>x.id===l.piscina_id)?.nome??'Piscina'}`:''}</p></div><div className="buttons"><Link href={`/gestionale/calendario-visivo/${l.id}`}>Modifica</Link><a href={`?lezione=${l.id}#presenze`}>Presenze</a><RemoveRecord moduleKey="calendario" id={l.id} back={`corso:${id}`}/></div></div>)}
     {!lessons.length&&<p className="muted">Nessuna lezione pianificata.</p>}</div>
     {canEdit&&<form action={createLesson} className="stack course-lesson-form"><input type="hidden" name="edizione_id" value={id}/>
     <h3>Programma una lezione</h3><label>Titolo<input name="titolo" maxLength={160} required placeholder="Es. Esercitazione ARA in piscina"/></label>

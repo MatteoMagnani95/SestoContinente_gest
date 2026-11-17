@@ -21,8 +21,10 @@ export async function GET(_request:Request,{params}:{params:Promise<{modulo:stri
  const PAGE_SIZE=500;const MAX_ROWS=50000;
  const lines:string[]=[columns.map(escapeCSV).join(';')];
  for(let offset=0;;offset+=PAGE_SIZE){
-  const {data,error}=await supabase.from(module.table).select(columns.join(','))
-   .order('id',{ascending:true}).range(offset,offset+PAGE_SIZE-1);
+  const peopleSorted=['adesioni','iscrizioni_corsi','assegnazioni_istruttori','qualifiche_istruttori','brevetti_allievi','certificati_medici','presenze','assegnazioni_attrezzature','quote_associative','tesseramenti','addebiti_corsi','pagamenti'].includes(module.table);
+  let query=supabase.from(peopleSorted?`gest_elenco_${module.table}`:module.table).select(columns.join(','));
+  if(peopleSorted||module.table==='persone')query=query.order(peopleSorted?'sort_cognome':'cognome',{nullsFirst:false}).order(peopleSorted?'sort_nome':'nome');
+  const {data,error}=await query.order('id',{ascending:true}).range(offset,offset+PAGE_SIZE-1);
   if(error)return new Response('Errore lettura',{status:500});
   if(offset+(data?.length??0)>MAX_ROWS)return new Response('Esportazione troppo grande: supera 50.000 righe. Richiedere un export dedicato.',{status:413});
   for(const rawRow of data??[]){

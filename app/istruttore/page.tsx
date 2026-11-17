@@ -19,13 +19,14 @@ export default async function Instructor({searchParams}:{searchParams:Promise<{m
  supabase.rpc('allievi_del_mio_corso')
  ]);
  const allowed=(studentCards??[]) as {edizione_id:string;persona_id:string;nome:string;cognome:string;email:string|null;telefono:string|null;certificato_valido:boolean}[];
+ const display=(id:string,edition:string)=>{const p=allowed.find(x=>x.persona_id===id&&x.edizione_id===edition);return `${p?.cognome??''} ${p?.nome??''}`;};
  // La RPC non restituisce mai CF, quote o dettagli medici.
  return <div className="container"><div className="page-intro"><p className="eyebrow">Area istruttore</p><h1>I miei corsi</h1><p>Calendario, materiali e registrazione delle presenze per le lezioni assegnate.</p></div>
  {msg==='ok'&&<p className="notice success">Presenza registrata.</p>}{msg==='errore'&&<p className="notice error">Operazione non consentita. Verifica assegnazione e iscrizione dell'allievo.</p>}
  <div className="cards">{editions?.map(e=><article className="panel" key={e.id}><h2>{e.nome}</h2><p>{formatValue(e.inizio)} – {formatValue(e.fine)}</p><p>Stato: {e.stato}</p><p>Allievi iscritti: {students?.filter(s=>s.edizione_id===e.id).length??0}</p></article>)}
  {!editions?.length&&<div className="notice">Non risulti assegnato ad alcuna edizione di corso. Chiedi alla segreteria di collegare la tua anagrafica e assegnare il ruolo di istruttore.</div>}</div>
  <section className="panel"><h2>Lezioni e presenze</h2>{lessons?.map(l=><div key={l.id} className="timeline-item"><h3>{formatValue(l.inizio)} · {l.titolo}</h3><p className="muted">Materiale: {l.materiale||'Non specificato'}</p>
- {students?.filter(s=>s.edizione_id===l.edizione_id).map(s=><form action={recordAttendance} key={`${l.id}-${s.persona_id}`} className="attendance-line">
+ {students?.filter(s=>s.edizione_id===l.edizione_id).sort((a,b)=>display(a.persona_id,l.edizione_id).localeCompare(display(b.persona_id,l.edizione_id),'it')).map(s=><form action={recordAttendance} key={`${l.id}-${s.persona_id}`} className="attendance-line">
  <input type="hidden" name="lezione_id" value={l.id}/><input type="hidden" name="persona_id" value={s.persona_id}/>
  <strong>{allowed.find(p=>p.edizione_id===l.edizione_id&&p.persona_id===s.persona_id)?.cognome??'Allievo'} {allowed.find(p=>p.edizione_id===l.edizione_id&&p.persona_id===s.persona_id)?.nome??''}</strong><span className="tiny">{allowed.find(p=>p.edizione_id===l.edizione_id&&p.persona_id===s.persona_id)?.email??''} · {allowed.find(p=>p.edizione_id===l.edizione_id&&p.persona_id===s.persona_id)?.telefono??''}</span><span className="status">{allowed.find(p=>p.edizione_id===l.edizione_id&&p.persona_id===s.persona_id)?.certificato_valido?'Certificato valido':'Certificato non valido / da verificare'}</span>
  <select name="presente"><option value="si">Presente</option><option value="no">Assente</option></select>

@@ -1,3 +1,4 @@
+import RemoveRecord from '@/components/RemoveRecord';
 import Link from 'next/link';
 import {requireBoard} from '@/lib/security';
 import {salvaComponente,caricaBozza,avviaApprovazione,approvaVerbale,riprovaFinalizzazione} from './actions';
@@ -13,13 +14,14 @@ export default async function OrganiSociali({searchParams}:{searchParams:Promise
  const {supabase,user,isStaff}=await requireBoard();const {msg}=await searchParams;
  const [{data:members},{data:verbali},{data:progress},{data:people},{data:pending},{data:votanti}]=await Promise.all([
   supabase.rpc('cda_anagrafiche_membri'),
-  supabase.from('cda_verbali').select('id,data_consiglio,oggetto,tipo,stato,percorso_docx,percorso_pdf').order('data_consiglio',{ascending:false}).limit(100),
+  supabase.from('cda_verbali').select('id,data_consiglio,oggetto,tipo,stato,percorso_docx,percorso_pdf').is('rimosso_il',null).order('data_consiglio',{ascending:false}).limit(100),
   supabase.rpc('cda_progressi'),
-  isStaff?supabase.from('persone').select('id,nome,cognome').order('cognome').limit(500):Promise.resolve({data:[]}),
+  isStaff?supabase.from('persone').select('id,nome,cognome').order('cognome').order('nome').limit(500):Promise.resolve({data:[]}),
   isStaff?supabase.from('adesioni').select('id,persona_id,stato').eq('stato','da_perfezionare').limit(250):Promise.resolve({data:[]}),
   supabase.from('cda_votanti').select('verbale_id,utente_id').eq('utente_id',user.id)
  ]);
- const membriCda=(Array.isArray(members)?members:[]) as MembroCda[];
+ const membriCda=((Array.isArray(members)?members:[]) as MembroCda[]).sort((a,b)=>a.cognome.localeCompare(b.cognome,'it')||a.nome.localeCompare(b.nome,'it'));
+ const {data:memberIds}=isStaff?await supabase.from('cda_componenti').select('id,persona_id,dal').limit(1000):{data:[]};
  const verbaliCda=(Array.isArray(verbali)?verbali:[]) as VerbaleCda[];
  const votantiCda=(Array.isArray(votanti)?votanti:[]) as Votante[];
  const persone=(Array.isArray(people)?people:[]) as Persona[];
@@ -27,12 +29,13 @@ export default async function OrganiSociali({searchParams}:{searchParams:Promise
  const progressi=(Array.isArray(progress)?progress:[]) as Progresso[];
  const eligible=new Set<string>(votantiCda.map(x=>x.verbale_id));
  const names=new Map<string,string>(persone.map(x=>[x.id,`${x.cognome} ${x.nome}`]));
+ adesioni.sort((a,b)=>(names.get(a.persona_id)??'').localeCompare(names.get(b.persona_id)??'','it'));
  const progressMap=new Map<string,Progresso>(progressi.map(x=>[x.verbale_id,x]));
  return <div className="container"><div className="page-intro"><p className="eyebrow">Organi Sociali</p><h1>Consiglio d'Amministrazione</h1>
  <p>Componenti in carica, deliberazioni, voto individuale e documenti riservati.</p><div className="buttons"><Link className="button" href="/organi-sociali/archivio">Archivio verbali e PDF</Link><Link className="button ghost" href="/organi-sociali/riepilogo">Riepilogo aggregato CdA</Link></div><Link href={isStaff?'/gestionale':'/smista'}>Torna indietro</Link></div>
  {msg&&<p className="notice">Esito operazione: {msg}. Se compare un errore, controlla la configurazione o l'esito della migrazione.</p>}
- <section className="panel"><h2>Componenti CdA</h2><div className="table-panel"><table><thead><tr><th>Socio</th><th>Carica</th><th>Quadriennio</th></tr></thead><tbody>
- {membriCda.map(m=><tr key={`${m.persona_id}-${m.dal}`}><td>{m.cognome} {m.nome}</td><td>{m.carica}</td><td>{m.dal} – {m.al}</td></tr>)}</tbody></table></div>
+ <section className="panel"><h2>Componenti CdA</h2><div className="table-panel"><table><thead><tr><th>Socio</th><th>Carica</th><th>Quadriennio</th>{isStaff&&<th>Azioni</th>}</tr></thead><tbody>
+ {membriCda.map(m=><tr key={`${m.persona_id}-${m.dal}`}><td>{m.cognome} {m.nome}</td><td>{m.carica}</td><td>{m.dal} – {m.al}</td>{isStaff&&<td>{(()=>{const entry=memberIds?.find(x=>x.persona_id===m.persona_id&&x.dal===m.dal);return entry?<RemoveRecord moduleKey="cda_componenti" id={entry.id} back="organi"/>:null;})()}</td>}</tr>)}</tbody></table></div>
  {isStaff&&<form action={salvaComponente} className="stack"><h3>Registra componente</h3><div className="form-grid"><label>Socio<select name="persona_id" required><option value="">Seleziona...</option>{persone.map(p=><option value={p.id} key={p.id}>{p.cognome} {p.nome}</option>)}</select></label>
  <label>Carica<select name="carica">{roles.map(r=><option key={r}>{r}</option>)}</select></label><label>Inizio mandato<input name="dal" type="date" required/></label></div>
  <div className="form-actions"><button className="button">Registra</button><Link className="button ghost" href="/organi-sociali">Annulla / Torna indietro</Link></div></form>}
@@ -48,6 +51,7 @@ export default async function OrganiSociali({searchParams}:{searchParams:Promise
  <p>Tipo: {v.tipo} · Stato: <strong>{v.stato}</strong> · Voti: {p?.approvati??0}/{p?.totali??0}</p>
  <div className="buttons"><Link href={`/organi-sociali/documento/${v.id}?tipo=docx`}>Scarica Word</Link>
  {v.stato==='approvato'?<Link href={`/organi-sociali/documento/${v.id}?tipo=pdf`}>PDF definitivo</Link>:<Link href={`/organi-sociali/documento/${v.id}?tipo=anteprima`}>PDF bozza</Link>}</div>
+ {v.stato==='bozza'&&isStaff&&<RemoveRecord moduleKey="cda_verbali" id={v.id} back="organi"/>}
  {v.stato==='bozza'&&isStaff&&<form action={avviaApprovazione} className="stack"><input type="hidden" name="verbale_id" value={v.id}/>
  {v.tipo!=='Gestione Ordinaria / Altro'&&<fieldset><legend>Adesioni da ammettere</legend>{adesioni.map(a=><label className="check-label" key={a.id}><input type="checkbox" name="adesione_id" value={a.id}/>{names.get(a.persona_id)??a.persona_id.slice(0,8)}</label>)}</fieldset>}
  <button className="button">Apri votazione (quorum completo)</button></form>}

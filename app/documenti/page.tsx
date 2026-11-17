@@ -7,15 +7,15 @@ export default async function Documenti({searchParams}:{searchParams:Promise<{ms
  const isStaff=roles?.some(r=>r.ruolo==='amministratore'||r.ruolo==='segreteria')??false;
  const isAdmin=roles?.some(r=>r.ruolo==='amministratore')??false;
  const [{data:docs,error},{data:people},{data:users},{data:editions},{data:versions},{msg}]=await Promise.all([
-  supabase.from('documenti').select('id,nome,categoria,ambito,visibilita,caricato_il,dimensione_bytes,scadenza_conservazione').order('caricato_il',{ascending:false}).limit(150),
-  isStaff?supabase.from('persone').select('id,nome,cognome').order('cognome').limit(300):Promise.resolve({data:[]}),
+  supabase.from('gest_elenco_documenti').select('id,nome,categoria,ambito,visibilita,caricato_il,dimensione_bytes,scadenza_conservazione,sort_cognome,sort_nome').order('sort_cognome',{nullsFirst:false}).order('sort_nome').order('nome').order('id').limit(150),
+  isStaff?supabase.from('persone').select('id,nome,cognome').order('cognome').order('nome').limit(300):Promise.resolve({data:[]}),
   isStaff?supabase.from('collegamenti_persone').select('utente_id,persona_id').limit(500):Promise.resolve({data:[]}),
   isStaff?supabase.from('edizioni_corsi').select('id,nome').order('inizio',{ascending:false}).limit(200):Promise.resolve({data:[]}),
   isStaff?supabase.from('versioni_programmi').select('id,programma_id,versione').limit(200):Promise.resolve({data:[]}),
   searchParams
  ]);
  return <div className="container"><div className="page-intro"><p className="eyebrow">Archivio riservato</p><h1>Documenti</h1><p>File privati: scaricabili soltanto da utenti autorizzati. PDF, JPG, PNG e WEBP, massimo 10 MB.</p></div>
- {msg==='ok'&&<p className="notice success">Documento caricato.</p>}{msg==='eliminato'&&<p className="notice success">Documento eliminato.</p>}{msg&&msg!=='ok'&&msg!=='eliminato'&&<p className="notice warning">Upload non completato: verifica file, dati, autorizzazioni e bucket privato.</p>}
+ {msg==='ok'&&<p className="notice success">Documento caricato.</p>}{msg==='eliminato'&&<p className="notice success">Documento eliminato.</p>}{msg&&msg!=='ok'&&msg!=='eliminato'&&<p className="notice warning">{msg==='storage_residuo'?'Documento rimosso dall’elenco; file residuo nel deposito privato da verificare con l’amministratore.':msg==='collegato'?'Rimozione non consentita: verifica i dati collegati.':msg==='conferma'?'Conferma la rimozione.':'Operazione non completata: verifica file, dati, autorizzazioni e bucket privato.'}</p>}
  <details className="panel module-editor"><summary><strong>+ Carica documento</strong></summary>
  <form className="stack" action={uploadDocument} encType="multipart/form-data">
  <div className="form-grid"><label>Nome documento<input name="nome" placeholder="Facoltativo: nome originale"/></label>
@@ -30,7 +30,7 @@ export default async function Documenti({searchParams}:{searchParams:Promise<{ms
  <button className="button" type="submit">Carica nel deposito privato</button></form></details>
  {error?<p className="notice error">Impossibile caricare l'archivio. Eseguire la migrazione SQL e verificare le autorizzazioni.</p>:
  <div className="panel table-panel"><table><thead><tr><th>Documento</th><th>Categoria</th><th>Ambito</th><th>Caricato il</th><th>Dimensione</th><th>Da riesaminare</th><th></th></tr></thead><tbody>
- {docs?.map(d=><tr key={d.id}><td>{d.nome}</td><td>{d.categoria}</td><td>{d.ambito}</td><td>{new Date(d.caricato_il).toLocaleDateString('it-IT')}</td><td>{Math.round(d.dimensione_bytes/1024)} KB</td><td>{d.scadenza_conservazione??"—"}</td><td><Link href={`/documenti/${d.id}`} prefetch={false}>Scarica</Link>{isAdmin&&<form action={deleteDocument} style={{marginTop:8}}><input type="hidden" name="id" value={d.id}/><button className="button danger" type="submit">Elimina</button></form>}</td></tr>)}
+ {docs?.map(d=><tr key={d.id}><td>{d.nome}{d.sort_cognome&&<p className="tiny muted">{d.sort_cognome} {d.sort_nome}</p>}</td><td>{d.categoria}</td><td>{d.ambito}</td><td>{new Date(d.caricato_il).toLocaleDateString('it-IT')}</td><td>{Math.round(d.dimensione_bytes/1024)} KB</td><td>{d.scadenza_conservazione??"—"}</td><td><Link href={`/documenti/${d.id}`} prefetch={false}>Scarica</Link>{isAdmin&&<form action={deleteDocument} style={{marginTop:8}}><input type="hidden" name="id" value={d.id}/><label><input type="checkbox" name="conferma" required/> Confermo la rimozione</label><button className="button danger" type="submit">Rimuovi</button></form>}</td></tr>)}
  {!docs?.length&&<tr><td className="empty-cell" colSpan={7}>Nessun documento visibile al tuo account.</td></tr>}</tbody></table></div>}
  <p className="muted tiny">Non inserire dati sanitari nel titolo dei file. Per i certificati si consiglia di conservare solo quanto necessario e definire un periodo di conservazione.</p>
  </div>;

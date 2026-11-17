@@ -35,7 +35,7 @@ test('Nuove rotte accessibili solo a staff e navigazione funzionante',()=>{
  assert.match(file('components/StaffNav.tsx'),/href="\/gestionale\/corsi"/);
 });
 test('Gestione iscrizioni: stato confermato richiede adesione attiva della stessa stagione',()=>{
- assert.match(actions,/\.eq\('stagione_id',edition\.stagione_id\)\.eq\('stato','attiva'\)/);
+ assert.match(actions,/from\('gest_soci_iscrivibili'\)[^\n]+\.eq\('stagione_id',edition\.stagione_id\)/);
  assert.match(migration,/assegnazioni_staff_del/);
 });
 

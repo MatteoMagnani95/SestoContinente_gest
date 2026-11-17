@@ -47,16 +47,17 @@ export async function deleteDocument(form:FormData){
  const {supabase,user}=await requireUser();
  const {data:role}=await supabase.from('ruoli_utente').select('ruolo').eq('utente_id',user.id).eq('ruolo','amministratore').maybeSingle();
  if(!role)redirect('/documenti?msg=permessi');
+ if(form.get('conferma')!=='on')redirect('/documenti?msg=conferma');
  const id=String(form.get('id')??'');
  if(!/^[0-9a-f-]{36}$/i.test(id))redirect('/documenti?msg=errore');
- const [{data:doc},{count:linked}]=await Promise.all([
+ const [{data:doc,error:docError},{count:linked,error:linkError}]=await Promise.all([
   supabase.from('documenti').select('percorso_storage').eq('id',id).maybeSingle(),
   supabase.from('certificati_medici').select('*',{head:true,count:'exact'}).eq('documento_id',id)
  ]);
- if(!doc||linked)redirect('/documenti?msg=collegato');
+ if(docError||linkError||!doc||linked)redirect('/documenti?msg=collegato');
+ const {data:deleted,error}=await supabase.from('documenti').delete().eq('id',id).select('id').maybeSingle();
+ if(error||!deleted)redirect('/documenti?msg=collegato');
  const {error:storageError}=await supabase.storage.from('sesto-documenti').remove([doc.percorso_storage]);
- if(storageError)redirect('/documenti?msg=errore');
- const {error}=await supabase.from('documenti').delete().eq('id',id);
- if(error)redirect('/documenti?msg=errore');
+ if(storageError){revalidatePath('/documenti');redirect('/documenti?msg=storage_residuo');}
  revalidatePath('/documenti');redirect('/documenti?msg=eliminato');
 }

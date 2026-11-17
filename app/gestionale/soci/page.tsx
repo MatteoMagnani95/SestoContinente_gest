@@ -1,3 +1,4 @@
+import RemoveRecord from '@/components/RemoveRecord';
 import Link from 'next/link';
 import {requireStaff} from '@/lib/security';
 import {formatValue} from '@/lib/format';
@@ -14,7 +15,7 @@ function makeHref(filters:{q:string;stagione:string;stato:string},page:number){
  query.set('p',String(page));
  return `/gestionale/soci?${query.toString()}`;
 }
-export default async function SociPage({searchParams}:{searchParams:Promise<{q?:string;stagione?:string;stato?:string;p?:string}>}){
+export default async function SociPage({searchParams}:{searchParams:Promise<{q?:string;stagione?:string;stato?:string;p?:string;msg?:string}>}){
  const {supabase}=await requireStaff();
  const params=await searchParams;
  const q=cleanSearch(params.q??'');
@@ -27,7 +28,7 @@ export default async function SociPage({searchParams}:{searchParams:Promise<{q?:
  if(chosen!=='tutte')query=query.eq('stagione_id',chosen);
  if(stato)query=query.eq('stato',stato);
  if(q)query=query.or(`nome.ilike.%${q}%,cognome.ilike.%${q}%,codice_fiscale.ilike.%${q}%`);
- const {data,error,count}=await query.order('cognome',{ascending:true}).order('nome',{ascending:true})
+ const {data,error,count}=await query.order('cognome',{ascending:true}).order('nome',{ascending:true}).order('adesione_id')
   .range((desiredPage-1)*perPage,desiredPage*perPage-1);
  const rows=(data??[]) as unknown as SocioRow[];
  const filters={q,stagione:chosen,stato};
@@ -36,6 +37,7 @@ export default async function SociPage({searchParams}:{searchParams:Promise<{q?:
  return <>
   <div className="page-intro"><p className="eyebrow">Segreteria · Anagrafiche</p><h1>Soci e allievi</h1>
    <p>Ricerca per nominativo o codice fiscale, elenco per stagione e accesso alla scheda personale unificata.</p></div>
+  {params.msg&&<p className="notice warning">{params.msg==='eliminato'?'Adesione rimossa.':'Rimozione non consentita: verifica i dati collegati e i permessi.'}</p>}
   {seasonError&&<p className="notice error">Impossibile caricare le stagioni. Verifica il database.</p>}
   <div className="panel member-filter-panel">
    <form method="get" className="member-filters">
@@ -54,7 +56,7 @@ export default async function SociPage({searchParams}:{searchParams:Promise<{q?:
     <td><strong>{row.cognome} {row.nome}</strong></td><td>{row.codice_fiscale??'—'}</td>
     <td>{row.email??row.telefono??'—'}</td><td>{row.stagione}</td>
     <td><span className={`status status-${row.stato}`}>{String(row.stato).replaceAll('_',' ')}</span></td>
-    <td><Link href={`/gestionale/soci/${row.persona_id}`}>Apri scheda</Link></td>
+    <td><Link href={`/gestionale/soci/${row.persona_id}`}>Apri scheda</Link><RemoveRecord moduleKey="adesioni" id={row.adesione_id} back="soci"/></td>
    </tr>)}
    {rows.length===0&&<tr><td colSpan={6} className="empty-cell">Nessun socio trovato con questi filtri.</td></tr>}
    </tbody></table></div>}

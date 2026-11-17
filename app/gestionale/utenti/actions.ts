@@ -24,3 +24,11 @@ export async function linkPersonToAccount(form:FormData){
  const {error}=await supabase.rpc('collega_account_a_persona',{p_email,p_persona,p_relazione});
  redirect(`/gestionale/utenti?msg=${error?'errore':'collegato'}`);
 }
+
+export async function removeRole(form:FormData){
+ const {supabase}=await requireStaff();
+ const id=String(form.get('utente_id')??''),role=String(form.get('ruolo')??'');
+ if(form.get('conferma')!=='on'||!/^[0-9a-f-]{36}$/i.test(id)||!['amministratore','segreteria','istruttore','socio','tutore','consigliere_cda'].includes(role))redirect('/gestionale/utenti?msg=dati');
+ const {error}=await supabase.rpc('rimuovi_ruolo_gestionale',{p_utente:id,p_ruolo:role});
+ redirect(`/gestionale/utenti?msg=${error?'rimozione_negata':'rimosso'}`);
+}
