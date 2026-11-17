@@ -17,7 +17,7 @@ async function check(label,data,expectedStatus,expectedCode){
    const {CodiceFiscaleUtils}=require('@marketto/codice-fiscale-utils');
    const parser=new CodiceFiscaleUtils(connector.default??connector).parser;
    for(const [mode,args] of [['ISO',[data.data_nascita,label]],['Date',[new Date(`${data.data_nascita}T12:00:00Z`),label]],['array',[[1980,0,1],label]],['nome',[label]]]){
-    try{const p=await parser.placeToCf(...args);console.error(`Belfiore ${label} ${mode}: ${JSON.stringify(p)}`);}catch(e){console.error(`Belfiore ${label} ${mode}: ${String(e)}`);}
+    try{const p=await parser.placeToCf(...args);console.error(`Belfiore ${label} ${mode}: ${JSON.stringify(p)}`);if(typeof p==='string'){const synthetic=cf.generaCF({nome:'Mario',cognome:'Rossi',data_nascita:data.data_nascita,sesso_cf:'M',codice_catastale_nascita:p});console.error(`Metadati ${label}: ${JSON.stringify(await parser.cfToBirthPlace(synthetic))}`);}}catch(e){console.error(`Belfiore ${label} ${mode}: ${String(e)}`);}
    }
   }catch(e){console.error('Diagnostica Belfiore:',String(e));}
  }

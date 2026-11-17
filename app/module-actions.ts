@@ -84,6 +84,15 @@ export async function saveModuleRecord(form:FormData) {
   const {data:verbale}=await supabase.from('cda_verbali').select('id').eq('id',String(changes.verbale_cda_id)).eq('stato','approvato').in('tipo',['Approvazione Adesioni Soci','Misto']).maybeSingle();
   if(!verbale)redirect(errorPath(key,'vincolo'));
  }
+ if(key==='addebiti'&&id){
+  // Non riassegnare un debito a un altro socio/corso (anche con pagamenti esistenti).
+  const {data:existing,error}=await supabase.from('addebiti_corsi').select('iscrizione_id').eq('id',id).single();
+  if(error||!existing||existing.iscrizione_id!==changes.iscrizione_id)redirect(errorPath(key,'iscrizione_vincolata'));
+ }
+ if(key==='addebiti'&&!id){
+  const {data:eligible,error}=await supabase.from('iscrizioni_corsi').select('id,edizione:edizioni_corsi!inner(stato,stagione:stagioni!inner(attiva))').eq('id',String(changes.iscrizione_id)).eq('stato','iscritto').eq('edizione.stato','attivo').eq('edizione.stagione.attiva',true).maybeSingle();
+  if(error||!eligible)redirect(errorPath(key,'iscrizione_non_attiva'));
+ }
  if(key==='comunicazioni'&&!id) changes.autore_id=user.id;
  let query;
  if(id) query=supabase.from(module.table).update(changes).eq('id',id).select('id').single();
@@ -102,10 +111,22 @@ export async function saveModuleRecord(form:FormData) {
    redirect(`/gestionale/moduli/${encodeURIComponent(key)}?${params.toString()}`);
   }
   if(key==='prenotazioni'&&error.code==='23505')redirect(errorPath(key,'corsia_duplicata'));
+  if(key==='addebiti'&&error.code==='P3412')redirect(errorPath(key,id?'iscrizione_vincolata':'iscrizione_non_attiva'));
   const constraint=['23505','23P01','23503','23514'].includes(error.code??'');
   redirect(errorPath(key,constraint?'vincolo':'database'));
  }
  revalidatePath(`/gestionale/moduli/${key}`);
  revalidatePath('/gestionale');
  redirect(errorPath(key,'salvato'));
+}
+
+export async function deleteCourseRecord(form:FormData){
+ const key=text(form,'modulo'),id=text(form,'id');
+ if((key!=='corsi'&&key!=='edizioni')||!uuid.test(id))redirect('/gestionale?msg=permessi');
+ const {supabase}=await requireStaff();
+ if(form.get('conferma')!=='on')redirect(errorPath(key,'elimina_conferma'));
+ const {data,error}=await supabase.from(modules[key].table).delete().eq('id',id).select('id').maybeSingle();
+ if(error||!data)redirect(errorPath(key,error?.code==='23503'?'elimina_collegati':'database'));
+ revalidatePath('/gestionale/corsi');revalidatePath('/gestionale/moduli/corsi');revalidatePath('/gestionale/moduli/edizioni');revalidatePath('/gestionale/moduli/addebiti');revalidatePath('/gestionale');
+ redirect(errorPath(key,'eliminato'));
 }

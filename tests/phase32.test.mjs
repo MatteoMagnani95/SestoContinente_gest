@@ -13,7 +13,7 @@ const ui=file('app/gestionale/corsi/[id]/page.tsx');
 
 test('Sicurezza: tutte le azioni guidate richiedono ruolo di segreteria',()=>{
  const functions=[...actions.matchAll(/export async function (\w+)\(form:FormData\)\{/g)].map(x=>x[1]);
- assert.deepEqual(functions.sort(),['createCatalogCourse','createEdition','updateEdition','addInstructor','removeInstructor','replaceResponsible','addEnrollment','updateEnrollment','createLesson','recordClassAttendance','setCourseProgram','saveLessonModules'].sort());
+ assert.deepEqual(functions.sort(),['createCatalogCourse','createEdition','updateEdition','addInstructor','removeInstructor','replaceResponsible','addEnrollment','updateEnrollment','createLesson','recordClassAttendance','setCourseProgram','saveLessonModules','deleteEdition'].sort());
  for(const [,name,body] of actions.matchAll(/export async function (\w+)\(form:FormData\)\{([\s\S]*?)(?=\nexport async function|$)/g)){
   assert.match(body,/await requireStaff\(\)/,`${name}: manca controllo staff`);
  }

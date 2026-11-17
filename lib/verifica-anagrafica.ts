@@ -31,14 +31,24 @@ export async function verificaAnagrafica(d:Identity):Promise<CFResult>{
   const candidates=new Set<string>();
   let completed=0;
   const timestamp=(value:unknown)=>value instanceof Date?value.getTime():typeof value==='string'?Date.parse(value):NaN;
-  function accept(found:unknown,dated:boolean){
+  async function accept(found:unknown,dated:boolean){
+   // placeToCf restituisce un codice stringa nella versione 3.1.3.
+   // Recupera i metadati con cfToBirthPlace usando un CF sintetico interno,
+   // mai il CF dell'utente: il codice deve derivare dal luogo inserito.
+   const returnedCode=typeof found==='string'?norm(found):null;
+   if(returnedCode){
+    if(!/^[A-Z][0-9]{3}$/.test(returnedCode))return;
+    const synthetic=generaCF({nome:'Mario',cognome:'Rossi',data_nascita:birth,sesso_cf:'M',codice_catastale_nascita:returnedCode});
+    found=await lookup.cfToBirthPlace(synthetic);
+   }
    const p=found as Place|null;
    if(!p||typeof p!=='object')return;
    const candidate=norm(p.belfioreCode);
+   if(returnedCode&&candidate!==returnedCode)return;
    if(!/^[A-Z][0-9]{3}$/.test(candidate)||(italy?(norm(p.province)!==province||candidate.startsWith('Z')):!candidate.startsWith('Z')))return;
    const start=timestamp(p.creationDate),end=timestamp(p.expirationDate),when=date.getTime();
    if((Number.isFinite(start)&&when<start)||(Number.isFinite(end)&&when>end))return;
-   if(!dated&&(!Number.isFinite(start)||!Number.isFinite(end)))return;
+   if((!dated||returnedCode)&&(!Number.isFinite(start)||!Number.isFinite(end)))return;
    candidates.add(candidate);
   }
   const names=Array.from(new Set([place,place.toUpperCase()]));
@@ -50,7 +60,7 @@ export async function verificaAnagrafica(d:Identity):Promise<CFResult>{
     [()=>lookup.placeToCf(name),false],
    ];
    for(const [attempt,dated] of attempts){
-    try{const found=await attempt();completed++;accept(found,dated);}catch{/* Prova il successivo formato supportato. */}
+    try{const found=await attempt();completed++;await accept(found,dated);}catch{/* Prova il successivo formato supportato. */}
    }
    if(candidates.size>0)break;
   }

@@ -62,3 +62,15 @@ test('CdA: archivio protetto, versioni in sola lettura, nuova migrazione additiv
  for(const path of ['app/organi-sociali/archivio/page.tsx','app/organi-sociali/archivio/[id]/page.tsx','app/organi-sociali/documento/[id]/route.ts'])assert.match(read(path),/requireBoard/);
  assert.match(read('app/organi-sociali/actions.ts'),/upsert:false/);assert.match(read('lib/cda-pdf.ts'),/NON APPROVATA/);
 });
+
+test('CF: placeToCf 3.1.3 restituisce il codice stringa; il lookup inverso deve convalidare provincia e data',async()=>{
+ const metadata={belfioreCode:'H501',province:'RM',creationDate:new Date('1884-09-11'),expirationDate:new Date('9999-12-31')};
+ const make=(record,dated=true)=>load('lib/verifica-anagrafica.ts',{'./codice-fiscale':cf,'@marketto/belfiore-connector-embedded':{},'@marketto/codice-fiscale-utils':{CodiceFiscaleUtils:class {parser={placeToCf:async(...args)=>((dated||args.length===1)&&args.at(-1)?.toUpperCase()==='ROMA')?'H501':null,cfToBirthPlace:async(code)=>{assert.equal(code.slice(11,15),'H501');assert.equal(code.slice(6,11),'80A01');return record;}};}}});
+ assert.equal((await make(metadata).verificaAnagrafica(identity)).status,'ok');
+ assert.equal((await make(metadata).verificaAnagrafica({...identity,provincia_nascita:'BO'})).status,'place');
+ assert.equal((await make({...metadata,belfioreCode:'H502'}).verificaAnagrafica(identity)).status,'place');
+ assert.equal((await make({...metadata,expirationDate:new Date('1979-12-31')}).verificaAnagrafica(identity)).status,'place');
+ assert.equal((await make(metadata,false).verificaAnagrafica(identity)).status,'ok');
+ assert.equal((await make(null).verificaAnagrafica(identity)).status,'place');
+ assert.equal((await make({belfioreCode:'H501',province:'RM'}).verificaAnagrafica(identity)).status,'place');
+});

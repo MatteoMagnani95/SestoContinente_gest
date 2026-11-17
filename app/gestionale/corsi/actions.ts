@@ -199,3 +199,14 @@ export async function saveLessonModules(form:FormData){
  if(error)redirect(detailHref(edizione,'moduli'));
  revalidatePath(`/gestionale/corsi/${edizione}`);redirect(detailHref(edizione,'moduli_salvati'));
 }
+
+// Delete only the selected edition: database foreign keys prevent removing linked history.
+export async function deleteEdition(form:FormData){
+ const {supabase}=await requireStaff();let id='';
+ try{id=uuidValue(form,'edizione_id');}catch{redirect('/gestionale/corsi?msg=dati');}
+ if(form.get('conferma')!=='on')redirect(detailHref(id,'elimina_conferma'));
+ const {data,error}=await supabase.from('edizioni_corsi').delete().eq('id',id).select('id').maybeSingle();
+ if(error||!data)redirect(detailHref(id,error?.code==='23503'?'elimina_collegati':'elimina_errore'));
+ refresh(id);revalidatePath('/gestionale/moduli/edizioni');revalidatePath('/gestionale/moduli/addebiti');
+ redirect('/gestionale/corsi?msg=eliminato');
+}

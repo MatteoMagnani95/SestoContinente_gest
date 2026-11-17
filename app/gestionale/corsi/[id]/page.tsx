@@ -5,7 +5,7 @@ import {UUID_RE,courseName,formatRome,ENROLLMENT_STATES,COURSE_STATES} from '@/l
 import {formatValue} from '@/lib/format';
 import CourseLanePicker from '@/components/CourseLanePicker';
 import LessonComposer from '@/components/LessonComposer';
-import {addEnrollment,addInstructor,createLesson,recordClassAttendance,removeInstructor,replaceResponsible,setCourseProgram,updateEdition,updateEnrollment} from '../actions';
+import {addEnrollment,addInstructor,createLesson,deleteEdition,recordClassAttendance,removeInstructor,replaceResponsible,setCourseProgram,updateEdition,updateEnrollment} from '../actions';
 
 type Person={id:string;nome:string;cognome:string};
 type Enrollment={id:string;persona_id:string;edizione_id:string;stato:string;iscritta_il:string};
@@ -17,6 +17,7 @@ const message:Record<string,string>={
  creato:'Edizione creata. Ora puoi completare istruttori, iscrizioni e calendario.',salvato:'Edizione aggiornata.',
  iscritto:'Iscrizione aggiornata.',istruttore:'Assegnazione istruttore aggiornata.',lezione_creata:'Lezione e corsie salvate.',
  presenze_salvate:'Presenze salvate.',programma_salvato:'Programma associato al corso.',
+ elimina_conferma:'Conferma esplicitamente la rimozione.',elimina_collegati:'Il corso contiene dati collegati (iscrizioni, istruttori, lezioni, attrezzature o documenti). Imposta lo stato Annullato per conservarne lo storico.',elimina_errore:'Impossibile rimuovere il corso. Verifica i permessi e la migrazione 0012.',
  vincolo:'Operazione non eseguita: controlla la capienza, i duplicati o le autorizzazioni.',
  stato:'Operazione non consentita nello stato attuale del corso.',adesione:'Per confermare serve un’adesione attiva alla stessa stagione.',
  iscrizione:'Impossibile salvare l’iscrizione: controlla i duplicati e la capienza.',
@@ -90,7 +91,11 @@ export default async function EditionDetail({params,searchParams}:{params:Promis
     <label>Note<textarea name="note" maxLength={2000} rows={2} defaultValue={ed.note??''}/></label>
     <div className="actions"><button className="button">Salva modifiche</button><Link className="button ghost" href="/gestionale/moduli/edizioni">Modifica avanzata</Link><Link className="button ghost" href="/gestionale/corsi">Annulla / Torna indietro</Link></div>
     <p className="tiny muted">Non è possibile ridurre la capienza sotto gli iscritti confermati. Conclusione e annullamento bloccano le nuove iscrizioni dalla scheda guidata.</p>
-   </form></Section>
+   </form>
+   <details className="calendar-danger"><summary className="button danger">Rimuovi edizione</summary><form action={deleteEdition} className="stack">
+    <input type="hidden" name="edizione_id" value={id}/><p>La rimozione è definitiva e possibile solo se non ci sono dati collegati. Per conservare lo storico usa lo stato Annullato.</p>
+    <label><input type="checkbox" name="conferma" required/> Confermo la rimozione di {ed.nome}</label><button type="submit" className="button danger">Elimina definitivamente</button>
+   </form></details></Section>
    <Section id="istruttori" title="Istruttori assegnati">
     <div className="course-list">{assignments.map(a=><div key={a.id} className="course-list-row"><div><strong>{displayPerson(a.persona_id,people)}</strong><p className="tiny muted">{a.ruolo==='responsabile'?'Responsabile':'Aiuto istruttore'}</p></div>
     {a.ruolo==='aiuto'&&<form action={removeInstructor}><input type="hidden" name="edizione_id" value={id}/><input type="hidden" name="assegnazione_id" value={a.id}/><button className="button ghost" type="submit">Rimuovi</button></form>}</div>)}

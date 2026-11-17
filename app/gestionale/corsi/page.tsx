@@ -27,6 +27,7 @@ export default async function Courses({searchParams}:{searchParams:Promise<{q?:s
  const totalPages=Math.max(1,Math.ceil((count??0)/pageSize));
  return <>
   <div className="page-intro course-header"><div><p className="eyebrow">Segreteria · Fase 3.2</p><h1>Gestione corsi</h1><p>Organizza le edizioni stagionali, gli istruttori, gli allievi e le lezioni da una sola scheda.</p></div><Link className="button" href="/gestionale/corsi/nuovo">+ Nuova edizione</Link></div>
+  {p.msg==='eliminato'&&<p role="status" className="notice success">Edizione rimossa.</p>}
   {p.msg==='dati'&&<p className="notice warning">Controlla i dati inseriti e riprova.</p>}
   <div className="panel course-filter"><form method="get" className="member-filters">
    <label>Nome corso<input name="q" type="search" maxLength={70} placeholder="Cerca edizione" defaultValue={q}/></label>
