@@ -35,6 +35,7 @@ export default async function CalendarPage({searchParams}:{searchParams:Promise<
  return <>
  <div className="page-intro"><p className="eyebrow">Gestione impianti · Fase 3.3</p><h1>Calendario piscine e corsie</h1>
  <p>Consulta le lezioni, controlla le occupazioni e modifica le prenotazioni. Orari Europe/Rome.</p></div>
+ {params.msg==='eliminato'&&<p className="notice success">Lezione rimossa.</p>}{params.msg==='elimina_collegati'&&<p className="notice warning">Rimuovi prima prenotazioni, presenze e moduli collegati.</p>}{params.msg==='database'&&<p className="notice error">Rimozione non completata.</p>}
  {params.msg==='dati'&&<p className="notice error">Parametri non validi. Riprova.</p>}
  {failed&&<p className="notice error">Non è stato possibile leggere tutti i dati. Controlla la migrazione 0005 e i permessi Supabase.</p>}
  {incomplete&&<p className="notice error">Sono presenti più dati del limite di visualizzazione: restringi il periodo o la piscina prima di usare questa vista per pianificare.</p>}

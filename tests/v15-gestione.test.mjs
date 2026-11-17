@@ -23,5 +23,5 @@ test('CdA: rimozione logica con conservazione documentale, nessun file cancellat
  assert.match(sql,/p_tabella='cda_verbali' THEN[\s\S]*UPDATE public\.cda_verbali SET rimosso_il=now\(\)[\s\S]*stato='bozza' AND rimosso_il IS NULL/);assert.match(sql,/OLD\.rimosso_il IS NOT NULL THEN RAISE EXCEPTION/);assert.match(read('app/organi-sociali/page.tsx'),/\.is\('rimosso_il',null\)/);assert.match(read('app/organi-sociali/archivio/page.tsx'),/Bozze rimosse/);
 });
 test('Ruoli: revoca amministrativa con protezione amministratore e quorum; nessuna cancellazione di account',()=>{
- assert.match(sql,/public\.rimuovi_ruolo_gestionale/);assert.match(sql,/p_utente=auth\.uid\(\) OR \(SELECT count\(\*\) FROM public\.ruoli_utente WHERE ruolo='amministratore'\)<=1/);assert.match(sql,/v\.stato='in_approvazione'/);assert.doesNotMatch(sql,/DELETE FROM auth\.users/i);assert.match(read('app/gestionale/utenti/page.tsx'),/action=\{removeRole\}/);
+ assert.match(sql,/public\.rimuovi_ruolo_gestionale/);assert.match(sql,/p_utente=auth\.uid\(\) OR \(SELECT count\(\*\) FROM public\.ruoli_utente WHERE ruolo='amministratore'\)<=1/);assert.match(sql,/v\.stato='in_approvazione'/);assert.doesNotMatch(sql,/DELETE FROM auth\.users/i);assert.match(read('app/gestionale/utenti/[id]/page.tsx'),/action=\{removeRole\}/);
 });

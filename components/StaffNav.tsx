@@ -10,7 +10,7 @@ export default function StaffNav({isAdmin=false}:{isAdmin?:boolean}){return <nav
  </div>)}
  <div className="staff-nav-section"><strong>Documenti e sistema</strong>
  <Link href="/documenti">Archivio documenti</Link><Link href="/gestionale/importazione">Importazione Dati</Link>
- {isAdmin&&<Link href="/gestionale/utenti">Permessi utenti</Link>}
+ {isAdmin&&<><Link href="/gestionale/utenti">Gestione utenti</Link><Link href="/gestionale/amministrazione-dati">Amministrazione dati</Link></>}
  <Link href="/gestionale/report">Report e scadenze</Link>
  {isAdmin&&<Link href="/gestionale/economia">Rendiconto economico</Link>}
  </div>

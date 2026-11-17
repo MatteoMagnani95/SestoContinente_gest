@@ -61,6 +61,7 @@ export const modules = {
     fields:[r('iscrizione_id','Corso stagionale / allievo iscritto','iscrizioni_corsi',['etichetta'],true),n('importo_dovuto','Importo dovuto (€)',true),d('scadenza','Scadenza'),a('note','Note')],columns:['iscrizione_id','importo_dovuto','scadenza']},
   pagamenti:{name:'pagamenti',table:'pagamenti',label:'Pagamenti ricevuti',description:'Versamenti associativi o corsi. Registrazioni immutabili e contabilizzate automaticamente.',
     fields:[r('persona_id','Persona','persone',['cognome','nome'],true),r('quota_id','Quota associativa (solo se pagamento quota)','quote_associative',['id']),r('addebito_corso_id','Addebito corso (solo se pagamento corso)','addebiti_corsi',['id']),n('importo','Importo (€)',true),d('data_pagamento','Data versamento',true),s('metodo','Modalità',['contanti','bonifico','pos','altro'],true),t('riferimento','Riferimento'),a('note','Note')],columns:['persona_id','importo','data_pagamento','metodo','quota_id','addebito_corso_id'],appendOnly:true,order:'data_pagamento'},
+  listino:{name:'listino',table:'listino_corsi',label:'Listino corsi',description:'Importi suggeriti per i prossimi corsi. Modificare il listino non cambia gli importi storici.',adminOnly:true,fields:[n('importo','Importo (€)',true)],columns:['importo'],order:'importo'},
   contabilita:{name:'contabilita',table:'movimenti_economici',label:'Contabilità interna',description:'Entrate e uscite; i versamenti soci sono inseriti automaticamente.',adminOnly:true,
     fields:[d('data_movimento','Data',true),s('tipo','Tipo',['entrata','uscita'],true),t('categoria','Categoria',true),t('descrizione','Descrizione',true),n('importo','Importo (€)',true),t('metodo','Modalità pagamento'),a('note','Note')],columns:['data_movimento','tipo','categoria','importo','descrizione'],order:'data_movimento'},
   comunicazioni:{name:'comunicazioni',table:'comunicazioni',label:'Comunicazioni',description:'Avvisi visibili agli utenti autorizzati nella propria area.',
@@ -75,5 +76,5 @@ export const staffSections:readonly {title:string;items:readonly ModuleKey[]}[]=
  {title:'Corsi e didattica',items:['corsi','edizioni','iscrizioni','istruttori','qualifiche','programmi','versioni','presenze']},
  {title:'Impianti e calendario',items:['piscine','corsie','calendario','prenotazioni']},
  {title:'Attrezzature',items:['attrezzature','revisioni','consegne']},
- {title:'Amministrazione',items:['addebiti','contabilita','comunicazioni','stagioni','promemoria']}
+ {title:'Amministrazione',items:['addebiti','listino','contabilita','comunicazioni','stagioni','promemoria']}
 ];

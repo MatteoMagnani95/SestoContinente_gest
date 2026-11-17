@@ -1,7 +1,7 @@
 'use server';
 import {redirect} from 'next/navigation';
 import {revalidatePath} from 'next/cache';
-import {requireStaff} from '@/lib/security';
+import {requireStaff,requireAdmin} from '@/lib/security';
 import {paymentAmount,validPaymentDate} from '@/lib/payment-tools';
 
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -51,4 +51,13 @@ export async function recordGuidedPayment(form:FormData){
  revalidatePath('/gestionale/soci');
  revalidatePath('/gestionale/economia');
  back(form,'salvato');
+}
+
+export async function correctPayment(form:FormData){
+ const {supabase}=await requireAdmin();const id=txt(form,'id'),reason=txt(form,'motivo');
+ if(!uuid.test(id))redirect('/gestionale/incassi?msg=dati');
+ if(form.get('conferma')!=='on'||reason.length<5||reason.length>1000)redirect(`/gestionale/incassi/${id}?msg=dati`);
+ const {error}=await supabase.rpc('admin_rettifica_incasso',{p_id:id,p_motivo:reason});
+ if(error)redirect(`/gestionale/incassi/${id}?msg=errore`);
+ revalidatePath('/', 'layout');redirect('/gestionale/incassi?msg=rettificato');
 }

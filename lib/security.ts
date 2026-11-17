@@ -16,6 +16,7 @@ export function queryMessage(search?: string) {
     registrazione:'Impossibile completare la registrazione. Verifica i dati o riprova.',
     password:'La password deve avere almeno 10 caratteri e corrispondere alla conferma.',
     account:'Per procedere devi prima accedere.',
+    account_disattivato:'Account non abilitato oppure non verificabile. Contatta la segreteria.',
     email:'Devi verificare il tuo indirizzo email prima di inviare la domanda.',
     verifica:'Non è stato possibile confermare l’email. Richiedi un nuovo messaggio di verifica.',
     cf:'Il CF inserito non coincide con i dati anagrafici oppure il luogo di nascita non è verificabile. Controlla il documento ufficiale, il Comune/Stato e la provincia.',
@@ -39,6 +40,8 @@ export async function requireUser() {
   const supabase = await createClient();
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error || !user) redirect('/accedi?msg=account');
+  const {data:enabled,error:statusError}=await supabase.rpc('account_corrente_abilitato');
+  if(statusError||enabled!==true)redirect('/accedi?msg=account_disattivato');
   return { supabase, user };
 }
 export async function requireStaff() {
@@ -55,4 +58,11 @@ export async function requireBoard(){
  const {data}=await supabase.from('ruoli_utente').select('ruolo').eq('utente_id',user.id).in('ruolo',['amministratore','segreteria','consigliere_cda']);
  if(!data?.length)redirect('/?msg=permessi');
  return {supabase,user,isStaff:data.some(r=>['amministratore','segreteria'].includes(r.ruolo))};
+}
+
+export async function requireAdmin(){
+ const {supabase,user}=await requireUser();
+ const {data,error}=await supabase.rpc('is_admin');
+ if(error||data!==true)redirect('/gestionale?msg=permessi');
+ return {supabase,user};
 }

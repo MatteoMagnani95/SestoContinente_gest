@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import RemoveRecord from '@/components/RemoveRecord';
 import {notFound} from 'next/navigation';
 import {requireStaff} from '@/lib/security';
 import {datetimeForInput} from '@/lib/format';
@@ -17,6 +18,7 @@ export default async function EditLesson({params,searchParams}:{params:Promise<{
  const {id}=await params;const {msg}=await searchParams;
  if(!UUID_RE.test(id))notFound();
  const {supabase}=await requireStaff();
+ const {data:admin}=await supabase.rpc('is_admin');
  const [{data:lesson,error},{data:bookings},{data:pools},{data:lanes}]=await Promise.all([
   supabase.from('lezioni').select('id,titolo,edizione_id,inizio,fine,piscina_id,esercizi,materiale,note,annullata_il').eq('id',id).maybeSingle(),
   supabase.from('prenotazioni_corsie').select('corsia_id').eq('lezione_id',id).eq('stato','confermata').limit(30),
@@ -55,6 +57,7 @@ export default async function EditLesson({params,searchParams}:{params:Promise<{
  <details><summary>Voglio annullare questa lezione</summary><form action={cancelLesson} className="calendar-cancel-form"><input type="hidden" name="lezione_id" value={id}/><button className="button danger" type="submit">Conferma annullamento</button></form></details>
  </section>
  </>:<section className="panel"><h2>Dettaglio lezione</h2><div className="info-row"><span>Corso</span><strong>{edition?.nome??'—'}</strong></div><div className="info-row"><span>Inizio</span><strong>{formatRome(lesson.inizio)}</strong></div><div className="info-row"><span>Fine</span><strong>{formatRome(lesson.fine)}</strong></div><div className="info-row"><span>Corsie prenotate</span><strong>{(bookings??[]).map(b=>(lanes??[]).find(l=>l.id===b.corsia_id)?.numero).filter(Boolean).join(', ')||'Nessuna'}</strong></div></section>}
+ {admin===true&&<section className="panel"><h2>Rimozione record</h2><p>Rimuovi prima eventuali prenotazioni, presenze e moduli associati; in alternativa annulla la lezione per conservarne lo storico.</p><RemoveRecord moduleKey="calendario" id={id} back="calendario"/></section>}
  <p className="tiny muted">I cambi di orario generano notifiche interne ai partecipanti e agli istruttori assegnati tramite il trigger già presente in Supabase. L'invio email richiede configurazione separata.</p>
  </>;
 }

@@ -1,7 +1,7 @@
 'use server';
 import {revalidatePath} from 'next/cache';
 import {redirect} from 'next/navigation';
-import {requireUser} from '@/lib/security';
+import {requireUser,requireAdmin} from '@/lib/security';
 const text=(f:FormData,n:string)=>String(f.get(n)??'').trim();
 const validId=(v:string)=>/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 const msg=(error:{code?:string}|null)=>!error?'ok':error.code==='P3416'?'posti':error.code==='P3415'?'stato':error.code==='42501'?'permessi':'errore';
@@ -26,4 +26,11 @@ export async function decideEvent(form:FormData){
  const {supabase}=await requireUser();const event=text(form,'evento_id'),id=text(form,'iscrizione_id'),decision=text(form,'esito');
  if(!validId(event)||!validId(id)||!['approvata','respinta','annullata'].includes(decision))finish('/gestione-eventi','dati');
  const {error}=await supabase.rpc('area_soci_decidi',{p_evento:event,p_iscrizione:id,p_esito:decision});finish('/gestione-eventi',msg(error));
+}
+
+export async function removeEventRecord(form:FormData){
+ const {supabase}=await requireAdmin();const event=text(form,'evento_id'),id=text(form,'iscrizione_id');
+ if(!validId(event)||(id&&!validId(id))||form.get('conferma')!=='on')finish('/gestione-eventi','dati');
+ const {error}=await supabase.rpc('admin_rimuovi_evento',{p_evento:event,p_iscrizione:id||null});
+ finish('/gestione-eventi',error?'rimozione_collegati':'rimosso');
 }

@@ -9,7 +9,7 @@ type Course={id:string;nome:string};
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const euros=(amount:string|number)=>Number(amount).toLocaleString('it-IT',{style:'currency',currency:'EUR'});
 const fmtDate=(date:string|null)=>date?date.split('-').reverse().join('/'):'—';
-const feedback:Record<string,string>={eliminato:'Quota rimossa.',elimina_collegati:'Quota non rimovibile: contiene dati collegati o versamenti.',elimina_conferma:'Conferma la rimozione.',
+const feedback:Record<string,string>={rettificato:'Registrazione errata rimossa; saldi aggiornati e storico conservato.',eliminato:'Quota rimossa.',elimina_collegati:'Quota non rimovibile: contiene dati collegati o versamenti.',elimina_conferma:'Conferma la rimozione.',
  salvato:'Versamento registrato e movimento economico contabilizzato. Il saldo è stato aggiornato.',
  dati:'Controlla importo, data, metodo e dati del versamento.',
  eccede:'L’importo supera il residuo dovuto. Aggiorna la pagina e controlla il saldo.',
@@ -29,6 +29,7 @@ function linkFor(p:{tab:string;stagione:string;stato:string;persona:string},page
 }
 export default async function Incassi({searchParams}:{searchParams:Promise<{tab?:string;stagione?:string;stato?:string;persona?:string;p?:string;msg?:string}>}){
  const {supabase}=await requireStaff();
+ const {data:admin}=await supabase.rpc('is_admin');
  const p=await searchParams;
  const {data:seasons,error:seasonError}=await supabase.from('stagioni').select('id,nome,attiva').order('dal',{ascending:false});
  const selectedSeason=(seasons??[]).find(s=>s.id===p.stagione)?.id??(seasons??[]).find(s=>s.attiva)?.id??(seasons??[])[0]?.id??'';
@@ -112,9 +113,9 @@ export default async function Incassi({searchParams}:{searchParams:Promise<{tab?
    </div></div>
   </section>}
   <section className="panel"><h2>Ultimi 15 versamenti {personFilter?'del socio':'registrati'}</h2>
-   <p className="tiny muted">È un elenco delle registrazioni più recenti, non un rendiconto completo. Per il rendiconto usa l'area amministrativa.</p>
-   {recentError?<p className="notice error">Impossibile leggere gli ultimi incassi.</p>:<div className="table-panel"><table><thead><tr><th>Data</th><th>Socio</th><th>Tipo</th><th>Importo</th><th>Metodo</th><th>Riferimento</th></tr></thead><tbody>
-    {[...(recent??[])].sort((a,b)=>(historyNames.get(a.persona_id)??'').localeCompare(historyNames.get(b.persona_id)??'','it')).map(r=><tr key={r.id}><td>{fmtDate(r.data_pagamento)}</td><td>{historyNames.get(r.persona_id)??r.persona_id.slice(0,8)}</td><td>{r.quota_id?'Quota':'Corso'}</td><td>{euros(r.importo)}</td><td>{r.metodo}</td><td>{r.riferimento??'—'}</td></tr>)}
+   {admin===true&&<Link href="/gestionale/archivio-incassi">Tutti i versamenti e rettifiche</Link>}<p className="tiny muted">È un elenco delle registrazioni più recenti, non un rendiconto completo. Per il rendiconto usa l'area amministrativa.</p>
+   {recentError?<p className="notice error">Impossibile leggere gli ultimi incassi.</p>:<div className="table-panel"><table><thead><tr><th>Data</th><th>Socio</th><th>Tipo</th><th>Importo</th><th>Metodo</th><th>Riferimento</th>{admin===true&&<th>Azioni</th>}</tr></thead><tbody>
+    {[...(recent??[])].sort((a,b)=>(historyNames.get(a.persona_id)??'').localeCompare(historyNames.get(b.persona_id)??'','it')).map(r=><tr key={r.id}><td>{fmtDate(r.data_pagamento)}</td><td>{historyNames.get(r.persona_id)??r.persona_id.slice(0,8)}</td><td>{r.quota_id?'Quota':'Corso'}</td><td>{euros(r.importo)}</td><td>{r.metodo}</td><td>{r.riferimento??'—'}</td>{admin===true&&<td><Link href={`/gestionale/incassi/${r.id}`}>Modifica / rettifica</Link></td>}</tr>)}
     {!recent?.length&&<tr><td colSpan={6}>Nessun pagamento registrato.</td></tr>}
    </tbody></table></div>}
   </section>

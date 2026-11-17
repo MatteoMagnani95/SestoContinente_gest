@@ -38,7 +38,7 @@ function FieldInput({field,value,references}:{field:Field;value?:unknown;referen
  {field.hint&&<span className="hint">{field.hint}</span>}
  </label>;
 }
-function Editor({module,moduleKey,record,references}:{module:Module;moduleKey:string;record?:Row;references:Record<string,Row[]>}){
+function Editor({module,moduleKey,record,references,admin=false}:{module:Module;moduleKey:string;record?:Row;references:Record<string,Row[]>;admin?:boolean}){
  return <><form action={saveModuleRecord} className="module-form stack">
  <input type="hidden" name="modulo" value={moduleKey}/>
  {record&&<input type="hidden" name="id" value={record.id}/>}
@@ -46,6 +46,7 @@ function Editor({module,moduleKey,record,references}:{module:Module;moduleKey:st
  {moduleKey==='anagrafiche'&&<CodiceFiscaleAssist/>}<div className="form-actions"><button type="submit" className="button">{record?'Salva modifiche':'Crea nuovo'}</button><CancelEditButton/></div>
  </form>
  {record&&!module.appendOnly&&<RemoveRecord moduleKey={moduleKey} id={record.id}/>}
+ {record&&admin&&<p><Link href={`/gestionale/amministrazione-dati/dipendenze/${module.table}/${record.id}`}>Visualizza dati collegati</Link></p>}
 </>;
 }
 function bookingConflictText(corsia?:string,inizio?:string,fine?:string):string{
@@ -61,6 +62,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  if(modulo==='pagamenti')redirect('/gestionale/incassi');
  const module:Module=modules[modulo];
  const {supabase,user}=await requireStaff();
+ const {data:isAdministrator}=await supabase.rpc('is_admin');
  if(module.adminOnly){
   const {data}=await supabase.from('ruoli_utente').select('ruolo').eq('utente_id',user.id).eq('ruolo','amministratore').maybeSingle();
   if(!data)redirect('/gestionale?msg=permessi');
@@ -164,7 +166,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  {module.columns.map(c=><td key={c}>{references[module.fields.find(f=>f.name===c)?.ref?.table??'']?.find(x=>x.id===row[c])
  ? labelOf(references[module.fields.find(f=>f.name===c)?.ref?.table??''].find(x=>x.id===row[c])!,module.fields.find(f=>f.name===c)?.ref?.labels??['id'])
  : c==='persona_id'&&row.sort_cognome?`${row.sort_cognome} ${row.sort_nome??''}`: modulo==='addebiti'&&c==='iscrizione_id'?'Iscrizione non disponibile':c.endsWith('_id')?String(row[c]??'—').slice(0,8):formatValue(row[c],c)}</td>)}
- {!module.appendOnly&&<td><details className="row-editor" open={editId===row.id||undefined}><summary>Modifica</summary><div className="row-editor-pop"><Editor module={module} moduleKey={modulo} record={row} references={references}/></div></details></td>}
+ {!module.appendOnly&&<td><details className="row-editor" open={editId===row.id||undefined}><summary>Modifica</summary><div className="row-editor-pop"><Editor module={module} moduleKey={modulo} record={row} references={references} admin={isAdministrator===true}/></div></details></td>}
  </tr>)}
  {!rows.length&&<tr><td colSpan={module.columns.length+1} className="empty-cell">Nessun record trovato.</td></tr>}
  </tbody></table></div>}
