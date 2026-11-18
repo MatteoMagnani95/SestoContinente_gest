@@ -77,7 +77,7 @@ export default async function EditionDetail({params,searchParams}:{params:Promis
  const {msg}=p;
  return <>
   <Link className="back-link" href="/gestionale/corsi">← Tutte le edizioni</Link>
-  <div className="page-intro course-header"><div><p className="eyebrow">Scheda corso · {cat?courseName(cat.tipo,cat.livello):'Attività'}</p><h1>{ed.nome}</h1><p>{season?.nome??'Stagione'} · {formatValue(ed.inizio)} – {formatValue(ed.fine)} · <strong>{ed.stato}</strong></p></div><Link className="button ghost" href="/gestionale/calendario-visivo">Calendario generale</Link></div>
+  <div className="page-intro course-header"><div><p className="eyebrow">Scheda corso · {cat?courseName(cat.tipo,cat.livello):'Attività'}</p><h1>{ed.nome}</h1><p>{season?.nome??'Stagione'} · {formatValue(ed.inizio)} – {formatValue(ed.fine)} · <strong>{ed.stato}</strong></p></div><div className="buttons"><Link className="button" href={`/comunicazioni/corsi/${id}`}>Mailing list · Scrivi ai corsisti</Link><Link className="button ghost" href="/gestionale/calendario-visivo">Calendario generale</Link></div></div>
   {msg&&message[msg]&&<p role="status" className={`notice ${['eliminato','creato','salvato','iscritto','istruttore','lezione_creata','presenze_salvate','programma_salvato'].includes(msg)?'success':'warning'}`}>{message[msg]}</p>}
   {(enrollError||teacherError||lessonError)&&<p className="notice error">Una sezione non è stata caricata correttamente. Verifica Supabase e le migrazioni.</p>}
   <div className="course-overview">

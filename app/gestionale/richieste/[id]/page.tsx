@@ -38,6 +38,7 @@ export default async function Review({params,searchParams}:{params:Promise<{id:s
       <Row label="Presa visione" value={r.presa_visione?(isTestApplication(r)?'Simulata (collaudo)':'Registrata'):'Non registrata'}/>
       <Row label="Statuto" value={r.flag_statuto?(r.versione_statuto??'Versione mancante'):'Non registrato'}/><Row label="Informativa privacy" value={r.flag_privacy?(r.versione_privacy??'Versione mancante'):'Non registrata'}/>
       <Row label="Data invio" value={formatDate(r.inviata_il)}/>
+      {r.stato==='approvata'&&r.persona_id&&<Link className="button" href={`/comunicazioni/soci/${r.persona_id}`}>Prepara email di benvenuto</Link>}
       {r.nota_pubblica && <div className="notice">Comunicazione al richiedente: {r.nota_pubblica}</div>}
       {r.stato==='inviata' && <form action={takeApplicationAction} className="actions"><input type="hidden" name="id" value={id}/><button type="submit" className="button">Prendi in carico</button></form>}
       {r.stato==='in_verifica' && <ApplicationReviewForm key={r.id} id={r.id} testMode={testMode} checks={checks}/>}

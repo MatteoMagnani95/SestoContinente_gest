@@ -1,7 +1,10 @@
 import {NextResponse} from 'next/server';
 import {createClient} from '@supabase/supabase-js';
+import {deliverMail,currentMailMode} from '@/lib/email-service';
+import {validEmail} from '@/lib/email-tools';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
+export const maxDuration=60;
 export async function GET(request:Request){
  const secret=process.env.CRON_SECRET;
  if(!secret||request.headers.get('authorization')!==`Bearer ${secret}`)
@@ -14,25 +17,38 @@ export async function GET(request:Request){
   db.rpc('genera_promemoria'), db.rpc('genera_promemoria_organizzativi'), db.rpc('genera_promemoria_tessere')
  ]);
  if(err1||err2||err3)return NextResponse.json({ok:false,error:'Generazione notifiche non riuscita'},{status:500});
- let sent=0;let failed=0;
- const resendKey=process.env.RESEND_API_KEY;const from=process.env.EMAIL_FROM;
- if(resendKey&&from){
-  const {data:notifications}=await db.from('notifiche')
-   .select('id,utente_id,titolo,messaggio').is('email_inviata_il',null).order('creata_il',{ascending:true}).limit(50);
+ let sent=0;let failed=0;let skipped=0;
+ // Abilitazione separata: attivare solo dopo la bonifica dei dati di collaudo.
+ const resendKey=process.env.RESEND_API_KEY,from=process.env.EMAIL_FROM;
+ const since=process.env.EMAIL_NOTIFICATIONS_SINCE??'';
+ const sinceValid=/^\d{4}-\d{2}-\d{2}T/.test(since)&&Number.isFinite(Date.parse(since));
+ const automaticEnabled=process.env.EMAIL_AUTOMATIC_NOTIFICATIONS==='true'&&currentMailMode()==='live'&&Boolean(resendKey&&from)&&sinceValid;
+ if(automaticEnabled){
+  // Solo notifiche recenti, per impedire invii di arretrati dopo il collaudo.
+  const recent=new Date(Math.max(Date.parse(since),Date.now()-7*86400000)).toISOString();
+  const {data:notifications,error:readError}=await db.from('notifiche')
+   .select('id,utente_id,tipo,riferimento,titolo,messaggio').is('email_inviata_il',null).gte('creata_il',recent).order('creata_il',{ascending:true}).limit(50);
+  if(readError)return NextResponse.json({ok:false,error:'Lettura notifiche non riuscita'},{status:500});
+  const deadline=Date.now()+40000;
   for(const n of notifications??[]){
-   const {data:account}=await db.auth.admin.getUserById(n.utente_id);
-   const recipient=account.user?.email;
-   if(!recipient)continue;
-   try{
-    const res=await fetch('https://api.resend.com/emails',{
-     method:'POST',headers:{Authorization:`Bearer ${resendKey}`,'Content-Type':'application/json'},
-     body:JSON.stringify({from,to:[recipient],subject:n.titolo,text:`${n.messaggio}\n\nAccedi al gestionale: ${process.env.NEXT_PUBLIC_SITE_URL||'https://sesto-continente-gest.vercel.app/'}`})
-    });
-    if(res.ok){await db.from('notifiche').update({email_inviata_il:new Date().toISOString()}).eq('id',n.id);sent++;}
-    else failed++;
-   }catch{failed++;}
+   if(Date.now()>deadline)break;
+   const {data:account,error:accountError}=await db.auth.admin.getUserById(n.utente_id);
+   const u=account?.user,recipient=validEmail(u?.email);
+   if(accountError||!u||!recipient||!u.email_confirmed_at||('deleted_at' in u&&u.deleted_at)||('banned_until' in u&&typeof u.banned_until==='string'&&Date.parse(u.banned_until)>Date.now())){skipped++;continue;}
+   if(n.tipo==='quota_associativa'||n.tipo==='quota_corso'){
+    const id=String(n.riferimento??'').split(':')[0];
+    const {data:balance,error}=await db.from(n.tipo==='quota_associativa'?'saldi_quote':'saldi_corsi').select('residuo,persona_id').eq('id',id).maybeSingle();
+    if(error||!balance||Number(balance.residuo)<=0){skipped++;continue;}
+    const {data:linked,error:linkError}=await db.from('collegamenti_persone').select('persona_id').eq('utente_id',n.utente_id).eq('persona_id',balance.persona_id).maybeSingle();
+    if(linkError||!linked){skipped++;continue;}
+   }
+   const result=await deliverMail({recipients:[recipient],subject:n.titolo,body:`${n.messaggio}${process.env.NEXT_PUBLIC_SITE_URL?`\n\nAccedi al gestionale: ${process.env.NEXT_PUBLIC_SITE_URL}`:''}`,key:`notifica/${n.id}`});
+   if(!result.error&&result.mode==='live'&&result.accepted===1){const {error}=await db.from('notifiche').update({email_inviata_il:new Date().toISOString()}).eq('id',n.id);if(error)failed++;else sent++;}
+   else {failed++;if(result.error)break;}
+   // Resend applica anche rate limit per richieste al secondo.
+   await new Promise(resolve=>setTimeout(resolve,600));
   }
  }
  return NextResponse.json({ok:true,createPersonal:personal??0,createOrganizational:organizational??0,createCards:cards??0,emailSent:sent,emailFailed:failed,
-  emailConfigured:Boolean(resendKey&&from)},{headers:{'Cache-Control':'no-store'}});
+  emailConfigured:Boolean(resendKey&&from),automaticEnabled,emailSkipped:skipped},{headers:{'Cache-Control':'no-store'}});
 }

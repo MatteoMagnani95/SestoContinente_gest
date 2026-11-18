@@ -122,7 +122,7 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
   <div className="page-intro member-heading"><div><p className="eyebrow">Segreteria · Scheda unificata</p>
    <h1>{person.cognome} {person.nome}</h1>
    <p>{person.codice_fiscale??'Codice fiscale non registrato'} · {person.email??person.telefono??'Recapiti da completare'}</p></div>
-   <Link className="button ghost" href="/gestionale/soci">Torna all’elenco</Link></div>
+   <div className="buttons"><Link className="button" href={`/comunicazioni/soci/${id}`}>Scrivi email al socio</Link><Link className="button ghost" href="/gestionale/soci">Torna all’elenco</Link></div></div>
   {msg&&statusMessage[msg]&&<p role="status" className={`notice ${['salvato','adesione_creata'].includes(msg)?'success':'warning'}`}>{statusMessage[msg]}</p>}
   {partialErrors&&<p className="notice warning">Alcune sezioni non sono state caricate. Verifica che le migrazioni 0002 e 0003 siano applicate.</p>}
   <div className="member-summary-grid">
@@ -148,7 +148,7 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
      <form action={updateMemberProfile} className="stack"><input type="hidden" name="id" value={person.id}/>
       <div className="form-grid">
        {(['nome','cognome','codice_fiscale','luogo_nascita','indirizzo','cap','comune','telefono','email'] as const).map(key=>
-        <label key={key}>{({nome:'Nome',cognome:'Cognome',codice_fiscale:'Codice fiscale',luogo_nascita:'Comune di nascita (o città estera)',indirizzo:'Indirizzo di residenza',cap:'CAP',comune:'Comune di residenza',telefono:'Telefono',email:'Email'})[key]}
+        <label key={key}>{({nome:'Nome',cognome:'Cognome',codice_fiscale:'Codice fiscale',luogo_nascita:'Comune di nascita (o città estera)',indirizzo:'Indirizzo di residenza',cap:'CAP',comune:'Comune di residenza',telefono:'Telefono',email:'Email di contatto'})[key]}
          <input name={key} type={key==='email'?'email':'text'} maxLength={key==='email'?254:key==='indirizzo'?250:key==='luogo_nascita'?150:100}
           required={key==='nome'||key==='cognome'} defaultValue={person[key]??''}/></label>)}
        <label>Data di nascita<input name="data_nascita" type="date" defaultValue={person.data_nascita??''}/></label>
