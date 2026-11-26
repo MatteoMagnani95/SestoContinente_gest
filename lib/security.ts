@@ -8,7 +8,12 @@ export const statoLabel: Record<Stato,string> = {
 };
 export function formatDate(value: string | null | undefined) {
   if (!value) return '—';
-  return new Date(value.length === 10 ? `${value}T12:00:00` : value).toLocaleDateString('it-IT');
+  // Date-only fields are calendar dates; instants must be displayed in Italy,
+  // regardless of the timezone of the Next.js server.
+  const dateOnly=/^\d{4}-\d{2}-\d{2}$/.test(value);
+  const date=new Date(dateOnly?`${value}T12:00:00Z`:value);
+  if(!Number.isFinite(date.getTime())||(dateOnly&&date.toISOString().slice(0,10)!==value))return '—';
+  return date.toLocaleDateString('it-IT',{timeZone:'Europe/Rome'});
 }
 export function queryMessage(search?: string) {
   const values: Record<string,string> = {
