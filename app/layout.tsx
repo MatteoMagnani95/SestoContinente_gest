@@ -9,6 +9,7 @@ import './data-ui.css';
 import './public-ui.css';
 import './secretariat.css';
 import './calendar-ui.css';
+import './association-ui.css';
 export const metadata: Metadata = {
   title: { default: 'Sesto Continente | Gestionale', template: '%s | Sesto Continente' },
   description: 'Area riservata del gestionale associativo Sesto Continente.',
