@@ -35,3 +35,6 @@ Riutilizzati DataTable mobileCards, SearchableSelect, Drawer/ConfirmDialog, Edit
 
 ## Fase 4D
 Calendario in app/calendar-ui.css, controlli con PageHeader/Drawer, viste con etichette, preflight condiviso CourseLanePicker, BookingConflictPreview, CourseScheduleFields; riuso DataTable mobileCards e SearchableSelect. Vedi [CALENDAR.md](CALENDAR.md).
+
+## Fase 4E
+Riutilizzati PageHeader, Drawer, ConfirmDialog, EditForm, DataTable, Pagination, SearchableSelect, StatusBadge e MetricCard. Nuove card eventi con capienza e tab, BoardAdmissions/BoardFile/BoardDraftFields e DocumentDestination. Vedi [ASSOCIATION.md](ASSOCIATION.md).
