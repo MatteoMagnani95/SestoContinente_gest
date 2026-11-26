@@ -43,7 +43,7 @@ export default async function Incassi({searchParams}:{searchParams:Promise<{tab?
  const {data:seasons,error:seasonError}=await tutteLePagine((da,a)=>supabase.from('stagioni').select('id,nome,attiva').order('dal',{ascending:false}).order('id').range(da,a));
  const {data:allPeople,error:peopleError}=await tutteLePagine((da,a)=>supabase.from('persone').select('id,nome,cognome').order('cognome').order('nome').order('id').range(da,a));
  const dal=dateFilter(p.dal),al=dateFilter(p.al),debt=p.debito&&uuid.test(p.debito)?p.debito:'';
- const selectedSeason=(seasons??[]).find(s=>s.id===p.stagione)?.id??(seasons??[]).find(s=>s.attiva)?.id??(seasons??[])[0]?.id??'';
+ const selectedSeason=p.stagione?((seasons??[]).find(s=>s.id===p.stagione)?.id??''):((seasons??[]).find(s=>s.attiva)?.id??(seasons??[])[0]?.id??'');
  const tab=p.tab==='corso'?'corso':'quota';
  const status=['non_pagata','parziale','pagata','residuo'].includes(p.stato??'')?p.stato!:'tutte';
  const personFilter=p.persona&&uuid.test(p.persona)?p.persona:'';
@@ -82,11 +82,11 @@ export default async function Incassi({searchParams}:{searchParams:Promise<{tab?
  return <>
   <div className="page-intro"><p className="eyebrow">Segreteria · Contabilità</p><h1>Incassi e saldi</h1>
    <p>Versamenti associativi e corsi, saldi aggiornati dal database e contabilizzazione automatica.</p></div>
-  <div className="notice warning">Le registrazioni sono definitive e producono un movimento contabile. Usa importi reali soltanto dopo il collaudo su un progetto Supabase separato.</div>
+  <div className="notice warning">Le registrazioni sono definitive e producono un movimento contabile. Verifica la ricezione del pagamento prima della conferma.</div>
   {p.msg&&feedback[p.msg]&&<p role="status" className={`notice ${p.msg==='salvato'?'success':'warning'}`}>{feedback[p.msg]}</p>}
   <form className="panel payment-filters" action="/gestionale/incassi" method="get">
    <label>Tipologia<select name="tab" defaultValue={tab}><option value="quota">Quote associative</option><option value="corso">Quote corsi</option></select></label>
-   <label>Stagione<select name="stagione" defaultValue={selectedSeason}>{(seasons??[]).map(s=><option key={s.id} value={s.id}>{s.nome}{s.attiva?' (attiva)':''}</option>)}</select></label>
+   <label>Stagione<select name="stagione" defaultValue={selectedSeason} required><option value="">Seleziona stagione…</option>{(seasons??[]).map(s=><option key={s.id} value={s.id}>{s.nome}{s.attiva?' (attiva)':''}</option>)}</select></label>
    <label>Stato<select name="stato" defaultValue={status}><option value="tutte">Tutti</option><option value="residuo">Con residuo da incassare</option><option value="non_pagata">Non pagate</option><option value="parziale">Parziali</option><option value="pagata">Pagate</option></select></label>
    <div className="sc-field"><label htmlFor="payment-person">Socio</label><SearchableSelect id="payment-person" name="persona" label="Socio" value={personFilter} options={(allPeople??[]).map(p=>({value:p.id,label:p.cognome+" "+p.nome}))}/></div><label>Scadenza dal<input type="date" name="dal" defaultValue={dal}/></label><label>Scadenza al<input type="date" name="al" defaultValue={al}/></label>
    <button className="button" type="submit">Applica</button><ButtonLink variant="secondary" href="/gestionale/incassi">Azzera filtri</ButtonLink>
@@ -94,7 +94,7 @@ export default async function Incassi({searchParams}:{searchParams:Promise<{tab?
    <Link className="button ghost" href="/gestionale/moduli/addebiti">Gestisci addebiti corsi</Link>
   </form>
   {seasonError&&<p className="notice error">Impossibile leggere le stagioni.</p>}
-  {!selectedSeason?<p className="notice warning">Crea prima una stagione sportiva per registrare i versamenti.</p>:null}
+  {!selectedSeason?<p className="notice warning">{p.stagione?'La stagione selezionata non è disponibile. Scegline un’altra.':'Crea prima una stagione sportiva per registrare i versamenti.'}</p>:null}
   {errorMessage&&<p className="notice error">{errorMessage}</p>}
   {peopleError&&<Alert tone="warning">Elenco soci non disponibile.</Alert>}
   {totals?<div className="sc-metrics"><MetricCard area="finance" icon="wallet" label="Totale dovuto" value={euros(totals.due)}/><MetricCard area="finance" icon="wallet" label="Totale incassato" value={euros(totals.paid)}/><MetricCard area="finance" icon="clock" label="Residuo complessivo" value={euros(totals.residue)}/><MetricCard area="finance" icon="check" label="Posizioni saldate" value={totals.settled}/><MetricCard area="finance" icon="clipboard" label="Da saldare" value={totals.open}/></div>:selectedSeason&&<Alert tone="warning">Totali delle posizioni filtrate non disponibili.</Alert>}
@@ -128,7 +128,7 @@ export default async function Incassi({searchParams}:{searchParams:Promise<{tab?
   <section className="panel"><h2>Ultimi 15 versamenti {personFilter?'del socio':'registrati'}</h2>
    {admin===true&&<Link href={'/gestionale/archivio-incassi'+(personFilter?'?persona='+personFilter:'')}>Storico completo dei versamenti e rettifiche</Link>}<p className="tiny muted">È un elenco delle registrazioni più recenti, non un rendiconto completo. Per il rendiconto usa l'area amministrativa.</p>
    {recentError?<p className="notice error">Impossibile leggere gli ultimi incassi.</p>:<div className="table-panel"><table><thead><tr><th>Data</th><th>Socio</th><th>Tipo</th><th>Importo</th><th>Metodo</th><th>Riferimento</th>{admin===true&&<th>Azioni</th>}</tr></thead><tbody>
-    {(recent??[]).map(r=><tr key={r.id}><td>{fmtDate(r.data_pagamento)}</td><td>{historyNames.get(r.persona_id)??r.persona_id.slice(0,8)}</td><td>{r.quota_id?'Quota':'Corso'}</td><td>{euros(r.importo)}</td><td>{methodLabel(r.metodo)}</td><td>{r.riferimento??'—'}</td>{admin===true&&<td><Link href={`/gestionale/incassi/${r.id}`}>Modifica / rettifica</Link></td>}</tr>)}
+    {(recent??[]).map(r=><tr key={r.id}><td>{fmtDate(r.data_pagamento)}</td><td>{historyNames.get(r.persona_id)??'Nominativo non disponibile'}</td><td>{r.quota_id?'Quota':'Corso'}</td><td>{euros(r.importo)}</td><td>{methodLabel(r.metodo)}</td><td>{r.riferimento??'—'}</td>{admin===true&&<td><Link href={`/gestionale/incassi/${r.id}`}>Rettifica</Link></td>}</tr>)}
     {!recent?.length&&<tr><td colSpan={6}>Nessun pagamento registrato.</td></tr>}
    </tbody></table></div>}
   </section>

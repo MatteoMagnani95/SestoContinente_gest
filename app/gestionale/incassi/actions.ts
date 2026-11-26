@@ -56,9 +56,9 @@ export async function recordGuidedPayment(form:FormData){
 
 export async function correctPayment(form:FormData){
  const {supabase}=await requireAdmin();const id=txt(form,'id'),reason=txt(form,'motivo');
- if(!uuid.test(id))redirect('/gestionale/incassi?msg=dati');
- if(form.get('conferma')!=='on'||reason.length<5||reason.length>1000)redirect(`/gestionale/incassi/${id}?msg=dati`);
+ if(!uuid.test(id))return {error:'Versamento non valido.'};
+ if(form.get('conferma')!=='on'||reason.length<5||reason.length>1000)return {error:'Indica la motivazione e conferma la rettifica.'};
  const {error}=await supabase.rpc('admin_rettifica_incasso',{p_id:id,p_motivo:reason});
- if(error)redirect(`/gestionale/incassi/${id}?msg=errore`);
+ if(error)return {error:'Rettifica non confermata. Controlla lo storico prima di riprovare.'};
  revalidatePath('/', 'layout');redirect('/gestionale/incassi?msg=rettificato');
 }

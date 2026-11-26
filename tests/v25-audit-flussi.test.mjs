@@ -41,7 +41,7 @@ test('Istruttore: campo vuoto o manipolato non registra assenze; scelta no espli
 test('Esportazione CSV: protezione delle formule precedute da spazi, tabulazioni o ritorni a capo',async()=>{
  const values=['=1+1','  =1+1','\t@SUM(A1)','\n+1','\uFEFF-1','testo normale','testo "citato"'];
  const query={select:()=>query,order:()=>query,range:async()=>({data:values.map((nome,i)=>({id:String(i),nome})),error:null})};
- const {GET}=load('app/gestionale/esporta/[modulo]/route.ts',{'@/lib/security':{requireStaff:async()=>({supabase:{from:()=>query},user:{}})},'@/lib/modules':{isModuleKey:()=>true,modules:{test:{table:'test',fields:[{name:'nome'}]}}}});
+ const {GET}=load('app/gestionale/esporta/[modulo]/route.ts',{'@/lib/finance-ui':{movementFilter:()=>({})},'@/lib/course-tools':{UUID_RE:/^[0-9a-f-]{36}$/i},'@/lib/security':{requireStaff:async()=>({supabase:{from:()=>query},user:{}})},'@/lib/modules':{isModuleKey:()=>true,modules:{test:{table:'test',fields:[{name:'nome'}]}}}});
  const response=await GET(new Request('https://example.test'),{params:Promise.resolve({modulo:'test'})});
  assert.equal(response.status,200);
  const csv=await response.text();
