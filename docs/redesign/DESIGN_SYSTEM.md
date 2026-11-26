@@ -44,3 +44,6 @@ MetricCard, DataTable mobileCards, Drawer, SearchableSelect, PaymentReview e gra
 
 ## Fase 4G
 PageHeader, MetricCard, DataTable, Drawer e EditForm riutilizzati in inventario, revisioni e prestiti; vedi [EQUIPMENT.md](EQUIPMENT.md).
+
+## Fase 4H
+MetricCard, DataTable, Drawer e filtri riutilizzati in utenti e centro operativo. [ADMIN_REPORT.md](ADMIN_REPORT.md).
