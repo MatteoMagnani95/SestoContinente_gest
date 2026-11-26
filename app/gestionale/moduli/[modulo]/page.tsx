@@ -1,3 +1,8 @@
+import {Drawer} from '@/components/ui/Drawer';
+import {DataTable,FilterBar,SearchBar,Pagination} from '@/components/ui/DataTable';
+import SearchableSelect from '@/components/ui/SearchableSelect';
+import {StatusBadge,PageHeader} from '@/components/ui/Primitives';
+import {moduleUi,cleanSearch,pageNumber,listHref,entityLabel} from '@/lib/module-ui';
 import {statiCertificato,statoSingolo} from '@/lib/certificati';
 import Cronologia from '@/components/Cronologia';
 import EditForm from '@/components/EditForm';
@@ -5,7 +10,7 @@ import CancelEditButton from '@/components/CancelEditButton';
 import Link from 'next/link';
 import {notFound,redirect} from 'next/navigation';
 import {requireStaff} from '@/lib/security';
-import {modules,isModuleKey,type Module,type Field} from '@/lib/modules';
+import {modules,isModuleKey,type Module,type Field,type ModuleKey} from '@/lib/modules';
 import {formatValue,datetimeForInput} from '@/lib/format';
 import {formatRome,UUID_RE} from '@/lib/course-tools';
 import {saveModuleRecord} from '@/app/module-actions';
@@ -15,8 +20,8 @@ import EligibleEnrollmentSelect from '@/components/EligibleEnrollmentSelect';
 import CourseEnrollmentSelect from '@/components/CourseEnrollmentSelect';
 
 type Row=Record<string,unknown> & {id:string};
-const status:Record<string,string>={socio_non_iscrivibile:'Solo soci con adesione attiva e tessera attiva e valida per la stagione possono essere iscritti.',eliminato:'Record rimosso.',elimina_conferma:'Conferma la rimozione del record.',elimina_collegati:'Rimozione non consentita: sono presenti dati collegati oppure il record è protetto.',iscrizione_non_attiva:'Seleziona un allievo iscritto a un corso attivo della stagione attiva.',iscrizione_vincolata:'Non è possibile riassegnare una quota esistente a un’altra iscrizione.',salvato:'Dati salvati nel database.',vincolo:'Operazione non consentita: controlla duplicati, capienza, date e collegamenti.',
- cf:'Codice fiscale non coerente, oppure luogo di nascita non identificato. Verifica i dati e il CF ufficiale.',omocodia:'Omocodia: conferma la verifica documentale e indica la motivazione.', dati:'Controlla i campi obbligatori e i formati.',database:'Impossibile salvare. Verifica le autorizzazioni e la migrazione SQL.',permessi:'Operazione non consentita.',
+const status:Record<string,string>={socio_non_iscrivibile:'Solo soci con adesione attiva e tessera attiva e valida per la stagione possono essere iscritti.',eliminato:'Elemento eliminato.',elimina_conferma:'Conferma l’eliminazione.',elimina_collegati:'Rimozione non consentita: sono presenti dati collegati oppure il record è protetto.',iscrizione_non_attiva:'Seleziona un allievo iscritto a un corso attivo della stagione attiva.',iscrizione_vincolata:'Non è possibile riassegnare una quota esistente a un’altra iscrizione.',salvato:'Modifiche salvate correttamente.',vincolo:'Operazione non consentita: controlla duplicati, capienza, date e collegamenti.',
+ cf:'Codice fiscale non coerente, oppure luogo di nascita non identificato. Verifica i dati e il CF ufficiale.',omocodia:'Omocodia: conferma la verifica documentale e indica la motivazione.', dati:'Controlla i campi obbligatori e i formati.',database:'Impossibile salvare. Controlla i dati o contatta l’amministratore.',permessi:'Operazione non consentita.',
  corsia_duplicata:'Questa corsia è già associata alla stessa lezione. Controlla le prenotazioni esistenti.'};
 function labelOf(record:Row,labels:readonly string[]){
  return labels.map(k=>String(record[k]??'')).join(' ').trim().slice(0,100);
@@ -26,20 +31,35 @@ function EnrollmentInput({field,value,references,editing}:{field:Field;value?:un
  if(editing){const selected=rows.find(r=>r.id===value);return <label>{field.label}<input type="hidden" name={field.name} value={String(value??'')}/><input readOnly value={selected?String(selected.etichetta):'Iscrizione storica (non disponibile)'}/><span className="hint">L’iscrizione è vincolata alla quota esistente.</span></label>;}
  return <CourseEnrollmentSelect name={field.name} options={rows.filter(r=>r.selezionabile===true).map(r=>({id:r.id,editionId:String(r.edizione_id),course:String(r.gruppo),person:String(r.allievo)}))}/>;
 }
-function FieldInput({field,value,references}:{field:Field;value?:unknown;references:Record<string,Row[]>}){
- const id=`${field.name}-${String(value??'nuovo').slice(0,20)}`;
- const common={name:field.name,id,required:field.required??false};
+function FieldInput({field,value,references,scope}:{field:Field;value?:unknown;references:Record<string,Row[]>;scope:string}){
+ const id=scope+'-'+field.name;
+ const common={name:field.name,id,required:field.required??false,'aria-describedby':field.hint?id+'-hint':undefined};
  const display=Array.isArray(value)?value.join(', '):(typeof value==='string'||typeof value==='number'?String(value):'');
- return <label htmlFor={id}>{field.label}
+ return <div className="sc-field">
+ <label htmlFor={id}>{field.label} <span className="sc-required">{field.required?'(obbligatorio)':'(facoltativo)'}</span></label>
  {field.type==='textarea'?<textarea {...common} rows={3} defaultValue={display}/>
  :field.type==='checkbox'?<input {...common} type="checkbox" defaultChecked={value===true}/>
- :field.type==='select'?<select {...common} defaultValue={display}><option value="">Seleziona...</option>{field.options?.map(o=><option key={o} value={o}>{o.replaceAll('_',' ')}</option>)}</select>
- :field.type==='reference'?<select {...common} defaultValue={display}><option value="">Seleziona...</option>
- {(references[field.ref?.table??'']??[]).map(row=><option key={row.id} value={row.id}>{labelOf(row,field.ref?.labels??['id']) || row.id.slice(0,8)}</option>)}</select>
- :<input {...common} type={field.type==='datetime'?'datetime-local':field.type==='number'?'number':field.type==='date'?'date':field.type==='email'?'email':'text'}
- min={field.min} step={field.step} defaultValue={field.type==='datetime'?datetimeForInput(value):display} />}
- {field.hint&&<span className="hint">{field.hint}</span>}
- </label>;
+ :field.type==='select'?<select {...common} defaultValue={display}><option value="">Seleziona…</option>{display&&!field.options?.includes(display)&&<option value={display}>{display.replaceAll('_',' ')}</option>}{field.options?.map(o=><option key={o} value={o}>{o.replaceAll('_',' ')}</option>)}</select>
+ :field.type==='reference'?<SearchableSelect {...common} label={field.label} value={display} options={(references[field.ref?.table??'']??[]).map(row=>({value:row.id,label:labelOf(row,field.ref?.labels??['id'])||'Denominazione non disponibile'}))}/>
+ :<input {...common} type={field.type==='datetime'?'datetime-local':field.type==='number'?'number':field.type==='date'?'date':field.type==='email'?'email':'text'} min={field.min} step={field.step} defaultValue={field.type==='datetime'?datetimeForInput(value):display}/>}
+ {field.hint&&<span id={id+'-hint'} className="hint">{field.hint}</span>}
+ </div>;
+}
+function rowLabel(row:Row,refs:Record<string,Row[]>,module:Module){
+ const direct=[row.sort_cognome,row.sort_nome,row.nome,row.titolo,row.codice,row.descrizione].filter(Boolean).join(' ').trim();
+ if(direct)return direct.slice(0,140);
+ for(const f of module.fields){if(!f.ref)continue;const ref=refs[f.ref.table]?.find(x=>x.id===row[f.name]);if(ref){const label=labelOf(ref,f.ref.labels);if(label)return label;}}
+ return entityLabel(module.name);
+}
+function columnLabel(c:string,module:Module){
+ return module.fields.find(f=>f.name===c)?.label??({documento_id:'Certificato',stato_certificato:'Stato',rilasciato_da_nome:'Rilasciato da',iscritta_il:'Data iscrizione',registrata_il:'Registrata il',pubblicata_il:'Pubblicata il'} as Record<string,string>)[c]??c.replaceAll('_',' ');
+}
+function tone(value:unknown):'success'|'warning'|'danger'|'info'|'neutral'{
+ if(['attiva','attivo','valido','approvata','approvato','disponibile','confermata','iscritto','pagato','saldata','concluso'].includes(String(value)))return 'success';
+ if(['in_attesa','da_perfezionare','da_emettere','in_manutenzione','in_scadenza'].includes(String(value)))return 'warning';
+ if(['scaduto','scaduta','respinto','respinta','non_valido','fuori_servizio','mancante'].includes(String(value)))return 'danger';
+ if(['programmato','assegnata','in_verifica'].includes(String(value)))return 'info';
+ return 'neutral';
 }
 const sezioniEditor:Record<string,Record<string,string[]>>={
  anagrafiche:{'Anagrafica':['nome','cognome','data_nascita','luogo_nascita','provincia_nascita','stato_nascita','sesso_cf','codice_fiscale','cf_omocodia_verificata','cf_override_motivo'],'Residenza e recapiti':['indirizzo','cap','comune','provincia_residenza','stato_residenza','email','telefono']},
@@ -50,16 +70,17 @@ const sezioniEditor:Record<string,Record<string,string[]>>={
 function Editor({module,moduleKey,record,references,admin=false}:{module:Module;moduleKey:string;record?:Row;references:Record<string,Row[]>;admin?:boolean}){
  const sezioni=sezioniEditor[moduleKey];
  const gruppi=sezioni?Object.entries(sezioni).map(([titolo,nomi])=>({titolo,fields:module.fields.filter(f=>nomi.includes(f.name))})):[{titolo:'Dati della scheda',fields:module.fields}];
+ const remaining=module.fields.filter(f=>!gruppi.some(g=>g.fields.includes(f)));if(remaining.length)gruppi.push({titolo:'Altri dati',fields:remaining});
  return <><EditForm action={saveModuleRecord} className="module-form stack">
- <h3>{record?'Modifica':'Nuovo record'} · {module.label}{record?' · '+([record.sort_cognome,record.sort_nome,record.nome,record.titolo].filter(Boolean).join(' ')||record.id.slice(0,8)):''}</h3>
+
  <input type="hidden" name="modulo" value={moduleKey}/>
  {record&&<input type="hidden" name="id" value={record.id}/>}{record&&moduleKey==='certificati'&&<input type="hidden" name="documento_atteso" value={String(record.documento_id??'')}/>}
- {gruppi.map(({titolo,fields})=><fieldset key={titolo}><legend>{titolo}</legend><div className="form-grid">{moduleKey==='iscrizioni'&&!record&&<EligibleEnrollmentSelect editions={(references.edizioni_corsi??[]) as unknown as {id:string;nome:string;stagione_id:string;stato:string}[]} eligible={(references.gest_soci_iscrivibili??[]) as unknown as {persona_id:string;stagione_id:string;nome:string;cognome:string}[]}/>} {fields.filter(f=>!(moduleKey==='iscrizioni'&&!record&&['edizione_id','persona_id','stato'].includes(f.name))).map(f=>moduleKey==='addebiti'&&f.name==='iscrizione_id'?<EnrollmentInput key={f.name} field={f} value={record?.[f.name]} references={references} editing={!!record}/>:(moduleKey==='iscrizioni'||moduleKey==='brevetti')&&record&&['persona_id','edizione_id'].includes(f.name)?<label key={f.name}>{f.label}<input type="hidden" name={f.name} value={String(record[f.name]??'')}/><input readOnly value={labelOf(references[f.ref?.table??'']?.find(r=>r.id===record[f.name])??({id:''} as Row),f.ref?.labels??['id'])||'Non acquisito'}/></label>:<FieldInput key={`${record?.id??'new'}-${f.name}`} field={moduleKey==='iscrizioni'&&record&&f.name==='stato'?{...f,options:f.options?.filter(o=>o===record.stato||!['in_attesa','iscritto'].includes(o)||((references.edizioni_corsi??[]).some(e=>e.id===record.edizione_id&&['programmato','attivo'].includes(String(e.stato)))&&(references.gest_soci_iscrivibili??[]).some(e=>e.persona_id===record.persona_id&&e.stagione_id===(references.edizioni_corsi??[]).find(x=>x.id===record.edizione_id)?.stagione_id)))}:f} value={record?.[f.name]??(moduleKey==='certificati'&&f.name==='esito_verifica'&&record?(record.idoneita_verificata?'valido':record.documento_id?'in_attesa':'non_valido'):undefined)??(!record&&moduleKey==='anagrafiche'&&['stato_nascita','stato_residenza'].includes(f.name)?'Italia':undefined)} references={references}/>)}</div></fieldset>)}
- {moduleKey==='anagrafiche'&&<CodiceFiscaleAssist/>}<div className="form-actions"><button type="submit" className="button">{record?'Salva modifiche':'Crea nuovo'}</button><CancelEditButton/></div>
+ {gruppi.map(({titolo,fields})=><fieldset key={titolo}><legend>{titolo}</legend><div className="form-grid">{moduleKey==='iscrizioni'&&!record&&<EligibleEnrollmentSelect editions={(references.edizioni_corsi??[]) as unknown as {id:string;nome:string;stagione_id:string;stato:string}[]} eligible={(references.gest_soci_iscrivibili??[]) as unknown as {persona_id:string;stagione_id:string;nome:string;cognome:string}[]}/>} {fields.filter(f=>!(moduleKey==='iscrizioni'&&!record&&['edizione_id','persona_id','stato'].includes(f.name))).map(f=>moduleKey==='addebiti'&&f.name==='iscrizione_id'?<EnrollmentInput key={f.name} field={f} value={record?.[f.name]} references={references} editing={!!record}/>:(moduleKey==='iscrizioni'||moduleKey==='brevetti')&&record&&['persona_id','edizione_id'].includes(f.name)?<label key={f.name}>{f.label}<input type="hidden" name={f.name} value={String(record[f.name]??'')}/><input readOnly value={labelOf(references[f.ref?.table??'']?.find(r=>r.id===record[f.name])??({id:''} as Row),f.ref?.labels??['id'])||'Non acquisito'}/></label>:<FieldInput scope={moduleKey+'-'+(record?.id??'new')} key={`${record?.id??'new'}-${f.name}`} field={moduleKey==='iscrizioni'&&record&&f.name==='stato'?{...f,options:f.options?.filter(o=>o===record.stato||!['in_attesa','iscritto'].includes(o)||((references.edizioni_corsi??[]).some(e=>e.id===record.edizione_id&&['programmato','attivo'].includes(String(e.stato)))&&(references.gest_soci_iscrivibili??[]).some(e=>e.persona_id===record.persona_id&&e.stagione_id===(references.edizioni_corsi??[]).find(x=>x.id===record.edizione_id)?.stagione_id)))}:f} value={record?.[f.name]??(moduleKey==='certificati'&&f.name==='esito_verifica'&&record?(record.idoneita_verificata?'valido':record.documento_id?'in_attesa':'non_valido'):undefined)??(!record&&moduleKey==='anagrafiche'&&['stato_nascita','stato_residenza'].includes(f.name)?'Italia':undefined)} references={references}/>)}</div></fieldset>)}
+ {moduleKey==='anagrafiche'&&<CodiceFiscaleAssist/>}<div className="form-actions"><button type="submit" className="button">{record?'Salva modifiche':'Salva '+entityLabel(moduleKey)}</button><CancelEditButton/></div>
  </EditForm>
- {record&&!module.appendOnly&&<RemoveRecord moduleKey={moduleKey} id={record.id}/>}
+ {record&&!module.appendOnly&&<RemoveRecord moduleKey={moduleKey} id={record.id} label={rowLabel(record,references,module)}/>}
  {record&&moduleKey==='certificati'&&<Cronologia tipo="certificato" id={record.id}/>}
- {record&&admin&&<p><Link href={`/gestionale/amministrazione-dati/dipendenze/${module.table}/${record.id}`}>Visualizza dati collegati</Link></p>}
+ {record&&admin&&<p><Link href={`/gestionale/amministrazione-dati/dipendenze/${module.table}/${record.id}`}>Consulta collegamenti della scheda</Link></p>}
 </>;
 }
 function bookingConflictText(corsia?:string,inizio?:string,fine?:string):string{
@@ -69,7 +90,7 @@ function bookingConflictText(corsia?:string,inizio?:string,fine?:string):string{
  const fascia=dal&&al?` dalle ${dal} alle ${al}`:' nell’intervallo richiesto';
  return `Corsia${numero} già prenotata${fascia}. Scegli un’altra corsia o modifica l’orario.`;
 }
-export default async function ModulePage({params,searchParams}:{params:Promise<{modulo:string}>;searchParams:Promise<{q?:string;msg?:string;p?:string;corsia?:string;inizio?:string;fine?:string;edit?:string;stato?:string}>}){
+export default async function ModulePage({params,searchParams}:{params:Promise<{modulo:string}>;searchParams:Promise<{q?:string;msg?:string;p?:string;corsia?:string;inizio?:string;fine?:string;edit?:string;stato?:string;f?:string;v?:string;ordine?:string;dir?:string}>}){
  const {modulo}=await params;
  if(!isModuleKey(modulo))notFound();
  if(modulo==='pagamenti')redirect('/gestionale/incassi');
@@ -80,34 +101,40 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
   const {data}=await supabase.from('ruoli_utente').select('ruolo').eq('utente_id',user.id).eq('ruolo','amministratore').maybeSingle();
   if(!data)redirect('/gestionale?msg=permessi');
  }
- const {q='',msg='',p='1',corsia,inizio,fine,edit,stato}=await searchParams;
+ const {q='',msg='',p='1',corsia,inizio,fine,edit,stato,f,v,ordine,dir}=await searchParams;
+ const ui=moduleUi[modulo];
  const feedback=msg==='corsia_occupata'&&modulo==='prenotazioni'?bookingConflictText(corsia,inizio,fine):status[msg];
  const editId=edit&&UUID_RE.test(edit)?edit:null;
  if(modulo==='calendario'&&editId)redirect(`/gestionale/calendario-visivo/${editId}`);
- const page=editId?1:Math.min(100,Math.max(1,Number.parseInt(p,10)||1));
+ const page=editId?1:pageNumber(p);
  const perPage=30;
  const personViews=new Set(['adesioni', 'iscrizioni_corsi', 'assegnazioni_istruttori', 'qualifiche_istruttori', 'brevetti_allievi', 'certificati_medici', 'presenze', 'assegnazioni_attrezzature', 'quote_associative', 'saldi_quote', 'saldi_corsi', 'tesseramenti', 'addebiti_corsi']);
  const personSorted=personViews.has(module.table);
  const medical=modulo==='certificati';
  const missingQuery=medical&&!editId&&(!stato||stato==='mancante')?supabase.from('allievi_senza_certificato').select('id,nome,cognome',{count:'exact'}):null;
- const medicalSearch=q.trim().slice(0,80).replace(/[%_\\(),.]/g,' ').trim();
+ const medicalSearch=cleanSearch(q);
  const missingFiltered=missingQuery&&medicalSearch?missingQuery.or(`cognome.ilike.%${medicalSearch}%,nome.ilike.%${medicalSearch}%`):missingQuery;
  const senzaFile=missingFiltered?await missingFiltered.order('cognome').order('nome').order('id').range((page-1)*perPage,page*perPage-1):null;
  const missingTotal=medical?await supabase.from('allievi_senza_certificato').select('id',{head:true,count:'exact'}):null;
  const filtri=medical?await Promise.all(Object.entries(statiCertificato).map(async ([k,label])=>{const {count,error}=await supabase.from('stato_certificati').select('id',{head:true,count:'exact'}).eq('stato_certificato',k);return {k,label,n:error||(k==='mancante'&&missingTotal?.error)?'—':(count??0)+(k==='mancante'?(missingTotal?.count??0):0)};})):[];
  let query=supabase.from(medical?'stato_certificati':personSorted?`gest_elenco_${module.table}`:module.table).select('*',{count:'exact'});
  if(!editId&&medical&&stato&&Object.hasOwn(statiCertificato,stato))query=query.eq('stato_certificato',stato);
- const searchField=module.fields.find(f=>f.type==='text' || (!f.type&&f.name!=='codice_fiscale'));
- const safeSearch=editId?'':q.trim().slice(0,80).replace(/[%_\\]/g,'');
- if(safeSearch&&(personSorted||medical||module.table==='persone')){const cleaned=safeSearch.replace(/[(),.]/g,' ').trim();if(cleaned)query=query.or(`${personSorted||medical?'sort_cognome':'cognome'}.ilike.%${cleaned}%,${personSorted||medical?'sort_nome':'nome'}.ilike.%${cleaned}%`);}
- else if(safeSearch&&searchField)query=query.ilike(searchField.name,`%${safeSearch}%`);
+ const selectableFilters=module.fields.filter(field=>field.type==='select'&&field.options?.length&&(!medical||field.name!=='esito_verifica'));
+ const selectedFilter=selectableFilters.find(field=>field.name===f&&field.options?.includes(v??''));
+ if(!editId&&selectedFilter&&v)query=query.eq(selectedFilter.name,v);
+ const safeSearch=editId?'':cleanSearch(q);
+ const textFields=personSorted||medical?['sort_cognome','sort_nome']:ui.fields;
+ if(safeSearch&&textFields.length)query=query.or(textFields.map(field=>field+'.ilike.%'+safeSearch+'%').join(','));
  if(editId)query=query.eq('id',editId);
  const primary=personSorted||medical?'sort_cognome':module.table==='persone'?'cognome':module.fields.find(f=>['nome','titolo','codice','tipo'].includes(f.name))?.name??module.order??'id';
- query=query.order(primary,{ascending:true,nullsFirst:false});
- if(personSorted||medical||module.table==='persone')query=query.order(personSorted||medical?'sort_nome':'nome',{ascending:true});
+ const sortable=module.fields.filter(field=>module.columns.includes(field.name)&&field.type!=='reference'&&field.type!=='textarea'&&field.type!=='days');
+ const selectedSort=sortable.find(field=>field.name===ordine)?.name;
+ query=query.order(selectedSort??primary,{ascending:dir!=='desc',nullsFirst:false});
+ if((personSorted||medical||module.table==='persone')&&!selectedSort)query=query.order(personSorted||medical?'sort_nome':'nome',{ascending:dir!=='desc'});
  const {data,error,count}=await query.order('id',{ascending:true}).range((page-1)*perPage,page*perPage-1);
  const refs=[...new Set(module.fields.map(f=>f.ref?.table).filter((v):v is string=>Boolean(v)))];
  const references:Record<string,Row[]>={};
+ let referenceError=false;
  let enrollmentLoadError=false;
  await Promise.all(refs.map(async table=>{
   if(modulo==='addebiti'&&table==='iscrizioni_corsi'){
@@ -145,20 +172,18 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
   const refOrder=ref?.labels?.[0]??'id';
   let refQuery=supabase.from(table).select(cols).order(refOrder,{ascending:true});
   if(table==='persone')refQuery=refQuery.order('nome',{ascending:true});
-  const {data:rows}=await refQuery.limit(500);
-  let selected=(rows??[]) as unknown as Row[];
+  let selected:Row[]=[];
+  for(let offset=0;;offset+=500){const {data:batch,error:refError}=await refQuery.order('id').range(offset,offset+499);if(refError){referenceError=true;break;}selected.push(...((batch??[]) as unknown as Row[]));if((batch??[]).length<500)break;}
   const currentKeys=module.fields.filter(f=>f.ref?.table===table).map(f=>f.name);
   const missingIds=[...new Set((data??[]).flatMap(row=>currentKeys.map(k=>String(row[k]??''))).filter(id=>id&&!selected.some(r=>r.id===id)))];
-  if(missingIds.length){const {data:extra}=await supabase.from(table).select(cols).in('id',missingIds);selected.push(...((extra??[]) as unknown as Row[]));}
+  if(missingIds.length){const {data:extra,error:extraError}=await supabase.from(table).select(cols).in('id',missingIds);if(extraError)referenceError=true;selected.push(...((extra??[]) as unknown as Row[]));}
   selected.sort((a,b)=>labelOf(a,ref?.labels??['id']).localeCompare(labelOf(b,ref?.labels??['id']),'it'));
   if(modulo==='istruttori'&&table==='persone'){
-   const {data:allQualifications}=await supabase.from('qualifiche_istruttori').select('persona_id').limit(5000);
-   const ids=new Set((allQualifications??[]).map(q=>q.persona_id));
+   const ids=new Set<string>();for(let offset=0;;offset+=500){const {data:batch,error}=await supabase.from('qualifiche_istruttori').select('persona_id').order('id').range(offset,offset+499);if(error){referenceError=true;break;}for(const entry of batch??[])ids.add(entry.persona_id);if((batch??[]).length<500)break;}
    selected=selected.filter(person=>ids.has(person.id));
   }
   if(modulo==='adesioni'&&table==='cda_verbali'){
-   const {data:approved}=await supabase.from('cda_verbali').select('id').eq('stato','approvato').in('tipo',['Approvazione Adesioni Soci','Misto']);
-   const ids=new Set((approved??[]).map(v=>v.id));selected=selected.filter(row=>ids.has(row.id));
+   const ids=new Set<string>();for(let offset=0;;offset+=500){const {data:batch,error}=await supabase.from('cda_verbali').select('id').eq('stato','approvato').in('tipo',['Approvazione Adesioni Soci','Misto']).order('id').range(offset,offset+499);if(error){referenceError=true;break;}for(const entry of batch??[])ids.add(entry.id);if((batch??[]).length<500)break;}selected=selected.filter(row=>ids.has(row.id));
   }
   references[table]=selected;
  }));
@@ -170,33 +195,45 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
   const existing=references.edizioni_corsi??[];references.edizioni_corsi=[...available,...existing.filter(r=>!available.some(e=>e.id===r.id)&&!['programmato','attivo'].includes(String(r.stato)))];
  }
  const rows=(data??[]) as Row[];
+ const href=(page:number)=>listHref({q,p:String(page),stato,f,v,ordine,dir});
+ const numeric=(c:string)=>module.fields.some(field=>field.name===c&&field.type==='number');
+ const display=(row:Row,c:string)=>{
+  if(medical&&c==='documento_id')return row[c]?<Link href={'/documenti/'+row[c]}>Apri certificato</Link>:<Link href={'/area-personale/certificato?persona='+row.persona_id}>Carica certificato</Link>;
+  if(medical&&c==='stato_certificato')return <StatusBadge tone={tone(row[c])}>{statoSingolo(String(row[c]))}</StatusBadge>;
+  const field=module.fields.find(field=>field.name===c);
+  const reference=references[field?.ref?.table??'']?.find(x=>x.id===row[c]);
+  if(reference)return labelOf(reference,field?.ref?.labels??['id']);
+  if(c==='persona_id'&&row.sort_cognome)return String(row.sort_cognome)+' '+String(row.sort_nome??'');
+  if(c.endsWith('_id'))return row[c]?'Informazione collegata non disponibile':'—';
+  if(c==='stato')return <StatusBadge tone={tone(row[c])}>{String(row[c]??'Non disponibile').replaceAll('_',' ')}</StatusBadge>;
+  return formatValue(row[c],c);
+ };
  return <>
- <div className="page-intro"><p className="eyebrow">Gestionale · {module.label}</p><h1>{module.label}</h1><p>{module.description}</p></div>
- {feedback&&<p className={`notice ${['salvato','eliminato'].includes(msg)?'success': 'warning'}`} role="status">{feedback}</p>}
+ <PageHeader eyebrow="Gestionale" title={module.label} description={module.description} actions={!editId&&<Drawer primary title={ui.create} trigger={ui.create}><Editor module={module} moduleKey={modulo} references={references}/></Drawer>}/>
+ {feedback&&<p className={'notice '+(['salvato','eliminato'].includes(msg)?'success':'warning')} role="status">{feedback}</p>}
  {enrollmentLoadError&&<p className="notice error">Impossibile caricare tutte le iscrizioni dei corsi. Riprova o verifica i permessi.</p>}
- {medical&&<nav className="buttons" aria-label="Filtri certificati"><Link className="button ghost" href="?">Tutti</Link>{filtri.map(f=><Link key={f.k} aria-current={stato===f.k?'page':undefined} className={stato===f.k?'button':'button ghost'} href={'?stato='+f.k}>{f.label} ({f.n})</Link>)}</nav>}
- {medical&&!editId&&(!stato||stato==='mancante')&&!!senzaFile?.data?.length&&<section className="panel"><h3>Allievi senza certificato registrato</h3><ul>{senzaFile.data.map(p=><li key={p.id}>{p.cognome} {p.nome} · Documento mancante · <Link href={'/area-personale/certificato?persona='+p.id}>Carica certificato</Link></li>)}</ul></section>}
- <div className="module-toolbar">
-  <form method="get" className="search-line">{medical&&stato&&<input type="hidden" name="stato" value={stato}/>}<input name="q" aria-label="Cerca" placeholder="Cerca nel campo principale" defaultValue={q}/><button className="button ghost">Cerca</button></form>
-  <Link className="button ghost" href={`/gestionale/esporta/${modulo}`}>Esporta CSV</Link>
- </div>
- {!editId&&<details className="panel module-editor"><summary><strong>+ {module.appendOnly?'Registra nuovo versamento':'Aggiungi nuovo record'}</strong></summary>
- <Editor module={module} moduleKey={modulo} references={references}/></details>}
- {error?<div className="notice error">Impossibile leggere i dati. Riprova; se il problema persiste verifica permessi e migrazioni con l’amministratore.</div>:<div className="panel table-panel"><table><thead><tr>
- {module.columns.map(c=><th key={c}>{module.fields.find(f=>f.name===c)?.label??({documento_id:'Certificato',stato_certificato:'Stato',rilasciato_da_nome:'Rilasciato da'} as Record<string,string>)[c]??c.replaceAll('_',' ')}</th>)}
- {!module.appendOnly&&<th>Azioni</th>}
- </tr></thead><tbody>
- {rows.map(row=><tr key={row.id}>
- {module.columns.map(c=><td key={c}>{medical&&c==='documento_id'?(row[c]?<Link href={'/documenti/'+row[c]}>Apri certificato</Link>:<Link href={'/area-personale/certificato?persona='+row.persona_id}>Carica certificato</Link>):medical&&c==='stato_certificato'?statoSingolo(String(row[c])):references[module.fields.find(f=>f.name===c)?.ref?.table??'']?.find(x=>x.id===row[c])
- ? labelOf(references[module.fields.find(f=>f.name===c)?.ref?.table??''].find(x=>x.id===row[c])!,module.fields.find(f=>f.name===c)?.ref?.labels??['id'])
- : c==='persona_id'&&row.sort_cognome?`${row.sort_cognome} ${row.sort_nome??''}`: modulo==='addebiti'&&c==='iscrizione_id'?'Iscrizione non disponibile':c.endsWith('_id')?String(row[c]??'—').slice(0,8):formatValue(row[c],c)}</td>)}
- {!module.appendOnly&&<td>{modulo==='calendario'?<Link href={`/gestionale/calendario-visivo/${row.id}`}>Modifica lezione e corsie</Link>:<details className="row-editor" open={(msg!=='salvato'&&editId===row.id)||undefined}><summary>Modifica</summary><div className="row-editor-pop"><Editor module={module} moduleKey={modulo} record={row} references={references} admin={isAdministrator===true}/></div></details>}</td>}
+ {referenceError&&<p className="notice warning" role="alert">Alcuni elenchi di scelta non sono completi. Ricarica la pagina prima di modificare i collegamenti.</p>}
+ {medical&&<nav className="buttons" aria-label="Filtri certificati"><Link className="button ghost" href={listHref({q,ordine,dir})}>Tutti</Link>{filtri.map(item=><Link key={item.k} aria-current={stato===item.k?'page':undefined} className={stato===item.k?'button':'button ghost'} href={listHref({q,stato:item.k,ordine,dir})}>{item.label} ({item.n})</Link>)}</nav>}
+ {medical&&!editId&&(!stato||stato==='mancante')&&<section className="panel"><h3>Allievi senza certificato registrato</h3>{senzaFile?.error?<p role="alert">Elenco non disponibile.</p>:<><p>{senzaFile?.count??0} allievi senza certificato con questi filtri</p><ul>{senzaFile?.data?.map(p=><li key={p.id}>{p.cognome} {p.nome} · Documento mancante · <Link href={'/area-personale/certificato?persona='+p.id}>Carica certificato</Link></li>)}</ul></>}</section>}
+ <FilterBar>
+ <SearchBar query={q} placeholder={ui.search||'Filtri e ordinamento'} resetHref={'/gestionale/moduli/'+modulo} hideSearch={!ui.search}>
+ {medical&&stato&&<input type="hidden" name="stato" value={stato}/>}
+ {selectableFilters.length>0&&<><label>Campo da filtrare<select name="f" defaultValue={selectedFilter?.name??''}><option value="">Tutti</option>{selectableFilters.map(field=><option key={field.name} value={field.name}>{field.label}</option>)}</select></label><label>Valore<select name="v" defaultValue={selectedFilter?v:''}><option value="">Tutti</option>{Array.from(new Set(selectableFilters.flatMap(field=>field.options??[]))).map(value=><option key={value} value={value}>{value.replaceAll('_',' ')}</option>)}</select></label></>}
+ <label>Ordina per<select name="ordine" defaultValue={selectedSort??''}><option value="">Ordine predefinito</option>{sortable.map(field=><option key={field.name} value={field.name}>{field.label}</option>)}</select></label>
+ <label>Direzione<select name="dir" defaultValue={dir==='desc'?'desc':'asc'}><option value="asc">Crescente</option><option value="desc">Decrescente</option></select></label>
+ </SearchBar>
+ <Link className="button ghost" href={'/gestionale/esporta/'+modulo}>Esporta archivio CSV</Link>
+ </FilterBar>
+ {editId&&<p><Link href={href(1)}>Torna all’elenco completo</Link></p>}
+ {error?<div className="notice error" role="alert">Impossibile leggere i dati. Riprova o contatta l’amministratore.</div>:<DataTable label={module.label}><thead><tr>
+ {module.columns.map(c=><th key={c} scope="col" className={numeric(c)?'sc-number':undefined}>{columnLabel(c,module)}</th>)}
+ {!module.appendOnly&&<th scope="col">Azioni</th>}
+ </tr></thead><tbody>{rows.map(row=><tr key={row.id}>
+ {module.columns.map(c=><td key={c} className={numeric(c)?'sc-number':undefined}>{display(row,c)}</td>)}
+ {!module.appendOnly&&<td><div className="sc-row-actions">{modulo==='calendario'?<Link href={'/gestionale/calendario-visivo/'+row.id}>Modifica lezione e corsie</Link>:<Drawer key={row.id+'-'+msg} title={'Modifica '+entityLabel(modulo)+' · '+rowLabel(row,references,module)} trigger="Modifica" initialOpen={msg!=='salvato'&&editId===row.id}><Editor module={module} moduleKey={modulo} record={row} references={references} admin={isAdministrator===true}/></Drawer>}</div></td>}
  </tr>)}
- {!rows.length&&<tr><td colSpan={module.columns.length+1} className="empty-cell">Nessun record trovato.</td></tr>}
- </tbody></table></div>}
- <div className="pager"><span>{count??0} record · Pagina {page}</span><div className="buttons">
- {page>1&&<Link className="button ghost" href={`?p=${page-1}&q=${encodeURIComponent(q)}&stato=${encodeURIComponent(stato??'')}`}>Precedente</Link>}
- {page*perPage<Math.max(count??0,medical&&(!stato||stato==='mancante')?senzaFile?.count??0:0)&&<Link className="button ghost" href={`?p=${page+1}&q=${encodeURIComponent(q)}&stato=${encodeURIComponent(stato??'')}`}>Successiva</Link>}
- </div></div>
+ {!rows.length&&<tr><td colSpan={module.columns.length+(module.appendOnly?0:1)} className="empty-cell">Nessun risultato con questi filtri.</td></tr>}
+ </tbody></DataTable>}
+ {!editId&&<Pagination page={page} size={perPage} count={error?null:count} href={href} additionalCount={medical&&(!stato||stato==='mancante')?senzaFile?.count??0:0}/>}
  </>;
 }

@@ -30,5 +30,5 @@ test('Eventi: rimozione admin serializzata sullo stesso evento, nessuna cascata 
 });
 test('Menu e dati aggiuntivi: accesso amministrativo, modifica nella scheda, gestione vincoli e moduli',()=>{
  assert.match(read('components/StaffNav.tsx'),/isAdmin\?\[item\('\/gestionale\/utenti'[\s\S]*Amministrazione dati/);
- assert.match(read('app/gestionale/amministrazione-dati/page.tsx'),/requireAdmin\(\)/);assert.match(read('app/gestionale/amministrazione-dati/actions.ts'),/requireAdmin\(\)/);assert.match(read('app/gestionale/calendario-visivo/[id]/page.tsx'),/<RemoveRecord moduleKey="calendario"/);assert.match(read('app/gestionale/moduli/[modulo]/page.tsx'),/Visualizza dati collegati/);assert.match(read('app/gestionale/programmi-didattici/actions.ts'),/\.insert\(\{pre_id,tipo,codice,titolo,descrizione\}\)/);
+ assert.match(read('app/gestionale/amministrazione-dati/page.tsx'),/requireAdmin\(\)/);assert.match(read('app/gestionale/amministrazione-dati/actions.ts'),/requireAdmin\(\)/);assert.match(read('app/gestionale/calendario-visivo/[id]/page.tsx'),/<RemoveRecord moduleKey="calendario"/);assert.match(read('app/gestionale/moduli/[modulo]/page.tsx'),/Consulta collegamenti della scheda/);assert.match(read('app/gestionale/programmi-didattici/actions.ts'),/\.insert\(\{pre_id,tipo,codice,titolo,descrizione\}\)/);
 });
