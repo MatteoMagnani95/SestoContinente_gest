@@ -2,9 +2,11 @@
 import {useEffect,useId,useRef,useState,type FormEvent,type ReactNode} from 'react';
 import {createPortal} from 'react-dom';
 import Link from 'next/link';
+import {useRouter} from 'next/navigation';
 import {markFormSaved} from '@/lib/dirty-navigation';
 export type EditFailure={error:string;field?:string;href?:string};
-export default function EditForm({action,children,className='stack',identifyRequest=false}:{identifyRequest?:boolean;action:(data:FormData)=>Promise<void|EditFailure>;children:ReactNode;className?:string}){
+export default function EditForm({action,children,className='stack',identifyRequest=false,successHref}:{successHref?:string;identifyRequest?:boolean;action:(data:FormData)=>Promise<void|EditFailure>;children:ReactNode;className?:string}){
+ const router=useRouter();
  const busy=useRef(false);
  const requestId=useRef<string | null>(null);
  const formRef=useRef<HTMLFormElement>(null),errorId=useId();
@@ -25,7 +27,10 @@ export default function EditForm({action,children,className='stack',identifyRequ
     const field=response.field?form.elements.namedItem(response.field):null;
     setAnchor(field instanceof HTMLElement?field.closest<HTMLElement>('.sc-field')??field.closest('label'):null);
     setFailure(response);
-   }else markFormSaved(form);
+   }else{
+    markFormSaved(form);
+    if(successHref)router.replace(successHref);
+   }
   }catch{setAnchor(null);setFailure({error:'Salvataggio non riuscito. Puoi riprovare conservando i dati inseriti.'});}
   finally{busy.current=false;setPending(false);}
  }
