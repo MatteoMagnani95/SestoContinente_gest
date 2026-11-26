@@ -2,7 +2,8 @@
 import {asRomeISO,UUID_RE} from './course-tools';
 export const calendarViews=[['giorno','Giorno'],['settimana','Settimana'],['mese','Mese'],['agenda','Agenda']] as const;
 export type CalendarView=typeof calendarViews[number][0];
-export function calendarView(value?:string):CalendarView{return calendarViews.find(([v])=>v===value)?.[0]??'settimana';}
+// L’agenda è la vista iniziale anche su desktop: niente rilevamento UA o doppio caricamento.
+export function calendarView(value?:string):CalendarView{return calendarViews.find(([v])=>v===value)?.[0]??(value?'settimana':'agenda');}
 export function validDay(value:string|undefined):string{
  if(value&&/^\d{4}-\d{2}-\d{2}$/.test(value)){
   const date=new Date(`${value}T12:00:00Z`);
