@@ -48,7 +48,16 @@ export async function stageImport(form:FormData){
 export async function commitImport(form:FormData){
  const {supabase}=await requireStaff();const batch=text(form.get('batch'));
  if(form.get('conferma')!=='on'||!/^[a-f0-9-]{36}$/i.test(batch))q('batch');
- const {data,error}=await supabase.rpc('conferma_importazione',{p_batch:batch});
- if(error)redirect(`${where}?batch=${batch}&msg=quarantena`);
- revalidatePath(where);redirect(`${where}?batch=${batch}&msg=importato&n=${data}`);
+ await supabase.rpc('conferma_importazione',{p_batch:batch});
+ // The RPC can commit even if the response is lost, or reject a repeated
+ // confirmation of a completed batch. Verify the persisted outcome under RLS.
+ const {data:record,error:readError}=await supabase.from('importazioni_batch').select('stato').eq('id',batch).maybeSingle();
+ if(readError||!record)redirect(`${where}?batch=${batch}&msg=esito`);
+ if(record.stato!=='importato')redirect(`${where}?batch=${batch}&msg=quarantena`);
+ const [total,remaining]=await Promise.all([
+  supabase.from('importazioni_righe').select('id',{head:true,count:'exact'}).eq('batch_id',batch),
+  supabase.from('importazioni_righe').select('id',{head:true,count:'exact'}).eq('batch_id',batch).is('importato_id',null)
+ ]);
+ if(total.error||remaining.error||!total.count||remaining.count!==0)redirect(`${where}?batch=${batch}&msg=esito`);
+ revalidatePath(where);redirect(`${where}?batch=${batch}&msg=importato`);
 }
