@@ -26,3 +26,9 @@
 .sc-upcoming-lessons li p{margin:4px 0 0;color:var(--sc-muted);font-size:14px}
 .sc-upcoming-lessons li a{display:flex;align-items:center;min-height:44px;flex:none}
 @media(max-width:600px){.sc-course-card-grid{grid-template-columns:minmax(0,1fr)}.sc-upcoming-lessons li{align-items:flex-start;flex-direction:column;gap:4px}.sc-course-view-switch{width:100%}.sc-course-view-switch a{flex:1;justify-content:center}}
+
+/* Mockup 05/06: functional icons, distinct primary/secondary actions, compact shortcuts. */
+.sc-course-card-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,118px),1fr));gap:8px;margin-top:auto}.sc-course-card-actions a{justify-content:center;text-align:center}
+.sc-course-shortcuts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:12px}.sc-course-shortcuts .sc-quick-action{min-height:64px}
+.sc-course-overview-capacity{display:block;width:calc(100% - 28px);margin:0 14px 14px;height:10px;accent-color:var(--sc-teal-ink)}
+.sc-course-section-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}.sc-course-section-heading a{min-height:44px;display:inline-flex;align-items:center}

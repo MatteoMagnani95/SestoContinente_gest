@@ -1,8 +1,11 @@
 import type { SVGProps } from 'react';
 
-export type IconName = 'users' | 'clipboard' | 'course' | 'equipment' | 'certificate' | 'calendar' | 'check' | 'warning' | 'error' | 'info' | 'archive' | 'search' | 'arrow-left' | 'plus' | 'clock' | 'document' | 'home' | 'menu' | 'close' | 'chevron-down' | 'chevron-right' | 'user' | 'bell' | 'settings' | 'wallet' | 'logout';
+export type IconName = 'users' | 'clipboard' | 'course' | 'equipment' | 'certificate' | 'calendar' | 'check' | 'warning' | 'error' | 'info' | 'archive' | 'search' | 'arrow-left' | 'plus' | 'clock' | 'document' | 'home' | 'menu' | 'close' | 'chevron-down' | 'chevron-right' | 'user' | 'bell' | 'settings' | 'wallet' | 'logout' | 'ara' | 'apnea' | 'nuoto';
 
 const shapes: Record<IconName, React.ReactNode> = {
+  ara: <><path d="M3 9c0-2 2-3 4-3h10c2 0 4 1 4 3v5c0 3-4 4-6 2l-2-2a1.4 1.4 0 0 0-2 0l-2 2c-2 2-6 1-6-2Z"/><path d="M3 9H1v5h2m18-5h2v5h-2"/></>,
+  apnea: <><path d="m4 18 2-11 3-4 3 2-2 5-2 11Zm9 0 2-11 3-4 3 2-2 5-2 11Z"/><path d="m6 11 4 1m5-1 4 1"/></>,
+  nuoto: <><path d="M2 14c3 0 3-3 6-3s3 3 6 3 3-3 8-3M2 20c3 0 3-3 6-3s3 3 6 3 3-3 8-3"/><circle cx="17" cy="5" r="3"/><path d="m6 10 5-6 4 5"/></>,
   home: <><path d="m3 10 9-7 9 7v11H3Z"/><path d="M9 21v-8h6v8"/></>,
   menu: <path d="M3 5h18M3 12h18M3 19h18"/>,
   close: <path d="m5 5 14 14M19 5 5 19"/>,

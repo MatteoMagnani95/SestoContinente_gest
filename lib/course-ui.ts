@@ -38,3 +38,5 @@ export function courseCapacity(count:number|null,capacity:number):number|null{
  if(count===null||!Number.isFinite(count)||count<0||!Number.isFinite(capacity)||capacity<=0)return null;
  return Math.min(100,Math.round(count/capacity*100));
 }
+
+export function courseDisciplineIcon(value?:string|null):'ara'|'apnea'|'nuoto'|'course'{return value==='ARA'?'ara':value==='APNEA'?'apnea':value==='NUOTO_LIBERO'?'nuoto':'course';}

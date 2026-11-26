@@ -88,3 +88,6 @@ Sul ramo sorgente della PR #7, 238 test automatici, 64 browser ordinari, 146 bro
 
 ## Gate F3 sincronizzato — GO alla Fase 4
 Commit ff356d1: verifica gestionale 45906661406 success (280/280 test automatici, 68/68 browser, build, DB, RLS, ripristino, audit). QA 45906661502 tentativo 1 fallita al comando supabase start, dettagli non conservati per protezione credenziali; tentativo 2 success sul medesimo SHA senza modifiche, 166 browser autenticati, 36 logout diretti + 36 da menu, CRUD, auth, Storage e benchmark superati. Resta non determinata la causa infrastrutturale del primo tentativo. Gate F3 GO su ff356d1. F4A: presentazione corsi, vista schede/tabella e prossime lezioni senza nuove scritture, test aggiunti; gate nuovo SHA obbligatorio, non avviare F4B prima del risultato. Nessun deploy o SQL reale.
+
+## F4A — correzione paginazione e riallineamento ai riferimenti
+Run 45908246525 su 0a5c9e6: un test statico storico fallito per firma pageHref modificata; mantenuta firma monodimensionale e separato viewHref, test storico immutato. Recuperato pacchetto definitivo ZIP, verificati riferimenti 05/06; icone funzionali distinte, azioni separate, scorciatoie, capienza e accesso calendario riallineati senza modificare regole. Gate nuovo SHA da eseguire. Nessuna immagine di riferimento o dato dimostrativo copiato nel repository.
