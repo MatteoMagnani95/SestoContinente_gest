@@ -20,7 +20,7 @@ diff -u "$work/source.audit" "$work/restore.audit"
 # Compare row counts for every application table and platform metadata,
 # and the actual RLS definitions. No records or personal data in logs.
 cat > "$work/verify.sql" <<'SQL'
-select format('select %L, count(*) from %I.%I;',schemaname||'.'||tablename,schemaname,tablename)
+select format('select %L, count(*), md5(coalesce(string_agg(md5(to_jsonb(t)::text), '''' order by md5(to_jsonb(t)::text)),'''')) from %I.%I t;',schemaname||'.'||tablename,schemaname,tablename)
 from pg_tables where schemaname in ('public','auth','storage') order by schemaname,tablename
 \gexec
 select schemaname,tablename,policyname,permissive,roles,cmd,qual,with_check
@@ -32,4 +32,4 @@ SQL
 psql "$source_url" -X -qAt -v ON_ERROR_STOP=1 -f "$work/verify.sql" > "$work/source.verify"
 psql "$target_url" -X -qAt -v ON_ERROR_STOP=1 -f "$work/verify.sql" > "$work/restore.verify"
 diff -u "$work/source.verify" "$work/restore.verify"
-echo "OK backup e ripristino PostgreSQL: audit, conteggi, definizioni RLS"
+echo "OK backup e ripristino PostgreSQL: audit, conteggi, impronte dati, definizioni RLS"
