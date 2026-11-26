@@ -60,14 +60,17 @@ export async function saveModuleRecord(form:FormData) {
   }
   changes[field.name]=raw;
  }
+ let equipmentBefore:{stato:string;ultima_revisione:string|null;prossima_revisione:string|null}|null=null;
  if(key==='attrezzature'){
   if(id){
+   const before=await supabase.from('attrezzature').select('stato,ultima_revisione,prossima_revisione').eq('id',id).maybeSingle();
+   if(before.error||!before.data)return {error:'Attrezzatura non disponibile.'};equipmentBefore=before.data;
    const {count,error}=await supabase.from('assegnazioni_attrezzature').select('id',{count:'exact',head:true}).eq('attrezzatura_id',id).is('restituita_il',null);
    if(error||count===null)return {error:'Prestiti non verificabili.'};
-   if(count>0&&changes.stato!=='assegnata'||count===0&&changes.stato==='assegnata')return {field:'stato',error:'Lo stato deve essere coerente con i prestiti aperti.'};
+   if(count>0&&changes.stato==='disponibile'||count===0&&changes.stato==='assegnata')return {field:'stato',error:'Lo stato deve essere coerente con i prestiti aperti.'};
    const {count:reviews,error:reviewError}=await supabase.from('revisioni_attrezzature').select('id',{count:'exact',head:true}).eq('attrezzatura_id',id);
    if(reviewError||reviews===null)return {error:'Revisioni non verificabili.'};
-   if(reviews>0){const {data:current,error:dateError}=await supabase.from('attrezzature').select('ultima_revisione,prossima_revisione').eq('id',id).maybeSingle();if(dateError||!current||current.ultima_revisione!==changes.ultima_revisione||current.prossima_revisione!==changes.prossima_revisione)return {error:'Le date di revisione sono cambiate o dipendono dallo storico. Riapri la scheda.'};delete changes.ultima_revisione;delete changes.prossima_revisione;}
+   if(reviews>0){if(equipmentBefore.ultima_revisione!==changes.ultima_revisione||equipmentBefore.prossima_revisione!==changes.prossima_revisione)return {error:'Le date di revisione sono cambiate o dipendono dallo storico. Riapri la scheda.'};delete changes.ultima_revisione;delete changes.prossima_revisione;}
   }else if(changes.stato==='assegnata')return {error:'Registra una consegna per assegnare l’attrezzatura.'};
  }
  if(key==='revisioni'){
@@ -160,6 +163,7 @@ export async function saveModuleRecord(form:FormData) {
  if(id){
   let update=supabase.from(module.table).update(changes).eq('id',id);
   if(key==='contabilita')update=update.is('pagamento_id',null);
+  if(key==='attrezzature'&&equipmentBefore){update=update.eq('stato',equipmentBefore.stato);for(const field of ['ultima_revisione','prossima_revisione'] as const){const value=equipmentBefore[field];update=value?update.eq(field,value):update.is(field,null);}}
   if(key==='certificati'){
    const expected=text(form,'documento_atteso');
    if(!expected&&changes.esito_verifica==='valido')return {error:'Carica il certificato prima di validarlo.',field:'esito_verifica'};
@@ -173,6 +177,7 @@ export async function saveModuleRecord(form:FormData) {
   if(key==='edizioni'||key==='corsi'){const dup=await courseDuplicate(supabase,module.table,changes,error);if(dup)return dup;}
   if(error.code==='P3421')return {error:'Il direttore non può essere allievo della stessa edizione.',field:key==='edizioni'?'direttore_id':'persona_id'};
   if(error.code==='P3422')return {error:'Seleziona un’edizione frequentata dall’allievo con direttore assegnato.',field:'edizione_id'};
+  if(key==='attrezzature')return {error:'Salvataggio non riuscito: verifica codice univoco e possibili modifiche concorrenti.'};
   if(key==='certificati')return {error:'Verifica documento, stato e date del certificato.',field:'esito_verifica'};
   // 23P01: violazione del vincolo PostgreSQL EXCLUDE sull'occupazione corsie.
   // Mostrare un'indicazione comprensibile senza esporre dettagli SQL.
