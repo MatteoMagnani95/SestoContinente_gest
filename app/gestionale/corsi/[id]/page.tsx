@@ -1,3 +1,12 @@
+import {PageHeader,ButtonLink,StatusBadge,Alert,MetricCard} from '@/components/ui/Primitives';
+import {DataTable,Pagination} from '@/components/ui/DataTable';
+import SearchableSelect from '@/components/ui/SearchableSelect';
+import CourseStudentPicker from '@/components/CourseStudentPicker';
+import CourseLessonFields from '@/components/CourseLessonFields';
+import {courseTab,courseTabs,courseViewHref,readCourseChunks} from '@/lib/course-ui';
+import {statusTone,exactCount} from '@/lib/secretariat';
+import {romeDay,shiftDay} from '@/lib/calendar-tools';
+import {pageNumber} from '@/lib/module-ui';
 import {Drawer,ConfirmDialog} from '@/components/ui/Drawer';
 import ActionForm from '@/components/ui/ActionForm';
 import Emergenza from '@/components/Emergenza';
@@ -34,34 +43,37 @@ const message:Record<string,string>={
  qualifica:'L’istruttore selezionato non ha qualifiche registrate. Completa prima la sua scheda.',
  responsabile:'Il responsabile non può essere rimosso direttamente: puoi sostituirlo dal modulo istruttori.',
  lezione:'La lezione non è stata creata: verifica date, ora italiana (anche cambio ora), piscina e conflitti fra corsie. È necessaria la migrazione 0004.',
- presenze:'Presenze non salvate: verifica iscrizioni e autorizzazioni.',programma:'Scegli soltanto versioni approvate della stessa disciplina.'
+ presenze:'Presenze non salvate: verifica iscrizioni e autorizzazioni.',programma:'Scegli soltanto versioni approvate della stessa disciplina.',moduli:'Composizione non salvata. Verifica i moduli.',moduli_salvati:'Composizione della lezione salvata.'
 };
 function displayPerson(id:string,people:Person[]){const p=people.find(x=>x.id===id);return p?`${p.cognome} ${p.nome}`:'Anagrafica non trovata';}
 function Section({id,title,children}:{id:string;title:string;children:React.ReactNode}){return <section className="panel course-section" id={id}><h2>{title}</h2>{children}</section>;}
 
-export default async function EditionDetail({params,searchParams}:{params:Promise<{id:string}>;searchParams:Promise<{msg?:string;lezione?:string}>}){
+export default async function EditionDetail({params,searchParams}:{params:Promise<{id:string}>;searchParams:Promise<{msg?:string;lezione?:string;tab?:string;p?:string}>}){
  const {id}=await params;if(!UUID_RE.test(id))notFound();
  const {supabase}=await requireStaff();const p=await searchParams;
+ const tab=courseTab(p.tab,p.msg,p.lezione),page=pageNumber(p.p),size=30;
+ const today=romeDay(new Date().toISOString());
  const {data:ed,error:editionError}=await supabase.from('edizioni_corsi').select('id,corso_id,stagione_id,nome,inizio,fine,massimo_partecipanti,costo_corso,stato,note,programma_versione_id,direttore_id,duplicato_storico').eq('id',id).maybeSingle();
- if(editionError||!ed)notFound();
+ if(editionError)return <Alert tone="danger">Impossibile leggere l’edizione. Riprova.</Alert>;
+ if(!ed)notFound();
  const [{data:cat},{data:season},{data:enrollData,error:enrollError},{data:teacherData,error:teacherError},{data:lessonData,error:lessonError},
-  {data:allPeople},{data:qualifications},{data:pools},{data:lanes},{data:activeMemberships},{data:programVersions}]=await Promise.all([
+  {data:allPeople,error:peopleError},{data:qualifications,error:qualError},{data:pools,error:poolError},{data:lanes,error:laneError},{data:activeMemberships,error:eligibilityError},{data:programVersions,error:versionError}]=await Promise.all([
   supabase.from('corsi').select('id,nome,tipo,livello').eq('id',ed.corso_id).maybeSingle(),
   supabase.from('stagioni').select('nome,attiva').eq('id',ed.stagione_id).maybeSingle(),
   tutteLePagine((da,a)=>supabase.from('gest_elenco_iscrizioni_corsi').select('id,persona_id,edizione_id,stato,iscritta_il,sort_cognome,sort_nome').eq('edizione_id',id).order('sort_cognome').order('sort_nome').order('id').range(da,a)),
   tutteLePagine((da,a)=>supabase.from('gest_elenco_assegnazioni_istruttori').select('id,persona_id,ruolo,sort_cognome,sort_nome').eq('edizione_id',id).order('sort_cognome').order('sort_nome').order('id').range(da,a)),
-  supabase.from('lezioni').select('id,titolo,inizio,fine,piscina_id,esercizi,materiale').eq('edizione_id',id).is('annullata_il',null).order('inizio',{ascending:true}).limit(201),
+  tutteLePagine((da,a)=>supabase.from('lezioni').select('id,titolo,inizio,fine,piscina_id,esercizi,materiale').eq('edizione_id',id).is('annullata_il',null).order('inizio',{ascending:true}).order('id').range(da,a)),
   tutteLePagine((da,a)=>supabase.from('persone').select('id,nome,cognome').order('cognome').order('nome').order('id').range(da,a)),
-  supabase.from('qualifiche_istruttori').select('persona_id,titolo,scade_il').limit(500),
-  supabase.from('piscine').select('id,nome').order('nome').limit(100),
-  supabase.from('corsie').select('id,piscina_id,numero').limit(500),
-  supabase.from('gest_soci_iscrivibili').select('persona_id,nome,cognome').eq('stagione_id',ed.stagione_id).order('cognome').order('nome').limit(1000),
-  supabase.from('versioni_programmi').select('id,programma_id,versione,stato').eq('stato','approvato').limit(200)
+  tutteLePagine((da,a)=>supabase.from('qualifiche_istruttori').select('persona_id,titolo,scade_il').order('id').range(da,a)),
+  tutteLePagine((da,a)=>supabase.from('piscine').select('id,nome').order('nome').order('id').range(da,a)),
+  tutteLePagine((da,a)=>supabase.from('corsie').select('id,piscina_id,numero').order('id').range(da,a)),
+  tutteLePagine((da,a)=>supabase.from('gest_soci_iscrivibili').select('persona_id,nome,cognome').eq('stagione_id',ed.stagione_id).order('cognome').order('nome').order('persona_id').range(da,a)),
+  tutteLePagine((da,a)=>supabase.from('versioni_programmi').select('id,programma_id,versione,stato').eq('stato','approvato').order('id').range(da,a))
  ]);
  const enrollments=(enrollData??[]) as Enrollment[];const assignments=(teacherData??[]) as Assignment[];
- const [{data:moduleCatalog},{data:lessonModLinks},{data:prices}]=await Promise.all([
-  supabase.from('moduli_didattici').select('id,tipo,codice,titolo').order('pre_id'),
-  supabase.from('lezione_moduli').select('lezione_id,modulo_id,ordine').in('lezione_id',(lessonData??[]).map(l=>l.id)).order('ordine'),
+ const [{data:moduleCatalog,error:moduleError},{data:lessonModLinks,error:linkError},{data:prices}]=await Promise.all([
+  tutteLePagine((da,a)=>supabase.from('moduli_didattici').select('id,tipo,codice,titolo,descrizione').order('pre_id').order('id').range(da,a)),
+  readCourseChunks((lessonData??[]).map(l=>l.id),(ids,da,a)=>supabase.from('lezione_moduli').select('lezione_id,modulo_id,ordine').in('lezione_id',ids).order('lezione_id').order('ordine').order('modulo_id').range(da,a)),
   supabase.from('listino_corsi').select('importo').order('importo')
  ]);
  const lessons=(lessonData??[]) as Lesson[];const roster=[...enrollments,...assignments].map(r=>({id:r.persona_id,cognome:r.sort_cognome??'',nome:r.sort_nome??''}));
@@ -75,104 +87,110 @@ export default async function EditionDetail({params,searchParams}:{params:Promis
  enrollments.sort(byPerson);assignments.sort(byPerson);
  const teacherCandidates=people.filter(person=>qualified.has(person.id)&&!assignedIds.has(person.id));
  const confirmed=enrollments.filter(x=>x.stato==='iscritto');
- const {data:certs}=confirmed.length?await supabase.from('stato_certificati').select('persona_id,scade_il,idoneita_verificata,stato_certificato').in('persona_id',confirmed.map(x=>x.persona_id)).order('creato_il',{ascending:false}).limit(1000):{data:[]};
- const certificateList=(certs??[]) as Certificate[];
+ const [certResult,membershipResult,cardResult,emergencyResult,programResult,versionDetail,patentResult,documentResult]=await Promise.all([
+ readCourseChunks(enrollments.map(x=>x.persona_id),(ids,da,a)=>supabase.from('stato_certificati').select('persona_id,scade_il,idoneita_verificata,stato_certificato').in('persona_id',ids).order('creato_il',{ascending:false}).order('id').range(da,a)),
+ tutteLePagine((da,a)=>supabase.from('adesioni').select('id,persona_id,stato').eq('stagione_id',ed.stagione_id).order('id').range(da,a)),
+ tutteLePagine((da,a)=>supabase.from('tesseramenti').select('id,adesione_id,stato,scade_il,adesioni!inner(stagione_id)').eq('adesioni.stagione_id',ed.stagione_id).order('id').range(da,a)),
+ readCourseChunks([...enrollments.map(x=>x.persona_id),...eligiblePeople.map(x=>x.id)],(ids,da,a)=>supabase.from('contatti_emergenza').select('persona_id,nominativo,telefono').in('persona_id',ids).order('persona_id').range(da,a)),
+ tutteLePagine((da,a)=>supabase.from('programmi_didattici').select('id,titolo,tipo').order('id').range(da,a)),
+ ed.programma_versione_id?supabase.from('versioni_programmi').select('id,programma_id,versione,stato,obiettivi,teoria,pratica,sequenza_lezioni,durata_ore,verifiche').eq('id',ed.programma_versione_id).maybeSingle():Promise.resolve({data:null,error:null}),
+ supabase.from('brevetti_allievi').select('id,persona_id,titolo,ente,numero_brevetto,ottenuto_il,rilasciato_da_nome',{count:'exact'}).eq('edizione_id',id).order('ottenuto_il',{ascending:false}).order('id').range((page-1)*size,page*size-1),
+ supabase.from('documenti').select('id,nome,categoria,caricato_il',{count:'exact'}).eq('edizione_id',id).order('caricato_il',{ascending:false}).order('id').range((page-1)*size,page*size-1),
+ ]);
+ const certificateList=(certResult.data??[]) as Certificate[];
+ const membershipByPerson=new Map((membershipResult.data??[]).map(x=>[x.persona_id,x]));
+ const validCard=new Set((cardResult.data??[]).filter(c=>c.stato==='attiva'&&c.scade_il>=today).map(c=>c.adesione_id));
+ const emergencyByPerson=new Map((emergencyResult.data??[]).map(x=>[x.persona_id,x]));
+ const requirementError=Boolean(eligibilityError||membershipResult.error||cardResult.error);
+ const candidateRows=people.map(person=>{const membership=membershipByPerson.get(person.id),emergency=emergencyByPerson.get(person.id);return {id:person.id,name:person.cognome+' '+person.nome,membership:membership?.stato??null,hasValidCard:Boolean(membership&&validCard.has(membership.id)),eligible:activeIds.has(person.id),alreadyEnrolled:currentIds.has(person.id),isDirector:person.id===ed.direttore_id,unavailable:requirementError||Boolean(enrollError),emergencyName:emergency?.nominativo,emergencyPhone:emergency?.telefono};});
  const selected=lessons.find(l=>l.id===p.lezione)??lessons[0];
- const {data:attendance}=selected?await supabase.from('presenze').select('persona_id,presente').eq('lezione_id',selected.id).limit(500):{data:[]};
- const registered=new Map((attendance??[]).map(a=>[a.persona_id,a.presente]));
- const {data:programNames}=await supabase.from('programmi_didattici').select('id,titolo,tipo').limit(200);
+ const attendanceResult=selected?await tutteLePagine((da,a)=>supabase.from('presenze').select('persona_id,presente').eq('lezione_id',selected.id).order('id').range(da,a)):{data:[],error:null};
+ const registered=new Map((attendanceResult.data??[]).map(a=>[a.persona_id,a.presente]));
+ const programNames=programResult.data;
  const matchingPrograms=(programVersions??[]).filter(v=>programNames?.some(q=>q.id===v.programma_id&&q.tipo===cat?.tipo));
+ const program=versionDetail.data;
+ const activeLearners=enrollments.filter(x=>['iscritto','concluso'].includes(x.stato));
+ const responsible=assignments.find(a=>a.ruolo==='responsabile');
+ const mismatch=Boolean(responsible&&ed.direttore_id&&responsible.persona_id!==ed.direttore_id);
+ const pagination=(count:number|null,label:string)=><Pagination page={page} size={size} count={count} label={label} href={next=>courseViewHref(id,tab)+'&p='+next}/>;
+ const paged=<T,>(rows:T[])=>rows.slice((page-1)*size,page*size);
+ const certState=(cert:Certificate)=>cert.stato_certificato==='valido'&&cert.scade_il>=today&&cert.scade_il<=shiftDay(today,30)?'in_scadenza':cert.stato_certificato;
+ const personOptions=(rows:Person[])=>rows.map(t=>({value:t.id,label:t.cognome+' '+t.nome}));
  const canEdit=!['concluso','annullato'].includes(ed.stato);
  const {msg}=p;
  return <>
-  <Link className="back-link" href="/gestionale/corsi">← Tutte le edizioni</Link>
-  <div className="page-intro course-header"><div><p className="eyebrow">Scheda corso · {cat?courseName(cat.tipo,cat.livello):'Attività'}</p><h1>{ed.nome}</h1><p>{season?.nome??'Stagione'} · {formatValue(ed.inizio)} – {formatValue(ed.fine)} · <strong>{ed.stato}</strong></p></div><div className="buttons"><Link className="button" href={`/comunicazioni/corsi/${id}`}>Mailing list · Scrivi ai corsisti</Link><Link className="button ghost" href="/gestionale/calendario-visivo">Calendario generale</Link></div></div>
-  {msg&&message[msg]&&<p role="status" className={`notice ${['eliminato','creato','salvato','iscritto','istruttore','lezione_creata','presenze_salvate','programma_salvato'].includes(msg)?'success':'warning'}`}>{message[msg]}</p>}
-  {(enrollError||teacherError||lessonError)&&<p className="notice error">Una sezione non è stata caricata correttamente. Verifica Supabase e le migrazioni.</p>}
-  {ed.duplicato_storico&&<p className="notice warning">Possibile duplicato storico. Verifica le edizioni in archivio.</p>}
-  <section className="panel"><h2>Direttore del corso</h2><p>{ed.direttore_id?displayPerson(ed.direttore_id,people):'Da assegnare'}</p>
-  {([['responsabile','Istruttori'],['aiuto','Aiuto-istruttori']] as const).map(([role,label])=><div key={role}><h3>{label}</h3><p>{assignments.filter(a=>a.ruolo===role).map(a=>displayPerson(a.persona_id,people)).join(', ')||'Nessuna assegnazione'}</p></div>)}
-  {enrollError?<p role="alert">Elenco iscritti non disponibile.</p>:<><h3>Iscritti ({confirmed.length})</h3><ul>{confirmed.map(e=><li key={e.id}>{e.sort_nome} {e.sort_cognome}</li>)}</ul></>}<a href="#allievi">Gestisci iscrizioni</a></section>
-  <div className="course-overview">
-   <div className="panel"><span className="k">Capienza</span><strong>{ed.massimo_partecipanti}</strong></div>
-   <div className="panel"><span className="k">Richieste in attesa</span><strong>{enrollments.filter(x=>x.stato==='in_attesa').length}</strong></div>
-   <div className="panel"><span className="k">Istruttori assegnati</span><strong>{assignments.length}</strong></div>
-   <div className="panel"><span className="k">Lezioni</span><strong>{lessons.length}</strong></div>
-  </div>
-  <nav className="course-jump" aria-label="Sezioni del corso">{[['configurazione','Configurazione'],['istruttori','Istruttori'],['allievi','Allievi'],['didattica','Didattica'],['lezioni','Lezioni'],['presenze','Presenze']].map(([anchor,label])=><a key={anchor} href={`#${anchor}`}>{label}</a>)}</nav>
-  <div className="course-sections">
-   <Section id="configurazione" title="Configurazione dell'edizione"><EditForm action={updateEdition} className="stack"><input type="hidden" name="edizione_id" value={id}/>
-    <div className="form-grid"><label>Direttore del corso<select name="direttore_id" required defaultValue={ed.direttore_id??''}><option value="">Da assegnare</option>{people.map(t=><option key={t.id} value={t.id}>{t.cognome} {t.nome}</option>)}</select></label><label>Nome edizione<input name="nome" maxLength={160} required defaultValue={ed.nome}/></label><label>Stato<select name="stato" defaultValue={ed.stato}>{COURSE_STATES.map(s=><option key={s} value={s}>{s}</option>)}</select></label>
-    <label>Capienza<input type="number" name="massimo_partecipanti" min={1} max={500} step={1} defaultValue={ed.massimo_partecipanti} required/></label><label>Stagione / periodo<input readOnly value={`${season?.nome??'—'} · ${ed.inizio} – ${ed.fine}`}/></label></div>
+ <PageHeader eyebrow={'Scheda corso · '+(cat?courseName(cat.tipo,cat.livello):'Disciplina non disponibile')} title={ed.nome} description={(season?.nome??'Stagione non disponibile')+' · '+formatValue(ed.inizio)+' – '+formatValue(ed.fine)} actions={<><StatusBadge tone={ed.stato==='annullato'?'danger':statusTone(ed.stato)}>{ed.stato}</StatusBadge><ButtonLink href={`/comunicazioni/corsi/${id}`} variant="secondary">Scrivi ai corsisti</ButtonLink></>}/>
+ <p><strong>Direttore:</strong> {ed.direttore_id?displayPerson(ed.direttore_id,people):'Da assegnare'}</p>
+ {msg&&message[msg]&&<p role="status" className={`notice ${['eliminato','creato','salvato','iscritto','istruttore','lezione_creata','presenze_salvate','programma_salvato','moduli_salvati'].includes(msg)?'success':'warning'}`}>{message[msg]}</p>}
+ {(enrollError||teacherError||lessonError||peopleError||qualError||poolError||laneError||requirementError||certResult.error||emergencyResult.error||moduleError||linkError||versionError||programResult.error||versionDetail.error||attendanceResult.error||patentResult.error||documentResult.error)&&<Alert tone="warning">Alcuni dati non sono disponibili. Non interpretare un dato mancante come assenza di registrazioni.</Alert>}
+ {ed.duplicato_storico&&<Alert tone="warning" title="Duplicato storico da verificare">Confronta l’edizione con gli altri corsi prima di modificare. Nessuna eliminazione automatica.</Alert>}
+ {!ed.direttore_id&&<Alert tone="warning" title="Direttore mancante">Assegna il direttore nella configurazione.</Alert>}
+ {mismatch&&<Alert tone="warning" title="Direttore e responsabile differenti">Verifica gli incarichi nella sezione Direttore e istruttori. Nessun incarico è stato modificato automaticamente.</Alert>}
+ <nav className="sc-secretariat-tabs" aria-label="Sezioni del corso">{courseTabs.map(([key,label])=><Link key={key} href={courseViewHref(id,key,undefined,key==='presenze'?selected?.id:undefined)} aria-current={tab===key?'page':undefined}>{label}</Link>)}</nav>
+ {tab==='panoramica'&&<><div className="sc-metrics"><Link href={courseViewHref(id,'allievi')} className="sc-metric-link"><MetricCard area="teaching" icon="users" label="Iscritti / capienza" value={enrollError?'—':confirmed.length+' / '+ed.massimo_partecipanti}/></Link><Link href={courseViewHref(id,'allievi')} className="sc-metric-link"><MetricCard area="teaching" icon="clipboard" label="Richieste in attesa" value={enrollError?'—':enrollments.filter(x=>x.stato==='in_attesa').length}/></Link><Link href={courseViewHref(id,'istruttori')} className="sc-metric-link"><MetricCard area="teaching" icon="users" label="Istruttori assegnati" value={teacherError?'—':assignments.length}/></Link><Link href={courseViewHref(id,'lezioni')} className="sc-metric-link"><MetricCard area="calendar" icon="calendar" label="Lezioni non annullate" value={lessonError?'—':lessons.length}/></Link></div><section className="sc-card"><h2>Azioni rapide</h2><div className="sc-quick-actions"><ButtonLink href={courseViewHref(id,'configurazione')} variant="secondary">Configura edizione</ButtonLink><ButtonLink href={courseViewHref(id,'allievi')}>Gestisci allievi</ButtonLink><ButtonLink href={courseViewHref(id,'lezioni')} variant="secondary">Programma lezione</ButtonLink><ButtonLink href={courseViewHref(id,'presenze')} variant="secondary">Registro presenze</ButtonLink></div></section></>}
+ <div className="course-sections sc-secretariat-section">
+   {tab==='configurazione'&&<Section id="configurazione" title="Configurazione dell'edizione"><div className="sc-course-content"><div><strong>Disciplina</strong><p>{cat?courseName(cat.tipo,cat.livello):'Non disponibile'}</p></div><div><strong>Stagione</strong><p>{season?.nome??'Non disponibile'}</p></div><div><strong>Inizio</strong><p>{formatValue(ed.inizio)}</p></div><div><strong>Fine</strong><p>{formatValue(ed.fine)}</p></div></div><p className="tiny muted">I dati di catalogo, stagione e periodo sono di sola lettura in questa scheda; la modifica avanzata mantiene i vincoli esistenti.</p><Drawer title="Modifica configurazione" trigger="Modifica configurazione" primary><EditForm action={updateEdition} className="stack"><input type="hidden" name="edizione_id" value={id}/>
+    <div className="form-grid"><div className="sc-field"><label htmlFor="edit-direttore">Direttore del corso</label><SearchableSelect id="edit-direttore" name="direttore_id" required value={ed.direttore_id??''} label="Direttore" options={personOptions(people.filter(t=>t.id===ed.direttore_id||!activeLearners.some(e=>e.persona_id===t.id)&&!enrollments.some(e=>e.persona_id===t.id&&e.stato==='in_attesa')))}/></div><label>Nome edizione<input name="nome" maxLength={160} required defaultValue={ed.nome}/></label><label>Stato<select name="stato" defaultValue={ed.stato}>{COURSE_STATES.map(s=><option key={s} value={s}>{s}</option>)}</select></label>
+    <label>Capienza<input type="number" name="massimo_partecipanti" min={Math.max(1,confirmed.length)} max={500} step={1} defaultValue={ed.massimo_partecipanti} required/></label></div>
     <label>Costo del corso (€)<input name="costo_corso" type="number" list="listino-edit" step="0.01" min="0" required defaultValue={ed.costo_corso??''}/></label><datalist id="listino-edit">{prices?.map(p=><option key={p.importo} value={p.importo}/>)}</datalist>
     <label>Note<textarea name="note" maxLength={2000} rows={2} defaultValue={ed.note??''}/></label>
     <div className="actions"><button className="button">Salva modifiche</button><Link className="button ghost" href={`/gestionale/moduli/edizioni?edit=${id}`}>Modifica avanzata</Link><CancelEditButton/></div>
     <p className="tiny muted">Non è possibile ridurre la capienza sotto gli iscritti confermati. Conclusione e annullamento bloccano le nuove iscrizioni dalla scheda guidata.</p>
-   </EditForm>
-   <details className="calendar-danger"><summary className="button danger">Rimuovi</summary><form action={deleteEdition} className="stack">
+   </EditForm></Drawer>
+   <ConfirmDialog title={'Rimuovi edizione · '+ed.nome} trigger="Rimuovi edizione"><ActionForm action={deleteEdition} className="stack">
     <input type="hidden" name="edizione_id" value={id}/><p>La rimozione è definitiva e possibile solo se non ci sono dati collegati. Per conservare lo storico usa lo stato Annullato.</p>
     <label><input type="checkbox" name="conferma" required/> Confermo la rimozione di {ed.nome}</label><button type="submit" className="button danger">Rimuovi</button>
-   </form></details></Section>
-   <Section id="istruttori" title="Istruttori assegnati">
-    <div className="course-list">{assignments.map(a=><div key={a.id} className="course-list-row"><div><strong>{displayPerson(a.persona_id,people)}</strong><p className="tiny muted">{a.ruolo==='responsabile'?'Responsabile':'Aiuto istruttore'}</p></div>
-    {a.ruolo==='aiuto'&&<details><summary>Modifica incarico</summary><form action={removeInstructor}><input type="hidden" name="edizione_id" value={id}/><input type="hidden" name="assegnazione_id" value={a.id}/><label><input type="checkbox" name="conferma" required/> Confermo la rimozione</label><button className="button danger" type="submit">Rimuovi</button></form></details>}</div>)}
+   </ActionForm></ConfirmDialog></Section>}
+   {tab==='istruttori'&&<Section id="istruttori" title="Direttore e istruttori"><p><strong>Direttore:</strong> {ed.direttore_id?displayPerson(ed.direttore_id,people):'Da assegnare'}</p><p className="tiny muted">Responsabile del corso e del rilascio del brevetto secondo le regole associative. L’incarico di responsabile registrato tra gli istruttori è mostrato separatamente.</p><ButtonLink href={courseViewHref(id,'configurazione')} variant="secondary">Modifica direttore</ButtonLink>
+    <div className="course-list">{assignments.map(a=><div key={a.id} className="course-list-row"><div><strong>{displayPerson(a.persona_id,people)}</strong><p className="tiny muted">{a.ruolo==='responsabile'?'Responsabile':'Aiuto istruttore'}</p><ul>{instructors.filter(q=>q.persona_id===a.persona_id).map((q,i)=><li key={i}>{q.titolo} · {q.scade_il?(q.scade_il<today?'Scaduta il ':'Scadenza ')+formatValue(q.scade_il):'Scadenza non indicata'}</li>)}</ul>{!instructors.some(q=>q.persona_id===a.persona_id)&&<p>Qualifiche non acquisite</p>}</div>
+    {a.ruolo==='aiuto'&&<ConfirmDialog title={'Rimuovi incarico · '+displayPerson(a.persona_id,people)} trigger="Rimuovi incarico"><ActionForm action={removeInstructor}><input type="hidden" name="edizione_id" value={id}/><input type="hidden" name="assegnazione_id" value={a.id}/><label><input type="checkbox" name="conferma" required/> Confermo la rimozione</label><button className="button danger" type="submit">Rimuovi</button></ActionForm></ConfirmDialog>}</div>)}
     {!assignments.length&&<p className="muted">Non è ancora stato assegnato un istruttore.</p>}</div>
-    {canEdit&&<form className="course-inline-form" action={addInstructor}><input type="hidden" name="edizione_id" value={id}/><label>Istruttore con qualifica registrata<select name="persona_id" required defaultValue=""><option value="">Seleziona...</option>{teacherCandidates.map(t=><option key={t.id} value={t.id}>{t.cognome} {t.nome}</option>)}</select></label>
-    <label>Ruolo<select name="ruolo" required><option value="aiuto">Aiuto istruttore</option><option value="responsabile">Responsabile</option></select></label><button className="button" disabled={!teacherCandidates.length}>Assegna</button></form>}
-    {canEdit&&assignments.some(a=>a.ruolo==='responsabile')&&<form className="course-inline-form" action={replaceResponsible}><input type="hidden" name="edizione_id" value={id}/><label>Sostituisci il responsabile<select name="persona_id" required defaultValue=""><option value="">Scegli un nuovo responsabile</option>{teacherCandidates.map(t=><option key={t.id} value={t.id}>{t.cognome} {t.nome}</option>)}</select></label><span className="tiny muted">Per scegliere un aiuto già assegnato, rimuovi prima il suo incarico di aiuto.</span><button className="button ghost" disabled={!teacherCandidates.length}>Sostituisci</button></form>}
+    {canEdit&&!qualError&&!peopleError&&<Drawer title="Assegna istruttore" trigger="Assegna istruttore" primary><EditForm className="stack" action={addInstructor}><input type="hidden" name="edizione_id" value={id}/><div className="sc-field"><label htmlFor="add-instructor">Istruttore con qualifica registrata</label><SearchableSelect id="add-instructor" name="persona_id" label="Istruttore" required options={personOptions(teacherCandidates)}/></div>
+    <label>Ruolo<select name="ruolo" required><option value="aiuto">Aiuto istruttore</option><option value="responsabile" disabled={Boolean(responsible)}>Responsabile</option></select></label><button className="button" disabled={!teacherCandidates.length}>Assegna</button></EditForm></Drawer>}
+    {canEdit&&!qualError&&!peopleError&&assignments.some(a=>a.ruolo==='responsabile')&&<Drawer title="Sostituisci responsabile" trigger="Sostituisci responsabile"><EditForm className="stack" action={replaceResponsible}><input type="hidden" name="edizione_id" value={id}/><div className="sc-field"><label htmlFor="replace-responsible">Nuovo responsabile</label><SearchableSelect id="replace-responsible" name="persona_id" label="Responsabile" required options={personOptions(teacherCandidates)}/></div><span className="tiny muted">Per scegliere un aiuto già assegnato, rimuovi prima il suo incarico di aiuto.</span><button className="button ghost" disabled={!teacherCandidates.length}>Sostituisci</button></EditForm></Drawer>}
     <p className="tiny muted">È ammesso un solo responsabile per edizione. La presenza di una qualifica in archivio non equivale alla verifica dell'abilitazione richiesta per la disciplina: confermala prima dell'assegnazione. <Link href="/gestionale/moduli/qualifiche">Gestisci qualifiche</Link>.</p>
-   </Section>
-   <Section id="allievi" title="Iscrizioni e allievi"><p className="muted tiny">Puoi iscrivere soltanto soci con adesione attiva e tessera valida per questa stagione. La capienza è controllata dal database.</p>
-    <div className="panel table-panel"><table><thead><tr><th>Allievo</th><th>Adesione</th><th>Certificato</th><th>Stato iscrizione</th><th>Azioni</th></tr></thead><tbody>
-    {enrollments.map(i=>{const cert=certificateList.find(x=>x.persona_id===i.persona_id);return <tr key={i.id}>
-     <td>{displayPerson(i.persona_id,people)}</td><td>{activeIds.has(i.persona_id)?'Tesserato':'Non iscrivibile'}</td><td>{cert?statoSingolo(cert.stato_certificato)+' · '+cert.scade_il:'Documento mancante'}</td>
-     <td>{i.stato.replaceAll('_',' ')}</td><td><div className="sc-row-actions"><Drawer title={'Stato iscrizione · '+displayPerson(i.persona_id,people)} trigger="Cambia stato"><ActionForm action={updateEnrollment} className="course-state-form"><input type="hidden" name="edizione_id" value={id}/><input type="hidden" name="iscrizione_id" value={i.id}/><select name="stato" defaultValue={i.stato} aria-label={`Stato iscrizione ${displayPerson(i.persona_id,people)}`}>{ENROLLMENT_STATES.map(s=><option key={s} value={s} disabled={s!==i.stato&&['in_attesa','iscritto'].includes(s)&&(!canEdit||!activeIds.has(i.persona_id))}>{s.replaceAll('_',' ')}</option>)}</select><button className="button ghost">Salva</button></ActionForm></Drawer><Link href={`/gestionale/soci/${i.persona_id}`}>Scheda socio</Link><Link href={`/gestionale/moduli/iscrizioni?edit=${i.id}`}>Modifica iscrizione</Link></div></td>
+   </Section>}
+   {tab==='allievi'&&<Section id="allievi" title="Iscrizioni e allievi"><p className="muted tiny">Puoi iscrivere soltanto soci con adesione attiva e tessera valida per questa stagione. La capienza è controllata dal database.</p>
+    <DataTable label="Allievi del corso" mobileCards><thead role="rowgroup"><tr role="row">{['Allievo','Stato iscrizione','Adesione','Tesseramento','Certificato','Emergenza','Azioni'].map(l=><th key={l} role="columnheader" scope="col">{l}</th>)}</tr></thead><tbody role="rowgroup">
+    {paged(enrollments).map(i=>{const cert=certificateList.find(x=>x.persona_id===i.persona_id),membership=membershipByPerson.get(i.persona_id),contact=emergencyByPerson.get(i.persona_id);return <tr key={i.id} role="row">
+     <td role="cell" data-label="Allievo"><Link href={'/gestionale/soci/'+i.persona_id}>{displayPerson(i.persona_id,people)}</Link></td><td role="cell" data-label="Iscrizione"><StatusBadge tone={statusTone(i.stato)}>{i.stato.replaceAll('_',' ')}</StatusBadge></td><td role="cell" data-label="Adesione">{membershipResult.error?'Non disponibile':membership?membership.stato.replaceAll('_',' '):'Non acquisita'}</td><td role="cell" data-label="Tesseramento">{cardResult.error?'Non disponibile':membership&&validCard.has(membership.id)?'Attivo e valido':'Mancante o non valido'}<p className="tiny muted">{requirementError?'Requisiti non verificabili':activeIds.has(i.persona_id)?'Requisiti attuali soddisfatti':'Requisiti attuali non soddisfatti'}</p></td><td role="cell" data-label="Certificato">{certResult.error?'Non disponibile':cert?statoSingolo(certState(cert))+' · '+formatValue(cert.scade_il):'Documento mancante'}</td><td role="cell" data-label="Emergenza">{emergencyResult.error?'Non disponibile':contact?contact.nominativo+' · '+contact.telefono:'Non acquisito'}</td><td role="cell" data-label="Azioni"><div className="sc-row-actions"><Drawer title={'Stato iscrizione · '+displayPerson(i.persona_id,people)} trigger="Cambia stato"><ActionForm action={updateEnrollment} className="course-state-form"><input type="hidden" name="edizione_id" value={id}/><input type="hidden" name="iscrizione_id" value={i.id}/><select name="stato" defaultValue={i.stato} aria-label={`Stato iscrizione ${displayPerson(i.persona_id,people)}`}>{ENROLLMENT_STATES.map(s=><option key={s} value={s} disabled={s!==i.stato&&['in_attesa','iscritto'].includes(s)&&(!canEdit||requirementError||i.persona_id===ed.direttore_id||!activeIds.has(i.persona_id))}>{s.replaceAll('_',' ')}</option>)}</select><button className="button ghost">Salva</button></ActionForm></Drawer><Link href={`/gestionale/soci/${i.persona_id}`}>Scheda socio</Link><Link href={`/gestionale/moduli/iscrizioni?edit=${i.id}`}>Modifica iscrizione</Link></div></td>
      </tr>;})}
-    {!enrollments.length&&<tr><td colSpan={5} className="empty-cell">Nessuna iscrizione registrata.</td></tr>}
-    </tbody></table></div>
-    {canEdit&&<form action={addEnrollment} className="course-inline-form"><input type="hidden" name="edizione_id" value={id}/><label>Allievo<select name="persona_id" required defaultValue=""><option value="">Seleziona...</option>{candidates.map(x=><option key={x.id} value={x.id}>{x.cognome} {x.nome} · tesserato</option>)}</select></label>
-    <Emergenza/><input type="hidden" name="stato" value="iscritto"/><span>Stato: Iscritto</span><button className="button" disabled={!candidates.length}>Aggiungi allievo</button></form>}
-    <p className="tiny muted">La scadenza del certificato è solo un'indicazione amministrativa. Verifica anche i requisiti didattici e le norme applicabili prima delle attività in acqua. Elenco fino a 1.000 soci idonei: per archivi più grandi usa i moduli generici.</p>
-   </Section>
-   <Section id="didattica" title="Programma didattico"><p className="muted tiny">Puoi collegare soltanto una versione approvata della stessa disciplina. Le versioni approvate sono protette dalle modifiche.</p>
-    <form action={setCourseProgram} className="course-inline-form"><input type="hidden" name="edizione_id" value={id}/><label>Versione approvata<select name="programma_versione_id" defaultValue={ed.programma_versione_id??''}><option value="">Nessun programma associato</option>{matchingPrograms.map(v=><option key={v.id} value={v.id}>{programNames?.find(x=>x.id===v.programma_id)?.titolo??'Programma'} · v{v.versione}</option>)}</select></label><button className="button">Salva programma</button></form>
-    <Link href="/gestionale/moduli/versioni">Gestisci programmi e versioni</Link>
-   </Section>
-   <Section id="lezioni" title="Calendario e nuove lezioni">
-    <div className="course-list">{lessons.map(l=><div className="course-list-row" key={l.id}><div><strong>{l.titolo}</strong><p className="tiny muted">{formatRome(l.inizio)} – {formatRome(l.fine)}{l.piscina_id?` · ${pools?.find(x=>x.id===l.piscina_id)?.nome??'Piscina'}`:''}</p></div><div className="buttons"><Link href={`/gestionale/calendario-visivo/${l.id}`}>Modifica calendario</Link><a href={`?lezione=${l.id}#presenze`}>Presenze</a><Link href={`/gestionale/moduli/${"calendario"}?edit=${l.id}`}>Modifica</Link></div></div>)}
+    {!enrollments.length&&<tr><td colSpan={7} className="empty-cell">Nessuna iscrizione registrata.</td></tr>}
+    </tbody></DataTable>{pagination(enrollError?null:enrollments.length,'iscrizioni')}
+ {canEdit&&!enrollError&&!peopleError&&!requirementError&&<Drawer title="Iscrivi allievo" trigger="Iscrivi allievo" primary><EditForm action={addEnrollment} className="stack"><input type="hidden" name="edizione_id" value={id}/><CourseStudentPicker people={candidateRows} full={confirmed.length>=ed.massimo_partecipanti}/></EditForm></Drawer>}
+ <p className="tiny muted">Lo stato storico dell’iscrizione resta distinto dai requisiti attuali. La scadenza del certificato è un’indicazione amministrativa, non un giudizio di idoneità didattica.</p>
+   </Section>}
+   {tab==='didattica'&&<Section id="didattica" title="Programma didattico"><p className="muted tiny">Puoi collegare soltanto una versione approvata della stessa disciplina. Le versioni approvate sono protette dalle modifiche.</p>
+    <div className="sc-card"><h3>{program?((programNames??[]).find(x=>x.id===program.programma_id)?.titolo??'Programma')+' · v'+program.versione:'Nessun programma associato'}</h3>{program&&<><StatusBadge tone={statusTone(program.stato)}>{program.stato}</StatusBadge><div className="sc-course-content">{[['Obiettivi',program.obiettivi],['Teoria',program.teoria],['Pratica',program.pratica],['Sequenza lezioni',program.sequenza_lezioni],['Durata (ore)',program.durata_ore],['Verifiche',program.verifiche]].map(([label,value])=><div key={String(label)}><strong>{label}</strong><p>{value??'Non indicato'}</p></div>)}</div></>}</div><Drawer title="Associa versione approvata" trigger="Associa programma"><EditForm action={setCourseProgram} className="stack"><input type="hidden" name="edizione_id" value={id}/><label>Versione approvata<select name="programma_versione_id" defaultValue={ed.programma_versione_id??''}><option value="">Nessun programma associato</option>{matchingPrograms.map(v=><option key={v.id} value={v.id}>{programNames?.find(x=>x.id===v.programma_id)?.titolo??'Programma'} · v{v.versione}</option>)}</select></label><button className="button">Salva programma</button></EditForm></Drawer>
+    <div className="buttons"><Link href="/gestionale/moduli/programmi">Programmi</Link><Link href="/gestionale/moduli/versioni">Versioni</Link><Link href="/gestionale/programmi-didattici">Archivio moduli</Link><Link href={courseViewHref(id,'lezioni')}>Moduli ed esercizi delle lezioni</Link></div>
+   </Section>}
+   {tab==='lezioni'&&<Section id="lezioni" title="Calendario e nuove lezioni">
+    <div className="course-list">{paged(lessons).map(l=><div className="course-list-row" key={l.id}><div><strong>{l.titolo}</strong><p className="tiny muted">{formatRome(l.inizio)} – {formatRome(l.fine)}{l.piscina_id?` · ${pools?.find(x=>x.id===l.piscina_id)?.nome??'Piscina'}`:''}</p></div><div className="buttons"><Link href={`/gestionale/calendario-visivo/${l.id}`}>Modifica calendario</Link><Link href={courseViewHref(id,'presenze',undefined,l.id)}>Presenze</Link><Drawer title={'Moduli · '+l.titolo} trigger="Componi moduli"><p>{l.esercizi??'Esercizi non indicati'}</p><p>{l.materiale??'Materiale non indicato'}</p>{!moduleError&&!linkError&&<LessonComposer edizioneId={id} lezioneId={l.id} moduli={moduleCatalog??[]} initial={(lessonModLinks??[]).filter(x=>x.lezione_id===l.id).sort((a,b)=>a.ordine-b.ordine).map(x=>x.modulo_id)}/>}</Drawer></div></div>)}
     {!lessons.length&&<p className="muted">Nessuna lezione pianificata.</p>}</div>
-    {canEdit&&<form action={createLesson} className="stack course-lesson-form"><input type="hidden" name="edizione_id" value={id}/>
-    <h3>Programma una lezione</h3><label>Titolo<input name="titolo" maxLength={160} required placeholder="Es. Esercitazione ARA in piscina"/></label>
-    <div className="form-grid"><label>Inizio (ora italiana)<input name="inizio" type="datetime-local" required/></label><label>Fine (ora italiana)<input name="fine" type="datetime-local" required/></label></div>
-    <CourseLanePicker pools={(pools??[]).map(x=>({id:x.id,nome:x.nome}))} lanes={(lanes??[]).map(x=>({id:x.id,piscina_id:x.piscina_id,numero:x.numero}))}/>
-    <label>Esercizi<textarea name="esercizi" rows={2} maxLength={2000}/></label><label>Materiale necessario<textarea name="materiale" rows={2} maxLength={1000}/></label>
-    <button className="button">Crea lezione e prenota corsie</button>
-    <p className="tiny muted">L'orario è interpretato come Europe/Rome; orari ambigui o inesistenti durante il cambio dell'ora saranno rifiutati. Conflitti di prenotazione annullano l'intera creazione.</p>
-    </form>}
+ {pagination(lessonError?null:lessons.length,'lezioni')}
+ {canEdit&&!poolError&&!laneError&&<Drawer title="Nuova lezione" trigger="Nuova lezione" primary><EditForm action={createLesson} className="stack"><input type="hidden" name="edizione_id" value={id}/><label>Titolo<input name="titolo" maxLength={160} required/></label><div className="form-grid"><label>Inizio (ora italiana)<input name="inizio" type="datetime-local" required/></label><label>Fine (ora italiana)<input name="fine" type="datetime-local" required/></label></div><CourseLessonFields pools={pools??[]} lanes={lanes??[]}/><p className="tiny muted">Fuso Europe/Rome. Eventuali conflitti di corsia annullano l’intera operazione.</p></EditForm></Drawer>}
     <div className="buttons"><Link href="/gestionale/moduli/calendario">Modifica avanzata lezioni</Link><Link href="/gestionale/moduli/prenotazioni">Gestisci prenotazioni</Link></div>
-   </Section>
-   <Section id="composizione" title="Composizione e stampe lezioni">
-    {lessons.map(l=><details className="panel" key={l.id}><summary><strong>{l.titolo}</strong> · {formatRome(l.inizio)}</summary>
-     <LessonComposer edizioneId={id} lezioneId={l.id} moduli={moduleCatalog??[]} initial={(lessonModLinks??[]).filter(x=>x.lezione_id===l.id).sort((a,b)=>a.ordine-b.ordine).map(x=>x.modulo_id)}/>
-     <div className="buttons"><Link className="button ghost" href={`/gestionale/corsi/${id}/stampe?tipo=piscina&lezione=${l.id}`}>Stampa registro Piscina PDF</Link>
-     <Link className="button ghost" href={`/gestionale/corsi/${id}/stampe?tipo=teoria&lezione=${l.id}`}>Stampa registro Teoria PDF</Link></div>
-    </details>)}
-    <Link className="button" href={`/gestionale/corsi/${id}/stampe?tipo=programma`}>Stampa programma completo PDF</Link>
-   </Section>
-   <Section id="presenze" title="Registro presenze">
+   </Section>}
+   {tab==='stampe'&&<Section id="stampe" title="Documenti e stampe">
+ <ButtonLink href={`/gestionale/corsi/${id}/stampe?tipo=programma`}>Scarica programma completo PDF</ButtonLink>
+ <h3>Registri delle lezioni</h3>{lessons.map(l=><div className="course-list-row" key={l.id}><div><strong>{l.titolo}</strong><p>{formatRome(l.inizio)}</p></div><div className="buttons"><Link href={`/gestionale/corsi/${id}/stampe?tipo=piscina&lezione=${l.id}`}>Registro Piscina PDF</Link><Link href={`/gestionale/corsi/${id}/stampe?tipo=teoria&lezione=${l.id}`}>Registro Teoria PDF</Link></div></div>)}
+ <h3>Documenti associati all’edizione</h3>{documentResult.error?<Alert tone="warning">Documenti non disponibili.</Alert>:documentResult.data?.length?<ul>{documentResult.data.map(d=><li key={d.id}><Link href={'/documenti/'+d.id}>{d.nome}</Link> · {d.categoria}</li>)}</ul>:<p>Nessun documento associato.</p>}{pagination(documentResult.error?null:documentResult.count,'documenti')}
+ </Section>}
+ {tab==='brevetti'&&<Section id="brevetti" title="Brevetti rilasciati"><p>Il direttore viene registrato al rilascio secondo i vincoli esistenti. Il nominativo storico non viene sostituito automaticamente.</p><ButtonLink href={'/gestionale/moduli/brevetti?edizione='+id+'&nuovo=1'}>Registra brevetto</ButtonLink>{patentResult.error?<Alert tone="warning">Brevetti non disponibili.</Alert>:patentResult.data?.length?<DataTable label="Brevetti rilasciati"><thead><tr><th>Allievo</th><th>Brevetto</th><th>Data</th><th>Rilasciato da</th><th>Azioni</th></tr></thead><tbody>{patentResult.data.map(b=><tr key={b.id}><td><Link href={'/gestionale/soci/'+b.persona_id}>{displayPerson(b.persona_id,people)}</Link></td><td>{b.titolo} · {b.ente??'—'}</td><td>{formatValue(b.ottenuto_il)}</td><td>{b.rilasciato_da_nome??'Non acquisito'}</td><td><Link href={'/gestionale/moduli/brevetti?edit='+b.id+'&edizione='+id}>Apri brevetto</Link></td></tr>)}</tbody></DataTable>:<p>Nessun brevetto registrato per questa edizione.</p>}{pagination(patentResult.error?null:patentResult.count,'brevetti')}</Section>}
+   {tab==='presenze'&&<Section id="presenze" title="Registro presenze">
     {!selected?<p className="muted">Crea una lezione per iniziare a registrare le presenze.</p>:<>
-     <form method="get" className="course-lesson-picker"><label>Seleziona lezione<select name="lezione" defaultValue={selected.id}>{lessons.map(l=><option key={l.id} value={l.id}>{formatRome(l.inizio)} · {l.titolo}</option>)}</select></label><button className="button ghost" formAction={`/gestionale/corsi/${id}#presenze`}>Apri registro</button></form>
-     <form action={recordClassAttendance} className="stack"><input type="hidden" name="edizione_id" value={id}/><input type="hidden" name="lezione_id" value={selected.id}/>
+     <form method="get" className="course-lesson-picker"><input type="hidden" name="tab" value="presenze"/><label>Seleziona lezione<select name="lezione" defaultValue={selected.id}>{lessons.map(l=><option key={l.id} value={l.id}>{formatRome(l.inizio)} · {l.titolo}</option>)}</select></label><button className="button ghost" formAction={`/gestionale/corsi/${id}`}>Apri registro</button></form>
+     <EditForm action={recordClassAttendance} className="stack"><input type="hidden" name="edizione_id" value={id}/><input type="hidden" name="lezione_id" value={selected.id}/>
       <div className="panel table-panel"><table><thead><tr><th>Allievo</th><th>Presenza</th></tr></thead><tbody>
-       {enrollments.filter(x=>['iscritto','concluso'].includes(x.stato)).map(e=><tr key={e.id}><td>{displayPerson(e.persona_id,people)}</td><td><select name={`pres_${e.persona_id}`} defaultValue={registered.get(e.persona_id)===true?'si':registered.get(e.persona_id)===false?'no':''} aria-label={`Presenza ${displayPerson(e.persona_id,people)}`}>
-        <option value="">Non registrata</option><option value="si">Presente</option><option value="no">Assente</option></select></td></tr>)}
-       {!confirmed.length&&<tr><td colSpan={2} className="empty-cell">Nessun allievo confermato.</td></tr>}
-      </tbody></table></div><button className="button">Salva presenze</button>
-     </form></>}
+       {activeLearners.map(e=><tr key={e.id}><td>{displayPerson(e.persona_id,people)}</td><td><select name={`pres_${e.persona_id}`} defaultValue={registered.get(e.persona_id)===true?'si':registered.get(e.persona_id)===false?'no':''} aria-label={`Presenza ${displayPerson(e.persona_id,people)}`}>
+        <option value="">Da registrare</option><option value="si">Presente</option><option value="no">Assente</option></select></td></tr>)}
+       {!activeLearners.length&&<tr><td colSpan={2} className="empty-cell">Nessun allievo confermato.</td></tr>}
+      </tbody></table></div><button className="button" disabled={Boolean(attendanceResult.error||enrollError)}>Salva presenze</button>
+     </EditForm></>}
     <p className="tiny muted">Solo gli allievi iscritti o che hanno concluso il corso possono essere registrati. Le note individuali sono disponibili nel modulo presenze avanzato.</p>
-   </Section>
+   </Section>}
   </div>
-  <Cronologia tipo="corso" id={id}/>
-  {(lessons.length>200)&&<p className="notice warning">Alcuni elenchi sono stati limitati per sicurezza. Usa i moduli generici per consultare lo storico completo.</p>}
+  {tab==='cronologia'&&<Cronologia tipo="corso" id={id} expanded/>}
+
  </>;
 }

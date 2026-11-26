@@ -139,7 +139,7 @@ export async function saveModuleRecord(form:FormData) {
  revalidatePath('/gestionale');
  const returnPerson=text(form,'return_persona'),tab=memberTabForModule(key);
  if(tab&&uuid.test(returnPerson)&&changes.persona_id===returnPerson){revalidatePath('/gestionale/soci/'+returnPerson);redirect('/gestionale/soci/'+returnPerson+'?tab='+tab+'&msg=elemento_salvato');}
- if(key==='iscrizioni'&&id)redirect('/gestionale/corsi/'+changes.edizione_id+'?msg=iscritto#allievi');
+ if(key==='iscrizioni'&&id)redirect('/gestionale/corsi/'+changes.edizione_id+'?tab=allievi&msg=iscritto');
  redirect(id?errorPath(key,'salvato')+'&edit='+id:errorPath(key,'salvato'));
 }
 
