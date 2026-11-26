@@ -50,3 +50,6 @@ Eseguire `node --test tests/v26-design-system.test.mjs` e la CI completa. Test p
 - Commit: 717d88c, fe90cc6, e48283b, ab258a4, f5ee958. Nessun SQL, nuova dipendenza, merge, modifica ai permessi o operazione su produzione.
 
 Scenari browser aperti: accesso diretto e refresh, drawer a 320/375/390/430/768/1024/1280/1440/1920, focus/ESC, menu account e logout, nav protetta, stato sporco/ritorno a valori iniziali, submit fallito e riuscito, browser back/forward, reload/chiusura, tastiera iOS, RLS per ruolo. Testare su staging e non dati reali.
+
+### Evidenza finale F2
+Commit applicativo `f5ee95843305a60efc0f271e0ae82bca3d754e00`: [CI 45812422015](https://github.com/MatteoMagnani95/SestoContinente_gest/actions/runs/45812422015), job 139883397017, conclusione success. TypeScript OK; 140/140 test (10 nuovi rispetto a F1), 0 falliti, 0 saltati; integrità 131 sorgenti / 307 import / 7 moduli critici; build Next.js e 39/39 pagine statiche generate. Vercel commit applicativo success. Nessun collaudo autenticato, browser E2E o RLS live. `main` verificato invariato a eb25225ce7e538cf72486b48c4af2812c7492416. Nessuna pubblicazione in produzione.

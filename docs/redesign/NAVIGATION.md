@@ -19,3 +19,6 @@
 
 ### Vincoli di prosecuzione
 F3 deve integrare requestDiscard nei drawer e nelle modali e sostituire progressivamente adapter legacy; F4 deve rimuovere duplicazioni di ritorno nelle pagine e completare notifiche. F6 e F7 devono verificare viewport, tastiera, screen reader e sessioni con ruoli sintetici su staging. Nessun ambiente di produzione va usato per test di scrittura.
+
+### Evidenza finale F2
+Commit applicativo `f5ee95843305a60efc0f271e0ae82bca3d754e00`: [CI 45812422015](https://github.com/MatteoMagnani95/SestoContinente_gest/actions/runs/45812422015), job 139883397017, conclusione success. TypeScript OK; 140/140 test (10 nuovi rispetto a F1), 0 falliti, 0 saltati; integrità 131 sorgenti / 307 import / 7 moduli critici; build Next.js e 39/39 pagine statiche generate. Vercel commit applicativo success. Nessun collaudo autenticato, browser E2E o RLS live. `main` verificato invariato a eb25225ce7e538cf72486b48c4af2812c7492416. Nessuna pubblicazione in produzione.
