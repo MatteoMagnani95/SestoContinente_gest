@@ -67,3 +67,37 @@ test('Staging: una sola RPC atomica per lotto e tutte le righe, esito non confer
   assert.equal(m.writes.length,1);assert.equal(m.writes[0].p_righe.length,201);
  }
 });
+
+test('Importazione: date reali e UUID edizione normalizzati',()=>{
+ const source=readFileSync(new URL('../lib/importazione.ts',import.meta.url),'utf8');
+ const js=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
+ const lib={};new Function('exports','require',js)(lib,id=>id==='./codice-fiscale'?{validaCF:()=>true}:require(id));
+ for(const date of ['2025-02-29','2026-04-31','2026-13-01','0000-01-01']){
+  assert.ok(lib.erroriRiga({nome:'A',cognome:'B',data_nascita:date},'soci').some(e=>e.includes('Data nascita')));
+ }
+ assert.deepEqual(lib.erroriRiga({nome:'A',cognome:'B',data_nascita:'2024-02-29'},'soci'),[]);
+ const row=lib.normalizzaRiga({edizione_id:'ABCDEF01-1234-4000-8000-ABCDEF012345',data_brevetto:'2026-02-30'},'corsi');
+ assert.equal(row.edizione_id,'abcdef01-1234-4000-8000-abcdef012345');
+ assert.ok(lib.erroriRiga(row,'corsi').some(e=>e.includes('Data brevetto')));
+});
+test('Importazione corsi: lookup in blocchi, nessuna query UUID invalida',async()=>{
+ const code=ts.transpileModule(readFileSync(new URL('../app/gestionale/importazione/actions.ts',import.meta.url),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
+ const ids=Array.from({length:201},(_,i)=>'00000000-0000-4000-8000-'+String(i+1).padStart(12,'0'));
+ const parsed=[...ids,'invalido'].map((edizione_id,i)=>({edizione_id,codice_fiscale:'CF'+i,brevetto:''}));
+ const reads=[],writes=[];
+ const supabase={rpc:async(name,payload)=>{
+  if(name==='cf_storici_esistenti')return {data:parsed.map(r=>({codice_fiscale:r.codice_fiscale}))};
+  if(name==='crea_anteprima_importazione'){writes.push(payload);return {data:ids[0]};}
+  throw Error('unexpected RPC '+name);
+ },from(table){
+  assert.equal(table,'edizioni_corsi');
+  return {select:()=>({in:async(field,values)=>{assert.equal(field,'id');reads.push(values);return {data:values.map(id=>({id}))};}})};
+ }};
+ const deps={'next/navigation':{redirect:where=>{throw Error('REDIRECT '+where);}},'next/cache':{revalidatePath:()=>{}},'@/lib/import-file':{parseHistoricalFile:async()=>({rows:parsed,error:null})},'@/lib/security':{requireStaff:async()=>({supabase})},'@/lib/importazione':{headings:()=>columns,normalizzaRiga:r=>r,erroriRiga:()=>[],IMPORT_EDITION_UUID:/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i}};
+ const exported={};new Function('exports','require',code)(exported,id=>deps[id]??require(id));
+ const form=new FormData();form.set('tipo','corsi');form.set('file',new File(['test'],'test.csv'));
+ await assert.rejects(exported.stageImport(form),/REDIRECT \/gestionale\/importazione\?batch=/);
+ assert.deepEqual(reads.map(r=>r.length),[100,100,1]);assert.deepEqual(reads.flat(),ids);
+ assert.equal(writes.length,1);assert.equal(writes[0].p_righe.length,202);
+ assert.deepEqual(writes[0].p_righe[0].errori,[]);assert.ok(writes[0].p_righe.at(-1).errori.includes('Edizione corso non trovata'));
+});
