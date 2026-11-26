@@ -66,7 +66,7 @@ test('Report: conteggi esatti e residui ufficiali, finestre di calendario italia
 test('Iscrizioni: paginazione nella stessa sezione, dati incompleti non trasformati in zero',()=>{
  const s=read('app/gestionale/corsi/page.tsx');
  assert.match(s,/iscrizioni\?'\/gestionale\/moduli\/iscrizioni':'\/gestionale\/corsi'/);
- assert.match(s,/href\(base,q,stato,stagione,requested\+1\)/);
+ assert.match(s,/const pageHref=\(page:number\)=>base\+/);assert.match(s,/href=\{pageHref\}/);assert.match(s,/p:String\(page\)/);
  assert.match(s,/enrollmentError\?'—':n/);
  assert.match(read('app/area-personale/corsi/page.tsx'),/p\.id!==editions\?\.find\(e=>e\.id===edition\)\?\.direttore_id/);
 });

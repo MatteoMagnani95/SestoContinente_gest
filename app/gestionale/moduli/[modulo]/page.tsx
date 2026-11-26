@@ -4,6 +4,7 @@ import SearchableSelect from '@/components/ui/SearchableSelect';
 import {StatusBadge,PageHeader} from '@/components/ui/Primitives';
 import {moduleUi,cleanSearch,pageNumber,listHref,entityLabel} from '@/lib/module-ui';
 import {tutteLePagine} from '@/lib/pagine';
+import {validLevel} from '@/lib/course-ui';
 import {dateFilter,searchTerms,memberTabForModule} from '@/lib/secretariat';
 import {romeDay,shiftDay} from '@/lib/calendar-tools';
 import {statiCertificato,statoSingolo} from '@/lib/certificati';
@@ -70,7 +71,7 @@ const sezioniEditor:Record<string,Record<string,string[]>>={
  brevetti:{'Allievo e corso':['persona_id','edizione_id'],'Dati del brevetto':['titolo','ente','numero_brevetto','ottenuto_il','scade_il','note']},
  certificati:{'Intestatario e periodo':['persona_id','rilasciato_il','scade_il'],'Verifica amministrativa':['esito_verifica','note_amministrative']},
 };
-function Editor({module,moduleKey,record,references,admin=false,personId=''}:{module:Module;moduleKey:string;record?:Row;references:Record<string,Row[]>;admin?:boolean;personId?:string}){
+function Editor({module,moduleKey,record,references,admin=false,personId='',editionId=''}:{module:Module;moduleKey:string;record?:Row;references:Record<string,Row[]>;admin?:boolean;personId?:string;editionId?:string}){
  const sezioni=sezioniEditor[moduleKey];
  const gruppi=sezioni?Object.entries(sezioni).map(([titolo,nomi])=>({titolo,fields:module.fields.filter(f=>nomi.includes(f.name))})):[{titolo:'Dati della scheda',fields:module.fields}];
  const remaining=module.fields.filter(f=>!gruppi.some(g=>g.fields.includes(f)));if(remaining.length)gruppi.push({titolo:'Altri dati',fields:remaining});
@@ -78,7 +79,7 @@ function Editor({module,moduleKey,record,references,admin=false,personId=''}:{mo
 
  <input type="hidden" name="modulo" value={moduleKey}/>
  {record&&<input type="hidden" name="id" value={record.id}/>}{personId&&<input type="hidden" name="return_persona" value={personId}/>}{record&&moduleKey==='certificati'&&<input type="hidden" name="documento_atteso" value={String(record.documento_id??'')}/>}
- {gruppi.map(({titolo,fields})=><fieldset key={titolo}><legend>{titolo}</legend><div className="form-grid">{moduleKey==='iscrizioni'&&!record&&<EligibleEnrollmentSelect editions={(references.edizioni_corsi??[]) as unknown as {id:string;nome:string;stagione_id:string;stato:string}[]} initialPerson={personId} eligible={(references.gest_soci_iscrivibili??[]) as unknown as {persona_id:string;stagione_id:string;nome:string;cognome:string}[]}/>} {fields.filter(f=>!(moduleKey==='iscrizioni'&&!record&&['edizione_id','persona_id','stato'].includes(f.name))).map(f=>moduleKey==='addebiti'&&f.name==='iscrizione_id'?<EnrollmentInput key={f.name} field={f} value={record?.[f.name]} references={references} editing={!!record}/>:(moduleKey==='iscrizioni'||moduleKey==='brevetti')&&record&&['persona_id','edizione_id'].includes(f.name)?<label key={f.name}>{f.label}<input type="hidden" name={f.name} value={String(record[f.name]??'')}/><input readOnly value={labelOf(references[f.ref?.table??'']?.find(r=>r.id===record[f.name])??({id:''} as Row),f.ref?.labels??['id'])||'Non acquisito'}/></label>:<FieldInput scope={moduleKey+'-'+(record?.id??'new')} key={`${record?.id??'new'}-${f.name}`} field={moduleKey==='iscrizioni'&&record&&f.name==='stato'?{...f,options:f.options?.filter(o=>o===record.stato||!['in_attesa','iscritto'].includes(o)||((references.edizioni_corsi??[]).some(e=>e.id===record.edizione_id&&['programmato','attivo'].includes(String(e.stato)))&&(references.gest_soci_iscrivibili??[]).some(e=>e.persona_id===record.persona_id&&e.stagione_id===(references.edizioni_corsi??[]).find(x=>x.id===record.edizione_id)?.stagione_id)))}:f} value={record?.[f.name]??(moduleKey==='certificati'&&f.name==='esito_verifica'&&record?(record.idoneita_verificata?'valido':record.documento_id?'in_attesa':'non_valido'):undefined)??(!record&&f.name==='persona_id'&&references[f.ref?.table??'']?.some(r=>r.id===personId)?personId:undefined)??(!record&&moduleKey==='anagrafiche'&&['stato_nascita','stato_residenza'].includes(f.name)?'Italia':undefined)} references={references}/>)}</div></fieldset>)}
+ {gruppi.map(({titolo,fields})=><fieldset key={titolo}><legend>{titolo}</legend><div className="form-grid">{moduleKey==='iscrizioni'&&!record&&<EligibleEnrollmentSelect editions={(references.edizioni_corsi??[]) as unknown as {id:string;nome:string;stagione_id:string;stato:string}[]} initialPerson={personId} eligible={(references.gest_soci_iscrivibili??[]) as unknown as {persona_id:string;stagione_id:string;nome:string;cognome:string}[]}/>} {fields.filter(f=>!(moduleKey==='iscrizioni'&&!record&&['edizione_id','persona_id','stato'].includes(f.name))).map(f=>moduleKey==='addebiti'&&f.name==='iscrizione_id'?<EnrollmentInput key={f.name} field={f} value={record?.[f.name]} references={references} editing={!!record}/>:(moduleKey==='iscrizioni'||moduleKey==='brevetti')&&record&&['persona_id','edizione_id'].includes(f.name)?<label key={f.name}>{f.label}<input type="hidden" name={f.name} value={String(record[f.name]??'')}/><input readOnly value={labelOf(references[f.ref?.table??'']?.find(r=>r.id===record[f.name])??({id:''} as Row),f.ref?.labels??['id'])||'Non acquisito'}/></label>:<FieldInput scope={moduleKey+'-'+(record?.id??'new')} key={`${record?.id??'new'}-${f.name}`} field={moduleKey==='iscrizioni'&&record&&f.name==='stato'?{...f,options:f.options?.filter(o=>o===record.stato||!['in_attesa','iscritto'].includes(o)||((references.edizioni_corsi??[]).some(e=>e.id===record.edizione_id&&['programmato','attivo'].includes(String(e.stato)))&&(references.gest_soci_iscrivibili??[]).some(e=>e.persona_id===record.persona_id&&e.stagione_id===(references.edizioni_corsi??[]).find(x=>x.id===record.edizione_id)?.stagione_id)))}:f} value={record?.[f.name]??(moduleKey==='certificati'&&f.name==='esito_verifica'&&record?(record.idoneita_verificata?'valido':record.documento_id?'in_attesa':'non_valido'):undefined)??(!record&&f.name==='edizione_id'&&references[f.ref?.table??'']?.some(r=>r.id===editionId)?editionId:undefined)??(!record&&f.name==='persona_id'&&references[f.ref?.table??'']?.some(r=>r.id===personId)?personId:undefined)??(!record&&moduleKey==='anagrafiche'&&['stato_nascita','stato_residenza'].includes(f.name)?'Italia':undefined)} references={references}/>)}</div></fieldset>)}
  {moduleKey==='anagrafiche'&&<CodiceFiscaleAssist/>}<div className="form-actions"><button type="submit" className="button">{record?'Salva modifiche':'Salva '+entityLabel(moduleKey)}</button><CancelEditButton/></div>
  </EditForm>
  {record&&!module.appendOnly&&<RemoveRecord moduleKey={moduleKey} id={record.id} label={rowLabel(record,references,module)}/>}
@@ -93,7 +94,7 @@ function bookingConflictText(corsia?:string,inizio?:string,fine?:string):string{
  const fascia=dal&&al?` dalle ${dal} alle ${al}`:' nell’intervallo richiesto';
  return `Corsia${numero} già prenotata${fascia}. Scegli un’altra corsia o modifica l’orario.`;
 }
-export default async function ModulePage({params,searchParams}:{params:Promise<{modulo:string}>;searchParams:Promise<{q?:string;msg?:string;p?:string;corsia?:string;inizio?:string;fine?:string;edit?:string;stato?:string;f?:string;v?:string;ordine?:string;dir?:string;filtro_modulo?:string;dal?:string;al?:string;persona?:string;nuovo?:string;pm?:string;stagione?:string;edizione?:string}>}){
+export default async function ModulePage({params,searchParams}:{params:Promise<{modulo:string}>;searchParams:Promise<{q?:string;msg?:string;p?:string;corsia?:string;inizio?:string;fine?:string;edit?:string;stato?:string;f?:string;v?:string;ordine?:string;dir?:string;filtro_modulo?:string;dal?:string;al?:string;persona?:string;nuovo?:string;pm?:string;stagione?:string;edizione?:string;livello?:string}>}){
  const {modulo}=await params;
  if(!isModuleKey(modulo))notFound();
  if(modulo==='pagamenti')redirect('/gestionale/incassi');
@@ -110,6 +111,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  const personId=persona&&UUID_RE.test(persona)?persona:'';
  const personField=module.fields.some(f=>f.name==='persona_id');
  const editionId=(await searchParams).edizione;
+ const catalogLevel=modulo==='corsi'?validLevel((await searchParams).livello):null;
  const scopedEdition=editionId&&UUID_RE.test(editionId)&&module.fields.some(f=>f.name==='edizione_id')?editionId:'';
  const dateColumn=modulo==='attrezzature'?'prossima_revisione':['certificati','tesseramenti','brevetti'].includes(modulo)?'scade_il':null;
  const ui=moduleUi[modulo];
@@ -142,6 +144,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  if(!editId&&personId&&personField)query=query.eq('persona_id',personId);
  if(!editId&&seasonId)query=query.eq('stagione_id',seasonId);
  if(!editId&&scopedEdition)query=query.eq('edizione_id',scopedEdition);
+ if(!editId&&catalogLevel!==null)query=query.eq('livello',catalogLevel);
  let scopeError=false;
  if(!editId&&personId&&modulo==='tesseramenti'){const ids=await tutteLePagine((da,a)=>supabase.from('adesioni').select('id').eq('persona_id',personId).order('id').range(da,a));scopeError=Boolean(ids.error);const keys=(ids.data??[]).map(x=>x.id);query=keys.length?query.in('adesione_id',keys):query.eq('id','00000000-0000-0000-0000-000000000000');}
  const selectableFilters=module.fields.filter(field=>field.type==='select'&&field.options?.length&&(!medical||field.name!=='esito_verifica'));
@@ -224,7 +227,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
   const existing=references.edizioni_corsi??[];references.edizioni_corsi=[...available,...existing.filter(r=>!available.some(e=>e.id===r.id)&&!['programmato','attivo'].includes(String(r.stato)))];
  }
  const rows=(data??[]) as Row[];
- const href=(page:number)=>listHref({q,p:String(page),stato,dal,al,persona:personId,stagione:seasonId,edizione:scopedEdition,vista:modulo==='iscrizioni'?'elenco':undefined,filtro_modulo:selectedFilter?selectedFilter.name+':'+filterValue:undefined,ordine,dir});
+ const href=(page:number)=>listHref({q,p:String(page),stato,dal,al,persona:personId,stagione:seasonId,edizione:scopedEdition,livello:catalogLevel===null?undefined:String(catalogLevel),vista:modulo==='iscrizioni'?'elenco':undefined,filtro_modulo:selectedFilter?selectedFilter.name+':'+filterValue:undefined,ordine,dir});
  const numeric=(c:string)=>module.fields.some(field=>field.name===c&&field.type==='number');
  const display=(row:Row,c:string)=>{
   if(medical&&c==='documento_id')return row[c]?<Link href={'/documenti/'+row[c]}>Apri certificato</Link>:<Link href={'/area-personale/certificato?persona='+row.persona_id}>Carica certificato</Link>;
@@ -239,8 +242,9 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
   return formatValue(row[c],c);
  };
  return <>
- <PageHeader eyebrow="Gestionale" title={module.label} description={module.description} actions={!editId&&<Drawer primary title={ui.create} trigger={ui.create} initialOpen={nuovo==='1'&&!msg}><Editor module={module} moduleKey={modulo} references={references} personId={personId}/></Drawer>}/>
+ <PageHeader eyebrow="Gestionale" title={module.label} description={module.description} actions={!editId&&<Drawer primary title={ui.create} trigger={ui.create} initialOpen={nuovo==='1'&&!msg}><Editor module={module} moduleKey={modulo} references={references} personId={personId} editionId={scopedEdition}/></Drawer>}/>
  {personId&&memberTabForModule(modulo)&&<div className="sc-row-actions"><Link className="sc-button sc-button-secondary" href={'/gestionale/soci/'+personId+'?tab='+memberTabForModule(modulo)}>Torna alla scheda socio</Link><span className="muted">Elenco contestuale alla scheda selezionata</span></div>}
+ {scopedEdition&&<p><Link href={'/gestionale/corsi/'+scopedEdition+'?tab='+(modulo==='brevetti'?'brevetti':'panoramica')}>Torna alla scheda del corso</Link> · Elenco per edizione selezionata</p>}
  {scopeError&&<p role="alert" className="notice error">Non è stato possibile leggere le adesioni collegate. Elenco non disponibile.</p>}
  {feedback&&<p className={'notice '+(['salvato','eliminato'].includes(msg)?'success':'warning')} role="status">{feedback}</p>}
  {enrollmentLoadError&&<p className="notice error">Impossibile caricare tutte le iscrizioni dei corsi. Riprova o verifica i permessi.</p>}
@@ -249,7 +253,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  {missingQuery&&<section className="panel"><h3>Allievi senza certificato registrato</h3>{senzaFile?.error?<p role="alert">Elenco non disponibile.</p>:<><p>{senzaFile?.count??0} allievi senza certificato con questi filtri</p><ul>{senzaFile?.data?.map(p=><li key={p.id}>{p.cognome} {p.nome} · Documento mancante · <Link href={'/area-personale/certificato?persona='+p.id}>Carica certificato</Link></li>)}</ul><Pagination page={missingPage} size={perPage} count={senzaFile?.count??null} label="allievi" href={pm=>listHref({q,stato,persona:personId,p:String(page),pm:String(pm),ordine,dir})}/></>}</section>}
  <FilterBar>
  <SearchBar query={q} placeholder={ui.search||'Filtri e ordinamento'} resetHref={'/gestionale/moduli/'+modulo} hideSearch={!ui.search}>
- {scopedEdition&&<input type="hidden" name="edizione" value={scopedEdition}/>} {modulo==='iscrizioni'&&<input type="hidden" name="vista" value="elenco"/>}{medical&&stato&&<input type="hidden" name="stato" value={stato}/>} {personId&&memberTabForModule(modulo)&&<input type="hidden" name="persona" value={personId}/>} {module.fields.some(f=>f.name==='stagione_id')&&<label>Stagione<select name="stagione" defaultValue={seasonId}><option value="">Tutte</option>{(references.stagioni??[]).map(s=><option key={s.id} value={s.id}>{String(s.nome??'Stagione')}</option>)}</select></label>}{dateColumn&&<><label>Scadenza dal<input type="date" name="dal" defaultValue={dal}/></label><label>Scadenza al<input type="date" name="al" defaultValue={al}/></label></>}
+ {scopedEdition&&<input type="hidden" name="edizione" value={scopedEdition}/>} {modulo==='corsi'&&<label>Livello ARA<select name="livello" defaultValue={catalogLevel??''}><option value="">Tutti</option>{[1,2,3,4,5].map(x=><option key={x} value={x}>{x}</option>)}</select></label>} {modulo==='iscrizioni'&&<input type="hidden" name="vista" value="elenco"/>}{medical&&stato&&<input type="hidden" name="stato" value={stato}/>} {personId&&memberTabForModule(modulo)&&<input type="hidden" name="persona" value={personId}/>} {module.fields.some(f=>f.name==='stagione_id')&&<label>Stagione<select name="stagione" defaultValue={seasonId}><option value="">Tutte</option>{(references.stagioni??[]).map(s=><option key={s.id} value={s.id}>{String(s.nome??'Stagione')}</option>)}</select></label>}{dateColumn&&<><label>Scadenza dal<input type="date" name="dal" defaultValue={dal}/></label><label>Scadenza al<input type="date" name="al" defaultValue={al}/></label></>}
  {selectableFilters.length>0&&<label>Filtra per<select name="filtro_modulo" defaultValue={selectedFilter?selectedFilter.name+':'+filterValue:''}><option value="">Tutti</option>{selectableFilters.map(field=><optgroup key={field.name} label={field.label}>{field.options?.map(value=><option key={value} value={field.name+':'+value}>{value.replaceAll('_',' ')}</option>)}</optgroup>)}</select></label>}
  <label>Ordina per<select name="ordine" defaultValue={selectedSort??''}><option value="">Ordine predefinito</option>{sortable.map(field=><option key={field.name} value={field.name}>{field.label}</option>)}</select></label>
  <label>Direzione<select name="dir" defaultValue={dir==='desc'?'desc':'asc'}><option value="asc">Crescente</option><option value="desc">Decrescente</option></select></label>
