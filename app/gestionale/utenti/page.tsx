@@ -13,7 +13,7 @@ import {pageNumber,listHref,singleSearchParams} from '@/lib/module-ui';
 export default async function Users({searchParams}:{searchParams:Promise<{msg?:string;q?:string;p?:string;ruolo?:string;stato?:string;collegato?:string}>}){
  const {supabase,user}=await requireAdmin();const {msg,q='',p='1',ruolo='',stato='',collegato=''}=singleSearchParams(await searchParams);
  const page=pageNumber(p),perPage=50;const rows:AccountRow[]=[];let error=false;
- for(let offset=0;;offset+=100){const res=await supabase.rpc('admin_elenco_account',{p_q:'',p_offset:offset,p_limit:100,p_id:null});if(res.error){error=true;break;}const chunk=(res.data??[]) as AccountRow[];rows.push(...chunk);if(chunk.length<100)break;}
+ for(let offset=0;;offset+=100){const res=await supabase.rpc('admin_elenco_account',{p_q:'',p_offset:offset,p_limit:100,p_id:null});if(res.error||!Array.isArray(res.data)){error=true;break;}const chunk=res.data as AccountRow[];rows.push(...chunk);if(chunk.length<100)break;}
  const [linksResult,pendingResult]=await Promise.all([tutteLePagine((da,a)=>supabase.from('collegamenti_persone').select('utente_id,persona_id').order('utente_id').order('persona_id').range(da,a)),tutteLePagine((da,a)=>supabase.from('eliminazioni_account_pendenti').select('utente_id,avviata_il').order('avviata_il').order('utente_id').range(da,a))]);
  const links=linksResult.data??[],connected=new Set(links.map(l=>l.utente_id)),failed=error||Boolean(linksResult.error),stats=accountSummary(rows,links);
  const filtered=filterAccounts(rows,links,q.slice(0,150),ruolo,stato,collegato),visible=filtered.slice((page-1)*perPage,page*perPage),configured=authAdminConfigured();

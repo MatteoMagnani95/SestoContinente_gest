@@ -28,6 +28,11 @@ export function SearchBar({query='',placeholder='Cerca',action,children,resetHre
 }
 export function Pagination({page,size,count,href,additionalCount=0,label='risultati'}:{page:number;size:number;count:number|null;href:(page:number)=>string;additionalCount?:number;label?:string}){
  const total=count===null?null:Math.max(count,additionalCount);
+ const last=total===null?null:Math.max(1,Math.ceil(total/size));
+ // An obsolete bookmark or an empty range must never trap the user
+ // behind thousands of consecutive "Previous" clicks.
+ if(page>1&&(last===null||page>last))return <nav className="sc-pagination" aria-label="Paginazione"><span role="status">{last===null?'Pagina o totale non disponibile.':'La pagina richiesta non è più disponibile.'}</span><div className="sc-row-actions"><Link className="sc-button sc-button-secondary" href={href(1)}>Prima pagina</Link>{last!==null&&last>1&&<Link className="sc-button sc-button-secondary" href={href(last)}>Ultima pagina disponibile</Link>}</div></nav>;
+
  return <nav className="sc-pagination" aria-label="Paginazione"><span>{count===null?'Totale non disponibile':count+' '+label} · Pagina {page}{total!==null?' di '+Math.max(1,Math.ceil(total/size)):''}</span><div className="sc-row-actions">
  {page>1&&<Link className="sc-button sc-button-secondary" href={href(page-1)}>Precedente</Link>}
  {total!==null&&page*size<total&&<Link className="sc-button sc-button-secondary" href={href(page+1)}>Successiva</Link>}
