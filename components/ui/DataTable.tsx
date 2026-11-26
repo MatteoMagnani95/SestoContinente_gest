@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import {Children,cloneElement,isValidElement,type ReactElement,type ReactNode} from 'react';
+import {Children,Fragment,cloneElement,isValidElement,type ReactElement,type ReactNode} from 'react';
 import {Button,ButtonLink} from './Primitives';
 
 // Some WebKit versions remove implicit table semantics when CSS switches
@@ -9,8 +9,9 @@ function preserveTableRoles(nodes:ReactNode):ReactNode{
  return Children.map(nodes,node=>{
   if(!isValidElement(node))return node;
   const element=node as ReactElement<{children?:ReactNode;role?:string;scope?:string}>;
+  if(element.type===Fragment)return cloneElement(element,{},preserveTableRoles(element.props.children));
   if(typeof element.type!=='string'||!Object.hasOwn(tableRoles,element.type))return node;
-  const role=element.props.role??(element.type==='th'&&element.props.scope==='row'?'rowheader':tableRoles[element.type]);
+  const role=element.props.role??(element.type==='th'&&['row','rowgroup'].includes(element.props.scope??'')?'rowheader':tableRoles[element.type]);
   return cloneElement(element,{role},['thead','tbody','tfoot','tr'].includes(element.type)?preserveTableRoles(element.props.children):element.props.children);
  });
 }
