@@ -28,7 +28,7 @@ export default function ApplicationForm({ saved,sceltaRegistrata,legalConfigured
   async function persist(form:HTMLFormElement,data:FormData){
    if(submitting.current)return;
    submitting.current=true;setPending(true);setError('');
-   try{const result=await saveApplicationAction(data);if(result.error){setError(result.error);reviewDialog.current?.close();setReview(null);const field=result.field?form.elements.namedItem(result.field):null;if(field instanceof HTMLElement)requestAnimationFrame(()=>field.focus());return;}if(result.next){markFormSaved(form);reviewDialog.current?.close();setReview(null);router.push(result.next);router.refresh();}}
+   try{const result=await saveApplicationAction(data);if(result.error){setError(result.error);reviewDialog.current?.close();setReview(null);const field=result.field?form.elements.namedItem(result.field):null;requestAnimationFrame(()=>{if(field instanceof HTMLElement)field.focus();else document.getElementById('sc-application-feedback')?.focus();});return;}if(result.next){markFormSaved(form);reviewDialog.current?.close();setReview(null);router.push(result.next);router.refresh();}}
    catch{setError('Invio non riuscito. I dati compilati sono ancora presenti: riprova o contatta la segreteria.');reviewDialog.current?.close();setReview(null);}
    finally{submitting.current=false;setPending(false);}
   }
@@ -81,20 +81,20 @@ export default function ApplicationForm({ saved,sceltaRegistrata,legalConfigured
     </div>
     <fieldset><legend>Contatto di emergenza (facoltativo per l’adesione)</legend><div className="form-grid"><label>Nome e cognome<input minLength={2} maxLength={160} name="emergenza_nome" defaultValue={saved?.emergenza_nome??''}/></label>
     <label>Numero di telefono<input type="tel" minLength={5} maxLength={32} name="emergenza_telefono" defaultValue={saved?.emergenza_telefono??''}/></label></div></fieldset>
-    {minor && <div className="minor-panel sc-form-section">
+    <fieldset className="minor-panel sc-form-section" style={{display:minor?undefined:'none'}} hidden={!minor} disabled={!minor}>
       <div className="section-head"><span className="step">2b</span><div><h2>Genitore o tutore</h2><p>Per un minorenne l'account e la domanda sono presentati dal genitore o tutore.</p></div></div>
       <div className="form-grid">
         <label>Nome del tutore *<input name="nome_tutore" required minLength={2} defaultValue={saved?.nome_tutore??''}/></label>
         <label>Cognome del tutore *<input name="cognome_tutore" required minLength={2} defaultValue={saved?.cognome_tutore??''}/></label>
         <label className="span-2">Relazione con il minore *<select name="parentela_tutore" defaultValue={saved?.parentela_tutore??''} required><option value="">Seleziona...</option><option value="Madre">Madre</option><option value="Padre">Padre</option><option value="Tutore legale">Tutore legale</option></select></label>
       </div>
-    </div>}
+    </fieldset>
     <div id="dichiarazioni" className="section-head"><span className="step">03</span><div><h2>Privacy e dichiarazioni</h2><p className="muted">{testMode?'Ambiente di prova: inserire esclusivamente dati inventati.':'Controlla i dati e le dichiarazioni prima di inviare la richiesta.'}</p></div></div>
     <label className="check-label"><input name="flag_statuto" type="checkbox" required defaultChecked={saved?.flag_statuto??false}/><span>{testMode?"Simulo la presa visione dello ":"Dichiaro di aver preso visione dello "}{statutoUrl?<a href={statutoUrl} target="_blank" rel="noopener noreferrer">{testMode?"Statuto di prova":"Statuto associativo"}</a>:<strong>Statuto non disponibile</strong>}{testMode?" (solo collaudo).":" e di accettarne le disposizioni."} *</span></label>
     <label className="check-label"><input name="flag_privacy" type="checkbox" required defaultChecked={saved?.flag_privacy??false}/><span>{testMode?"Simulo la lettura dell’":"Dichiaro di aver ricevuto e letto l’"}{privacyUrl?<a href={privacyUrl} target="_blank" rel="noopener noreferrer">{testMode?"informativa di prova":"informativa privacy"}</a>:<strong>informativa non disponibile</strong>}{testMode?" (solo collaudo).":" (presa visione, non consenso generico al trattamento)."} *</span></label>
     <SceltaImmagini value={sceltaRegistrata} test={testMode}/>
     </fieldset>
-    <div aria-live="polite">{error&&<p className="notice error" role="alert">{error}</p>}{pending&&<p>Salvataggio in corso…</p>}</div>
+    <div aria-live="polite" id="sc-application-feedback" tabIndex={-1}>{error&&<p className="notice error" role="alert">{error}</p>}{pending&&<p>Salvataggio in corso…</p>}</div>
     <div className="form-actions"><button className="button ghost" type="submit" name="intent" value="bozza" disabled={pending||cfBlocked||!legalConfigured}>Salva bozza</button><button className="button" type="submit" name="intent" value="invia" disabled={pending||cfBlocked||!legalConfigured}>Controlla e invia</button><a className="button ghost" href="/richiesta/stato">Torna alla domanda</a></div>
   </form>
   {review&&<dialog ref={reviewDialog} className="sc-editor-dialog sc-editor-modal sc-application-review" aria-labelledby="sc-review-title" onCancel={e=>{e.preventDefault();closeReview();}}><div className="sc-editor-inner"><header className="sc-editor-header"><h2 id="sc-review-title">Riepilogo della domanda</h2></header><div className="sc-editor-body"><p>Controlla i dati e le dichiarazioni. La segreteria riceverà la domanda solo dopo la conferma.</p>{testMode&&<Alert tone="warning">COLLAUDO — invio simulato.</Alert>}<dl className="sc-review-list">{reviewRows.map(([label,content])=><div key={label}><dt>{label}</dt><dd>{content||'Non indicato'}</dd></div>)}</dl><div className="sc-form-actions"><button ref={reviewButton} className="sc-button sc-button-secondary" type="button" disabled={pending} onClick={closeReview}>Torna a modificare</button><Button type="button" disabled={pending} onClick={()=>{if(formRef.current&&review)void persist(formRef.current,review);}}>{pending?'Invio in corso…':'Conferma e invia alla segreteria'}</Button></div></div></div></dialog>}</>;

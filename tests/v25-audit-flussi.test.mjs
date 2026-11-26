@@ -15,7 +15,7 @@ test('Autenticazione: spazi della password preservati in login e registrazione; 
  const auth={signInWithPassword:async v=>{received.push(v);return {error:null};},signUp:async v=>{received.push(v);return {data:{session:{}},error:null};}};
  const actions=load('app/actions.ts',{
   '@/lib/registrazione':{informativaRegistrazione:()=>({url:'https://example.test/privacy',versione:'1',test:false})},
-  '@/lib/scelte':{versioneImmagini:'1'},'@/lib/codice-fiscale':{},'next/navigation':{redirect},'next/cache':{},
+  '@/lib/scelte':{versioneImmagini:'1'},'@/lib/application-input':load('lib/application-input.ts'),'@/lib/codice-fiscale':{},'next/navigation':{redirect},'next/cache':{},
   '@/lib/supabase/server':{createClient:async()=>({auth})},'@/lib/security':{},'@/lib/application-config':{},'@/lib/application-review':{},'@/lib/verifica-anagrafica':{}
  });
  const old=process.env.NEXT_PUBLIC_SITE_URL;process.env.NEXT_PUBLIC_SITE_URL='https://example.test';

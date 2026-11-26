@@ -19,6 +19,6 @@ export default async function NewRequest({searchParams}:{searchParams:Promise<{m
     
     {request?.stato==='integrazione_richiesta' && <div className="notice"><strong>Informazioni richieste dalla segreteria:</strong> {request.nota_pubblica}</div>}
     {msg && <div className="notice error" role="alert">{queryMessage(msg)}</div>}
-    <ApplicationForm saved={request} sceltaRegistrata={scelta?.scelta??null} legalConfigured={legal.configured} testMode={legal.testMode} statutoUrl={legal.configured?legal.statutoUrl:''} privacyUrl={legal.configured?legal.privacyUrl:''} />
+    <ApplicationForm saved={request?{...request,flag_statuto:request.versione_statuto===legal.statutoVersion&&request.flag_statuto,flag_privacy:request.versione_privacy===legal.privacyVersion&&request.flag_privacy}:null} sceltaRegistrata={scelta?.scelta??null} legalConfigured={legal.configured} testMode={legal.testMode} statutoUrl={legal.configured?legal.statutoUrl:''} privacyUrl={legal.configured?legal.privacyUrl:''} />
   </div>;
 }
