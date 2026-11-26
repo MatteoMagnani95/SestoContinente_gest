@@ -10,9 +10,22 @@ source_url="$TEST_0019_DATABASE_URL"
 target_url="${source_url%/*}/sesto_test_restore"
 # The GitHub service already contains global roles; the dump preserves
 # owners, privileges, policies, triggers, constraints and sequence state.
-pg_dump --format=custom --file="$work/db.dump" "$source_url"
-createdb --maintenance-db="$source_url" sesto_test_restore
-pg_restore --exit-on-error --single-transaction --dbname="$target_url" "$work/db.dump"
+if [ -n "${QA_POSTGRES_CONTAINER:-}" ]; then
+  # Use the same major version as the service, not the runner's default client.
+  [[ "$QA_POSTGRES_CONTAINER" =~ ^[a-f0-9]{12,64}$ ]]
+  test "$(docker inspect --format '{{.Config.Image}}' "$QA_POSTGRES_CONTAINER")" = 'postgres:16'
+  docker exec "$QA_POSTGRES_CONTAINER" pg_dump -U postgres --format=custom sesto_test_redesign > "$work/db.dump"
+  docker exec "$QA_POSTGRES_CONTAINER" createdb -U postgres sesto_test_restore
+  docker exec -i "$QA_POSTGRES_CONTAINER" pg_restore -U postgres --exit-on-error --single-transaction --dbname=sesto_test_restore < "$work/db.dump"
+else
+  server_major=$(psql "$source_url" -X -qAt -c 'show server_version_num' | cut -c1-2)
+  dump_major=$(pg_dump --version | sed -E 's/.* ([0-9]+)\..*/\1/')
+  restore_major=$(pg_restore --version | sed -E 's/.* ([0-9]+)\..*/\1/')
+  test "$server_major" = "$dump_major" && test "$server_major" = "$restore_major" || { echo "Usare pg_dump e pg_restore della stessa major del server"; exit 2; }
+  pg_dump --format=custom --file="$work/db.dump" "$source_url"
+  createdb --maintenance-db="$source_url" sesto_test_restore
+  pg_restore --exit-on-error --single-transaction --dbname="$target_url" "$work/db.dump"
+fi
 audit=docs/redesign/F5_HISTORICAL_AUDIT.sql
 psql "$source_url" -X -qAt -v ON_ERROR_STOP=1 -f "$audit" > "$work/source.audit"
 psql "$target_url" -X -qAt -v ON_ERROR_STOP=1 -f "$audit" > "$work/restore.audit"
