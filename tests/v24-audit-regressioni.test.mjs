@@ -58,3 +58,14 @@ test('Modifica edizione: direttore valido obbligatorio anche sul server',()=>{
   const actions=read('app/gestionale/corsi/actions.ts');
   assert.match(actions,/if\(!UUID_RE\.test\(direttore_id\)\)return \{field:'direttore_id'/);
 });
+
+test('Moduli: la modifica diretta non eredita filtri e paginazione della ricerca',()=>{
+  const page=read('app/gestionale/moduli/[modulo]/page.tsx');
+  assert.match(page,/const page=editId\?1:/);
+  assert.match(page,/const safeSearch=editId\?'':q\.trim\(\)/);
+});
+test('Certificati: ricerca per nome e cognome sulle colonne della vista',()=>{
+  const page=read('app/gestionale/moduli/[modulo]/page.tsx');
+  assert.match(page,/personSorted\|\|medical\|\|module\.table==='persone'/);
+  assert.match(page,/personSorted\|\|medical\?'sort_cognome':'cognome'/);
+});
