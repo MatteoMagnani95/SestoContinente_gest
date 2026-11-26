@@ -27,6 +27,7 @@ export async function registerAction(form: FormData) {
   const origin = process.env.NEXT_PUBLIC_SITE_URL;
   if (!origin) return {error:'Registrazione temporaneamente non disponibile. Contatta la segreteria.'};
   const legal=informativaRegistrazione(),scelta=imageChoice(form);
+  if(form.has('privacy_versione_vista')&&asText(form,'privacy_versione_vista')!==legal.versione)return {error:'L’informativa è stata aggiornata. Ricarica la registrazione e leggila nuovamente.'};
   if(!legal.url||form.get('presa_visione')!=='on'||!['','si','no'].includes(scelta))return {error:'Apri l’informativa e conferma la presa visione.',field:'presa_visione'};
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -92,9 +93,9 @@ export async function saveApplicationAction(form: FormData) {
   const send = asText(form, 'intent') === 'invia';
   if(!validBirthDate(birth))return {error:'Data di nascita non valida.',field:'data_nascita'};
   const required = ['nome','cognome','luogo_nascita','indirizzo','cap','comune','telefono'];
-  if (required.some(k => asText(form, k).length < 2) || !/^\d{4}-\d{2}-\d{2}$/.test(birth)) {
-    return {error:'Completa correttamente i dati obbligatori, inclusi quelli del tutore se necessario.'};
-  }
+  const missing=required.find(k=>asText(form,k).length<(k==='telefono'?5:k==='cap'?4:2));
+  if(missing)return {error:'Completa correttamente i dati obbligatori.',field:missing};
+  if(asText(form,'cap').length>10)return {error:'Controlla il CAP.',field:'cap'};
   const minor = minorAge(birth);
   if (minor && (['nome_tutore','cognome_tutore'].some(k => asText(form,k).length<2)||!['Madre','Padre','Tutore legale'].includes(asText(form,'parentela_tutore')))) {
     return {error:'Completa correttamente i dati obbligatori, inclusi quelli del tutore se necessario.'};
@@ -104,6 +105,7 @@ export async function saveApplicationAction(form: FormData) {
   if(!flagStatuto||!flagPrivacy)return {error:'Conferma la presa visione di statuto e informativa privacy.'};
   const legal=applicationLegalConfig(user.id);
   if(!legal.configured)return {error:'Registrazione temporaneamente non disponibile: statuto o informativa privacy non configurati. Contatta la segreteria.'};
+  if((form.has('statuto_versione_vista')&&asText(form,'statuto_versione_vista')!==legal.statutoVersion)||(form.has('privacy_versione_vista')&&asText(form,'privacy_versione_vista')!==legal.privacyVersion))return {error:'I documenti sono stati aggiornati. Ricarica la domanda e conferma nuovamente la presa visione.'};
   const {data:prior,error:priorError}=await supabase.from('richieste').select('versione_statuto,versione_privacy').eq('utente_id',user.id).maybeSingle();
   if(priorError)return {error:'Impossibile verificare la pratica esistente.'};
   if(prior&&(prior.versione_statuto||prior.versione_privacy)&&isTestApplication(prior)!==legal.testMode)return {error:'Non è possibile convertire una pratica reale in collaudo o viceversa. Contatta la segreteria.'};

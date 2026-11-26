@@ -34,7 +34,7 @@ test('Documenti associativi: RLS restrittiva e pubblicazione limitata ad amminis
 });
 test('Registrazione: messaggio di configurazione, verifica live server autenticata, esito non distruttivo',()=>{
  const form=read('components/ApplicationForm.tsx'),actions=read('app/actions.ts'),assist=read('components/CodiceFiscaleAssist.tsx');
- assert.match(form,/e\.preventDefault\(\)/);assert.match(form,/if\(result\.error\)\{setError\(result\.error\);return;/);assert.match(form,/disabled=\{pending\|\|cfBlocked\|\|!legalConfigured\}/);
+ assert.match(form,/e\.preventDefault\(\)/);assert.match(form,/if\(result\.error\)\{setError\(result\.error\);[\s\S]*?return;\}if\(result\.next\)/);assert.match(form,/disabled=\{pending\|\|cfBlocked\|\|!legalConfigured\}/);
  assert.match(assist,/checkIdentityAction\(identity\)/);assert.match(assist,/ticket===seq/);assert.match(assist,/notice[\s\S]*'error'/);
  assert.match(actions,/if\(!legal\.configured\)return \{error:/);assert.match(actions,/checkIdentityAction[\s\S]*auth\.getUser\(\)/);assert.match(actions,/if\(cf&&!validaCF\(cf\)\)return/);
 });

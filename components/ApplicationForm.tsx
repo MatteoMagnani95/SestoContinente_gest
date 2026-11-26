@@ -14,7 +14,7 @@ type RequestDraft = {
   telefono: string; nome_tutore: string | null; cognome_tutore: string | null;
   parentela_tutore: string | null; presa_visione: boolean;flag_statuto?:boolean;flag_privacy?:boolean;immagini_scelta?:boolean|null;emergenza_nome?:string;emergenza_telefono?:string;
 };
-export default function ApplicationForm({ saved,sceltaRegistrata,legalConfigured,testMode,statutoUrl,privacyUrl }: {saved?:RequestDraft|null;sceltaRegistrata?:boolean|null;legalConfigured:boolean;testMode:boolean;statutoUrl:string;privacyUrl:string}) {
+export default function ApplicationForm({ saved,sceltaRegistrata,legalConfigured,testMode,statutoUrl,privacyUrl,statutoVersion,privacyVersion }: {saved?:RequestDraft|null;sceltaRegistrata?:boolean|null;legalConfigured:boolean;testMode:boolean;statutoUrl:string;privacyUrl:string;statutoVersion:string;privacyVersion:string}) {
   const reviewDialog=useRef<HTMLDialogElement>(null),reviewButton=useRef<HTMLButtonElement>(null),formRef=useRef<HTMLFormElement>(null),reviewTrigger=useRef<HTMLButtonElement|null>(null);
   const [review,setReview]=useState<FormData|null>(null);
   const [birth, setBirth] = useState(saved?.data_nascita ?? '');
@@ -56,6 +56,7 @@ export default function ApplicationForm({ saved,sceltaRegistrata,legalConfigured
   ]:[];
   return <><form ref={formRef} data-dirty-form onSubmit={submit} className="sc-card application-form sc-application" aria-busy={pending}>
     <fieldset className="edit-fields" disabled={pending}>
+    <input type="hidden" name="statuto_versione_vista" value={statutoVersion}/><input type="hidden" name="privacy_versione_vista" value={privacyVersion}/>
     {testMode&&<div className="notice warning" role="status"><strong>COLLAUDO — pratica simulata.</strong> Usa esclusivamente dati inventati. Le dichiarazioni sotto simulano il flusso di adesione: non costituiscono una presa visione di documenti ufficiali.</div>}
     {!legalConfigured&&<div className="notice error" role="alert">Registrazione non disponibile: la segreteria deve configurare statuto e informativa privacy prima di raccogliere le adesioni.</div>}
     <nav className="sc-application-progress" aria-label="Sezioni della domanda"><a href="#dati-persona">1. Dati personali</a><a href="#recapiti">2. Recapiti{minor?' e tutore':''}</a><a href="#dichiarazioni">3. Dichiarazioni</a><span>4. Riepilogo e invio</span></nav>
@@ -92,7 +93,7 @@ export default function ApplicationForm({ saved,sceltaRegistrata,legalConfigured
     <div id="dichiarazioni" className="section-head"><span className="step">03</span><div><h2>Privacy e dichiarazioni</h2><p className="muted">{testMode?'Ambiente di prova: inserire esclusivamente dati inventati.':'Controlla i dati e le dichiarazioni prima di inviare la richiesta.'}</p></div></div>
     <label className="check-label"><input name="flag_statuto" type="checkbox" required defaultChecked={saved?.flag_statuto??false}/><span>{testMode?"Simulo la presa visione dello ":"Dichiaro di aver preso visione dello "}{statutoUrl?<a href={statutoUrl} target="_blank" rel="noopener noreferrer">{testMode?"Statuto di prova":"Statuto associativo"}</a>:<strong>Statuto non disponibile</strong>}{testMode?" (solo collaudo).":" e di accettarne le disposizioni."} *</span></label>
     <label className="check-label"><input name="flag_privacy" type="checkbox" required defaultChecked={saved?.flag_privacy??false}/><span>{testMode?"Simulo la lettura dell’":"Dichiaro di aver ricevuto e letto l’"}{privacyUrl?<a href={privacyUrl} target="_blank" rel="noopener noreferrer">{testMode?"informativa di prova":"informativa privacy"}</a>:<strong>informativa non disponibile</strong>}{testMode?" (solo collaudo).":" (presa visione, non consenso generico al trattamento)."} *</span></label>
-    <SceltaImmagini value={sceltaRegistrata} test={testMode}/>
+    <SceltaImmagini value={sceltaRegistrata} test={testMode} applicantMinor={minor}/>
     </fieldset>
     <div aria-live="polite" id="sc-application-feedback" tabIndex={-1}>{error&&<p className="notice error" role="alert">{error}</p>}{pending&&<p>Salvataggio in corso…</p>}</div>
     <div className="form-actions"><button className="button ghost" type="submit" name="intent" value="bozza" disabled={pending||cfBlocked||!legalConfigured}>Salva bozza</button><button className="button" type="submit" name="intent" value="invia" disabled={pending||cfBlocked||!legalConfigured}>Controlla e invia</button><a className="button ghost" href="/richiesta/stato">Torna alla domanda</a></div>

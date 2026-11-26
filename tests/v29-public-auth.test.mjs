@@ -17,7 +17,8 @@ test('Date reali, calendario italiano e compimento dei 18 anni',()=>{
  assert.equal(input.validBirthDate('2008-02-29','2026-11-26'),true);
  assert.equal(input.minorAge('2008-11-26','2026-11-26'),false);
  assert.equal(input.minorAge('2008-11-27','2026-11-26'),true);
- assert.equal(input.minorAge('2008-02-29','2026-02-28'),false);
+ assert.equal(input.minorAge('2008-02-29','2026-02-28'),true);
+ assert.equal(input.minorAge('2008-02-29','2026-03-01'),false);
 });
 test('Consenso checkbox: assenza non è consenso, legacy non trasformato in sì',()=>{
  assert.equal(input.imageChoice(form({immagini_checkbox:'1'})),'no');
@@ -80,4 +81,21 @@ test('UI: riepilogo prima dell’invio, bozze separate e aree autorizzate',()=>{
  const home=read('app/page.tsx');assert.match(home,/!access\.signedIn\?/);for(const role of ['personal','staff','instructor'])assert.match(home,new RegExp('access\\.'+role+'&&'));
  for(const path of ['app/accedi/page.tsx','app/registrati/page.tsx'])assert.match(read(path),/if\(access\.enabled\)redirect\('\/smista'\)/);
  assert.match(read('components/PasswordField.tsx'),/visible\?'text':'password'/);assert.match(read('components/AuthForm.tsx'),/busy\.current/);
+});
+
+test('Versione documenti: la nuova UI non accetta silenziosamente documenti aggiornati',async()=>{
+ const m=mock();
+ assert.match((await m.actions.saveApplicationAction(form({...base,statuto_versione_vista:'vecchia',privacy_versione_vista:'1'}))).error,/aggiornati/);
+ assert.equal(m.calls.length,0);
+ const ok=await m.actions.saveApplicationAction(form({...base,statuto_versione_vista:'1',privacy_versione_vista:'1'}));
+ assert.equal(ok.next,'/richiesta/stato?msg=inviata');
+ assert.match(read('app/richiesta/nuova/page.tsx'),/request\.versione_statuto===legal\.statutoVersion&&request\.flag_statuto/);
+});
+test('Revoca: checkbox deselezionata usa la RPC esistente e conserva la versione',async()=>{
+ const calls=[];const m=load('app/area-personale/profilo/immagini.ts',{
+  '@/lib/application-input':input,'@/lib/scelte':{versioneImmagini:'Foto e video · 1'},'@/lib/application-config':{applicationLegalConfig:()=>({testMode:false})},
+  '@/lib/security':{requireUser:async()=>({user:{id:'x'},supabase:{rpc:async(name,payload)=>{calls.push({name,payload});return {error:null};}}})},'next/cache':{revalidatePath:()=>{}}
+ });
+ await m.cambiaScelta(form({immagini_checkbox:'1'}));
+ assert.deepEqual(calls,[{name:'scegli_immagini',payload:{p_scelta:false,p_versione:'Foto e video · 1'}}]);
 });

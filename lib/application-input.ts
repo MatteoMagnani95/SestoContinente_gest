@@ -11,10 +11,11 @@ export function validBirthDate(value:string,today=todayRome()){
 }
 export function minorAge(value:string,today=todayRome()){
  if(!validBirthDate(value,today))return false;
- const [year,month,day]=value.split('-').map(Number);
- const adultYear=year+18,adultDay=Math.min(day,new Date(Date.UTC(adultYear,month,0)).getUTCDate());
- const adult=[String(adultYear),String(month).padStart(2,'0'),String(adultDay).padStart(2,'0')].join('-');
- return today<adult;
+ // Same cutoff as the existing database function: current_date - interval '18 years'.
+ const [year,month,day]=today.split('-').map(Number);
+ const cutoffYear=year-18,cutoffDay=Math.min(day,new Date(Date.UTC(cutoffYear,month,0)).getUTCDate());
+ const cutoff=[String(cutoffYear),String(month).padStart(2,'0'),String(cutoffDay).padStart(2,'0')].join('-');
+ return value>cutoff;
 }
 export function imageChoice(form:FormData){
  const v=String(form.get('immagini')??'').trim();
