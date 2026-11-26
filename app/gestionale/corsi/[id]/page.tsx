@@ -64,8 +64,8 @@ export default async function EditionDetail({params,searchParams}:{params:Promis
   tutteLePagine((da,a)=>supabase.from('lezioni').select('id,titolo,inizio,fine,piscina_id,esercizi,materiale').eq('edizione_id',id).is('annullata_il',null).order('inizio',{ascending:true}).order('id').range(da,a)),
   tutteLePagine((da,a)=>supabase.from('persone').select('id,nome,cognome').order('cognome').order('nome').order('id').range(da,a)),
   tutteLePagine((da,a)=>supabase.from('qualifiche_istruttori').select('persona_id,titolo,scade_il').order('id').range(da,a)),
-  tutteLePagine((da,a)=>supabase.from('piscine').select('id,nome').order('nome').order('id').range(da,a)),
-  tutteLePagine((da,a)=>supabase.from('corsie').select('id,piscina_id,numero').order('id').range(da,a)),
+  tutteLePagine((da,a)=>supabase.from('piscine').select('id,nome,orari_disponibili,limitazioni').order('nome').order('id').range(da,a)),
+  tutteLePagine((da,a)=>supabase.from('corsie').select('id,piscina_id,numero,note').order('id').range(da,a)),
   tutteLePagine((da,a)=>supabase.from('gest_soci_iscrivibili').select('persona_id,nome,cognome').eq('stagione_id',ed.stagione_id).order('cognome').order('nome').order('persona_id').range(da,a)),
   tutteLePagine((da,a)=>supabase.from('versioni_programmi').select('id,programma_id,versione,stato').eq('stato','approvato').order('id').range(da,a))
  ]);

@@ -43,7 +43,7 @@ export function Drawer({title,trigger,children,initialOpen=false,variant='drawer
    const current=window.location.pathname+window.location.search;
    if(current===openedRoute.current)return;
    const msg=new URLSearchParams(window.location.search).get('msg')??'';
-   if(window.location.pathname!==openedRoute.current.split('?')[0]||['ok','salvato','eliminato','modificato','rimosso','iscritto','moduli_salvati','pagato','rettificato'].includes(msg))finish();
+   if(window.location.pathname!==openedRoute.current.split('?')[0]||['ok','salvato','eliminato','modificato','rimosso','iscritto','moduli_salvati','lezione_creata','salvata','annullata','pagato','rettificato'].includes(msg))finish();
   };
   const observer=new MutationObserver(check);observer.observe(document.body,{childList:true,subtree:true});window.addEventListener('popstate',check);
   return()=>{observer.disconnect();window.removeEventListener('popstate',check);};

@@ -1,72 +1,103 @@
 import Link from 'next/link';
 import {requireStaff} from '@/lib/security';
-import {changePeriod,dateUTC,dateWindow,monday,shiftDay,romeDay,romeTime,validDay,type CalendarView} from '@/lib/calendar-tools';
+import {tutteLePagine} from '@/lib/pagine';
+import {readCourseChunks} from '@/lib/course-ui';
+import {calendarContext,calendarHref,calendarLessonHref,calendarViews,changePeriod,dateUTC,dateWindow,dayBounds,intervalOnDay,overlaps,romeDay,validDay,type CalendarContext} from '@/lib/calendar-tools';
+import {formatRome,UUID_RE} from '@/lib/course-tools';
+import {PageHeader,SectionHeader,ButtonLink,StatusBadge,Alert,EmptyState} from '@/components/ui/Primitives';
+import {Drawer} from '@/components/ui/Drawer';
+import EditForm from '@/components/EditForm';
+import CalendarContextFields from '@/components/CalendarContextFields';
+import CourseScheduleFields from '@/components/CourseScheduleFields';
+import CourseLessonFields from '@/components/CourseLessonFields';
+import SearchableSelect from '@/components/ui/SearchableSelect';
+import LessonComposer from '@/components/LessonComposer';
+import {createLesson} from '@/app/gestionale/corsi/actions';
 
 type Lesson={id:string;titolo:string;edizione_id:string;inizio:string;fine:string;piscina_id:string|null;annullata_il:string|null};
 type Booking={id:string;lezione_id:string;corsia_id:string;inizio:string;fine:string;stato:string};
-const weekDays=['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
-function dayName(day:string){return new Intl.DateTimeFormat('it-IT',{day:'2-digit',month:'short',timeZone:'UTC'}).format(dateUTC(day));}
-export default async function CalendarPage({searchParams}:{searchParams:Promise<{giorno?:string;vista?:string;piscina?:string;msg?:string}>}){
+const weekdays=['Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato','Domenica'];
+const dayName=(day:string)=>new Intl.DateTimeFormat('it-IT',{weekday:'long',day:'numeric',month:'short',timeZone:'UTC'}).format(dateUTC(day));
+const shortDay=(day:string)=>new Intl.DateTimeFormat('it-IT',{day:'numeric',month:'short',timeZone:'UTC'}).format(dateUTC(day));
+const periodTitle=(days:string[],context:CalendarContext)=>context.vista==='mese'?new Intl.DateTimeFormat('it-IT',{month:'long',year:'numeric',timeZone:'UTC'}).format(dateUTC(context.giorno)):days.length===1?dayName(days[0]):shortDay(days[0])+' – '+shortDay(days[days.length-1])+' '+days[days.length-1].slice(0,4);
+export default async function CalendarPage({searchParams}:{searchParams:Promise<{giorno?:string;vista?:string;piscina?:string;edizione?:string;annullate?:string;msg?:string;nuovo?:string;crea_giorno?:string;lezione?:string}>}){
  const {supabase}=await requireStaff();
- const params=await searchParams;const day=validDay(params.giorno);const view:CalendarView=params.vista==='mese'?'mese':'settimana';
+ const params=await searchParams;
+ const context=calendarContext(params),day=context.giorno,view=context.vista,today=validDay(undefined);
  const {days,from,to}=dateWindow(day,view);
- const [{data:pools,error:poolError},{data:lanes,error:laneError},{data:lessons,error:lessonError},{data:bookings,error:bookingError}]=await Promise.all([
-  supabase.from('piscine').select('id,nome').order('nome').limit(100),
-  supabase.from('corsie').select('id,numero,piscina_id').order('numero').limit(1000),
-  supabase.from('lezioni').select('id,titolo,edizione_id,inizio,fine,piscina_id,annullata_il')
-   .is('annullata_il',null).lt('inizio',to).gt('fine',from).order('inizio').limit(1000),
-  supabase.from('prenotazioni_corsie').select('id,lezione_id,corsia_id,inizio,fine,stato')
-   .eq('stato','confermata').lt('inizio',to).gt('fine',from).order('inizio').limit(2000)
+ const [poolResult,laneResult,lessonResult,bookingResult,editionResult]=await Promise.all([
+  tutteLePagine((da,a)=>supabase.from('piscine').select('id,nome,indirizzo,orari_disponibili,limitazioni').order('nome').order('id').range(da,a)),
+  tutteLePagine((da,a)=>supabase.from('corsie').select('id,numero,piscina_id,note').order('numero').order('id').range(da,a)),
+  tutteLePagine((da,a)=>{let query=supabase.from('lezioni').select('id,titolo,edizione_id,inizio,fine,piscina_id,annullata_il').lt('inizio',to).gt('fine',from);if(!context.annullate)query=query.is('annullata_il',null);return query.order('inizio').order('id').range(da,a);}),
+  tutteLePagine((da,a)=>supabase.from('prenotazioni_corsie').select('id,lezione_id,corsia_id,inizio,fine,stato').eq('stato','confermata').lt('inizio',to).gt('fine',from).order('inizio').order('id').range(da,a)),
+  tutteLePagine((da,a)=>supabase.from('edizioni_corsi').select('id,nome,stato,inizio,fine').order('nome').order('id').range(da,a))
  ]);
- const failed=poolError||laneError||lessonError||bookingError;
- const allLessons=(lessons??[]) as Lesson[];const allBookings=(bookings??[]) as Booking[];
- const validPool=(pools??[]).some(p=>p.id===params.piscina)?params.piscina??'':'';
- const visible=validPool?allLessons.filter(l=>l.piscina_id===validPool):allLessons;
- const editionIds=[...new Set(visible.map(l=>l.edizione_id))];
- const {data:editions}=editionIds.length?await supabase.from('edizioni_corsi').select('id,nome').in('id',editionIds.slice(0,500)):{data:[]};
- const names=new Map((editions??[]).map(e=>[e.id,e.nome]));
- const bookingsByLesson=new Map<string,Booking[]>();for(const b of allBookings){const rows=bookingsByLesson.get(b.lezione_id)??[];rows.push(b);bookingsByLesson.set(b.lezione_id,rows);}
- const lessonIds=new Set(visible.map(l=>l.id));
- const poolLanes=(lanes??[]).filter(l=>l.piscina_id===validPool);
- const boardDays=Array.from({length:7},(_,i)=>shiftDay(monday(day),i));
+ const pools=poolResult.data??[],lanes=laneResult.data??[],allLessons=(lessonResult.data??[]) as Lesson[],allBookings=(bookingResult.data??[]) as Booking[],editions=editionResult.data??[];
+ const validPool=context.piscina,validEdition=context.edizione;
+ const pool=pools.find(p=>p.id===validPool),edition=editions.find(e=>e.id===validEdition);
+ const invalidFilter=Boolean(validPool&&!pool||validEdition&&!edition);
+ const lessonReadFailed=Boolean(lessonResult.error||editionResult.error||poolResult.error||invalidFilter);
+ const occupancyFailed=Boolean(bookingResult.error||laneResult.error||poolResult.error);
+ const visible=allLessons.filter(l=>(!validPool||l.piscina_id===validPool)&&(!validEdition||l.edizione_id===validEdition));
+ const names=new Map(editions.map(e=>[e.id,e.nome]));
+ const poolNames=new Map(pools.map(p=>[p.id,p.nome]));
+ const laneNames=new Map(lanes.map(l=>[l.id,l.numero]));
+ const byLesson=new Map<string,Booking[]>(),byLane=new Map<string,Booking[]>();
+ for(const b of allBookings){const entries=byLesson.get(b.lezione_id)??[];entries.push(b);byLesson.set(b.lezione_id,entries);const intervals=byLane.get(b.corsia_id)??[];intervals.push(b);byLane.set(b.corsia_id,intervals);}
+ // Occupazione: non applicare mai il filtro del corso. Anche le prenotazioni prive di un titolo leggibile restano visibili.
+ const poolLanes=lanes.filter(l=>l.piscina_id===validPool);
+ const allLessonNames=new Map(allLessons.map(l=>[l.id,l.titolo]));
+ const missingBookingLessons=[...new Set(allBookings.map(b=>b.lezione_id).filter(id=>!allLessonNames.has(id)))];
+ const extraLessons=await readCourseChunks(missingBookingLessons,(ids,da,a)=>supabase.from('lezioni').select('id,titolo').in('id',ids).order('id').range(da,a));
+ for(const l of extraLessons.data??[])allLessonNames.set(l.id,l.titolo);
  const previous=changePeriod(day,view,-1),next=changePeriod(day,view,1);
- const query=(giorno:string,vista:CalendarView,piscina=validPool)=>`/gestionale/calendario-visivo?giorno=${giorno}&vista=${vista}${piscina?`&piscina=${encodeURIComponent(piscina)}`:''}`;
- const incomplete=allLessons.length>=1000||allBookings.length>=2000;
+ const createDay=params.crea_giorno&&days.includes(params.crea_giorno)?params.crea_giorno:day;
+ const selectableEditions=editions.filter(e=>['programmato','attivo'].includes(e.stato));
+ const canCreate=!poolResult.error&&!laneResult.error&&!editionResult.error&&selectableEditions.length>0;
+ const newLesson=UUID_RE.test(params.lezione??'')&&['lezione_creata','moduli_salvati'].includes(params.msg??'')?await supabase.from('lezioni').select('id,titolo,edizione_id,annullata_il').eq('id',params.lezione!).maybeSingle():{data:null,error:null};
+ const saved=newLesson.data;
+ const [moduleCatalog,moduleLinks]=saved&&params.msg==='lezione_creata'&&!saved.annullata_il?await Promise.all([
+  tutteLePagine((da,a)=>supabase.from('moduli_didattici').select('id,tipo,codice,titolo').order('pre_id').order('id').range(da,a)),
+  tutteLePagine((da,a)=>supabase.from('lezione_moduli').select('modulo_id,ordine').eq('lezione_id',saved.id).order('ordine').order('modulo_id').range(da,a))
+ ]):[{data:[],error:null},{data:[],error:null}];
+ const editor=<Drawer key={createDay+'-'+context.piscina+'-'+context.edizione} title="Nuova lezione" trigger="Nuova lezione" primary initialOpen={params.nuovo==='1'}><EditForm action={createLesson} className="stack"><CalendarContextFields context={context}/><div className="sc-field"><label htmlFor="calendar-edition">Corso / edizione</label><SearchableSelect id="calendar-edition" name="edizione_id" label="Edizione" required value={selectableEditions.some(e=>e.id===validEdition)?validEdition:''} options={selectableEditions.map(e=>({value:e.id,label:e.nome+' · '+e.inizio+' – '+e.fine}))}/></div><label>Titolo<input name="titolo" required maxLength={160}/></label><CourseScheduleFields day={createDay}/><CourseLessonFields pools={pools} lanes={lanes} initialPool={pool?.id??''}/><p className="tiny muted">La lezione e le eventuali corsie sono salvate insieme. Dopo la creazione puoi comporre i moduli didattici senza uscire dal calendario.</p></EditForm></Drawer>;
+ const msg:Record<string,string>={eliminato:'Record rimosso.',elimina_collegati:'Rimozione non consentita: sono presenti dati collegati.',database:'Operazione non riuscita.',dati:'Controlla i dati inseriti.',lezione_creata:'Lezione salvata. Puoi completare i moduli didattici.',moduli_salvati:'Composizione della lezione salvata.',annullata:'Lezione annullata; le prenotazioni sono state liberate.'};
  return <>
- <div className="page-intro"><p className="eyebrow">Gestione impianti</p><h1>Calendario piscine e corsie</h1>
- <p>Consulta le lezioni, controlla le occupazioni e modifica le prenotazioni. Orari Europe/Rome.</p></div>
- {params.msg==='eliminato'&&<p className="notice success">Lezione rimossa.</p>}{params.msg==='elimina_collegati'&&<p className="notice warning">Rimuovi prima prenotazioni, presenze e moduli collegati.</p>}{params.msg==='database'&&<p className="notice error">Rimozione non completata.</p>}
- {params.msg==='dati'&&<p className="notice error">Parametri non validi. Riprova.</p>}
- {failed&&<p className="notice error">Non è stato possibile leggere tutti i dati. Controlla la migrazione 0005 e i permessi Supabase.</p>}
- {incomplete&&<p className="notice error">Sono presenti più dati del limite di visualizzazione: restringi il periodo o la piscina prima di usare questa vista per pianificare.</p>}
- <div className="panel calendar-filters"><form action="/gestionale/calendario-visivo" method="get" className="calendar-filter-form">
- <label>Giorno di riferimento<input type="date" name="giorno" defaultValue={day}/></label>
- <label>Piscina<select name="piscina" defaultValue={validPool}><option value="">Tutte le piscine</option>{(pools??[]).map(p=><option key={p.id} value={p.id}>{p.nome}</option>)}</select></label>
- <label>Vista<select name="vista" defaultValue={view}><option value="settimana">Settimana</option><option value="mese">Mese</option></select></label>
- <button className="button" type="submit">Applica filtri</button></form></div>
- <div className="module-toolbar calendar-period">
- <div className="buttons"><Link className="button ghost" href={query(previous,view)}>← Precedente</Link>
- <span className="calendar-range">{dayName(days[0])} – {dayName(days[days.length-1])}</span>
- <Link className="button ghost" href={query(next,view)}>Successivo →</Link></div>
- <div className="buttons"><Link className="button ghost" href={query(day,'settimana')}>Settimana</Link><Link className="button ghost" href={query(day,'mese')}>Mese</Link>
- <Link className="button" href="/gestionale/corsi">+ Nuova lezione</Link></div></div>
- <div className={`calendar-grid ${view==='mese'?'calendar-month':''}`}>
- {weekDays.map(x=><div className="calendar-head" key={x}>{x}</div>)}
- {days.map(d=>{const records=visible.filter(l=>romeDay(l.inizio)===d);
- return <div key={d} className={`calendar-day ${d.slice(0,7)!==day.slice(0,7)?'calendar-muted':''}`}>
- <div className="calendar-date">{dayName(d)}</div>
- {records.length===0?<span className="tiny muted">—</span>:records.map(l=><Link className="calendar-event calendar-event-link" href={`/gestionale/calendario-visivo/${l.id}`} key={l.id}>
- <strong>{romeTime(l.inizio)}–{romeTime(l.fine)}</strong><span>{l.titolo}</span>
- <small>{names.get(l.edizione_id)??'Corso'} · {(bookingsByLesson.get(l.id)??[]).length} corsie</small></Link>)}
- </div>;})}</div>
- <section className="panel"><h2>Occupazione corsie · settimana</h2><p>La tabella evidenzia le lezioni prenotate nelle singole corsie. Uno spazio privo di prenotazioni non certifica la disponibilità contrattuale dell'impianto.</p>
- {!validPool?<p className="notice">Seleziona una piscina per visualizzare l'occupazione delle corsie.</p>:poolLanes.length===0?<p className="notice">Non ci sono corsie configurate per questa piscina.</p>:
- <div className="table-panel calendar-lane-table"><table><thead><tr><th>Corsia</th>{boardDays.map(d=><th key={d}>{dayName(d)}</th>)}</tr></thead><tbody>
- {poolLanes.map(l=><tr key={l.id}><th>Corsia {l.numero}</th>{boardDays.map(d=>{
- const entries=allBookings.filter(b=>b.corsia_id===l.id&&romeDay(b.inizio)===d&&lessonIds.has(b.lezione_id));
- return <td key={d}>{entries.length?entries.map(b=>{const lesson=visible.find(x=>x.id===b.lezione_id);return <Link key={b.id} className="lane-booking" href={`/gestionale/calendario-visivo/${b.lezione_id}`}><strong>{romeTime(b.inizio)}–{romeTime(b.fine)}</strong><span>{lesson?.titolo??'Lezione'}</span></Link>;}):<span className="tiny muted">Nessuna prenotazione</span>}</td>;
- })}</tr>)}</tbody></table></div>}
+ <PageHeader eyebrow="Impianti e calendario" title="Calendario piscine e corsie" description="Programma le lezioni, verifica le prenotazioni e consulta gli impianti. Tutti gli orari sono italiani." actions={<>{canCreate?editor:<ButtonLink href="/gestionale/corsi/nuovo" variant="secondary">Crea edizione del corso</ButtonLink>}<ButtonLink href="/gestionale/moduli/piscine" variant="secondary">Piscine</ButtonLink></>}/>
+ {params.msg&&Object.hasOwn(msg,params.msg)&&<Alert announce tone={['eliminato','lezione_creata','moduli_salvati','annullata'].includes(params.msg)?'success':'warning'}>{msg[params.msg]} {saved&&<Link href={calendarLessonHref(saved.id,context)}>Apri lezione</Link>}</Alert>}
+ {params.msg==='lezione_creata'&&saved&&!saved.annullata_il&&(!moduleCatalog.error&&!moduleLinks.error?<Drawer key={'composizione-'+saved.id} title={'Moduli didattici · '+saved.titolo} trigger="Componi moduli della nuova lezione" initialOpen><LessonComposer edizioneId={saved.edizione_id} lezioneId={saved.id} moduli={moduleCatalog.data??[]} initial={(moduleLinks.data??[]).map(x=>x.modulo_id)} returnContext={context}/></Drawer>:<Alert tone="warning">La lezione è stata creata, ma i moduli non sono leggibili. Apri la lezione per riprovare.</Alert>)}
+ {newLesson.error&&<Alert tone="warning">Dettaglio della lezione appena salvata non disponibile.</Alert>}
+ {(lessonReadFailed||occupancyFailed)&&<Alert tone="danger" announce>Alcuni dati non sono disponibili. Non interpretare elenchi incompleti come assenza di lezioni o prenotazioni.</Alert>}
+ {invalidFilter&&<Alert tone="warning">Il corso o la piscina selezionati non sono disponibili. Cambia i filtri.</Alert>}
+ {!canCreate&&<Alert tone="warning">{editionResult.error||poolResult.error||laneResult.error?'Dati per la creazione non disponibili. Riprova.':'Non ci sono edizioni programmate o attive. Creane una prima di programmare una lezione.'}</Alert>}
+ <section className="sc-card sc-calendar-controls" aria-label="Controlli calendario">
+ <nav className="sc-calendar-views" aria-label="Modalità calendario">{calendarViews.map(([key,label])=><Link className={'sc-button '+(view===key?'sc-button-primary':'sc-button-secondary')} key={key} href={calendarHref({...context,vista:key})} aria-current={view===key?'page':undefined}>{label}</Link>)}</nav>
+ <div className="sc-calendar-period"><ButtonLink variant="secondary" href={calendarHref({...context,giorno:previous})}>← Precedente</ButtonLink><h2>{periodTitle(days,context)}</h2><ButtonLink variant="secondary" href={calendarHref({...context,giorno:next})}>Successivo →</ButtonLink><ButtonLink variant="secondary" href={calendarHref({...context,giorno:today})}>Oggi</ButtonLink></div>
+ <form action="/gestionale/calendario-visivo" method="get" className="sc-calendar-filter">
+ <input type="hidden" name="vista" value={view}/><label>Data<input type="date" name="giorno" defaultValue={day} required/></label>
+ <label>Piscina<select name="piscina" defaultValue={validPool}><option value="">Tutte le piscine e lezioni senza piscina</option>{pools.map(p=><option key={p.id} value={p.id}>{p.nome}</option>)}{validPool&&!pool&&<option value={validPool}>Piscina non disponibile</option>}</select></label>
+ <label>Corso / edizione<select name="edizione" defaultValue={validEdition}><option value="">Tutti i corsi</option>{editions.map(e=><option key={e.id} value={e.id}>{e.nome} · {e.stato}</option>)}{validEdition&&!edition&&<option value={validEdition}>Corso non disponibile</option>}</select></label>
+ <label className="check-label"><input type="checkbox" name="annullate" value="1" defaultChecked={context.annullate}/> Mostra lezioni annullate</label><div className="buttons"><button className="button" type="submit">Applica filtri</button><ButtonLink variant="secondary" href={calendarHref({...context,piscina:'',edizione:'',annullate:false})}>Azzera filtri</ButtonLink></div></form>
  </section>
- <div className="buttons"><Link href="/gestionale/moduli/piscine">Configura piscine</Link><Link href="/gestionale/moduli/corsie">Configura corsie</Link><Link href="/gestionale/corsi">Gestisci corsi e lezioni</Link></div>
+ {!lessonReadFailed&&<>
+ {!visible.length&&<EmptyState title="Nessuna lezione nel periodo selezionato" description="Cambia data o filtri, oppure programma una nuova lezione." action={canCreate?<ButtonLink href={calendarHref(context,{nuovo:true,creaGiorno:day})}>Programma lezione</ButtonLink>:undefined}/>}
+ <div className={'sc-calendar sc-calendar-'+view} aria-label={'Calendario '+view}>
+ {['settimana','mese'].includes(view)&&weekdays.map(x=><div className="sc-calendar-weekday" key={x}>{x.slice(0,3)}</div>)}
+ {days.map(d=>{const bounds=dayBounds(d),records=visible.filter(l=>overlaps(l.inizio,l.fine,bounds.from,bounds.to));return <section key={d} className={'sc-calendar-day'+(d===today?' sc-calendar-today':'')+(view==='mese'&&d.slice(0,7)!==day.slice(0,7)?' sc-calendar-outside':'')} aria-label={dayName(d)}>
+ <div className="sc-calendar-day-head"><Link href={calendarHref({...context,giorno:d,vista:'giorno'})} aria-current={d===today?'date':undefined}>{dayName(d)} {d===today&&<span className="sc-today-label">Oggi</span>}</Link>{canCreate&&<Link className="sc-calendar-add" aria-label={'Nuova lezione '+dayName(d)} href={calendarHref(context,{nuovo:true,creaGiorno:d})}>+</Link>}</div>
+ {!records.length?<p className="sc-calendar-empty">Nessuna lezione</p>:records.map(l=>{const time=intervalOnDay(l.inizio,l.fine,d)!;const laneNumbers=[...new Set((byLesson.get(l.id)??[]).filter(b=>overlaps(b.inizio,b.fine,bounds.from,bounds.to)).map(b=>laneNames.get(b.corsia_id)).filter(n=>n!==undefined))].sort((a,b)=>a!-b!);
+ return <Link key={l.id} className={'sc-calendar-event'+(l.annullata_il?' sc-calendar-cancelled':l.piscina_id?' sc-calendar-pool':' sc-calendar-theory')} href={calendarLessonHref(l.id,context)}><strong>{time.start}–{time.end}{time.continuesBefore||time.continuesAfter?' · Prosegue':''}</strong><span>{l.titolo}</span><small>{names.get(l.edizione_id)??'Corso non disponibile'}</small><small>{l.annullata_il?'Annullata':l.piscina_id?poolNames.get(l.piscina_id)??'Piscina non disponibile':'Senza piscina'}</small>{!l.annullata_il&&l.piscina_id&&<small>{occupancyFailed?'Corsie da verificare':laneNumbers.length?'Corsie '+laneNumbers.join(', '):'Nessuna corsia prenotata'}</small>}</Link>;})}</section>;})}
+ </div></>}
+ <section className="sc-card">
+ <SectionHeader title="Occupazione corsie" description={'Prenotazioni confermate per tutto il periodo visualizzato · '+periodTitle(days,context)} actions={<ButtonLink href={'/gestionale/moduli/prenotazioni'+(validPool?'?piscina='+validPool:'')} variant="secondary">Gestisci prenotazioni</ButtonLink>}/>
+ <p><strong>Prenotata</strong> = intervallo registrato. <strong>Non prenotata nel gestionale</strong> = nessuna prenotazione registrata nell’intervallo. Orari e limitazioni dell’impianto devono essere verificati separatamente.</p>
+ {context.edizione&&<Alert tone="info">L’occupazione include tutti i corsi, anche quando il calendario è filtrato per edizione.</Alert>}
+ {!validPool?<p>Seleziona una piscina per consultare le sue corsie.</p>:occupancyFailed||!pool?<Alert tone="warning">Occupazione non verificabile.</Alert>:<>
+ <div className="sc-pool-conditions"><h3>{pool.nome}</h3><p>Orari dichiarati: {pool.orari_disponibili||'Non acquisiti'}</p><p>Limitazioni: {pool.limitazioni||'Non acquisite'}</p><p className="tiny muted">Disponibilità contrattuale non verificata. Le condizioni sono informazioni testuali, non fasce orarie automaticamente validate.</p><ButtonLink variant="secondary" href={'/gestionale/moduli/piscine?edit='+pool.id}>Scheda piscina</ButtonLink></div>
+ {!poolLanes.length?<EmptyState title="Nessuna corsia configurata" action={<ButtonLink href={'/gestionale/moduli/corsie?piscina='+pool.id+'&nuovo=1'}>Aggiungi corsia</ButtonLink>}/>:<div className="sc-occupancy-grid">{poolLanes.map(l=>{const bookings=byLane.get(l.id)??[];return <section className="sc-lane-board" key={l.id}><h3>Corsia {l.numero}</h3>{l.note&&<p className="sc-prewrap">Vincoli / note: {l.note}</p>}<Link href={'/gestionale/moduli/prenotazioni?piscina='+pool.id+'&corsia_id='+l.id}>Tutte le prenotazioni della corsia</Link>
+ {days.map(d=>{const bounds=dayBounds(d),entries=bookings.filter(b=>overlaps(b.inizio,b.fine,bounds.from,bounds.to));return <div key={d} className="sc-lane-day"><strong>{dayName(d)}</strong>{entries.length?entries.map(b=>{const time=intervalOnDay(b.inizio,b.fine,d)!;return <Link key={b.id} className="sc-lane-booking" href={calendarLessonHref(b.lezione_id,context)}><span><strong>{time.start}–{time.end}</strong> · Prenotata</span><span>{allLessonNames.get(b.lezione_id)??'Lezione non disponibile'}</span></Link>;}):<span className="sc-lane-state">Non prenotata nel gestionale</span>}</div>;})}</section>;})}</div>}
+ </>}
+ </section>
+ <div className="buttons"><ButtonLink href="/gestionale/moduli/piscine" variant="secondary">Piscine</ButtonLink><ButtonLink href="/gestionale/moduli/corsie" variant="secondary">Corsie</ButtonLink><ButtonLink href="/gestionale/moduli/prenotazioni" variant="secondary">Prenotazioni</ButtonLink></div>
  </>;
 }
