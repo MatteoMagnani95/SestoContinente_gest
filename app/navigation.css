@@ -78,3 +78,10 @@
 }
 @media(max-width:360px){.sc-site-header{gap:8px;padding-inline:12px;}.sc-site-header .brand small{font-size:11px;}.sc-site-header .brand strong{font-size:12px;}.sc-mobile-trigger span{display:none;}}
 @media print{.sc-site-header,.sc-staff-sidebar,.sc-page-navigation,.sc-mobile-menu,.sc-discard-dialog,.sc-skip-link{display:none!important;}.sc-staff-layout{display:block;padding:0;}}
+
+@media (max-width: 1000px) {
+  .sc-site-header, .sc-staff-layout, .sc-public-navigation, .sc-mobile-menu-inner {
+    padding-inline-start: max(16px, env(safe-area-inset-left));
+    padding-inline-end: max(16px, env(safe-area-inset-right));
+  }
+}

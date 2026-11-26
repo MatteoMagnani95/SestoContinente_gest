@@ -4,8 +4,9 @@ import {createPortal} from 'react-dom';
 import Link from 'next/link';
 import {markFormSaved} from '@/lib/dirty-navigation';
 export type EditFailure={error:string;field?:string;href?:string};
-export default function EditForm({action,children,className='stack'}:{action:(data:FormData)=>Promise<void|EditFailure>;children:ReactNode;className?:string}){
+export default function EditForm({action,children,className='stack',identifyRequest=false}:{identifyRequest?:boolean;action:(data:FormData)=>Promise<void|EditFailure>;children:ReactNode;className?:string}){
  const busy=useRef(false);
+ const requestId=useRef<string | null>(null);
  const formRef=useRef<HTMLFormElement>(null),errorId=useId();
  const [pending,setPending]=useState(false);
  const [failure,setFailure]=useState<EditFailure>();
@@ -13,6 +14,10 @@ export default function EditForm({action,children,className='stack'}:{action:(da
  async function submit(event:FormEvent<HTMLFormElement>){
   event.preventDefault();if(busy.current)return;
   const form=event.currentTarget;const data=new FormData(form);
+  if(identifyRequest){
+   requestId.current??=crypto.randomUUID();
+   data.set('richiesta_id',requestId.current);
+  }
   busy.current=true;setPending(true);setFailure(undefined);
   try{
    const response=await action(data);

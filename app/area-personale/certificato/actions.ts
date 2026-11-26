@@ -1,5 +1,7 @@
 'use server';
 import {revalidatePath} from 'next/cache';
+import {todayRome} from '@/lib/area-soci';
+import {validPaymentDate} from '@/lib/payment-tools';
 import {randomUUID} from 'node:crypto';
 import {createAuthAdmin} from '@/lib/supabase/admin';
 import {requireUser} from '@/lib/security';
@@ -25,7 +27,7 @@ export async function caricaCertificato(form:FormData){
  if(!ctx)return {error:'Archivio non disponibile o persona non autorizzata.'};
  const {supabase,user,storage}=ctx;
  const dal=String(form.get('rilasciato_il')??''),al=String(form.get('scade_il')??'');
- if(!/^\d{4}-\d{2}-\d{2}$/.test(dal)||!/^\d{4}-\d{2}-\d{2}$/.test(al)||al<dal||dal>new Date().toISOString().slice(0,10))return {error:'Controlla data di rilascio e scadenza.'};
+ if(!validPaymentDate(dal)||!validPaymentDate(al)||al<dal||dal>todayRome())return {error:'Controlla data di rilascio e scadenza.'};
  let file=form.get('file');
  const staged=String(form.get('transito')??'');
  if(staged){
@@ -48,6 +50,18 @@ export async function caricaCertificato(form:FormData){
  const upload=await storage.upload(path,bytes,{contentType:file.type,upsert:false});
  if(upload.error){await supabase.rpc('annulla_upload_documento',{p_id:document.id});return {error:'Invio non riuscito.'};}
  const result=await supabase.rpc('registra_certificato_personale',{p_persona:persona,p_documento:document.id,p_rilasciato:dal,p_scade:al});
- if(result.error){await storage.remove([path]);await supabase.rpc('annulla_upload_documento',{p_id:document.id});return {error:'Certificato non salvato. Controlla le date e riprova.'};}
+ if(result.error){
+  // Una risposta interrotta può seguire un commit riuscito. Prima di compensare
+  // controlliamo la registrazione con la stessa sessione che ha inviato il file.
+  const linked=await supabase.from('certificati_medici').select('id').eq('documento_id',document.id).eq('persona_id',persona).maybeSingle();
+  if(!linked.data){
+   if(linked.error||!/^([0-9]{2}|P0)[0-9A-Z]{3}$/.test(result.error.code??'')){
+    return {error:'Invio da verificare. Controlla il certificato nell’area personale prima di ripetere il caricamento.'};
+   }
+   const cleanup=await storage.remove([path]);
+   if(!cleanup.error)await supabase.rpc('annulla_upload_documento',{p_id:document.id});
+   return {error:'Certificato non salvato. Controlla le date e riprova.'};
+  }
+ }
  revalidatePath('/gestionale/moduli/certificati');revalidatePath('/area-personale');return {error:null};
 }

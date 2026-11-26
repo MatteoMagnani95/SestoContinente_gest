@@ -21,18 +21,23 @@ export default async function PersonalArea({searchParams}:{searchParams:Promise<
  if(request?.stato!=='approvata'&&(!links||links.length===0))redirect('/richiesta/stato');
  const ids=[...new Set(links?.map(x=>x.persona_id)??[])];
  const [{data:areaSociAccess},{data:season,error:seasonError}]=await Promise.all([supabase.rpc('area_soci_accesso'),supabase.from('stagioni').select('id,nome').eq('attiva',true).maybeSingle()]);
+ const overview=tab==='panoramica';
+ const showMemberships=overview||tab==='tessere';
+ const showBalances=overview||tab==='quote';
+ const needsPeople=showMemberships||showBalances||tab==='brevetti';
+ const emptyPage={data:[],error:null,count:0};
  const [{data:people,error:peopleError},{data:memberships,error:membershipError},{data:certs,error:certError},{data:quotes,error:quoteError},{data:news,error:newsError,count:newsCount},{data:alerts,error:alertError,count:alertCount}]=await Promise.all([
-  ids.length?readCourseChunks(ids,(group,da,a)=>supabase.from('persone').select('id,nome,cognome').in('id',group).order('id').range(da,a)):Promise.resolve({data:[],error:null}),
-  ids.length&&season?readCourseChunks(ids,(group,da,a)=>supabase.from('adesioni').select('id,persona_id,stato').in('persona_id',group).eq('stagione_id',season.id).order('id').range(da,a)):Promise.resolve({data:[],error:null}),
-  ids.length?readCourseChunks(ids,(group,da,a)=>supabase.from('stato_certificati').select('id,persona_id,scade_il,stato_certificato,documento_id').in('persona_id',group).order('creato_il',{ascending:false}).order('id',{ascending:false}).range(da,a)):Promise.resolve({data:[],error:null}),
-  ids.length&&season?readCourseChunks(ids,(group,da,a)=>supabase.from('saldi_quote').select('id,persona_id,stagione_id,importo_dovuto,versato,residuo').in('persona_id',group).eq('stagione_id',season.id).order('id').range(da,a)):Promise.resolve({data:[],error:null}),
-  supabase.from('comunicazioni').select('id,titolo,contenuto,pubblicata_il',{count:'exact'}).eq('attiva',true).order('pubblicata_il',{ascending:false}).order('id').range((page-1)*size,page*size-1),
-  supabase.from('notifiche').select('id,titolo,messaggio,creata_il',{count:'exact'}).eq('utente_id',user.id).is('letta_il',null).order('creata_il',{ascending:false}).order('id').range((page-1)*size,page*size-1),
+  needsPeople&&ids.length?readCourseChunks(ids,(group,da,a)=>supabase.from('persone').select('id,nome,cognome').in('id',group).order('id').range(da,a)):Promise.resolve({data:[],error:null}),
+  showMemberships&&ids.length&&season?readCourseChunks(ids,(group,da,a)=>supabase.from('adesioni').select('id,persona_id,stato').in('persona_id',group).eq('stagione_id',season.id).order('id').range(da,a)):Promise.resolve({data:[],error:null}),
+  overview&&ids.length?readCourseChunks(ids,(group,da,a)=>supabase.from('stato_certificati').select('id,persona_id,scade_il,stato_certificato,documento_id').in('persona_id',group).order('creato_il',{ascending:false}).order('id',{ascending:false}).range(da,a)):Promise.resolve({data:[],error:null}),
+  showBalances&&ids.length&&season?readCourseChunks(ids,(group,da,a)=>supabase.from('saldi_quote').select('id,persona_id,stagione_id,importo_dovuto,versato,residuo').in('persona_id',group).eq('stagione_id',season.id).order('id').range(da,a)):Promise.resolve({data:[],error:null}),
+  tab==='comunicazioni'?supabase.from('comunicazioni').select('id,titolo,contenuto,pubblicata_il',{count:'exact'}).eq('attiva',true).order('pubblicata_il',{ascending:false}).order('id').range((page-1)*size,page*size-1):emptyPage,
+  overview||tab==='notifiche'?supabase.from('notifiche').select('id,titolo,messaggio,creata_il',{count:'exact',head:overview}).eq('utente_id',user.id).is('letta_il',null).order('creata_il',{ascending:false}).order('id').range((page-1)*size,page*size-1):emptyPage,
  ]);
- const brevetti=await Promise.all(ids.map(async id=>{const {count,error}=await supabase.from('brevetti_allievi').select('id',{head:true,count:'exact'}).eq('persona_id',id);return {id,count:error?null:count};}));
+ const brevetti=overview?await Promise.all(ids.map(async id=>{const {count,error}=await supabase.from('brevetti_allievi').select('id',{head:true,count:'exact'}).eq('persona_id',id);return {id,count:error?null:count};})):[];
  const [cards,courseDebts,patents]=await Promise.all([
- readCourseChunks((memberships??[]).map(x=>x.id),(group,da,a)=>supabase.from('tesseramenti').select('id,adesione_id,ente,numero_tessera,emessa_il,scade_il,stato').in('adesione_id',group).order('id').range(da,a)),
- season?readCourseChunks(ids,(group,da,a)=>supabase.from('saldi_corsi').select('id,persona_id,edizione_id,importo_dovuto,versato,residuo').in('persona_id',group).eq('stagione_id',season.id).order('id').range(da,a)):{data:[],error:null},
+ tab==='tessere'?readCourseChunks((memberships??[]).map(x=>x.id),(group,da,a)=>supabase.from('tesseramenti').select('id,adesione_id,ente,numero_tessera,emessa_il,scade_il,stato').in('adesione_id',group).order('id').range(da,a)):{data:[],error:null},
+ tab==='quote'&&season?readCourseChunks(ids,(group,da,a)=>supabase.from('saldi_corsi').select('id,persona_id,edizione_id,importo_dovuto,versato,residuo').in('persona_id',group).eq('stagione_id',season.id).order('id').range(da,a)):{data:[],error:null},
  tab==='brevetti'?readCourseChunks(ids,(group,da,a)=>supabase.from('brevetti_allievi').select('id,persona_id,titolo,ente,numero_brevetto,ottenuto_il,scade_il').in('persona_id',group).order('ottenuto_il',{ascending:false}).order('id').range(da,a)):{data:[],error:null}
  ]);
  const courseNames=await readCourseChunks([...new Set((courseDebts.data??[]).map(x=>x.edizione_id))],(group,da,a)=>supabase.from('edizioni_corsi').select('id,nome').in('id',group).order('id').range(da,a));

@@ -12,7 +12,10 @@
     "test:static": "node --test tests/*.test.mjs",
     "test:rls": "node scripts/test-rls-due-soci.mjs",
     "test:cf-data": "node scripts/check-cf-dataset.mjs",
-    "test:patch19": "node scripts/test-0019-postgres.cjs"
+    "test:patch19": "node scripts/test-0019-postgres.cjs",
+    "lint": "eslint app components lib proxy.ts next.config.ts",
+    "test:integration": "node scripts/test-redesign-postgres.cjs",
+    "test:browser": "playwright test"
   },
   "dependencies": {
     "@marketto/belfiore-connector-embedded": "1.2.1",
@@ -28,9 +31,12 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.1",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@typescript-eslint/parser": "^8.74.0",
+    "eslint": "^9.39.5",
     "pg": "^8.23.1",
     "typescript": "^5.7.0"
   }

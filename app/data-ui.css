@@ -68,3 +68,31 @@
  .sc-mobile-cards td:last-child{border-bottom:0;}
  .sc-mobile-cards td.empty-cell{display:block;text-align:center!important;}
 }
+
+@media (max-width: 600px) {
+  .sc-editor-dialog {
+    scroll-padding-block: 5rem max(24px, env(safe-area-inset-bottom));
+  }
+  .sc-editor-body input, .sc-editor-body select, .sc-editor-body textarea {
+    min-inline-size: 0;
+    max-inline-size: 100%;
+  }
+  .sc-mobile-cards td[colspan] {
+    display: block;
+  }
+  .sc-mobile-cards td[data-label="Azioni"] {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+  .sc-mobile-cards td[data-label="Azioni"]::before {
+    flex-basis: 100%;
+  }
+}
+@media (max-width: 600px) {
+  .sc-editor-header, .sc-editor-body {
+    padding-inline-start: max(16px, env(safe-area-inset-left));
+    padding-inline-end: max(16px, env(safe-area-inset-right));
+  }
+}

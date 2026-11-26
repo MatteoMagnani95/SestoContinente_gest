@@ -3,6 +3,7 @@ import {archiveUploadLimit,checkDocumentDestination} from '@/lib/document-ui';
 import {redirect} from 'next/navigation';
 import {revalidatePath} from 'next/cache';
 import {requireUser} from '@/lib/security';
+import {validPaymentDate} from '@/lib/payment-tools';
 import {randomUUID} from 'node:crypto';
 const mimeToExt:Record<string,string>={'application/pdf':'pdf','image/jpeg':'jpg','image/png':'png','image/webp':'webp'};
 const uuid=/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i;
@@ -22,7 +23,7 @@ export async function uploadDocument(form:FormData){
  const file=form.get('file');
  if(!(file instanceof File)||file.size<=0||file.size>archiveUploadLimit||!mimeToExt[file.type])return {error:'Seleziona un file PDF o immagine valido, massimo 3 MB per questo modulo.',field:'file'};
  const buffer=Buffer.from(await file.arrayBuffer());
- if(!realMime(buffer,file.type))return {error:'Seleziona un file PDF o immagine valido, massimo 10 MB.',field:'file'};
+ if(!realMime(buffer,file.type))return {error:'Il contenuto del file non corrisponde al formato selezionato.',field:'file'};
  const nome=String(form.get('nome')||file.name).trim().slice(0,150);
  const categoria=String(form.get('categoria')||'Altro').trim().slice(0,80);
  const ambito=isStaff?String(form.get('ambito')||'associazione'):'personale';
@@ -37,7 +38,7 @@ export async function uploadDocument(form:FormData){
  !['staff','proprietario','soci','istruttori'].includes(visibilita)||
  (ambito==='personale'&&(!utente||!['staff','proprietario'].includes(visibilita)))||
  (utente&&!uuid.test(utente))||(persona&&!uuid.test(persona))||(edizione&&!uuid.test(edizione))||(versione&&!uuid.test(versione))||
- (conservazione&&!/^\d{4}-\d{2}-\d{2}$/.test(conservazione)))return {error:'Controlla ambito, visibilità e collegamenti del documento.'};
+ (conservazione&&!validPaymentDate(conservazione)))return {error:'Controlla ambito, visibilità e collegamenti del documento.'};
  if(isStaff&&ambito==='personale'&&persona){
   const {data:relation,error:relationError}=await supabase.from('collegamenti_persone').select('utente_id').eq('utente_id',utente).eq('persona_id',persona).limit(1);
   if(relationError||!relation?.length)return {field:'utente_id',error:'L’account scelto non risulta collegato alla persona. Verifica gli intestatari.'};

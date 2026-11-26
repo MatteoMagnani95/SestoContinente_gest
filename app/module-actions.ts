@@ -53,7 +53,7 @@ export async function saveModuleRecord(form:FormData) {
     return {error:'Controlla il campo '+field.label+'.',field:field.name};
    changes[field.name]=num;continue;
   }
-  if(field.type==='date'&&!/^\d{4}-\d{2}-\d{2}$/.test(raw))return {error:'Controlla il campo '+field.label+'.',field:field.name};
+  if(field.type==='date'&&!validPaymentDate(raw))return {error:'Controlla il campo '+field.label+'.',field:field.name};
   if(field.type==='datetime'){
    try{changes[field.name]=italianLocalToISO(raw);}catch{return {error:'Controlla il campo '+field.label+'.',field:field.name};}
    continue;
@@ -76,13 +76,21 @@ export async function saveModuleRecord(form:FormData) {
  if(key==='revisioni'){
   const date=String(changes.data_intervento??''),next=String(changes.prossimo_intervento??'');
   if(!validPaymentDate(date)||date>todayRome()||next&&(!validPaymentDate(next)||next<date))return {field:'data_intervento',error:'Controlla data intervento e prossima revisione.'};
-  if(id){const {data:old,error}=await supabase.from('revisioni_attrezzature').select('attrezzatura_id,data_intervento,prossimo_intervento').eq('id',id).maybeSingle();
-   if(error||!old)return {error:'Revisione non disponibile.'};
-   if(old.attrezzatura_id!==changes.attrezzatura_id||old.data_intervento!==changes.data_intervento||old.prossimo_intervento!==changes.prossimo_intervento)return {error:'Le date e l’attrezzatura di una revisione storica sono protette fino alla verifica della sincronizzazione. Puoi aggiornare gli altri dati.'};
+  if(id){
+   if(!validPaymentDate(text(form,'data_attesa')))return {error:'Riapri la revisione prima di modificarla.'};
   }else{
-   let similar=supabase.from('revisioni_attrezzature').select('id',{count:'exact',head:true}).eq('attrezzatura_id',String(changes.attrezzatura_id)).eq('data_intervento',date).eq('tipo',String(changes.tipo));similar=next?similar.eq('prossimo_intervento',next):similar.is('prossimo_intervento',null);
-   const {count,error}=await similar;if(error||count===null)return {error:'Impossibile verificare interventi simili.'};
-   if(count>0&&form.get('conferma_simile')!=='on')return {error:'Esiste un intervento simile. Verifica lo storico e conferma soltanto se distinto.'};
+   const request=text(form,'richiesta_id');
+   if(!uuid.test(request))return {error:'Riapri il modulo per registrare la revisione.'};
+   const {error}=await supabase.rpc('registra_revisione',{
+    p_richiesta:request,p_attrezzatura:changes.attrezzatura_id,p_data:date,p_prossimo:changes.prossimo_intervento,
+    p_tipo:changes.tipo,p_esito:changes.esito,p_costo:changes.costo,p_note:changes.note,
+    p_distinta:form.get('conferma_simile')==='on',
+   });
+   if(error?.code==='P3503')return {field:'conferma_simile',error:'Esiste un intervento simile. Controlla lo storico e conferma solo se è distinto.'};
+   if(error?.code==='P3502')return {error:'Questa richiesta risulta già registrata con dati diversi. Controlla lo storico prima di riprovare.'};
+   if(error)return {error:'Revisione non confermata. Verifica i dati e riprova.'};
+   revalidatePath('/gestionale','layout');
+   redirect(errorPath(key,'salvato'));
   }
  }
  if(key==='consegne'){
@@ -162,6 +170,11 @@ export async function saveModuleRecord(form:FormData) {
  let query;
  if(id){
   let update=supabase.from(module.table).update(changes).eq('id',id);
+  if(key==='revisioni'){
+   const expectedNext=text(form,'prossima_attesa');
+   update=update.eq('attrezzatura_id',String(changes.attrezzatura_id)).eq('data_intervento',text(form,'data_attesa'));
+   update=expectedNext?update.eq('prossimo_intervento',expectedNext):update.is('prossimo_intervento',null);
+  }
   if(key==='contabilita')update=update.is('pagamento_id',null);
   if(key==='attrezzature'&&equipmentBefore){update=update.eq('stato',equipmentBefore.stato);for(const field of ['ultima_revisione','prossima_revisione'] as const){const value=equipmentBefore[field];update=value?update.eq(field,value):update.is(field,null);}}
   if(key==='certificati'){
@@ -174,6 +187,8 @@ export async function saveModuleRecord(form:FormData) {
  else query=supabase.from(module.table).insert(changes).select('id').single();
  const {error}=await query;
  if(error) {
+  if(key==='revisioni'&&error.code==='P3504')return {field:'data_intervento',error:'La correzione cambierebbe una scadenza di origine incerta. Verifica le date nello storico.'};
+  if(key==='revisioni'&&error.code==='PGRST116')return {error:'La revisione è cambiata. Riapri la scheda prima di riprovare.'};
   if(key==='edizioni'||key==='corsi'){const dup=await courseDuplicate(supabase,module.table,changes,error);if(dup)return dup;}
   if(error.code==='P3421')return {error:'Il direttore non può essere allievo della stessa edizione.',field:key==='edizioni'?'direttore_id':'persona_id'};
   if(error.code==='P3422')return {error:'Seleziona un’edizione frequentata dall’allievo con direttore assegnato.',field:'edizione_id'};
