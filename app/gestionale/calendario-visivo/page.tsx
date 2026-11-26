@@ -33,7 +33,7 @@ export default async function CalendarPage({searchParams}:{searchParams:Promise<
  const query=(giorno:string,vista:CalendarView,piscina=validPool)=>`/gestionale/calendario-visivo?giorno=${giorno}&vista=${vista}${piscina?`&piscina=${encodeURIComponent(piscina)}`:''}`;
  const incomplete=allLessons.length>=1000||allBookings.length>=2000;
  return <>
- <div className="page-intro"><p className="eyebrow">Gestione impianti · Fase 3.3</p><h1>Calendario piscine e corsie</h1>
+ <div className="page-intro"><p className="eyebrow">Gestione impianti</p><h1>Calendario piscine e corsie</h1>
  <p>Consulta le lezioni, controlla le occupazioni e modifica le prenotazioni. Orari Europe/Rome.</p></div>
  {params.msg==='eliminato'&&<p className="notice success">Lezione rimossa.</p>}{params.msg==='elimina_collegati'&&<p className="notice warning">Rimuovi prima prenotazioni, presenze e moduli collegati.</p>}{params.msg==='database'&&<p className="notice error">Rimozione non completata.</p>}
  {params.msg==='dati'&&<p className="notice error">Parametri non validi. Riprova.</p>}

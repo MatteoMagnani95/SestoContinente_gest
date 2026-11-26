@@ -29,7 +29,7 @@ export default async function Courses({searchParams}:{searchParams:Promise<{q?:s
  const [storiciCatalogo,storicheEdizioni]=await Promise.all(['corsi','edizioni_corsi'].map(tabella=>tutteLePagine((da,a)=>supabase.from(tabella).select('id,nome').eq('duplicato_storico',true).order('id').range(da,a))));
  const totalPages=Math.max(1,Math.ceil((count??0)/pageSize));
  return <>
-  <div className="page-intro course-header"><div><p className="eyebrow">Segreteria · Fase 3.2</p><h1>{p.area==='iscrizioni'?'Iscrizioni ai corsi':'Gestione corsi'}</h1><p>Seleziona l’edizione per vedere gli allievi iscritti e gestire le iscrizioni.</p></div><Link className="button" href="/gestionale/corsi/nuovo">+ Nuova edizione</Link></div>
+  <div className="page-intro course-header"><div><p className="eyebrow">Segreteria · Corsi</p><h1>{p.area==='iscrizioni'?'Iscrizioni ai corsi':'Gestione corsi'}</h1><p>Seleziona l’edizione per vedere gli allievi iscritti e gestire le iscrizioni.</p></div><Link className="button" href="/gestionale/corsi/nuovo">+ Nuova edizione</Link></div>
   {Boolean(storiciCatalogo.data?.length||storicheEdizioni.data?.length)&&<details className="notice warning"><summary>Duplicati storici da verificare</summary><ul>{storiciCatalogo.data?.map(c=><li key={c.id}><Link href={'/gestionale/moduli/corsi?edit='+c.id}>Catalogo · {c.nome}</Link></li>)}{storicheEdizioni.data?.map(e=><li key={e.id}><Link href={'/gestionale/corsi/'+e.id}>Edizione · {e.nome}</Link></li>)}</ul></details>}
   {p.msg==='eliminato'&&<p role="status" className="notice success">Edizione rimossa.</p>}
   {p.msg==='dati'&&<p className="notice warning">Controlla i dati inseriti e riprova.</p>}

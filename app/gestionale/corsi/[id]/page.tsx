@@ -1,3 +1,5 @@
+import {Drawer,ConfirmDialog} from '@/components/ui/Drawer';
+import ActionForm from '@/components/ui/ActionForm';
 import Emergenza from '@/components/Emergenza';
 import {statoSingolo} from '@/lib/certificati';
 import EditForm from '@/components/EditForm';
@@ -121,11 +123,10 @@ export default async function EditionDetail({params,searchParams}:{params:Promis
     <p className="tiny muted">È ammesso un solo responsabile per edizione. La presenza di una qualifica in archivio non equivale alla verifica dell'abilitazione richiesta per la disciplina: confermala prima dell'assegnazione. <Link href="/gestionale/moduli/qualifiche">Gestisci qualifiche</Link>.</p>
    </Section>
    <Section id="allievi" title="Iscrizioni e allievi"><p className="muted tiny">Puoi iscrivere soltanto soci con adesione attiva e tessera valida per questa stagione. La capienza è controllata dal database.</p>
-    <div className="panel table-panel"><table><thead><tr><th>Allievo</th><th>Adesione</th><th>Certificato</th><th>Stato iscrizione</th><th>Apri</th></tr></thead><tbody>
+    <div className="panel table-panel"><table><thead><tr><th>Allievo</th><th>Adesione</th><th>Certificato</th><th>Stato iscrizione</th><th>Azioni</th></tr></thead><tbody>
     {enrollments.map(i=>{const cert=certificateList.find(x=>x.persona_id===i.persona_id);return <tr key={i.id}>
      <td>{displayPerson(i.persona_id,people)}</td><td>{activeIds.has(i.persona_id)?'Tesserato':'Non iscrivibile'}</td><td>{cert?statoSingolo(cert.stato_certificato)+' · '+cert.scade_il:'Documento mancante'}</td>
-     <td><form action={updateEnrollment} className="course-state-form"><input type="hidden" name="edizione_id" value={id}/><input type="hidden" name="iscrizione_id" value={i.id}/><select name="stato" defaultValue={i.stato} aria-label={`Stato iscrizione ${displayPerson(i.persona_id,people)}`}>{ENROLLMENT_STATES.map(s=><option key={s} value={s} disabled={s!==i.stato&&['in_attesa','iscritto'].includes(s)&&(!canEdit||!activeIds.has(i.persona_id))}>{s.replaceAll('_',' ')}</option>)}</select><button className="button ghost">Salva</button></form></td>
-     <td><Link href={`/gestionale/soci/${i.persona_id}`}>Scheda</Link><Link href={`/gestionale/moduli/iscrizioni?edit=${i.id}`}>Modifica iscrizione</Link></td>
+     <td>{i.stato.replaceAll('_',' ')}</td><td><div className="sc-row-actions"><Drawer title={'Stato iscrizione · '+displayPerson(i.persona_id,people)} trigger="Cambia stato"><ActionForm action={updateEnrollment} className="course-state-form"><input type="hidden" name="edizione_id" value={id}/><input type="hidden" name="iscrizione_id" value={i.id}/><select name="stato" defaultValue={i.stato} aria-label={`Stato iscrizione ${displayPerson(i.persona_id,people)}`}>{ENROLLMENT_STATES.map(s=><option key={s} value={s} disabled={s!==i.stato&&['in_attesa','iscritto'].includes(s)&&(!canEdit||!activeIds.has(i.persona_id))}>{s.replaceAll('_',' ')}</option>)}</select><button className="button ghost">Salva</button></ActionForm></Drawer><Link href={`/gestionale/soci/${i.persona_id}`}>Scheda socio</Link><Link href={`/gestionale/moduli/iscrizioni?edit=${i.id}`}>Modifica iscrizione</Link></div></td>
      </tr>;})}
     {!enrollments.length&&<tr><td colSpan={5} className="empty-cell">Nessuna iscrizione registrata.</td></tr>}
     </tbody></table></div>

@@ -1,3 +1,5 @@
+import {Drawer,ConfirmDialog} from '@/components/ui/Drawer';
+import ActionForm from '@/components/ui/ActionForm';
 import Link from 'next/link';
 import {randomUUID} from 'node:crypto';
 import {requireStaff} from '@/lib/security';
@@ -84,27 +86,27 @@ export default async function Incassi({searchParams}:{searchParams:Promise<{tab?
   {!errorMessage&&selectedSeason&&<section className="panel">
    <h2>{tab==='quota'?'Quote associative':'Addebiti dei corsi'}</h2>
    <p className="tiny muted">{count} posizioni · Pagina {page} di {maxPage}. I saldi sono aggregati nel database, non calcolati da un campione di versamenti.</p>
-   <div className="table-panel payment-table"><table><thead><tr><th>Socio</th><th>{tab==='quota'?'Scadenza':'Corso'}</th><th>Dovuto</th><th>Versato</th><th>Residuo</th><th>Registrazione</th></tr></thead><tbody>
+   <div className="table-panel payment-table"><table><thead><tr><th>Socio</th><th>{tab==='quota'?'Scadenza':'Corso'}</th><th>Dovuto</th><th>Versato</th><th>Residuo</th><th>Azioni</th></tr></thead><tbody>
     {balances.map(b=><tr key={b.id}>
      <td><Link href={`/gestionale/soci/${b.persona_id}`}>{names.get(b.persona_id)??b.persona_id.slice(0,8)}</Link><p className="tiny muted">{b.stato.replaceAll('_',' ')}</p></td>
      <td>{tab==='quota'?fmtDate(b.scadenza):courseNames.get(b.edizione_id??'')??'—'}</td>
      <td>{euros(b.importo_dovuto)}</td><td>{euros(b.versato)}</td><td><strong>{euros(b.residuo)}</strong></td>
-     <td>{Number(b.residuo)>0?
-      <form action={recordGuidedPayment} className="payment-form">
+     <td><div className="sc-row-actions">{Number(b.residuo)>0?
+      <Drawer title={'Registra versamento · '+(names.get(b.persona_id)??'Socio')} trigger="Registra versamento" primary><p>Dovuto: <strong>{euros(b.importo_dovuto)}</strong> · Versato: {euros(b.versato)} · Residuo: <strong>{euros(b.residuo)}</strong></p><ActionForm action={recordGuidedPayment} className="payment-form">
        <input type="hidden" name="tab" value={tab}/><input type="hidden" name="debito_id" value={b.id}/>
        <input type="hidden" name="persona_id" value={b.persona_id}/><input type="hidden" name="richiesta_id" value={randomUUID()}/>
        <input type="hidden" name="stagione" value={selectedSeason}/><input type="hidden" name="filtro_persona" value={personFilter}/>
        <input type="hidden" name="stato" value={status}/>
        <label>Importo (€)<input name="importo" type="number" required min="0.01" step="0.01" max={Number(b.residuo).toFixed(2)} defaultValue={Number(b.residuo).toFixed(2)}/></label>
        <label>Data di versamento<input name="data_pagamento" type="date" required defaultValue={todayInRome()}/></label>
-       <label>Canale di pagamento<select name="metodo" required defaultValue="bonifico"><option value="bonifico">Bonifico Bancario</option><option value="contanti">Cassa</option><option value="pos">POS</option></select></label>
+       <label>Canale di pagamento<select name="metodo" required defaultValue=""><option value="">Seleziona modalità</option><option value="bonifico">Bonifico Bancario</option><option value="contanti">Cassa</option><option value="pos">POS</option></select></label>
        <label>Riferimento<input name="riferimento" type="text" maxLength={150} placeholder="Facoltativo"/></label>
        <label>Note<input name="note" type="text" maxLength={1000} placeholder="Facoltative"/></label>
        <label className="payment-confirm"><input type="checkbox" name="conferma" required/> Confermo che il versamento è stato realmente ricevuto</label>
        <button className="button" type="submit">Registra definitivamente</button>
-      </form>
+      </ActionForm></Drawer>
       :<strong className="payment-paid">Saldo completo</strong>}
-     <Link href={`/gestionale/moduli/${(tab==='quota'?'quote':'addebiti')}?edit=${b.id}`}>Modifica</Link></td></tr>)}
+     <Link href={`/gestionale/moduli/${(tab==='quota'?'quote':'addebiti')}?edit=${b.id}`}>Gestisci quota</Link></div></td></tr>)}
     {!balances.length&&<tr><td colSpan={6}>Nessun addebito trovato per i filtri selezionati.</td></tr>}
    </tbody></table></div>
    <div className="pager"><span>{count} posizioni</span><div className="buttons">
