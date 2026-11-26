@@ -93,3 +93,27 @@ body:has(dialog[open]){overflow:hidden}
 @media(forced-colors:active){
  .sc-status,.sc-alert,.sc-calendar-today,.sc-nav-link.is-active,.sc-secretariat-tabs a[aria-current=page]{border:2px solid CanvasText}
 }
+
+/* VisualViewport is progressively enhanced by AppShell. Native zoom remains enabled. */
+@media(max-width:1000px){
+ .sc-mobile-menu,.sc-editor-drawer{
+  inset-block-start:var(--sc-visual-top,0px);inset-block-end:auto;
+  height:min(100dvh,var(--sc-visual-height,100dvh));max-height:min(100dvh,var(--sc-visual-height,100dvh));
+ }
+ html[data-sc-keyboard] .sc-editor-modal,html[data-sc-keyboard] .sc-discard-dialog{
+  inset:var(--sc-visual-top,0px) 0 auto;margin:0 auto;width:min(640px,100%);max-width:100%;
+  max-height:min(100dvh,var(--sc-visual-height,100dvh));overflow:auto;
+ }
+ html[data-sc-keyboard] .sc-editor-header{position:static}
+ html[data-sc-keyboard] .sc-editor-dialog{scroll-padding-block:12px 24px}
+}
+@media(max-width:768px){
+ .sc-editor-dialog.sc-editor-drawer,.sc-editor-dialog.sc-editor-modal{
+  inset-block-start:var(--sc-visual-top,0px);inset-block-end:auto;
+  height:min(100dvh,var(--sc-visual-height,100dvh));max-height:min(100dvh,var(--sc-visual-height,100dvh));
+ }
+}
+@media(max-width:600px){
+ .sc-mobile-cards tbody tr{overflow:visible}
+ .sc-mobile-cards td[data-label] :focus-visible{outline-offset:1px}
+}
