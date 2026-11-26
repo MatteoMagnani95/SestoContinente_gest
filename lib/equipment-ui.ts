@@ -6,3 +6,9 @@ export function revisionState(date:string|null,today:string,limit:string){return
 export const equipmentLabel=(e:Equipment)=>[e.codice,e.categoria,e.marca,e.modello].filter(Boolean).join(' · ');
 export const equipmentStates:Record<string,string>={disponibile:'Disponibile',assegnata:'In prestito',in_manutenzione:'In manutenzione',fuori_servizio:'Fuori servizio',incongruente:'Stato da verificare'};
 export const revisionStates:Record<string,string>={non_acquisita:'Data non acquisita',scaduta:'Scaduta',in_scadenza:'In scadenza',registrata:'Data futura registrata'};
+
+// Stessa identità indicativa usata dalla RPC registra_revisione (lower/btrim).
+// Non modifica né elimina le registrazioni storiche.
+export function revisionSimilarityKey(r:Pick<Revision,'attrezzatura_id'|'data_intervento'|'tipo'|'prossimo_intervento'>){
+ return JSON.stringify([r.attrezzatura_id,r.data_intervento,r.tipo.replace(/^ +| +$/g,'').toLowerCase(),r.prossimo_intervento]);
+}
