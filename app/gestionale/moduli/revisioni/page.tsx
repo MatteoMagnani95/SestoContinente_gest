@@ -5,7 +5,7 @@ import {UUID_RE} from '@/lib/course-tools';
 import {todayRome} from '@/lib/area-soci';
 import {shiftDay} from '@/lib/calendar-tools';
 import {dateFilter,money} from '@/lib/finance-ui';
-import {equipmentLabel,revisionState,revisionStates,type Equipment,type Revision} from '@/lib/equipment-ui';
+import {equipmentLabel,revisionState,revisionStates,revisionSimilarityKey,type Equipment,type Revision} from '@/lib/equipment-ui';
 import {pageNumber,listHref} from '@/lib/module-ui';
 import {PageHeader,ButtonLink,StatusBadge,Alert} from '@/components/ui/Primitives';
 import {DataTable,SearchBar,Pagination} from '@/components/ui/DataTable';
@@ -16,7 +16,7 @@ export default async function Revisions({searchParams}:{searchParams:Promise<{at
  const {supabase}=await requireStaff(),s=await searchParams,page=pageNumber(s.p),size=30,today=todayRome(),limit=shiftDay(today,30),dal=dateFilter(s.dal),al=dateFilter(s.al),item=s.attrezzatura&&UUID_RE.test(s.attrezzatura)?s.attrezzatura:'';
  const [equip,history]=await Promise.all([tutteLePagine((da,a)=>supabase.from('attrezzature').select('*').order('codice').order('id').range(da,a)),tutteLePagine((da,a)=>supabase.from('revisioni_attrezzature').select('*').order('data_intervento',{ascending:false}).order('id').range(da,a))]);
  const equipment=(equip.data??[]) as Equipment[],all=(history.data??[]) as Revision[],map=new Map(equipment.map(e=>[e.id,e])),failed=Boolean(equip.error||history.error||dal&&al&&dal>al),types=[...new Set(all.map(x=>x.tipo))].sort(),outcomes=[...new Set(all.map(x=>x.esito).filter((x):x is string=>Boolean(x)))].sort();
- const key=(r:Revision)=>JSON.stringify([r.attrezzatura_id,r.data_intervento,r.tipo,r.prossimo_intervento]),duplicates=new Map<string,number>();for(const r of all)duplicates.set(key(r),(duplicates.get(key(r))??0)+1);
+ const key=revisionSimilarityKey,duplicates=new Map<string,number>();for(const r of all)duplicates.set(key(r),(duplicates.get(key(r))??0)+1);
  const filtered=all.filter(r=>(!item||r.attrezzatura_id===item)&&(!dal||r.data_intervento>=dal)&&(!al||r.data_intervento<=al)&&(!s.tipo||r.tipo===s.tipo)&&(!s.esito||r.esito===s.esito)&&(!s.revisione||revisionState(r.prossimo_intervento,today,limit)===s.revisione));
  const direct=all.find(r=>r.id===s.edit),rows=direct?[direct]:filtered.slice((page-1)*size,page*size);
  return <><PageHeader eyebrow="Attrezzature" title="Revisioni e manutenzioni" description="Interventi storici e scadenze registrate, senza dedurre intervalli tecnici." actions={<>{!failed&&<Drawer title="Registra revisione" trigger="Registra revisione" primary initialOpen={s.nuovo==='1'&&!s.msg}><RevisionEditor equipment={equipment} selected={item} types={types} outcomes={outcomes}/></Drawer>}<ButtonLink href="/gestionale/moduli/attrezzature" variant="secondary">Inventario</ButtonLink></>}/>
