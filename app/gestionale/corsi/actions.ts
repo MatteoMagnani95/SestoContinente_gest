@@ -58,7 +58,7 @@ export async function updateEdition(form:FormData){
  const direttore_id=String(form.get('direttore_id')??'');
  if(!UUID_RE.test(direttore_id))return {field:'direttore_id',error:'Seleziona un direttore valido per l’edizione.'};
  const {error}=await supabase.from('edizioni_corsi').update({direttore_id,nome,massimo_partecipanti:capienza,costo_corso,stato,note}).eq('id',id).select('id').single();
- if(error){if(error.code==='P3419')return {field:'nome',error:'Questo corso esiste già',href:'/gestionale/corsi/'+error.details};return error.code==='P3421'?{field:'direttore_id',error:'La persona scelta è già allieva di questa edizione. Scegli un altro direttore.'}:{field:'massimo_partecipanti',error:'Verifica la capienza e i dati dell’edizione.'};}
+ if(error){if(error.code==='P3510')return {field:'direttore_id',error:'Il direttore deve coincidere con il responsabile già assegnato. Usa Allinea direttore e responsabile nella scheda istruttori.'};if(error.code==='P3419')return {field:'nome',error:'Questo corso esiste già',href:'/gestionale/corsi/'+error.details};return error.code==='P3421'?{field:'direttore_id',error:'La persona scelta è già allieva di questa edizione. Scegli un altro direttore.'}:{field:'massimo_partecipanti',error:'Verifica la capienza e i dati dell’edizione.'};}
  refresh(id);redirect(detailHref(id,'salvato'));
 }
 
@@ -67,12 +67,13 @@ export async function addInstructor(form:FormData){
  let id='',persona_id='',ruolo='';
  try{id=uuidValue(form,'edizione_id');persona_id=uuidValue(form,'persona_id');ruolo=valueOf(form,'ruolo',15);if(!['responsabile','aiuto'].includes(ruolo))throw Error();}
  catch{return {error:'Seleziona un istruttore e un ruolo validi.'};}
- const {data:edition}=await supabase.from('edizioni_corsi').select('stato').eq('id',id).maybeSingle();
+ const {data:edition}=await supabase.from('edizioni_corsi').select('stato,direttore_id').eq('id',id).maybeSingle();
  if(!edition||edition.stato==='annullato'||edition.stato==='concluso')return {error:'Il corso non è operativo.'};
+ if(ruolo==='responsabile'&&edition.direttore_id!==persona_id)return {field:'persona_id',error:'Il responsabile deve essere il direttore del corso. Modifica prima il direttore nella configurazione.'};
  const {data:qual}=await supabase.from('qualifiche_istruttori').select('id').eq('persona_id',persona_id).limit(1);
  if(!qual?.length)return {error:'L’istruttore non ha qualifiche registrate.'};
  const {error}=await supabase.from('assegnazioni_istruttori').insert({edizione_id:id,persona_id,ruolo});
- if(error)return {error:'Assegnazione non riuscita: controlla incarichi e duplicati.'};
+ if(error)return {error:error.code==='P3510'?'Il responsabile deve coincidere con il direttore. Ricarica la scheda.':'Assegnazione non riuscita: controlla incarichi e duplicati.'};
  refresh(id);redirect(detailHref(id,'istruttore'));
 }
 
@@ -91,20 +92,12 @@ export async function removeInstructor(form:FormData){
 
 export async function replaceResponsible(form:FormData){
  const {supabase}=await requireStaff();let id='',person='';
- try{id=uuidValue(form,'edizione_id');person=uuidValue(form,'persona_id');}catch{return {error:'Seleziona un responsabile valido.'};}
- const [{data:current},{data:edition},{data:qual}]=await Promise.all([
-  supabase.from('assegnazioni_istruttori').select('id,persona_id').eq('edizione_id',id).eq('ruolo','responsabile').maybeSingle(),
-  supabase.from('edizioni_corsi').select('stato').eq('id',id).maybeSingle(),
-  supabase.from('qualifiche_istruttori').select('id').eq('persona_id',person).limit(1)
- ]);
- if(!edition||!['programmato','attivo'].includes(edition.stato))return {error:'Il corso non è operativo.'};
- if(!qual?.length)return {error:'Qualifica non registrata.'};
- if(current?.persona_id===person)redirect(detailHref(id,'istruttore'));
- const expected=String(form.get('responsabile_atteso')??'');
- if(!UUID_RE.test(expected)||current?.persona_id!==expected)return {error:'Il responsabile è cambiato dopo l’apertura della scheda. Ricarica prima di modificare.'};
- if(!current)return {error:'Responsabile attuale non disponibile. Ricarica la scheda.'};
- const {error}=await supabase.from('assegnazioni_istruttori').update({persona_id:person}).eq('id',current.id).eq('edizione_id',id).eq('ruolo','responsabile').eq('persona_id',expected).select('id').single();
- if(error)return {error:'Sostituzione non riuscita o incarico già modificato. Ricarica la scheda.'};
+ try{id=uuidValue(form,'edizione_id');person=uuidValue(form,'persona_id');}catch{return {error:'Seleziona un direttore e responsabile valido.'};}
+ const expected=String(form.get('responsabile_atteso')??''),director=String(form.get('direttore_atteso')??'');
+ if(!UUID_RE.test(expected)||!form.has('direttore_atteso')||(director&&!UUID_RE.test(director)))return {error:'Scheda non aggiornata. Ricarica prima di modificare gli incarichi.'};
+ if(form.get('conferma_allineamento')!=='on')return {error:'Conferma esplicitamente la modifica dei due incarichi.'};
+ const {error}=await supabase.rpc('allinea_direttore_responsabile',{p_edizione:id,p_persona:person,p_direttore_atteso:director||null,p_responsabile_atteso:expected});
+ if(error)return {error:error.code==='P3511'?'Il direttore o il responsabile è cambiato, oppure il corso non è più operativo. Ricarica la scheda.':error.code==='P3421'?'La persona scelta è già allieva di questa edizione.':error.code==='P3512'?'Verifica le qualifiche e gli incarichi di aiuto già assegnati.':'Allineamento non riuscito. Nessuna modifica parziale è stata salvata.'};
  refresh(id);redirect(detailHref(id,'istruttore'));
 }
 
