@@ -9,7 +9,7 @@ Stati ammessi: Da analizzare, Da implementare, In lavorazione, Implementato, Ver
 |---|---|---|---|---|---|---|---|---|---|
 | SC-01 | Governance e obiettivo | Tutte | P1 | F0–7 | Da analizzare | — | T-01 | UX operativa, italiana, moderna marittima, adatta a utenti 50–60; posizione, azione, dati, ritorno, esito e conseguenze sempre chiari. | Non verificato |
 | SC-02 | Vincoli | Tutte | P0 | F0–7 | Da analizzare | — | T-02 | Preservare stack, URL, dati, funzionalità, regole, ruoli, RLS, documenti, audit e contabilità; niente dati fittizi, credenziali, migrazioni distruttive, eliminazioni automatiche, merge o SQL produzione senza autorizzazione; documentare decisioni e test. | Non verificato |
-| SC-03 | Audit | Repository | P1 | F0 | In lavorazione | — | T-03 | Branch, PR, patch 0019/0020, route, action, API, componenti, schema, RLS e ruoli; ramo dedicato dalla base compatibile. | Censimento e audit statico ampliati; audit DB live/Vercel e validazione runtime ancora aperti |
+| SC-03 | Audit | Repository | P1 | F0 | In lavorazione | — | T-03 | Branch, PR, patch 0019/0020, route, action, API, componenti, schema, RLS e ruoli; ramo dedicato dalla base compatibile. | Censimento e audit statico ampliati; indice SQL, censimento route/azioni ampliati; DB live/Vercel e validazione runtime ancora aperti |
 | SC-04 | Tracciamento | docs/redesign | P1 | F0–7 | Implementato | 0cdeb00, 5a15d8d + commit documentale successivo | T-04 | Otto documenti; ID, descrizione, pagina, priorità, dipendenze, stato, commit, test, criterio, limiti; non dichiarare verificato senza prova. | Capitolato integrale presente; granularizzazione dei requisiti composti prima della verifica |
 | SC-05.1 | Identità | CSS/layout | P1 | F1 | Implementato | 5a15d8d | T-05.1 | Palette #102B39 #087E83 #3679B8 #65C9BE #F3F7F8 #FFFFFF; accenti per macroarea: segreteria petrolio, didattica oceano, calendario viola, attrezzature ocra, contabilità verde, sistema ardesia; contrasti misurati. | CI passata; verifica visuale e adozione completa aperte |
 | SC-05.2 | Stati | UI | P1 | F1 | Implementato | 5a15d8d | T-05.2 | Verde valido/attivo, arancio imminente, rosso scaduto/errore, blu programmato/in corso, grigio archiviato; etichetta oltre al colore. | CI passata; verifica visuale e adozione completa aperte |
@@ -109,7 +109,7 @@ Stati ammessi: Da analizzare, Da implementare, In lavorazione, Implementato, Ver
 | SC-45 | Esecuzione | Repository | P1 | F0–7 | Da analizzare | — | T-45 | Non solo CSS o proposta; tutte le route, decisioni conservative documentate, implementazione in fasi e nessuna incompletezza taciuta. | Non verificato |
 
 ## Piano operativo
-- F0: inventario completato al ref base; audit preliminare, documentazione e base branch. Aperti: lettura completa dei singoli percorsi/permessi/RLS, verifica ambiente Vercel/DB.
+- F0: inventario completato al ref base; audit preliminare, documentazione e base branch. Aperti: validazione dei singoli percorsi/permessi/RLS, verifica ambiente Vercel/DB.
 - F1: token e primitive (CSS + componenti), contrasto e test visuali; nessun cambio SQL.
 - F2: shell, nav config, pathname, layout condizionale, breadcrumb/back e guard dirty. Test deep link e ruoli prima di estendere.
 - F3: CRUD metadati, drawer, form pending, query e paginazione; preservare special cases e RPC.
@@ -127,3 +127,6 @@ SC-05.1–05.3 e 05.5: token e primitive CSS implementati, verifica visuale anco
 
 ## Granularizzazione
 [REQUIREMENTS_DETAIL.md](REQUIREMENTS_DETAIL.md): 1807 clausole con ID stabile, area/priorità/dipendenze/test padre e stato conservativo individuale; le clausole esplicative vanno classificate e i test specificati durante ogni fase. MASTER_SPEC.md resta la fonte vincolante. Non segnare verificato il gruppo prima di aver chiuso le clausole applicabili.
+
+### Chiusura documentale F0
+Censimento delle 48 pagine, 7 route handler, 19 file action, 28 moduli e 19 migrazioni; approfondimento dei confini autorizzativi e indice SQL_AUDIT. MASTER_SPEC contiene le 45 sezioni, REQUIREMENTS_INDEX l'indice di gruppo, REQUIREMENTS_DETAIL le clausole. F0 audit statico documentale disponibile, non certificato come completo runtime. Verifiche DB live, ruoli e configurazione Vercel bloccate dall'accesso/ambiente di test.

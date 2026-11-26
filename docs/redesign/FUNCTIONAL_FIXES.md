@@ -82,3 +82,10 @@ Conservare le route già paginate e le RPC esistenti; audit ulteriore in PAGE_RE
 
 ## Inventario SQL dettagliato
 [SQL_AUDIT.md](SQL_AUDIT.md) raccoglie i riferimenti testuali alle policy, funzioni, FK e altri costrutti sensibili delle 19 migrazioni. È un indice di audit statico, non una verifica delle autorizzazioni effettive.
+
+## Ultimi confini server censiti
+- Comunicazioni: le route delegano a MailContextPage, lib/email-context.ts (requireStaff/requireUser, is_staff, mailing_list_corso) e sendAssociationMail. Verificare contesto autorizzato, destinatari e mail sink, mai inviare a soci reali da test.
+- Area personale: askForCourse → iscrivi_con_contatto; markNotification → segna_notifica_letta; updateContact → aggiorna_recapiti_personali; cambiaScelta → scegli_immagini. Certificato personale: owns_person/is_staff, bucket sesto-documenti, registra_certificato_personale; verificare upload temporaneo e cleanup.
+- Staff: updateMemberProfile/createMemberAdhesion, editTeachingModule, export modello importazione e registro corso protetti da requireStaff. Amministrazione dati (relazioni tutori/notifiche) requireAdmin. Auth callback conserva protezioni patch 0020; test redirect e sessione.
+- Client Supabase server usa credenziali pubbliche configurate; client amministrativo usa service role solo lato server; nessun valore di segreto letto o riportato. Non importare il client privilegiato in componenti client e verificare tutti i call site amministrativi prima del rilascio.
+- Nessuna azione o route è stata invocata su dati reali. Censimento route/azioni e indice SQL completati a livello statico; verifica exhaustiva dei rami, grant effettivi, DB e ruoli su staging rimane gate di rilascio.
