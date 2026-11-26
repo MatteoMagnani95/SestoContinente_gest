@@ -47,3 +47,6 @@ PageHeader, MetricCard, DataTable, Drawer e EditForm riutilizzati in inventario,
 
 ## Fase 4H
 MetricCard, DataTable, Drawer e filtri riutilizzati in utenti e centro operativo. [ADMIN_REPORT.md](ADMIN_REPORT.md).
+
+## Fase 4I
+Area personale e istruttore: PageHeader, MetricCard, StatusBadge, tab, Drawer, EditForm, Pagination e DataTable, CSS personal-ui. Vedi PERSONAL_AREAS.md.
