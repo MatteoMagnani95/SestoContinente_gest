@@ -67,7 +67,7 @@ export async function saveModuleRecord(form:FormData) {
    if(count>0&&changes.stato!=='assegnata'||count===0&&changes.stato==='assegnata')return {field:'stato',error:'Lo stato deve essere coerente con i prestiti aperti.'};
    const {count:reviews,error:reviewError}=await supabase.from('revisioni_attrezzature').select('id',{count:'exact',head:true}).eq('attrezzatura_id',id);
    if(reviewError||reviews===null)return {error:'Revisioni non verificabili.'};
-   if(reviews>0){delete changes.ultima_revisione;delete changes.prossima_revisione;}
+   if(reviews>0){const {data:current,error:dateError}=await supabase.from('attrezzature').select('ultima_revisione,prossima_revisione').eq('id',id).maybeSingle();if(dateError||!current||current.ultima_revisione!==changes.ultima_revisione||current.prossima_revisione!==changes.prossima_revisione)return {error:'Le date di revisione sono cambiate o dipendono dallo storico. Riapri la scheda.'};delete changes.ultima_revisione;delete changes.prossima_revisione;}
   }else if(changes.stato==='assegnata')return {error:'Registra una consegna per assegnare l’attrezzatura.'};
  }
  if(key==='revisioni'){
