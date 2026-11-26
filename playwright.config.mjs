@@ -33,6 +33,10 @@ export default defineConfig({
       const storageState=process.env['QA_'+role+'_STATE'];
       if(storageState)projects.push({name:browserName+'-role-'+role.toLowerCase(),testMatch:'roles.spec.mjs',use:{...use,storageState,viewport:{width:390,height:844}},metadata:{qaRole:role}});
     }
+    for(const role of ['secretary','member','instructor','board','applicant']){
+      const storageState=process.env['QA_'+role.toUpperCase()+'_STATE'];
+      if(storageState)projects.push({name:browserName+'-'+role,testMatch:'roles.spec.mjs',metadata:{role},use:{...use,storageState,viewport:{width:390,height:844}}});
+    }
     return projects;
   }),
 });
