@@ -260,3 +260,18 @@ Sono 28 configurazioni, alcune con flussi speciali/redirect. Verificare singolar
 - Moduli didattici: requireStaff, moduli_didattici e details; richiesta dettaglio requireStaff, richieste, stagioni, persone, eventi_pratica, count esatto su query specifiche.
 - Organi archivio e dettaglio requireBoard e count/range; riepilogo via cda_report_sicuro; comunicazioni due route contestuali delegano al componente condiviso (guard va verificata lì).
 - La ricognizione copre ora le principali pagine residue oltre alle aree già esaminate; non prova tutti i rami di ogni action e di ogni policy. L'audit DB live e l'accesso Vercel rimangono aperti; nessuna operazione reale eseguita.
+
+
+## Aggiornamento censimento F7
+Nuove route introdotte nel redesign, rispetto alla base F0. Perimetri indicativi, da verificare con guard server, RLS e prove autenticate.
+
+| File | URL | Perimetro | Stato |
+|---|---|---|---|
+| `app/gestionale/attrezzature/[id]/page.tsx` | `/gestionale/attrezzature/[id]` | staff; scheda attrezzatura | Implementata, collaudo autenticato aperto |
+| `app/gestionale/incassi/posizione/[id]/page.tsx` | `/gestionale/incassi/posizione/[id]` | staff; posizione debitoria | Implementata, collaudo autenticato aperto |
+| `app/gestionale/moduli/attrezzature/page.tsx` | `/gestionale/moduli/attrezzature` | staff; inventario | Implementata, collaudo autenticato aperto |
+| `app/gestionale/moduli/consegne/page.tsx` | `/gestionale/moduli/consegne` | staff; prestiti e restituzioni | Implementata, collaudo autenticato aperto |
+| `app/gestionale/moduli/contabilita/page.tsx` | `/gestionale/moduli/contabilita` | admin; contabilità | Implementata, collaudo autenticato aperto |
+| `app/gestionale/moduli/piscine/page.tsx` | `/gestionale/moduli/piscine` | staff; impianti | Implementata, collaudo autenticato aperto |
+| `app/gestionale/moduli/revisioni/page.tsx` | `/gestionale/moduli/revisioni` | staff; revisioni | Implementata, collaudo autenticato aperto |
+| `app/gestione-eventi/[id]/page.tsx` | `/gestione-eventi/[id]` | staff o gestore autorizzato dell'evento | Implementata, collaudo autenticato aperto |
