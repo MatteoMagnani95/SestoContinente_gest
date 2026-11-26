@@ -161,7 +161,7 @@ export async function createLesson(form:FormData){
   p_edizione:id,p_titolo:titolo,p_inizio:inizio,p_fine:fine,p_piscina:piscina_id,
   p_corsie:corsie,p_esercizi:esercizi,p_materiale:materiale
  });
- if(error)return {error:error.code==='23P01'?'Una corsia è già prenotata nell’intervallo richiesto. Nessuna lezione creata.':'Lezione non salvata. Controlla periodo del corso, orari, piscina e conflitti.'};
+ if(error)return {error:['40P01','40001'].includes(error.code??'')?'Conflitto temporaneo tra operazioni simultanee. Nessuna lezione creata: ricarica e riprova.':error.code==='23P01'?'Una corsia è già prenotata nell’intervallo richiesto. Nessuna lezione creata.':'Lezione non salvata. Controlla periodo del corso, orari, piscina e conflitti.'};
  refresh(id);revalidatePath('/gestionale/calendario-visivo');const created=typeof lessonId==='string'&&UUID_RE.test(lessonId)?lessonId:undefined;
  if(form.get('origine')==='calendario')redirect(calendarHref(calendarFormContext(form),{msg:'lezione_creata',lezione:created}));
  redirect(courseViewHref(id,'lezioni','lezione_creata',created));
