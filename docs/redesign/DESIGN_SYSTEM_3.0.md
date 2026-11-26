@@ -17,3 +17,6 @@ Estende, non sostituisce le regole applicative del design system 2.0. Baseline `
  
 ## Gate
 Contrast test e test inventario/assets nuovi, aggiornamento del test palette 2.0 senza ridurre soglie. Test di integrazione e browser non considerati superati finché non disponibili risultati. La fase successiva aggiunge saluto dinamico e ricerca con accesso autorizzato; non simulare funzionalità.
+
+## Fase 2
+Header e sidebar: shell-3.0.css, logo primario, saluto titolare (fallback neutro), avatar iniziale, account menu nativo con Esc/click esterno, ricerca in dialog nativo e focus ripristinato, barra mobile con destinazioni autorizzate. Sidebar: una sezione espansa per percorso, toggle compatto persistito solo come booleano, nessun link soppresso per ragioni estetiche. Mobile: menu completo in header, barra rapida fino a 4 destinazioni; safe area e nascosta durante tastiera/dialog. Ricerca e limiti: vedi tracker F2. Nessun dato sensibile nei risultati; guardie e RLS restano la frontiera di sicurezza.

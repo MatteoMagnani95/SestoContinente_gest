@@ -4,8 +4,8 @@ Data: 26/11/2026. Baseline produzione e HEAD 2.0: `20ae6fcceb5307d58920aa1527a83
 ## Fasi
 | Fase | Stato | Note |
 |---|---|---|
-| 1 — Fondazioni | Implementato; verifica parziale | Token, primitive, asset brand, illustrazione, header/home/footer minimi, inventario; build/lint/typecheck/CI da verificare separatamente |
-| 2 — AppShell | Non iniziato | Saluto reale, ricerca autorizzata, sidebar, menu mobile; branding di base già disponibile |
+| 1 — Fondazioni | CI superata | Commit 7b39eb3; run 45897134510 success (lint, TS, static, build, browser, audit, integrazione DB effimero). Collaudo visuale autenticato manuale aperto. |
+| 2 — AppShell | Implementato; gate da verificare | Header/account, nome titolare univoco, ricerca con sessione e scope espliciti, sidebar, menu mobile e barra rapida, test dedicati. |
 | 3 — Centro operativo e segreteria | Non iniziato | KPI, soci, moduli, riquadro Nereia |
 | 4 — Didattica e impianti | Non iniziato | Corsi, calendario, piscine |
 | 5 — Operazioni associative | Non iniziato | Incassi, attrezzature, eventi, documenti, organi sociali, admin |
@@ -124,3 +124,10 @@ Ruoli indicativi dal codice di navigazione e dalle guardie 2.0; la verifica di a
 - Coppie di contrasto calcolate per token (test F1 dedicato). Nessun accesso a dati reali.
 - Git clone da runtime locale non disponibile per rete; test completi tramite CI solo se effettivamente eseguiti. Non attestare build, lint, test E2E, RLS o WCAG completa prima di risultati reali.
 - Prossimo passo: verificare CI/collegamento asset, poi Fase 2; conservare guardie, navigazione e dati.
+
+## F2 — AppShell
+- Baseline F1 CI success: https://github.com/segreteriasestocontinente/SestoContinente_gest/actions/runs/45897134510. Nessun fix necessario.
+- Tutte le pagine ereditano AppShell; stato dei redesign di pagina rimane invariato. Sidebar conserva tutte le destinazioni, raggruppamento e stato attivo, compressione locale senza dati personali. Mobile: quattro destinazioni principali secondo ruolo + menu completo in header; safe area, tastiera e dialog. Header ufficiale invariato, Nereia in footer.
+- Nome: solo collegamento univoco relazione titolare, lettura sessione/RLS, fallback Ciao/Account e avatar generico. Non usare email o nome di persona rappresentata.
+- Ricerca: staff (persone, allievi iscritti/conclusi, edizioni, eventi, attrezzature), istruttore non staff (edizioni assegnate, eventi di cui è responsabile), documenti associativi pubblicati per soci secondo RLS. Per soci normali non esporre anagrafiche, iscrizioni altrui o dettagli non collegabili: l'accesso a corsi ed eventi resta dalle rispettive aree. Esclusi documenti personali/sanitari/interni e note. Niente storage URLs o service role. Query min 2 caratteri, max 80/4 parole, 300ms debounce, 6 per gruppo, indicazione parzialità; scope istruttore limitato a 100 collegamenti/200 assegnazioni (parzialità dichiarata). Nessun log query, nessuna persistenza. Link effettivi e guardie esistenti a destinazione.
+- F2 browser autenticato manuale e verifica visiva su tutte le viewport ancora aperti. CI nuova da controllare; nessun deploy o SQL.
