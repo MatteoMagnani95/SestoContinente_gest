@@ -44,7 +44,7 @@ test('Registrazione: privacy obbligatoria e checkbox facoltativa negativa; passw
  const writes=[],m=mock({auth:{signUp:async v=>{writes.push(v);return {data:{session:null},error:null};}}});
  const old=process.env.NEXT_PUBLIC_SITE_URL;process.env.NEXT_PUBLIC_SITE_URL='https://example.test';
  try{
-  const base={email:'USER@example.test',password:' password 123 ',confirm:' password 123 ',immagini_checkbox:'1'};
+  const base={email:'USER@example.test',password:' password 123 ',confirm:' password 123 ',immagini_checkbox:'1',privacy_versione_vista:'1',immagini_versione_vista:'1'};
   assert.ok((await m.actions.registerAction(form(base))).error);assert.equal(writes.length,0);
   await assert.rejects(m.actions.registerAction(form({...base,presa_visione:'on'})),/redirect:\/registrati\?ok=verifica/);
   assert.equal(writes[0].password,base.password);assert.equal(writes[0].options.data.immagini,'no');
@@ -61,13 +61,13 @@ test('Login non verificato, recovery e resend senza confermare esistenza account
  assert.equal(calls[0].options.redirectTo,'https://example.test/auth/callback?next=%2Fnuova-password');assert.equal(calls[1].type,'signup');
  }finally{if(old===undefined)delete process.env.NEXT_PUBLIC_SITE_URL;else process.env.NEXT_PUBLIC_SITE_URL=old;}
 });
-const base={nome:'Mario',cognome:'Rossi',data_nascita:'2000-01-01',luogo_nascita:'Roma',stato_nascita:'Italia',indirizzo:'Via di prova',cap:'00100',comune:'Roma',telefono:'123456789',flag_statuto:'on',flag_privacy:'on',immagini_checkbox:'1',intent:'invia'};
+const base={nome:'Mario',cognome:'Rossi',data_nascita:'2000-01-01',luogo_nascita:'Roma',stato_nascita:'Italia',indirizzo:'Via di prova',cap:'00100',comune:'Roma',telefono:'123456789',flag_statuto:'on',flag_privacy:'on',immagini_checkbox:'1',privacy_versione_vista:'1',statuto_versione_vista:'1',immagini_versione_vista:'1',immagini_scelta_attesa:'',intent:'invia'};
 test('Adesione: minore richiede tutore, adulto non trasmette tutore residuo, consenso negativo ammesso',async()=>{
  const m=mock();
  assert.ok((await m.actions.saveApplicationAction(form({...base,data_nascita:'2020-01-01'}))).error);assert.equal(m.calls.length,0);
  assert.ok((await m.actions.saveApplicationAction(form({...base,data_nascita:'2020-01-01',nome_tutore:'Anna',cognome_tutore:'Rossi',parentela_tutore:'altro'}))).error);
  const ok=await m.actions.saveApplicationAction(form({...base,data_nascita:'2020-01-01',nome_tutore:'Anna',cognome_tutore:'Rossi',parentela_tutore:'Madre'}));
- assert.equal(ok.next,'/richiesta/stato?msg=inviata');assert.equal(m.calls[0].name,'salva_domanda_v19');assert.equal(m.calls[0].payload.p_flag_immagini,false);assert.equal(m.calls[0].payload.p_parentela_tutore,'Madre');
+ assert.equal(ok.next,'/richiesta/stato?msg=inviata');assert.equal(m.calls[0].name,'salva_domanda_v20');assert.equal(m.calls[0].payload.p_flag_immagini,false);assert.equal(m.calls[0].payload.p_parentela_tutore,'Madre');
  await m.actions.saveApplicationAction(form({...base,nome_tutore:'Anna',cognome_tutore:'Rossi',parentela_tutore:'Madre',intent:'bozza'}));assert.equal(m.calls[1].payload.p_nome_tutore,'');assert.equal(m.calls[1].payload.p_invia,false);
 });
 test('Adesione: documenti mancanti, email non verificata e mode mismatch bloccano scrittura',async()=>{
@@ -91,13 +91,13 @@ test('Versione documenti: la nuova UI non accetta silenziosamente documenti aggi
  assert.equal(ok.next,'/richiesta/stato?msg=inviata');
  assert.match(read('app/richiesta/nuova/page.tsx'),/request\.versione_statuto===legal\.statutoVersion&&request\.flag_statuto/);
 });
-test('Revoca: checkbox deselezionata usa la RPC esistente e conserva la versione',async()=>{
+test('Revoca: checkbox deselezionata usa il confronto della scelta corrente e conserva la versione',async()=>{
  const calls=[];const m=load('app/area-personale/profilo/immagini.ts',{
   '@/lib/application-input':input,'@/lib/scelte':{versioneImmagini:'Foto e video · 1'},'@/lib/application-config':{applicationLegalConfig:()=>({testMode:false})},
   '@/lib/security':{requireUser:async()=>({user:{id:'x'},supabase:{rpc:async(name,payload)=>{calls.push({name,payload});return {error:null};}}})},'next/cache':{revalidatePath:()=>{}}
  });
- await m.cambiaScelta(form({immagini_checkbox:'1'}));
- assert.deepEqual(calls,[{name:'scegli_immagini',payload:{p_scelta:false,p_versione:'Foto e video · 1'}}]);
+ await m.cambiaScelta(form({immagini_checkbox:'1',immagini_versione_vista:'Foto e video · 1',immagini_scelta_attesa:'42'}));
+ assert.deepEqual(calls,[{name:'scegli_immagini_verificata',payload:{p_scelta:false,p_versione:'Foto e video · 1',p_scelta_attesa:'42'}}]);
 });
 
 test('Logout: successo soltanto dopo signOut, errore distinto; nuova password conserva spazi',async()=>{
@@ -121,4 +121,15 @@ test('Callback: verifica e recupero interni, link non valido e redirect esterni 
  assert.equal((await GET(request('/nuova-password'))).url,'https://example.test/accedi?msg=recupero_scaduto');
  assert.equal((await GET(request('/richiesta/nuova',''))).url,'https://example.test/accedi?msg=verifica');
  assert.ok(codes.length>=7);
+});
+
+test('Dichiarazioni: la versione mancante e la scelta obsoleta impediscono il salvataggio',async()=>{
+ const m=mock();
+ const missing=form(base);missing.delete('privacy_versione_vista');
+ assert.match((await m.actions.saveApplicationAction(missing)).error,/aggiornati/);assert.equal(m.calls.length,0);
+ const missingChoice=form(base);missingChoice.delete('immagini_scelta_attesa');
+ assert.match((await m.actions.saveApplicationAction(missingChoice)).error,/non verificabile/);assert.equal(m.calls.length,0);
+ const stale=mock({rpcError:{code:'P3508'}});
+ assert.match((await stale.actions.saveApplicationAction(form({...base,immagini_scelta_attesa:'42'}))).error,/cambiata/);
+ assert.equal(stale.calls[0].payload.p_scelta_attesa,'42');
 });
