@@ -190,6 +190,7 @@ export async function saveModuleRecord(form:FormData) {
   if(key==='revisioni'&&error.code==='P3504')return {field:'data_intervento',error:'La correzione cambierebbe una scadenza di origine incerta. Verifica le date nello storico.'};
   if(key==='revisioni'&&error.code==='PGRST116')return {error:'La revisione è cambiata. Riapri la scheda prima di riprovare.'};
   if(key==='edizioni'||key==='corsi'){const dup=await courseDuplicate(supabase,module.table,changes,error);if(dup)return dup;}
+  if(error.code==='P3510')return {error:'Direttore e responsabile devono coincidere. Apri la scheda del corso e usa Allinea direttore e responsabile.',field:key==='edizioni'?'direttore_id':'persona_id'};
   if(error.code==='P3421')return {error:'Il direttore non può essere allievo della stessa edizione.',field:key==='edizioni'?'direttore_id':'persona_id'};
   if(error.code==='P3422')return {error:'Seleziona un’edizione frequentata dall’allievo con direttore assegnato.',field:'edizione_id'};
   if(key==='attrezzature')return {error:'Salvataggio non riuscito: verifica codice univoco e possibili modifiche concorrenti.'};
