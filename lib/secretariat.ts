@@ -1,7 +1,7 @@
 export const requestStates=['bozza','inviata','in_verifica','integrazione_richiesta','approvata','respinta'] as const;
 export const pendingRequestStates=['inviata','in_verifica','integrazione_richiesta'] as const;
 export function exactCount(result:{count:number|null;error:unknown}){return result.error||result.count===null?'—':result.count;}
-export function dateFilter(value?:string){if(!value||!/^\d{4}-\d{2}-\d{2}$/.test(value))return '';const d=new Date(value+'T00:00:00Z');return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===value?value:'';}
+export function dateFilter(value?:string){if(!value||value<'1900-01-01'||value>'9998-12-30'||!/^\d{4}-\d{2}-\d{2}$/.test(value))return '';const d=new Date(value+'T00:00:00Z');return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===value?value:'';}
 export function uuidReference(value:string){
  const raw=value.trim().replace(/^#/,'').toLowerCase();
  if(/^[0-9a-f]{8}$/.test(raw))return {from:raw+'-0000-0000-0000-000000000000',to:raw+'-ffff-ffff-ffff-ffffffffffff'};

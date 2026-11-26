@@ -29,7 +29,7 @@ export default async function Dashboard(){
  const summary:Metric[]=[
   {label:'Adesioni attive',icon:'users',area:'secretariat',result:adhesions,href:'/gestionale/soci?stato=attiva'+seasonQuery,note:season?.nome??'Stagione attiva non disponibile'},
   {label:'Corsi attivi',icon:'course',area:'teaching',result:courses,href:'/gestionale/corsi?stato=attivo'},
-  {label:'Iscrizioni allievi',icon:'users',area:'teaching',result:enrollments,href:'/gestionale/moduli/iscrizioni?filtro_modulo=stato%3Aiscritto',note:'Iscrizioni, non persone uniche'},
+  {label:'Iscrizioni allievi',icon:'users',area:'teaching',result:enrollments,href:'/gestionale/moduli/iscrizioni?vista=elenco&filtro_modulo=stato%3Aiscritto',note:'Iscrizioni, non persone uniche'},
   {label:'Eventi imminenti',icon:'calendar',area:'calendar',result:events,href:'/gestione-eventi?periodo=prossimi&dal='+today}
  ];
  const tasks:Metric[]=[
@@ -39,7 +39,7 @@ export default async function Dashboard(){
   {label:'Revisioni da effettuare',icon:'equipment',area:'equipment',result:revisions,href:'/gestionale/moduli/attrezzature?al='+cutoff,note:'Scadute o entro 30 giorni'},
   {label:'Certificati in scadenza',icon:'certificate',area:'system',result:certificates,href:'/gestionale/moduli/certificati?stato=in_scadenza&dal='+today+'&al='+cutoff,note:'Validi, in scadenza entro 30 giorni'}
  ];
- function metric(m:Metric){return <Link key={m.label} href={m.href} className="sc-metric-link" aria-label={m.label+': '+exactCount(m.result)+'. Apri elenco'}><MetricCard label={m.label} icon={m.icon} area={m.area} value={exactCount(m.result)} note={exactCount(m.result)==='—'?'Dato non disponibile':m.note}/><span className="sc-metric-open">Apri elenco <Icon name="chevron-right"/></span></Link>;}
+ function metric(m:Metric){if(!season&&['Adesioni attive','Adesioni da perfezionare','Quote da incassare'].includes(m.label))return <MetricCard key={m.label} label={m.label} icon={m.icon} area={m.area} value="—" note="Stagione attiva non disponibile"/>;return <Link key={m.label} href={m.href} className="sc-metric-link" aria-label={m.label+': '+exactCount(m.result)+'. Apri elenco'}><MetricCard label={m.label} icon={m.icon} area={m.area} value={exactCount(m.result)} note={exactCount(m.result)==='—'?'Dato non disponibile':m.note}/><span className="sc-metric-open">Apri elenco <Icon name="chevron-right"/></span></Link>;}
  const lessonsError=lessons.error;
  return <>
  <PageHeader eyebrow="Segreteria · Centro operativo" title="Panoramica" description={season?'Stagione attiva: '+season.nome:'Consulta la situazione associativa e le attività da gestire.'}/>

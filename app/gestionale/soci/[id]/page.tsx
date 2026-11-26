@@ -37,10 +37,10 @@ type Document={id:string;nome:string;categoria:string;caricato_il:string};
 type Guardian={minore_id:string;tutore_id:string;parentela:string};
 const euro=(n:number|string|null|undefined)=>new Intl.NumberFormat('it-IT',{style:'currency',currency:'EUR'}).format(Number(n??0));
 const statusLabel=(s:string)=>s.replaceAll('_',' ');
-const statusMessage:Record<string,string>={eliminato:'Elemento rimosso.',elimina_collegati:'Rimozione non consentita: il record è collegato ad altri dati o è protetto.',elimina_conferma:'Conferma la rimozione.',database:'Rimozione non riuscita: verifica autorizzazioni e migrazione.',salvato:'Anagrafica aggiornata. La modifica è tracciata nel registro amministrativo.',
+const statusMessage:Record<string,string>={eliminato:'Elemento rimosso.',elimina_collegati:'Rimozione non consentita: il record è collegato ad altri dati o è protetto.',elimina_conferma:'Conferma la rimozione.',database:'Rimozione non riuscita. Controlla i permessi o contatta l’amministratore.',salvato:'Anagrafica aggiornata. La modifica è tracciata nel registro amministrativo.',
  adesione_creata:'Adesione registrata in stato «da perfezionare». Verificare separatamente quota e tesseramento.',
  cf:'Codice fiscale non coerente con i dati anagrafici, oppure comune/Stato di nascita non identificato. Verifica i dati e usa il CF ufficiale.', omocodia:'Omocodia: conferma la verifica documentale e indica la motivazione.', dati:'Alcuni dati non sono validi. Controlla la compilazione.',duplicato:'Esiste già un altro socio con questo codice fiscale.',
- adesione_esistente:'Per questa stagione esiste già un’adesione.',errore:'Operazione non riuscita. Controlla le autorizzazioni o i vincoli del database.'};
+ adesione_esistente:'Per questa stagione esiste già un’adesione.',errore:'Operazione non riuscita. Controlla i dati e i permessi.'};
 function dateState(value:string|null|undefined){
  if(!value)return {label:'Non indicata',kind:''};
  const target=new Date(`${value}T12:00:00Z`);
@@ -92,7 +92,7 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
  const seasons=(seasonsData??[]) as unknown as Season[];
  const memberships=(membershipsData??[]) as unknown as (Membership&{verbale_cda_id:string|null})[];
  const vIds=[...new Set(memberships.map(m=>m.verbale_cda_id).filter((v):v is string=>Boolean(v)))];
- const {data:boardMinutes}=vIds.length?await supabase.from('cda_verbali').select('id,data_consiglio').in('id',vIds):{data:[]};
+ const {data:boardMinutes,error:boardError}=vIds.length?await supabase.from('cda_verbali').select('id,data_consiglio').in('id',vIds):{data:[],error:null};
  const balances=(balancesData??[]) as unknown as Balance[];
  const payments=(paymentsData??[]) as unknown as Payment[];
  const enrollments=(enrollmentsData??[]) as unknown as Enrollment[];
@@ -105,8 +105,8 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
  const wards=(wardData??[]) as unknown as Guardian[];
  const equipment=(equipmentData??[]) as unknown as Equipment[];
  const editionIds=[...new Set([...enrollments.map(x=>x.edizione_id),...assignments.map(x=>x.edizione_id)])];
- const [{data:editionsData},cardResult,{data:equipmentNamesData}]=await Promise.all([
-  editionIds.length?supabase.from('edizioni_corsi').select('id,nome,corso_id,inizio,fine').in('id',editionIds):Promise.resolve({data:[]}),
+ const [{data:editionsData,error:editionsError},cardResult,{data:equipmentNamesData,error:equipmentNamesError}]=await Promise.all([
+  editionIds.length?supabase.from('edizioni_corsi').select('id,nome,corso_id,inizio,fine').in('id',editionIds):Promise.resolve({data:[],error:null}),
   supabase.from('tesseramenti').select('id,adesione_id,ente,numero_tessera,scade_il,stato,adesioni!inner(persona_id,stagione_id)',{count:'exact'}).eq('adesioni.persona_id',id).order('scade_il',{ascending:false}).order('id').range(...range('tesseramenti')),
   equipment.length?supabase.from('attrezzature').select('id,codice,categoria').in('id',equipment.map(x=>x.attrezzatura_id)):Promise.resolve({data:[]}),
  ]);
@@ -114,10 +114,10 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
  const editions=(editionsData??[]) as unknown as Edition[];
  const cards=(cardsData??[]) as unknown as Card[];
  const courseIds=[...new Set(editions.map(x=>x.corso_id))];
- const {data:coursesData}=courseIds.length?await supabase.from('corsi').select('id,nome,tipo,livello').in('id',courseIds):{data:[]};
+ const {data:coursesData,error:coursesError}=courseIds.length?await supabase.from('corsi').select('id,nome,tipo,livello').in('id',courseIds):{data:[],error:null};
  const courses=(coursesData??[]) as unknown as Course[];
  const guardianIds=[...new Set([...guardians.map(g=>g.tutore_id),...wards.map(g=>g.minore_id)])];
- const {data:familyData}=guardianIds.length?await supabase.from('persone').select('id,nome,cognome').in('id',guardianIds):{data:[]};
+ const {data:familyData,error:familyError}=guardianIds.length?await supabase.from('persone').select('id,nome,cognome').in('id',guardianIds):{data:[],error:null};
  const family=(familyData??[]) as unknown as {id:string;nome:string;cognome:string}[];
  const seasonName=(key:string)=>seasons.find(s=>s.id===key)?.nome??'Stagione non trovata';
  const editionName=(key:string)=>{
@@ -140,7 +140,7 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
  const courseBalances=courseBalancesResult.data??[];
  const debt=balanceError?null:balances.reduce((sum,q)=>sum+Number(q.residuo),0);
  const courseDebt=courseBalancesResult.error?null:courseBalances.reduce((sum,q)=>sum+Number(q.residuo),0);
- const partialErrors=Boolean(memberError||balanceError||paymentResult.error||enrollmentResult.error||certResult.error||patentResult.error||qualificationResult.error||assignmentResult.error||documentResult.error||guardianResult.error||wardResult.error||equipmentResult.error||cardResult.error||courseBalancesResult.error||emergencyError||applicationError||consentError);
+ const partialErrors=Boolean(memberError||balanceError||paymentResult.error||enrollmentResult.error||certResult.error||patentResult.error||qualificationResult.error||assignmentResult.error||documentResult.error||guardianResult.error||wardResult.error||equipmentResult.error||cardResult.error||courseBalancesResult.error||emergencyError||applicationError||consentError||boardError||editionsError||coursesError||equipmentNamesError||familyError);
  const pageLink=(next:number,secondary=false)=>listHref({tab,p:String(secondary?page:next),p2:String(secondary?next:secondPage)});
  const pager=(result:{count:number|null;error:unknown},label:string,secondary=false)=><Pagination page={secondary?secondPage:page} size={size} count={result.error?null:result.count} href={p=>pageLink(p,secondary)} label={label}/>;
  const sectionError=(error:unknown)=>error?<Alert tone="danger" announce>Informazioni non disponibili. Riprova prima di eseguire operazioni.</Alert>:null;
@@ -181,10 +181,10 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
        <label>Motivazione verifica documentale CF<input name="cf_override_motivo" maxLength={500} defaultValue={person.cf_override_motivo??''} placeholder="Es. omocodia attestata da tessera sanitaria"/></label>
       </div><CodiceFiscaleAssist/><div className="form-actions"><button type="submit" className="button">Salva modifiche</button><CancelEditButton/></div>
       <p className="tiny muted">Le rettifiche vengono registrate nel registro operazioni, senza copiare i dati anagrafici nel log.</p>
-     </EditForm><RemoveRecord moduleKey="anagrafiche" id={person.id} back="soci"/>{isAdmin===true&&Boolean(accountLinks?.length)&&<div className="stack"><p className="muted tiny">Per rimuovere l’account insieme ai dati esclusivi collegati, usa la cancellazione completa. I profili condivisi sono conservati.</p>{accountLinks?.map(a=><Link key={a.utente_id} href={`/gestionale/utenti/${a.utente_id}/elimina`} className="button danger">Elimina account e dati ({a.relazione})</Link>)}</div>}</Drawer>
+     </EditForm><RemoveRecord moduleKey="anagrafiche" id={person.id} back="soci" label={person.cognome+' '+person.nome}/>{isAdmin===true&&Boolean(accountLinks?.length)&&<div className="stack"><p className="muted tiny">Per rimuovere l’account insieme ai dati esclusivi collegati, usa la cancellazione completa. I profili condivisi sono conservati.</p>{accountLinks?.map(a=><Link key={a.utente_id} href={`/gestionale/utenti/${a.utente_id}/elimina`} className="button danger">Elimina account e dati ({a.relazione})</Link>)}</div>}</Drawer>
    </Section>}
    {tab==='adesioni'&&<Section id="adesioni" title="Adesioni e dichiarazioni" href={'/gestionale/moduli/adesioni?persona='+id}>
- {sectionError(memberError||applicationError||consentError)}<div className="sc-card"><h3>Dichiarazioni della domanda</h3>{domanda?<><p>Statuto: {domanda.flag_statuto?domanda.versione_statuto:'Non acquisito'}</p><p>Informativa: {domanda.flag_privacy?domanda.versione_privacy:'Non acquisito'} {dataOra(domanda.data_accettazione)}</p><p>Foto e video nella domanda: {sceltaLabel(domanda.immagini_scelta)} {domanda.immagini_versione} {dataOra(domanda.immagini_il)}</p><Link href={'/gestionale/richieste/'+domanda.id}>Apri domanda originale</Link></>:<p>{applicationError?'Domanda non disponibile':'Nessuna domanda collegata'}</p>}<h3>Foto e video · scelta dell’account</h3><p>{consentError?'Scelta non disponibile':sceltaLabel(consenso?.scelta)} {consenso?.versione} {dataOra(consenso?.registrata_il)}</p><p className="tiny muted">La scelta dell’account non certifica un consenso individuale per ogni persona o minore collegato.</p></div>
+ {sectionError(memberError||applicationError||consentError||boardError)}<div className="sc-card"><h3>Dichiarazioni della domanda</h3>{domanda?<><p>Statuto: {domanda.flag_statuto?domanda.versione_statuto:'Non acquisito'}</p><p>Informativa: {domanda.flag_privacy?domanda.versione_privacy:'Non acquisito'} {dataOra(domanda.data_accettazione)}</p><p>Foto e video nella domanda: {sceltaLabel(domanda.immagini_scelta)} {domanda.immagini_versione} {dataOra(domanda.immagini_il)}</p><Link href={'/gestionale/richieste/'+domanda.id}>Apri domanda originale</Link></>:<p>{applicationError?'Domanda non disponibile':'Nessuna domanda collegata'}</p>}<h3>Foto e video · scelta dell’account</h3><p>{consentError?'Scelta non disponibile':sceltaLabel(consenso?.scelta)} {consenso?.versione} {dataOra(consenso?.registrata_il)}</p><p className="tiny muted">La scelta dell’account non certifica un consenso individuale per ogni persona o minore collegato.</p></div>
     {memberError?null:memberships.length?<div className="table-panel"><table><thead><tr><th>Stagione</th><th>Stato</th><th>Data</th><th>Delibera CdA</th><th>Azioni</th></tr></thead><tbody>
      {memberships.map(m=><tr key={m.id}><td>{seasonName(m.stagione_id)}</td><td><span className="status">{statusLabel(m.stato)}</span></td>
       <td>{formatValue(m.data_approvazione)}</td><td>{m.verbale_cda_id?<Link href={`/organi-sociali/documento/${m.verbale_cda_id}?tipo=pdf`}>{formatValue(boardMinutes?.find(x=>x.id===m.verbale_cda_id)?.data_consiglio??null)}</Link>:'In attesa di delibera'}</td><td><Link href={`/gestionale/moduli/${"adesioni"}?edit=${m.id}`}>Modifica</Link></td></tr>)}
@@ -198,8 +198,8 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
       <button className="button" type="submit">Registra adesione</button>
      </EditForm></Drawer>}
    </Section>}
-   {tab==='tesseramenti'&&<Section id="tesseramenti" title="Tesseramenti" href="/gestionale/moduli/tesseramenti">{sectionError(cardResult.error||memberError)}{cards.length?<div className="table-panel"><table><thead><tr><th>Stagione</th><th>Ente</th><th>Numero tessera</th><th>Scadenza</th><th>Stato</th><th>Azioni</th></tr></thead><tbody>{cards.map(c=><tr key={c.id}><td>{seasonName(allMembershipRows.find(m=>m.id===c.adesione_id)?.stagione_id??'')}</td><td>{c.ente}</td><td>{c.numero_tessera??'Non acquisito'}</td><td>{formatValue(c.scade_il)}</td><td><StatusBadge tone={statusTone(c.scade_il<today?'scaduta':c.stato==='attiva'&&c.scade_il<=shiftDay(today,30)?'in_scadenza':c.stato)}>{c.scade_il<today?'Scaduta':c.stato==='attiva'&&c.scade_il<=shiftDay(today,30)?'In scadenza':statusLabel(c.stato)}</StatusBadge></td><td><Link href={'/gestionale/moduli/tesseramenti?edit='+c.id}>Modifica tessera</Link></td></tr>)}</tbody></table></div>:!cardResult.error&&<None>Nessun tesseramento registrato.</None>}{pager(cardResult,"tesseramenti")}</Section>}
-   {tab==='corsi'&&<Section id="corsi" title="Corsi e iscrizioni" href={'/gestionale/moduli/iscrizioni?persona='+id}>{sectionError(enrollmentResult.error)}<ButtonLink href={'/gestionale/moduli/iscrizioni?persona='+id+'&nuovo=1'}>Iscrivi a un corso</ButtonLink>
+   {tab==='tesseramenti'&&<Section id="tesseramenti" title="Tesseramenti" href="/gestionale/moduli/tesseramenti">{sectionError(cardResult.error||memberError)}{cards.length?<div className="table-panel"><table><thead><tr><th>Stagione</th><th>Ente</th><th>Numero tessera</th><th>Scadenza</th><th>Stato</th><th>Azioni</th></tr></thead><tbody>{cards.map(c=><tr key={c.id}><td>{seasonName(allMembershipRows.find(m=>m.id===c.adesione_id)?.stagione_id??'')}</td><td>{c.ente}</td><td>{c.numero_tessera??'Non acquisito'}</td><td>{formatValue(c.scade_il)}<div><StatusBadge tone={c.scade_il<today?'danger':c.scade_il<=shiftDay(today,30)?'warning':'success'}>{c.scade_il<today?'Scaduta':c.scade_il<=shiftDay(today,30)?'In scadenza':'Non scaduta'}</StatusBadge></div></td><td><StatusBadge tone={statusTone(c.stato)}>{statusLabel(c.stato)}</StatusBadge></td><td><Link href={'/gestionale/moduli/tesseramenti?edit='+c.id}>Modifica tessera</Link></td></tr>)}</tbody></table></div>:!cardResult.error&&<None>Nessun tesseramento registrato.</None>}{pager(cardResult,"tesseramenti")}</Section>}
+   {tab==='corsi'&&<Section id="corsi" title="Corsi e iscrizioni" href={'/gestionale/moduli/iscrizioni?persona='+id}>{sectionError(enrollmentResult.error||editionsError||coursesError)}<ButtonLink href={'/gestionale/moduli/iscrizioni?persona='+id+'&nuovo=1'}>Iscrivi a un corso</ButtonLink>
     {enrollmentResult.error?null:enrollments.length?<div className="table-panel"><table><thead><tr><th>Corso</th><th>Periodo</th><th>Iscrizione</th><th>Azioni</th></tr></thead><tbody>
      {enrollments.map(e=>{const ed=editions.find(x=>x.id===e.edizione_id);return <tr key={e.id}><td>{editionName(e.edizione_id)}</td>
       <td>{ed?`${formatValue(ed.inizio)} – ${formatValue(ed.fine)}`:'—'}</td><td>{statusLabel(e.stato)}</td><td><Link href={`/gestionale/moduli/${"iscrizioni"}?edit=${e.id}`}>Modifica</Link></td></tr>;})}
@@ -234,18 +234,18 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
      <span className="muted tiny">{d.categoria} · {formatValue(d.caricato_il)}</span></li>)}</ul>:<None>Non risultano documenti collegati direttamente a questa anagrafica.</None>}
     <p className="tiny muted">Alcuni documenti caricati dall’account possono non essere ancora associati all'anagrafica: verifica nell'archivio.</p>
    {pager(documentResult,"documenti")}</Section>}
-   {tab==='istruttore'&&<Section id="istruttore" title="Qualifiche e attività da istruttore" href={'/gestionale/moduli/qualifiche?persona='+id}>{sectionError(qualificationResult.error||assignmentResult.error)}<h3>Qualifiche</h3>
+   {tab==='istruttore'&&<Section id="istruttore" title="Qualifiche e attività da istruttore" href={'/gestionale/moduli/qualifiche?persona='+id}>{sectionError(qualificationResult.error||assignmentResult.error||editionsError||coursesError)}<h3>Qualifiche</h3>
     {qualifications.map(q=><div className="info-row" key={q.id}><span>{q.titolo}{q.ente?` · ${q.ente}`:''}</span><strong>{q.scade_il?`Scade ${formatValue(q.scade_il)}`:'Nessuna scadenza'}</strong><Link href={`/gestionale/moduli/${"qualifiche"}?edit=${q.id}`}>Modifica</Link></div>)}
     {pager(qualificationResult,"qualifiche")}<h3>Assegnazioni ai corsi</h3>{assignments.map(a=><div className="info-row" key={a.id}><span>{editionName(a.edizione_id)}</span><strong>{statusLabel(a.ruolo)}</strong><Link href={`/gestionale/moduli/${"istruttori"}?edit=${a.id}`}>Modifica</Link></div>)}
     {!qualificationResult.error&&!assignmentResult.error&&qualifications.length===0&&assignments.length===0&&<None>Nessuna qualifica o assegnazione da istruttore.</None>}
    {pager(assignmentResult,"assegnazioni",true)}</Section>}
-   {tab==='attrezzature'&&<Section id="attrezzature" title="Prestiti e consegne attrezzature" href={'/gestionale/moduli/consegne?persona='+id}>{sectionError(equipmentResult.error)}
+   {tab==='attrezzature'&&<Section id="attrezzature" title="Prestiti e consegne attrezzature" href={'/gestionale/moduli/consegne?persona='+id}>{sectionError(equipmentResult.error||equipmentNamesError)}
     {equipmentResult.error?null:equipment.length?<div className="table-panel"><table><thead><tr><th>Attrezzatura</th><th>Consegnata</th><th>Restituzione</th><th>Azioni</th></tr></thead><tbody>
      {equipment.map(e=><tr key={e.id}><td>{equipmentNames.find(x=>x.id===e.attrezzatura_id)?.codice??'Attrezzatura non trovata'}</td>
       <td>{formatValue(e.assegnata_il)}</td><td>{formatValue(e.restituita_il)}</td><td><Link href={`/gestionale/moduli/${"consegne"}?edit=${e.id}`}>Modifica</Link></td></tr>)}
     </tbody></table></div>:<None>Nessun prestito di attrezzatura registrato.</None>}
    {pager(equipmentResult,"consegne")}</Section>}
-   {tab==='famiglia'&&<Section id="famiglia" title="Genitori, tutori e minori collegati">{sectionError(guardianResult.error||wardResult.error)}
+   {tab==='famiglia'&&<Section id="famiglia" title="Genitori, tutori e minori collegati">{sectionError(guardianResult.error||wardResult.error||familyError)}
     {[...guardians.map(g=>({id:g.tutore_id,label:'Tutore',parentela:g.parentela})),...wards.map(g=>({id:g.minore_id,label:'Minore',parentela:g.parentela}))]
      .sort((a,b)=>{const n=(id:string)=>{const p=family.find(x=>x.id===id);return `${p?.cognome??''} ${p?.nome??''}`;};return n(a.id).localeCompare(n(b.id),'it');}).map((f,i)=>{const related=family.find(x=>x.id===f.id);return <div className="info-row" key={`${f.id}-${i}`}>
       <span>{f.label} · {f.parentela}</span><strong>{related?<Link href={`/gestionale/soci/${f.id}`}>{related.cognome} {related.nome}</Link>:'Persona collegata non trovata'}</strong>
