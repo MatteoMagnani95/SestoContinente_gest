@@ -35,7 +35,6 @@ export async function caricaCertificato(form:FormData){
   if(parts.length!==3||parts[0]!==user.id||parts[1]!=='transito'||!/^[a-f0-9-]{36}\.(jpg|pdf)$/.test(parts[2]))return {error:'File non disponibile.'};
   const {data}=await storage.download(staged);if(!data)return {error:'File non disponibile.'};
   file=new File([data],parts[2],{type:data.type});
-  await storage.remove([staged]);
  }
  if(!(file instanceof File))return {error:'Seleziona il certificato.'};
  const ext=tipoCertificato(file.name,file.type,file.size);
@@ -48,7 +47,14 @@ export async function caricaCertificato(form:FormData){
  }).select('id').single();
  if(error||!document)return {error:'Impossibile registrare il documento.'};
  const upload=await storage.upload(path,bytes,{contentType:file.type,upsert:false});
- if(upload.error){await supabase.rpc('annulla_upload_documento',{p_id:document.id});return {error:'Invio non riuscito.'};}
+ if(upload.error){
+  // L'errore del provider può seguire un upload riuscito. Non rimuovere
+  // un file o il relativo metadata se non è certa l'assenza dell'oggetto.
+  const stored=await storage.download(path);
+  if(stored.error||!stored.data)return {error:'Caricamento da verificare. Controlla l’archivio o contatta la segreteria prima di ripetere l’invio.'};
+  const actual=Buffer.from(await stored.data.arrayBuffer());
+  if(!actual.equals(bytes))return {error:'File non verificabile. Contatta la segreteria prima di ripetere l’invio.'};
+ }
  const result=await supabase.rpc('registra_certificato_personale',{p_persona:persona,p_documento:document.id,p_rilasciato:dal,p_scade:al});
  if(result.error){
   // Una risposta interrotta può seguire un commit riuscito. Prima di compensare
@@ -63,5 +69,6 @@ export async function caricaCertificato(form:FormData){
    return {error:'Certificato non salvato. Controlla le date e riprova.'};
   }
  }
+ if(staged){await storage.remove([staged]).catch(()=>undefined);}
  revalidatePath('/gestionale/moduli/certificati');revalidatePath('/area-personale');return {error:null};
 }
