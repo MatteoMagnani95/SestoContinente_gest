@@ -20,3 +20,6 @@ F2: AppShell, Sidebar, Header, Breadcrumb, BackButton, UnsavedChangesGuard; F3: 
 
 ## Fase 2
 AppShell, SiteHeader, StaffNav, Breadcrumb e back link integrati; nuove icone locali. Vedi [NAVIGATION.md](NAVIGATION.md) per decisioni e limiti.
+
+## Fase 3
+DataTable, SearchBar, FilterBar, Pagination, SearchableSelect, Drawer/Modal/ConfirmDialog, ActionForm e EditForm integrati. Vedi [DATA_UI.md](DATA_UI.md).
