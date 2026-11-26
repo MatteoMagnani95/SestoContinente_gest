@@ -83,6 +83,24 @@ async function main() {
   assert.ok((await s.query("select autore,registrata_il,campi from cronologia_scheda('corso',$1)",[ed])).rows.some(r=>r.campi?.includes('direttore_id') && r.autore==='Persona Collaudo2' && r.registrata_il));
   assert.equal(await scalar(a,"select count(*)::int from cronologia_scheda('corso',$1)",[ed]),0);
   console.log('OK edizioni concorrenti, edizione distinta, conflitti bidirezionali, brevetto storico e cronologia');
+
+  // Incarichi: rifiuta discrepanze nuove anche via SQL diretto; allinea con consenso.
+  for(const person of [dir,secondo,allievo,cons1])await s.query("insert into qualifiche_istruttori(persona_id,titolo) values($1,'Qualifica sintetica')",[person]);
+  const assign="insert into assegnazioni_istruttori(edizione_id,persona_id,ruolo) values($1,$2,'responsabile') returning id";
+  await assert.rejects(s.query(assign,[ed,dir]),{code:'P3510'});
+  const responsible=await scalar(s,assign,[ed,secondo]);
+  await assert.rejects(s.query('update edizioni_corsi set direttore_id=$1 where id=$2',[dir,ed]),{code:'P3510'});
+  await assert.rejects(s.query("update assegnazioni_istruttori set ruolo='aiuto' where id=$1",[responsible]),{code:'P3510'});
+  const align='select allinea_direttore_responsabile($1,$2,$3,$4)';
+  await assert.rejects(a.query(align,[ed,dir,secondo,secondo]),{code:'42501'});
+  await assert.rejects(s.query(align,[ed,allievo,secondo,secondo]),{code:'P3421'});
+  const aligned=await Promise.allSettled([s,s2].map((db,i)=>db.query(align,[ed,i===0?dir:cons1,secondo,secondo])));
+  assert.equal(aligned.filter(r=>r.status==='fulfilled').length,1);
+  assert.equal(aligned.find(r=>r.status==='rejected').reason.code,'P3511');
+  assert.equal(await scalar(s,"select e.direttore_id=a.persona_id from edizioni_corsi e join assegnazioni_istruttori a on a.edizione_id=e.id where a.id=$1",[responsible]),true);
+  assert.equal(await scalar(s,'select rilasciato_da_id from brevetti_allievi where id=$1',[brevetto]),dir);
+  console.log('OK direzione: coerenza, permessi, allineamento concorrente, incarico e brevetto storico');
+
   async function file(){
    const id=randomUUID(),path=socio+'/certificati/'+id+'.jpg';
    await a.query("insert into documenti(id,nome,categoria,ambito,visibilita,utente_id,persona_id,percorso_storage,mime,dimensione_bytes,caricato_da) values($1,'File di prova','Certificato medico','personale','proprietario',$2,$3,$4,'image/jpeg',12,$2)",[id,socio,allievo,path]);
