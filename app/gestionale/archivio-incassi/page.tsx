@@ -2,9 +2,9 @@ import {DataTable,Pagination,SearchBar} from '@/components/ui/DataTable';
 import {money,methodLabel,dateFilter} from '@/lib/finance-ui';
 import {UUID_RE} from '@/lib/course-tools';
 import Link from 'next/link';
-import {requireStaff,formatDate} from '@/lib/security';
+import {requireAdmin,formatDate} from '@/lib/security';
 export default async function PaymentArchive({searchParams}:{searchParams:Promise<{p?:string;rp?:string;persona?:string;debito?:string;tab?:string;dal?:string;al?:string}>}){
- const {supabase}=await requireStaff();const {data:admin}=await supabase.rpc('is_admin');const q=await searchParams;const page=Math.max(1,Math.min(10000,parseInt(q.p??'1',10)||1)),rp=Math.max(1,Math.min(10000,parseInt(q.rp??'1',10)||1)),size=50;
+ const {supabase}=await requireAdmin();const admin=true;const q=await searchParams;const page=Math.max(1,Math.min(10000,parseInt(q.p??'1',10)||1)),rp=Math.max(1,Math.min(10000,parseInt(q.rp??'1',10)||1)),size=50;
  const persona=q.persona&&UUID_RE.test(q.persona)?q.persona:'',debito=q.debito&&UUID_RE.test(q.debito)?q.debito:'',dal=dateFilter(q.dal),al=dateFilter(q.al);
  let query=supabase.from('gest_elenco_pagamenti').select('id,sort_cognome,sort_nome,importo,data_pagamento,metodo,persona_id',{count:'exact'});if(persona)query=query.eq('persona_id',persona);if(debito)query=query.eq(q.tab==='corso'?'addebito_corso_id':'quota_id',debito);if(dal)query=query.gte('data_pagamento',dal);if(al)query=query.lte('data_pagamento',al);
  const [payments,corrections]=await Promise.all([query.order('data_pagamento',{ascending:false}).order('id').range((page-1)*size,page*size-1),admin===true?supabase.from('rettifiche_incassi').select('id,pagamento_id,pagamento_originale,motivo,rettificato_il',{count:'exact'}).order('rettificato_il',{ascending:false}).order('id').range((rp-1)*size,rp*size-1):Promise.resolve({data:[],count:0,error:null})]);

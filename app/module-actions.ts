@@ -1,6 +1,7 @@
 'use server';
 import {memberTabForModule} from '@/lib/secretariat';
 import {courseDuplicate} from '@/lib/course-errors';
+import {paymentAmount,validPaymentDate} from '@/lib/payment-tools';
 import {redirect} from 'next/navigation';
 import {revalidatePath} from 'next/cache';
 import {requireStaff} from '@/lib/security';
@@ -57,6 +58,11 @@ export async function saveModuleRecord(form:FormData) {
    continue;
   }
   changes[field.name]=raw;
+ }
+ if(key==='contabilita'){
+  const amount=paymentAmount(text(form,'importo'));
+  if(amount===null||!validPaymentDate(text(form,'data_movimento')))return {error:'Controlla importo in centesimi e data.',field:'importo'};
+  changes.importo=amount;
  }
  if(key==='anagrafiche') {
   for(const fld of ['provincia_nascita','provincia_residenza']) {
@@ -123,6 +129,7 @@ export async function saveModuleRecord(form:FormData) {
  let query;
  if(id){
   let update=supabase.from(module.table).update(changes).eq('id',id);
+  if(key==='contabilita')update=update.is('pagamento_id',null);
   if(key==='certificati'){
    const expected=text(form,'documento_atteso');
    if(!expected&&changes.esito_verifica==='valido')return {error:'Carica il certificato prima di validarlo.',field:'esito_verifica'};

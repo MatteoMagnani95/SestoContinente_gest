@@ -121,12 +121,12 @@ export default async function Incassi({searchParams}:{searchParams:Promise<{tab?
        <button className="button" type="submit">Registra definitivamente</button>
       </EditForm></Drawer>
       :<strong className="payment-paid">Saldo completo</strong>}
-     <Link href={`/gestionale/moduli/${(tab==='quota'?'quote':'addebiti')}?edit=${b.id}`}>Gestisci quota</Link><Link href={'/gestionale/archivio-incassi?persona='+b.persona_id+'&debito='+b.id+'&tab='+tab}>Visualizza versamenti</Link></div></td></tr>)}
+     <Link href={`/gestionale/moduli/${(tab==='quota'?'quote':'addebiti')}?edit=${b.id}`}>Gestisci quota</Link><Link href={'/gestionale/incassi/posizione/'+b.id+'?tab='+tab}>Visualizza versamenti</Link></div></td></tr>)}
     {!balances.length&&<tr><td colSpan={7}>Nessun addebito trovato per i filtri selezionati.</td></tr>}
    </tbody></DataTable><Pagination page={page} size={perPage} count={count} href={p=>linkFor(filter,p)} label="posizioni"/>
   </section>}
   <section className="panel"><h2>Ultimi 15 versamenti {personFilter?'del socio':'registrati'}</h2>
-   <Link href={'/gestionale/archivio-incassi'+(personFilter?'?persona='+personFilter:'')}>Storico completo dei versamenti{admin===true?' e rettifiche':''}</Link><p className="tiny muted">È un elenco delle registrazioni più recenti, non un rendiconto completo. Per il rendiconto usa l'area amministrativa.</p>
+   {admin===true&&<Link href={'/gestionale/archivio-incassi'+(personFilter?'?persona='+personFilter:'')}>Storico completo dei versamenti e rettifiche</Link>}<p className="tiny muted">È un elenco delle registrazioni più recenti, non un rendiconto completo. Per il rendiconto usa l'area amministrativa.</p>
    {recentError?<p className="notice error">Impossibile leggere gli ultimi incassi.</p>:<div className="table-panel"><table><thead><tr><th>Data</th><th>Socio</th><th>Tipo</th><th>Importo</th><th>Metodo</th><th>Riferimento</th>{admin===true&&<th>Azioni</th>}</tr></thead><tbody>
     {(recent??[]).map(r=><tr key={r.id}><td>{fmtDate(r.data_pagamento)}</td><td>{historyNames.get(r.persona_id)??r.persona_id.slice(0,8)}</td><td>{r.quota_id?'Quota':'Corso'}</td><td>{euros(r.importo)}</td><td>{methodLabel(r.metodo)}</td><td>{r.riferimento??'—'}</td>{admin===true&&<td><Link href={`/gestionale/incassi/${r.id}`}>Modifica / rettifica</Link></td>}</tr>)}
     {!recent?.length&&<tr><td colSpan={6}>Nessun pagamento registrato.</td></tr>}
