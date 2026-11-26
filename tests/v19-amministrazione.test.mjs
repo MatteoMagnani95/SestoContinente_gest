@@ -29,6 +29,6 @@ test('Eventi: rimozione admin serializzata sullo stesso evento, nessuna cascata 
  assert.match(sql,/admin_rimuovi_evento[\s\S]*IF NOT public\.is_admin\(\)[\s\S]*WHERE id=p_evento FOR UPDATE/);assert.match(sql,/IF EXISTS\(SELECT 1 FROM public\.eventi_soci_iscrizioni WHERE evento_id=p_evento\) THEN RAISE/);assert.match(sql,/DELETE FROM public\.eventi_soci_iscrizioni WHERE evento_id=p_evento AND id=p_iscrizione/);assert.match(read('app/gestione-eventi/page.tsx'),/action=\{removeEventRecord\}/);
 });
 test('Menu e dati aggiuntivi: accesso amministrativo, modifica nella scheda, gestione vincoli e moduli',()=>{
- assert.match(read('components/StaffNav.tsx'),/isAdmin&&<>[\s\S]*Amministrazione dati/);
+ assert.match(read('components/StaffNav.tsx'),/isAdmin\?\[item\('\/gestionale\/utenti'[\s\S]*Amministrazione dati/);
  assert.match(read('app/gestionale/amministrazione-dati/page.tsx'),/requireAdmin\(\)/);assert.match(read('app/gestionale/amministrazione-dati/actions.ts'),/requireAdmin\(\)/);assert.match(read('app/gestionale/calendario-visivo/[id]/page.tsx'),/<RemoveRecord moduleKey="calendario"/);assert.match(read('app/gestionale/moduli/[modulo]/page.tsx'),/Visualizza dati collegati/);assert.match(read('app/gestionale/programmi-didattici/actions.ts'),/\.insert\(\{pre_id,tipo,codice,titolo,descrizione\}\)/);
 });

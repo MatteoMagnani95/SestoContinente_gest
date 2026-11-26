@@ -36,7 +36,7 @@ export default async function PersonalArea() {
  <p>Brevetti registrati: <strong>{brevetti.find(b=>b.id===p.id)?.count??'Non verificabile'}</strong></p>
  </article>})}</div>
  <div className="cards">
- <section className="panel"><h2>Notifiche</h2>{alertError?<p role="alert">Notifiche non disponibili.</p>:alerts?.length?alerts.map(n=><div className="timeline-item" key={n.id}><strong>{n.titolo}</strong><p>{n.messaggio}</p><form action={markNotification}><input type="hidden" name="id" value={n.id}/><button className="button ghost">Segna come letta</button></form></div>):<p className="muted">Nessuna nuova notifica.</p>}</section>
+ <section className="panel" id="notifiche"><h2>Notifiche</h2>{alertError?<p role="alert">Notifiche non disponibili.</p>:alerts?.length?alerts.map(n=><div className="timeline-item" key={n.id}><strong>{n.titolo}</strong><p>{n.messaggio}</p><form action={markNotification}><input type="hidden" name="id" value={n.id}/><button className="button ghost">Segna come letta</button></form></div>):<p className="muted">Nessuna nuova notifica.</p>}</section>
  <section className="panel"><h2>Comunicazioni</h2>{newsError?<p role="alert">Comunicazioni non disponibili.</p>:news?.length?news.map(n=><div className="timeline-item" key={n.id}><strong>{n.titolo}</strong><p>{n.contenuto}</p><small>{formatValue(n.pubblicata_il)}</small></div>):<p className="muted">Nessuna comunicazione recente.</p>}</section>
  </div><div className="notice warning"><strong>Attenzione:</strong> l'approvazione della domanda non certifica il pagamento della quota o il tesseramento. La segreteria completerà le verifiche.</div>
  </div>;

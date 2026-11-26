@@ -9,7 +9,7 @@ test('Area soci: titolare, adesione attiva, stagione nei suoi termini, quota sal
  assert.match(access,/a\.stato='attiva' AND s\.attiva/);
  assert.match(access,/BETWEEN s\.dal AND s\.al/);assert.match(access,/q\.importo_dovuto <= COALESCE\(\(SELECT sum\(p\.importo\)/);
  assert.match(access,/c\.utente_id=auth\.uid\(\) AND c\.relazione='titolare'/);assert.doesNotMatch(access,/is_staff/);
- assert.match(read('app/area-soci/page.tsx'),/if\(!people\.length\)return/);assert.match(read('components/SiteHeader.tsx'),/access\.data===true/);
+ assert.match(read('app/area-soci/page.tsx'),/if\(!people\.length\)return/);assert.match(read('lib/navigation-access.ts'),/member\.data===true/);assert.match(read('components/SiteHeader.tsx'),/access\.member&&/);
 });
 test('Capienza: lock condiviso, indice univoco per richieste attive, prenotazioni in attesa occupano posti',()=>{
  const booking=section('area_soci_iscrivi','area_soci_decidi');
