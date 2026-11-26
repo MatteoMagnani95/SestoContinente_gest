@@ -22,7 +22,7 @@ test('Autenticazione: spazi della password preservati in login e registrazione; 
  try{
   const password='  password 123 ';
   await assert.rejects(actions.loginAction(form({email:' user@example.test ',password})),/redirect:\/smista/);
-  await assert.rejects(actions.registerAction(form({email:'user@example.test',password,confirm:password,presa_visione:'on'})),/redirect:\/smista/);
+  await assert.rejects(actions.registerAction(form({email:'user@example.test',password,confirm:password,presa_visione:'on',privacy_versione_vista:'1',immagini_versione_vista:'1',immagini_checkbox:'1'})),/redirect:\/smista/);
   assert.equal(received[0].password,password);assert.equal(received[1].password,password);
   assert.equal(received[0].email,'user@example.test');
  }finally{if(old===undefined)delete process.env.NEXT_PUBLIC_SITE_URL;else process.env.NEXT_PUBLIC_SITE_URL=old;}
