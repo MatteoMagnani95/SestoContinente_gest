@@ -22,6 +22,8 @@ export async function saveModuleRecord(form:FormData) {
  }
  const id=text(form,'id');
  if(id && (!uuid.test(id)||module.appendOnly)) redirect(errorPath(key,'permessi'));
+ // Le modifiche a lezioni esistenti passano dall'editor atomico di orario e corsie.
+ if(key==='calendario'&&id)redirect(`/gestionale/calendario-visivo/${id}`);
  const changes:Record<string,unknown>={};
  for(const field of module.fields) {
   const raw=text(form,field.name);
