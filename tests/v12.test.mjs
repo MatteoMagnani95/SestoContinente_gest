@@ -20,7 +20,13 @@ test('RBAC: ruolo consigliere separato e funzioni istruttore con sole colonne au
 });
 test('Importazione in staging: duplicati CF e quarantena; commit transazionale e attestazione',()=>{
  const action=read('app/gestionale/importazione/actions.ts');
- for(let x of ['cf_storici_esistenti','Duplicato all’interno del file','base_documentale_verificata','conferma_importazione'])assert.ok(action.includes(x),x);
+ const staging=read('supabase/migrations/20261126171000_anteprima_importazione_atomica.sql');
+ for(let x of ['cf_storici_esistenti','Duplicato all’interno del file','p_base_documentale','crea_anteprima_importazione','conferma_importazione'])assert.ok(action.includes(x),x);
+ assert.match(action,/p_base_documentale:tipo==='soci'&&form\.get\('base_documentale'\)==='on'/);
+ assert.match(staging,/insert into public\.importazioni_batch\(tipo,creato_da,base_documentale_verificata\)/);
+ assert.match(staging,/values\(p_tipo,auth\.uid\(\),p_base_documentale\)/);
+ assert.match(staging,/insert into public\.importazioni_righe/);
+ assert.match(staging,/security invoker/);
  for(let x of ['create table if not exists public.importazioni_batch','create table if not exists public.importazioni_righe','jsonb_array_length(errori)>0','for update','base_documentale_verificata'])assert.ok(sql.includes(x),x);
 });
 test('Delibere CdA: tracciamento voti, quorum pieno, attivazione soci solo dopo approvazione',()=>{

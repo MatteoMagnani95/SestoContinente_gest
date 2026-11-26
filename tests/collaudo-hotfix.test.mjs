@@ -4,12 +4,12 @@ import {readFileSync} from 'node:fs';
 const read=(path)=>readFileSync(new URL(`../${path}`,import.meta.url),'utf8');
 
 test('Il titolo del menu coincide con il ruolo amministratore realmente verificato',()=>{
- const layout=read('app/gestionale/layout.tsx');
- assert.match(layout,/eq\('utente_id',user\.id\)\.eq\('ruolo','amministratore'\)/);
- assert.match(layout,/const isAdmin=Boolean\(admin\)/);
- assert.match(layout,/<h2>\{isAdmin\?'Amministrazione':'Segreteria'\}<\/h2>/);
- assert.match(layout,/<StaffNav isAdmin=\{isAdmin\}/);
- assert.doesNotMatch(layout,/<h2>Segreteria<\/h2>/);
+ const layout=read('app/gestionale/layout.tsx'),access=read('lib/navigation-access.ts'),shell=read('components/AppShell.tsx');
+ assert.match(layout,/await requireStaff\(\)/);
+ assert.match(access,/\.from\('ruoli_utente'\)\.select\('ruolo'\)\.eq\('utente_id',user\.id\)/);
+ assert.match(access,/admin=allowed\.has\('amministratore'\)/);
+ assert.match(shell,/access\.admin\?'Amministrazione':'Segreteria'/);
+ assert.match(shell,/<StaffNav isAdmin=\{access\.admin\}/);
 });
 
 test('Una sovrapposizione PostgreSQL 23P01 viene distinta dalle altre anomalie',()=>{

@@ -1,0 +1,129 @@
+/* F6 — shared reflow and accessibility, loaded after feature styles.
+   Do not hide global overflow: fix the component responsible. */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{min-width:0;min-height:100vh;min-height:100dvh}
+body:has(dialog[open]){overflow:hidden}
+:where(main,section,article,form,fieldset,figure,details,header,nav,dl){min-inline-size:0}
+:where(p,dd,dt,h1,h2,h3,h4,label,legend,summary,.sc-button,.button){overflow-wrap:anywhere}
+:where(img,video,iframe){max-inline-size:100%}
+:where(input:not([type=checkbox]):not([type=radio]),select,textarea){min-inline-size:0;max-inline-size:100%}
+:where(input[type=checkbox],input[type=radio]){accent-color:var(--sc-teal-ink);flex:none}
+:where(.sc-route-content,.sc-editor-body) :where(p,li,dd,td) a:not(.button):not(.sc-button){text-decoration:underline;text-underline-offset:.16em}
+.sc-main:focus-visible{outline:3px solid var(--sc-focus);outline-offset:-3px}
+.sc-skip-link{top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left))}
+.sc-site-header{padding-top:max(10px,env(safe-area-inset-top))}
+.footer{color:var(--sc-muted);padding-bottom:max(24px,env(safe-area-inset-bottom))}
+.sc-mobile-menu-inner{padding-inline-start:max(16px,env(safe-area-inset-left));padding-inline-end:max(16px,env(safe-area-inset-right))}
+.sc-editor-dialog,.sc-mobile-menu,.sc-discard-dialog{scrollbar-gutter:stable;overscroll-behavior:contain}
+.sc-editor-dialog{scroll-padding-block:6rem max(24px,env(safe-area-inset-bottom))}
+.sc-editor-body :where(input,textarea,select,button,a){scroll-margin-block:12px}
+.sc-editor-header .sc-icon-button{flex:none}
+.sc-data-table,.sc-secretariat-tabs,.sc-finance-chart,.sc-calendar{scroll-padding-inline:12px}
+.sc-data-table:focus-visible,.sc-secretariat-tabs a:focus-visible{outline-offset:-3px}
+.sc-row-actions>*{max-inline-size:100%;white-space:normal;overflow-wrap:anywhere}
+.sc-search-field,.sc-search-bar>label,.sc-password-control,.sc-password-control>input{min-inline-size:0}
+.sc-status,.status{white-space:normal;max-inline-size:100%}
+.sc-status,.sc-alert>div{min-inline-size:0;overflow-wrap:anywhere}
+.sc-alert>div{flex:1}
+.sc-calendar-period h2{min-inline-size:0;overflow-wrap:anywhere}
+.sc-calendar-add:focus-visible{outline-offset:1px}
+.sc-form-actions>*,.actions>*,.form-actions>*{max-inline-size:100%;overflow-wrap:anywhere}
+.check-label{min-height:44px;align-items:flex-start;padding-block:6px}
+.check-label input{width:22px;height:22px}
+.check-label span{min-inline-size:0}
+.sc-consent-choice .check-label{margin:0}
+.sc-field-error,.notice.error{overflow-wrap:anywhere}
+@media(max-width:1000px){
+ .sc-site-header{padding-top:max(8px,env(safe-area-inset-top));padding-bottom:8px}
+ .sc-route-content>.container,.sc-public-home,.sc-auth-shell{
+  padding-inline-start:max(16px,env(safe-area-inset-left));
+  padding-inline-end:max(16px,env(safe-area-inset-right));
+ }
+ .sc-staff-content .sc-route-content>.container{padding-inline:0}
+ .sc-calendar-controls .sc-calendar-filter{grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr))}
+}
+@media(max-width:768px){
+ .sc-editor-dialog.sc-editor-drawer,.sc-editor-dialog.sc-editor-modal,.sc-editor-dialog.sc-editor-modal.sc-editor-confirm{
+  inset:0;margin:0;width:100%;max-width:100%;height:100vh;height:100dvh;
+  max-height:100vh;max-height:100dvh;border-radius:0;scrollbar-gutter:auto
+ }
+ .sc-editor-header{padding:12px max(16px,env(safe-area-inset-right)) 12px max(16px,env(safe-area-inset-left));padding-top:max(12px,env(safe-area-inset-top))}
+ .sc-editor-body{padding:16px max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+ .sc-editor-body .form-grid,.sc-editor-body .payment-form,.sc-editor-body .course-state-form{display:grid;grid-template-columns:minmax(0,1fr);min-width:0}
+ .sc-editor-body .span-2{grid-column:auto}
+ .sc-editor-body .course-state-form select{min-width:0}
+ .sc-search-bar>label,.sc-search-field{flex:1 1 100%;max-width:none;min-width:0}
+ .sc-search-bar>.sc-button,.sc-search-bar>.button{flex:1 1 auto}
+ .sc-editor-body .form-actions>*{flex:1 1 100%}
+ .sc-editor-body fieldset:not(.edit-fields){padding:12px}
+ .sc-discard-dialog{max-height:calc(100dvh - 24px);overflow:auto;padding:16px}
+
+}
+@media(max-width:600px){
+ .sc-mobile-cards td[data-label]{display:block;text-align:left!important;min-width:0;padding:10px 12px;white-space:normal}
+ .sc-mobile-cards td[data-label]::before{display:block;margin-bottom:4px}
+ .sc-mobile-cards td[data-label="Azioni"]{display:flex;flex-wrap:wrap}
+ .sc-mobile-cards td[data-label="Azioni"]::before{flex-basis:100%}
+ .sc-mobile-cards td[data-label]>:where(div,p,ul,form){max-width:100%;min-width:0}
+ .sc-page-header>.actions{width:100%}
+ .sc-page-header>.actions>*{flex:1 1 100%}
+ .sc-staff-content .form-grid,.sc-route-content .form-grid{grid-template-columns:minmax(0,1fr)}
+ .sc-route-content .span-2{grid-column:auto}
+ .sc-route-content :where(input:not([type=checkbox]):not([type=radio]),textarea,select),
+ .sc-editor-body :where(input:not([type=checkbox]):not([type=radio]),textarea,select){font-size:16px;min-height:44px}
+ .sc-secretariat-tabs{padding:8px;overscroll-behavior-x:contain}
+ .sc-secretariat-tabs a{min-height:44px;max-width:100%;white-space:normal}
+ .sc-calendar-filter label{min-width:0}
+ .sc-calendar-filter .buttons>*{flex:1 1 100%}
+ .sc-home-hero h1{font-size:clamp(28px,7vw,34px)}
+ .sc-home-lead{font-size:18px}
+ .sc-home-identity{min-height:100px;padding:14px}
+ .sc-home-symbol{font-size:48px}
+ .sc-registration-steps li{font-size:13px}
+}
+@media(max-height:500px) and (max-width:1000px){
+ .sc-editor-header{position:static}
+ .sc-editor-dialog{scroll-padding-block:12px 24px}
+ .sc-mobile-menu{scrollbar-gutter:auto}
+ .sc-discard-dialog{max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px)}
+}
+@media(prefers-reduced-motion:reduce){
+ *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
+@media(forced-colors:active){
+ .sc-status,.sc-alert,.sc-calendar-today,.sc-nav-link.is-active,.sc-secretariat-tabs a[aria-current=page]{border:2px solid CanvasText}
+}
+
+/* VisualViewport is progressively enhanced by AppShell. Native zoom remains enabled. */
+@media(max-width:1000px){
+  .sc-mobile-menu{
+  inset-block-start:var(--sc-visual-top,0px);inset-block-end:auto;
+  height:min(100dvh,var(--sc-visual-height,100dvh));max-height:min(100dvh,var(--sc-visual-height,100dvh));
+ }
+ html[data-sc-keyboard] .sc-editor-dialog,html[data-sc-keyboard] .sc-discard-dialog{
+  inset:var(--sc-visual-top,0px) 0 auto;margin:0 auto;
+  max-height:min(100dvh,var(--sc-visual-height,100dvh));overflow:auto;
+ }
+ html[data-sc-keyboard] .sc-editor-header{position:static}
+ html[data-sc-keyboard] .sc-editor-dialog{scroll-padding-block:12px 24px}
+}
+@media(max-width:768px){
+ .sc-editor-dialog.sc-editor-drawer,.sc-editor-dialog.sc-editor-modal,.sc-editor-dialog.sc-editor-modal.sc-editor-confirm{
+  inset-block-start:var(--sc-visual-top,0px);inset-block-end:auto;
+  height:min(100dvh,var(--sc-visual-height,100dvh));max-height:min(100dvh,var(--sc-visual-height,100dvh));
+ }
+}
+@media(max-width:600px){
+ .sc-mobile-cards tbody tr{overflow:visible}
+ .sc-mobile-cards td[data-label] :focus-visible{outline-offset:1px}
+}
+
+/* Legacy focus selectors were more specific than the initial :where rule. */
+:root{--sc-control-border:#718590}
+a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,summary:focus-visible,[tabindex]:focus-visible{
+ outline:3px solid var(--sc-focus);outline-offset:3px
+}
+.sc-site-header :is(a,button,summary):focus-visible{outline-color:var(--sc-aqua)}
+.sc-main:focus-visible,.sc-data-table:focus-visible,.sc-secretariat-tabs a:focus-visible{outline-offset:-3px}
+.eyebrow{color:var(--sc-teal-ink)}
+input[type=radio]{width:22px;min-height:22px;padding:0}

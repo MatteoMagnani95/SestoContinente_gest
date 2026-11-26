@@ -12,7 +12,7 @@ export function uniqueRecipients(values:unknown[]):string[]{
 export function mailMode(env:Record<string,string|undefined>):MailMode{
  const requested=env.SESTO_EMAIL_MODE?.trim().toLowerCase();
  if(requested==='test')return 'test';
- if(requested==='live'&&env.SESTO_TEST_MODE?.trim().toLowerCase()!=='true')return 'live';
+ if(requested==='live'&&env.SESTO_TEST_MODE?.trim().toLowerCase()!=='true'&&(!env.VERCEL_ENV||env.VERCEL_ENV==='production'))return 'live';
  return 'simulate';
 }
 export function validMessage(subject:string,body:string){return Boolean(subject.trim()&&subject.length<=180&&!/[\r\n]/.test(subject)&&body.trim()&&body.length<=12000);}

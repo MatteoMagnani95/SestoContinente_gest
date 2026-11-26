@@ -1,0 +1,68 @@
+/* Sesto Continente 2.0 — design tokens. No remote fonts. */
+:root {
+  --sc-navy: #102B39;
+  --sc-teal: #087E83;
+  --sc-teal-ink: #06696D;
+  --sc-ocean: #3679B8;
+  --sc-aqua: #65C9BE;
+  --sc-surface: #F3F7F8;
+  --sc-white: #FFFFFF;
+  --sc-muted: #51636F;
+  --sc-border: #CFDCE1;
+  --sc-control-border: #81939E;
+  --sc-focus: #075985;
+  --sc-secretariat: #087E83;
+  --sc-teaching: #3679B8;
+  --sc-calendar: #695397;
+  --sc-equipment: #946214;
+  --sc-finance: #267348;
+  --sc-system: #475569;
+  --sc-success-fg: #166534;
+  --sc-success-bg: #E8F5EC;
+  --sc-warning-fg: #854D0E;
+  --sc-warning-bg: #FFF4DE;
+  --sc-danger-fg: #A12637;
+  --sc-danger-bg: #FDECEF;
+  --sc-info-fg: #1D5D95;
+  --sc-info-bg: #EAF3FC;
+  --sc-neutral-fg: #475569;
+  --sc-neutral-bg: #EDF1F4;
+  --sc-font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --sc-space-1: 4px;
+  --sc-space-2: 8px;
+  --sc-space-3: 12px;
+  --sc-space-4: 16px;
+  --sc-space-5: 20px;
+  --sc-space-6: 24px;
+  --sc-space-8: 32px;
+  --sc-radius-sm: 8px;
+  --sc-radius: 12px;
+  --sc-shadow: 0 2px 10px rgb(16 43 57 / 5%);
+  --sc-target: 44px;
+  --sc-text: 16px;
+  --sc-text-small: 14px;
+  --sc-title: clamp(28px, 2.6vw, 34px);
+  --sc-section-title: clamp(20px, 1.8vw, 24px);
+  /* Compatibility bridge: existing classes keep their business semantics. */
+  --navy: var(--sc-navy);
+  --navy-dark: var(--sc-navy);
+  --teal: var(--sc-teal);
+  --teal-light: #E8F5F3;
+  --ink: var(--sc-navy);
+  --muted: var(--sc-muted);
+  --line: var(--sc-border);
+  --bg: var(--sc-surface);
+  --white: var(--sc-white);
+  --amber: var(--sc-warning-fg);
+  --amber-bg: var(--sc-warning-bg);
+  --red: var(--sc-danger-fg);
+  --red-bg: var(--sc-danger-bg);
+  font-family: var(--sc-font);
+  color: var(--sc-navy);
+  background: var(--sc-surface);
+  font-size: var(--sc-text);
+  line-height: 1.5;
+}
+@media (max-width: 600px) {
+  :root { --sc-title: clamp(26px, 6.5vw, 30px); --sc-section-title: 21px; }
+}
