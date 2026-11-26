@@ -95,4 +95,6 @@ jobs:
       - name: Benchmark sintetico, paginazione e isolamento RLS
         run: node scripts/test-performance-ci.cjs
       - name: Prova ripristino su secondo database effimero
+        env:
+          QA_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
         run: bash scripts/test-restore-ci.sh
