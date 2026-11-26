@@ -8,33 +8,11 @@ assert os.environ.get("QA_ISOLATED_ENV") == "true"
 assert os.environ.get("SESTO_TEST_MODE") == "true"
 assert os.environ.get("SESTO_EMAIL_MODE") == "simulate"
 p = Path("supabase/config.toml")
-# Some CLI versions initialise local defaults without writing config.toml.
-# Materialise only the local test configuration when that file is absent.
-if not p.exists():
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text("""project_id = "sesto-qa"
-
-[api]
-enabled = true
-port = 54321
-
-[db]
-port = 54322
-
-[auth]
-enabled = true
-site_url = "http://127.0.0.1:3314"
-additional_redirect_urls = ["http://127.0.0.1:3314/**"]
-enable_signup = true
-
-[auth.email]
-enable_signup = true
-enable_confirmations = true
-
-[inbucket]
-enabled = true
-port = 54324
-""")
+# The CI workflow converts JSONC using the pinned Supabase CLI.
+# Never synthesize a second configuration: JSON/JSONC takes precedence.
+assert p.is_file(), "Convert local Supabase config to TOML before QA"
+assert not p.with_suffix(".jsonc").exists()
+assert not p.with_suffix(".json").exists()
 s = p.read_text()
 
 def setting(section, key, value):
