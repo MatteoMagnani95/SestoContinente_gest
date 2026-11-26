@@ -20,5 +20,5 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) return NextResponse.redirect(destination);
   }
-  return NextResponse.redirect(new URL('/accedi?msg=verifica', request.url));
+  return NextResponse.redirect(new URL(destination.pathname==='/nuova-password'?'/accedi?msg=recupero_scaduto':'/accedi?msg=verifica', request.url));
 }

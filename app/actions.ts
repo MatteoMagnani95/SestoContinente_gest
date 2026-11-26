@@ -1,5 +1,6 @@
 'use server';
 
+import {validBirthDate,minorAge,imageChoice} from '@/lib/application-input';
 import {informativaRegistrazione} from '@/lib/registrazione';
 import {versioneImmagini} from '@/lib/scelte';
 import {validaCF} from '@/lib/codice-fiscale';
@@ -15,8 +16,6 @@ const asText = (form: FormData, field: string) => String(form.get(field) ?? '').
 // Le password sono credenziali opache: anche gli spazi sono significativi.
 const passwordText = (form: FormData, field: string) => String(form.get(field) ?? '');
 const go = (path: string, msg: string) => redirect(`${path}?msg=${msg}`);
-// Checkbox assente nel nuovo modulo = scelta negativa; i vecchi client senza marker conservano la semantica storica.
-const imageChoice=(form:FormData)=>{const v=asText(form,'immagini');return form.get('immagini_checkbox')==='1'&&v===''?'no':v;};
 
 export async function registerAction(form: FormData) {
   const email = asText(form, 'email').toLowerCase();
@@ -50,7 +49,8 @@ export async function loginAction(form: FormData) {
 
 export async function logoutAction() {
   const supabase = await createClient();
-  await supabase.auth.signOut();
+  const {error}=await supabase.auth.signOut();
+  if(error)redirect('/?msg=uscita_non_riuscita');
   redirect('/accedi?msg=uscita');
 }
 
@@ -58,6 +58,8 @@ export async function recoverAction(form: FormData) {
   const email = asText(form, 'email');
   const supabase = await createClient();
   const origin = process.env.NEXT_PUBLIC_SITE_URL;
+  if(!origin)return {error:'Recupero password temporaneamente non disponibile. Contatta la segreteria.'};
+  if(!email.includes('@'))return {error:'Controlla l’indirizzo email.',field:'email'};
   if (origin && email) {
     await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${origin}/auth/callback?next=%2Fnuova-password`,
@@ -88,14 +90,13 @@ export async function saveApplicationAction(form: FormData) {
   if (!user.email_confirmed_at) return {error:'Conferma prima l’indirizzo email.'};
   const birth = asText(form, 'data_nascita');
   const send = asText(form, 'intent') === 'invia';
-  if(!birth || birth<'1900-01-01'||birth>new Date().toISOString().slice(0,10))return {error:'Data di nascita non valida.'};
+  if(!validBirthDate(birth))return {error:'Data di nascita non valida.',field:'data_nascita'};
   const required = ['nome','cognome','luogo_nascita','indirizzo','cap','comune','telefono'];
   if (required.some(k => asText(form, k).length < 2) || !/^\d{4}-\d{2}-\d{2}$/.test(birth)) {
     return {error:'Completa correttamente i dati obbligatori, inclusi quelli del tutore se necessario.'};
   }
-  const minor = new Date(`${birth}T12:00:00`).getTime() >
-    new Date(new Date().setFullYear(new Date().getFullYear()-18)).getTime();
-  if (minor && ['nome_tutore','cognome_tutore','parentela_tutore'].some(k => !asText(form,k))) {
+  const minor = minorAge(birth);
+  if (minor && (['nome_tutore','cognome_tutore'].some(k => asText(form,k).length<2)||!['Madre','Padre','Tutore legale'].includes(asText(form,'parentela_tutore')))) {
     return {error:'Completa correttamente i dati obbligatori, inclusi quelli del tutore se necessario.'};
   }
   const flagStatuto=form.get('flag_statuto')==='on';
@@ -109,8 +110,8 @@ export async function saveApplicationAction(form: FormData) {
   const cf=asText(form,'codice_fiscale').toUpperCase();
   const paese=asText(form,'stato_nascita'),provincia=asText(form,'provincia_nascita').toUpperCase(),sesso=asText(form,'sesso_cf');
   if(!paese||paese.length>100||(provincia&&!/^[A-Z]{2}$/.test(provincia))||(sesso&&!['M','F'].includes(sesso)))return {error:'Completa Stato, provincia e sesso anagrafico.'};
-  if(cf&&!validaCF(cf))return {error:'Controlla il formato e il carattere di controllo del codice fiscale.'};
-  if(cf){const check=await verificaAnagrafica(identityFromForm(form));if(check.status==='mismatch')return {error:check.message};}
+  if(cf&&!validaCF(cf))return {error:'Controlla il formato e il carattere di controllo del codice fiscale.',field:'codice_fiscale'};
+  if(cf){const check=await verificaAnagrafica(identityFromForm(form));if(check.status==='mismatch')return {error:check.message,field:'codice_fiscale'};}
   const immagini=imageChoice(form);if(!['','si','no'].includes(immagini))return {error:'Scelta foto e video non valida.'};
   const payload = {
     p_nome: asText(form, 'nome'), p_cognome: asText(form, 'cognome'),
@@ -118,8 +119,8 @@ export async function saveApplicationAction(form: FormData) {
     p_codice_fiscale: cf, p_indirizzo: asText(form,'indirizzo'),
     p_provincia_nascita:provincia||null,p_stato_nascita:paese,p_sesso_cf:sesso||null,p_emergenza_nome:asText(form,'emergenza_nome'),p_emergenza_telefono:asText(form,'emergenza_telefono'),
     p_cap: asText(form,'cap'), p_comune: asText(form,'comune'), p_telefono: asText(form,'telefono'),
-    p_nome_tutore: asText(form,'nome_tutore'), p_cognome_tutore: asText(form,'cognome_tutore'),
-    p_parentela_tutore: asText(form,'parentela_tutore'),
+    p_nome_tutore: minor?asText(form,'nome_tutore'):'', p_cognome_tutore: minor?asText(form,'cognome_tutore'):'',
+    p_parentela_tutore: minor?asText(form,'parentela_tutore'):'',
     p_flag_statuto:flagStatuto,p_flag_privacy:flagPrivacy,p_flag_immagini:immagini===''?null:immagini==='si',p_versione_immagini:legal.testMode?'TEST-COLLAUDO-1':versioneImmagini,
     p_versione_statuto:legal.statutoVersion,
     p_versione_privacy:legal.privacyVersion,p_invia:send,
@@ -128,7 +129,7 @@ export async function saveApplicationAction(form: FormData) {
   if (error) {
     // Non esporre all'utente dettagli SQL o anagrafiche potenzialmente duplicate.
     console.error('salva_domanda_v19 non completata', {code:error.code});
-    return {error:error.code==='PGRST202'?'Funzione di registrazione non disponibile: la segreteria deve verificare l’allineamento delle migrazioni.':error.code==='23505'?'Esiste già una pratica o un record con questi dati. Contatta la segreteria.':error.code==='23514'?'Uno o più dati non rispettano i requisiti della domanda.':error.code==='42501'?'La sessione non è autorizzata a salvare questa domanda.': 'Domanda non salvata. Verifica i dati e lo stato della pratica; se persiste, contatta la segreteria.'};
+    return {error:error.code==='PGRST202'?'Salvataggio temporaneamente non disponibile. Contatta la segreteria.':error.code==='23505'?'Esiste già una pratica con questi dati. Contatta la segreteria.':error.code==='23514'?'Uno o più dati non rispettano i requisiti della domanda.':error.code==='42501'?'La sessione non è autorizzata a salvare questa domanda.': 'Domanda non salvata. Verifica i dati e lo stato della pratica; se persiste, contatta la segreteria.'};
   }
   revalidatePath('/richiesta/stato');
   return {next:`/richiesta/stato?msg=${send ? 'inviata' : 'salvata'}`};

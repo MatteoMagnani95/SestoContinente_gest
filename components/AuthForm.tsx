@@ -1,7 +1,7 @@
 'use client';
 import {useRef,useState,type FormEvent,type ReactNode} from 'react';
 import {Button,Alert} from '@/components/ui/Primitives';
-type Result={error:string;field?:string;notice?:string}|void;
+type Result={error?:string;field?:string;notice?:string}|void;
 export default function AuthForm({action,children,label,pendingLabel,disabled=false}:{action:(form:FormData)=>Promise<Result>;children:ReactNode;label:string;pendingLabel:string;disabled?:boolean}){
  const busy=useRef(false),[pending,setPending]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
  async function submit(event:FormEvent<HTMLFormElement>){

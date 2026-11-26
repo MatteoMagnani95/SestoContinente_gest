@@ -43,3 +43,25 @@
 .sc-auth-panel .sc-field-hint{font-size:14px;color:var(--sc-muted)}
 @media(max-width:850px){.sc-home-hero{grid-template-columns:1fr;gap:20px;padding:24px}.sc-home-process ol{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.sc-public-home{padding:16px 12px 32px}.sc-home-hero,.sc-home-process{padding:18px}.sc-home-identity{min-height:130px}.sc-home-actions>*{flex:1 1 100%}.sc-home-process ol{grid-template-columns:1fr}.sc-auth-shell{padding:12px 12px 32px}.sc-auth-panel{padding:20px 16px}.sc-registration-steps{grid-template-columns:repeat(2,minmax(0,1fr))}.sc-registration-steps li{flex-direction:row;text-align:left}.sc-registration-steps li span{flex:none}}
+
+.sc-applicant-page{max-width:920px}
+.sc-application{padding:24px;min-width:0}
+.sc-application .edit-fields{gap:16px}
+.sc-application .section-head,.sc-application .section-head:not(:first-child){margin:12px 0 0;padding-bottom:12px;scroll-margin-top:100px}
+.sc-application .section-head p{font-size:14px}
+.sc-application .form-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.sc-application .form-grid input,.sc-application .form-grid select{min-height:44px;font-size:16px;min-width:0}
+.sc-application .minor-panel{margin:0;padding:16px}
+.sc-application-progress,.sc-status-steps{display:flex;flex-wrap:wrap;gap:8px;list-style:none;padding:0;margin:0}
+.sc-application-progress>*{display:inline-flex;min-height:44px;align-items:center;padding:8px 12px;border-radius:8px;background:var(--sc-neutral-bg);font-size:14px}
+.sc-status-steps{margin:20px 0}
+.sc-status-steps li{display:flex;gap:8px;align-items:center;background:var(--sc-neutral-bg);border-radius:8px;padding:8px 12px;font-size:14px}
+.sc-status-steps li span{font-weight:700}
+.sc-status-steps li[aria-current=step]{background:var(--sc-teal-ink);color:white}
+.sc-status-steps li.is-complete{background:var(--sc-success-bg);color:var(--sc-success-fg)}
+.sc-review-list{display:grid;gap:0;margin:18px 0}
+.sc-review-list>div{border-bottom:1px solid var(--sc-border);padding:10px 0;display:grid;gap:4px;grid-template-columns:minmax(110px,35%) minmax(0,1fr)}
+.sc-review-list dt{font-weight:650;font-size:14px;color:var(--sc-muted)}
+.sc-review-list dd{margin:0;overflow-wrap:anywhere}
+.sc-application-review .sc-form-actions{margin-top:16px}
+@media(max-width:600px){.sc-application{padding:16px}.sc-application .form-grid{grid-template-columns:minmax(0,1fr)}.sc-application .span-2{grid-column:auto}.sc-application-progress>*{flex:1 1 45%}.sc-review-list>div{grid-template-columns:1fr}.sc-application .form-actions>*{flex:1 1 100%}}
