@@ -1,0 +1,47 @@
+name: Acquisizione lockfile verificato (una tantum)
+on:
+  push:
+    branches: ['feature/gestionale-2.0-redesign']
+    paths: ['.github/workflows/acquire-audited-lock.yml']
+permissions: {}
+jobs:
+  lock:
+    if: github.repository == 'MatteoMagnani95/SestoContinente_gest' && github.ref == 'refs/heads/feature/gestionale-2.0-redesign'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Acquisisci esclusivamente il lockfile dell'audit verificato
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -f package-lock.json
+          work=$(mktemp -d)
+          trap 'rm -rf "$work"' EXIT
+          gh run download 45865172751 --repo MatteoMagnani95/SestoContinente_gest --name dependency-evidence --dir "$work"
+          echo "152563ce6cf3877889b5f35fa0179788ac68e6e67e5a2f179c03a5e3e16b3435  $work/package-lock.json" | sha256sum -c -
+          node - "$work" <<'NODE'
+          const fs=require('node:fs'),assert=require('node:assert/strict');
+          const dir=process.argv[2],pkg=JSON.parse(fs.readFileSync('package.json')),lock=JSON.parse(fs.readFileSync(dir+'/package-lock.json')),audit=JSON.parse(fs.readFileSync(dir+'/dependency-audit.json'));
+          assert.equal(lock.lockfileVersion,3);
+          assert.deepEqual(lock.packages[''].dependencies,pkg.dependencies);
+          assert.deepEqual(lock.packages[''].devDependencies,pkg.devDependencies);
+          assert.equal(lock.packages['node_modules/uuid'].version,pkg.overrides.exceljs.uuid);
+          assert.equal(audit.metadata.vulnerabilities.total,0);
+          for(const [name,entry] of Object.entries(lock.packages))if(name)assert.equal(new URL(entry.resolved).hostname,'registry.npmjs.org');
+          NODE
+          cp "$work/package-lock.json" package-lock.json
+          git add -- package-lock.json
+          test "$(git diff --cached --name-only)" = package-lock.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "build: versiona lockfile del collaudo con audit runtime a zero"
+          # Fast-forward only; a simultaneous user change must never be overwritten.
+          git push origin HEAD:refs/heads/feature/gestionale-2.0-redesign
