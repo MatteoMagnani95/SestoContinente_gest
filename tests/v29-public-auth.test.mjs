@@ -163,3 +163,39 @@ test('Recovery: alias non canoniche rimandano al dominio configurato, senza invi
  assert.match(page,/canonicalRecoveryUrl\?<.*href=\{canonicalRecoveryUrl\}/);
  assert.match(page,/open=\{recupero==='1'\|\|undefined\}/);
 });
+
+test('Login riuscito restituisce la destinazione senza generare un segnale di redirect',async()=>{
+ const calls=[],m=mock({auth:{signInWithPassword:async payload=>{calls.push(payload);return {data:{session:{user:{id:'test'}}},error:null};}}});
+ assert.deepEqual(await m.actions.loginAction(form({email:' USER@example.test ',password:' password 123 '})),{next:'/smista'});
+ assert.deepEqual(calls,[{email:'user@example.test',password:' password 123 '}]);
+ for(const result of [{data:{session:null},error:null},{data:{session:null},error:{code:'invalid_credentials'}}]){
+  const failure=mock({auth:{signInWithPassword:async()=>result}});
+  const actual=await failure.actions.loginAction(form({email:'user@example.test',password:'not-real'}));
+  assert.ok(actual.error);assert.equal(actual.next,undefined);
+ }
+});
+test('AuthForm: successo mantiene il pulsante occupato e non mostra errori; rifiuto mostra errore',async()=>{
+ const source=read('components/AuthForm.tsx');
+ const js=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
+ async function simulate(action){
+  const events=[],state=[];
+  const react={useId:()=> 'test',useEffect:()=>{},useRef:value=>({current:value}),useState:value=>{const i=state.length;state.push(value);return [value,v=>{state[i]=v;events.push([i,v]);}];}};
+  const jsx=(type,props)=>({type,props});
+  const deps={'react':react,'react/jsx-runtime':{jsx,jsxs:jsx},'@/components/ui/Primitives':{Button:'button',Alert:'alert'}};
+  const exports={};
+  const data=form({email:'user@example.test',password:'synthetic'});
+  const browser={location:{replace:path=>events.push(['navigate',path])}};
+  new Function('exports','require','window','FormData',js)(exports,id=>deps[id]??require(id),browser,function(){return data;});
+  const node=exports.default({action,children:null,label:'Accedi',pendingLabel:'Accesso in corso…'});
+  await node.props.onSubmit({preventDefault(){},currentTarget:{}});
+  return {events,state};
+ }
+ const success=await simulate(async()=>({next:'/smista'}));
+ assert.ok(success.events.some(([key,value])=>key==='navigate'&&value==='/smista'));
+ assert.equal(success.state[1],true);assert.equal(success.state[2],'');
+ const failed=await simulate(async()=>({error:'Credenziali non corrette'}));
+ assert.equal(failed.state[2],'Credenziali non corrette');assert.equal(failed.state[1],false);
+ assert.ok(!failed.events.some(([key])=>key==='navigate'));
+ const unavailable=await simulate(async()=>{throw Error('network');});
+ assert.equal(unavailable.state[2],'Operazione non completata. Riprova.');assert.equal(unavailable.state[1],false);
+});

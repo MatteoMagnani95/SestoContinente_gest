@@ -1,7 +1,7 @@
 'use client';
 import {useEffect,useId,useRef,useState,type FormEvent,type ReactNode} from 'react';
 import {Button,Alert} from '@/components/ui/Primitives';
-type Result={error?:string;field?:string;notice?:string}|void;
+type Result={error?:string;field?:string;notice?:string;next?:'/smista'}|void;
 export default function AuthForm({action,children,label,pendingLabel,disabled=false}:{action:(form:FormData)=>Promise<Result>;children:ReactNode;label:string;pendingLabel:string;disabled?:boolean}){
  const formRef=useRef<HTMLFormElement>(null),errorId=useId();
  const [errorField,setErrorField]=useState<string|undefined>();
@@ -16,9 +16,18 @@ export default function AuthForm({action,children,label,pendingLabel,disabled=fa
  async function submit(event:FormEvent<HTMLFormElement>){
   event.preventDefault();if(busy.current||disabled)return;
   const form=event.currentTarget,data=new FormData(form);busy.current=true;setPending(true);setError('');setErrorField(undefined);setNotice('');
-  try{const result=await action(data);if(result?.error){setError(result.error);setErrorField(result.field);}else if(result?.notice)setNotice(result.notice);}
+  let navigating=false;
+  try{
+   const result=await action(data);
+   if(result?.error){setError(result.error);setErrorField(result.field);}
+   else if(result?.next==='/smista'){
+    // Navigazione completa: i cookie di sessione appena scritti sono disponibili
+    // al server e il router non mostra una pagina anonima in cache.
+    window.location.replace('/smista');navigating=true;
+   }else if(result?.notice)setNotice(result.notice);
+  }
   catch{setError('Operazione non completata. Riprova.');}
-  finally{busy.current=false;setPending(false);}
+  finally{if(!navigating){busy.current=false;setPending(false);}}
  }
  return <form ref={formRef} data-dirty-ignore className="sc-auth-form" onSubmit={submit} aria-busy={pending}><fieldset className="edit-fields" disabled={pending||disabled}>{children}<Button type="submit" disabled={pending||disabled}>{pending?pendingLabel:label}</Button></fieldset>{error&&<div id={errorId} tabIndex={-1}><Alert tone="danger" announce>{error}</Alert></div>}{notice&&<Alert tone="info" announce>{notice}</Alert>}</form>;
 }

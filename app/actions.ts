@@ -42,11 +42,14 @@ export async function registerAction(form: FormData) {
 
 export async function loginAction(form: FormData) {
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({
-    email: asText(form, 'email'), password: passwordText(form, 'password'),
+  const { data,error } = await supabase.auth.signInWithPassword({
+    email: asText(form, 'email').toLowerCase(), password: passwordText(form, 'password'),
   });
   if (error) return {error:error.code==='email_not_confirmed'?'Verifica prima la tua email. Puoi richiedere un nuovo messaggio nella pagina Accedi.':'Email o password non corrette, oppure accesso temporaneamente non disponibile.'};
-  redirect('/smista');
+  if(!data?.session)return {error:'Accesso temporaneamente non disponibile. Riprova.'};
+  // Il redirect Next.js lancia un segnale che un catch del form può scambiare
+  // per un errore. Restituiamo invece un esito esplicito dopo il login riuscito.
+  return {next:'/smista' as const};
 }
 
 export async function logoutAction() {
