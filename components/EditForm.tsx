@@ -34,7 +34,7 @@ export default function EditForm({action,children,className='stack',identifyRequ
   if(!failure||pending)return;
   if(!(field instanceof HTMLElement)){document.getElementById(errorId)?.focus();return;}
   const previous=field.getAttribute('aria-describedby');field.setAttribute('aria-invalid','true');field.setAttribute('aria-describedby',[previous,errorId].filter(Boolean).join(' '));
-  if(!pending)field.focus();
+  if(!pending){for(let el=field.parentElement;el;el=el.parentElement){if(el instanceof HTMLDetailsElement)el.open=true;}field.focus();}
   return()=>{field.removeAttribute('aria-invalid');if(previous)field.setAttribute('aria-describedby',previous);else field.removeAttribute('aria-describedby');};
  },[failure,pending,errorId]);
  const error=failure&&<span id={errorId} tabIndex={-1} role="alert" className="notice error">{failure.error} {failure.href&&<Link href={failure.href}>Apri quello esistente</Link>}</span>;

@@ -21,3 +21,26 @@ export function memberTab(value?:string){return memberTabs.find(([key])=>key===v
 
 const moduleTabs:Record<string,string>={adesioni:'adesioni',tesseramenti:'tesseramenti',certificati:'certificati',iscrizioni:'corsi',brevetti:'brevetti',qualifiche:'istruttore',istruttori:'istruttore',consegne:'attrezzature',quote:'pagamenti',addebiti:'pagamenti'};
 export function memberTabForModule(key:string){return Object.hasOwn(moduleTabs,key)?moduleTabs[key]:undefined;}
+
+/** Presentation only: never write the formatted value back into anagrafica. */
+export function displayName(value:string|null|undefined){
+ const s=(value??'').trim();
+ return s===s.toLocaleUpperCase('it')?s.toLocaleLowerCase('it').replace(/(^|[ '\u2019-])\p{L}/gu,v=>v.toLocaleUpperCase('it')):s;
+}
+export function personInitials(nome:string,cognome:string){
+ return [nome,cognome].map(v=>Array.from(v.trim())[0]??'').join('').toLocaleUpperCase('it');
+}
+export function maskedFiscalCode(value:string|null|undefined){
+ return value?(value.length>4?'•••• '+value.slice(-4):'••••'):'Non acquisito';
+}
+export const secondaryMemberTabs=['brevetti','documenti','istruttore','attrezzature','famiglia','cronologia'] as const;
+export function isSecondaryMemberTab(key:string){return secondaryMemberTabs.some(k=>k===key);}
+export const secretariatLinks=[
+ {href:'/gestionale/soci',label:'Soci e allievi',icon:'users'},
+ {href:'/gestionale/moduli/anagrafiche',label:'Anagrafiche',icon:'user'},
+ {href:'/gestionale/richieste',label:'Domande',icon:'clipboard'},
+ {href:'/gestionale/moduli/adesioni',label:'Adesioni',icon:'users'},
+ {href:'/gestionale/moduli/tesseramenti',label:'Tesseramenti',icon:'document'},
+ {href:'/gestionale/moduli/certificati',label:'Certificati',icon:'certificate'},
+ {href:'/gestionale/moduli/brevetti',label:'Brevetti',icon:'course'},
+] as const;

@@ -9,7 +9,7 @@ import {PageHeader,ButtonLink,StatusBadge,Alert,EmptyState} from '@/components/u
 import {SearchBar,Pagination} from '@/components/ui/DataTable';
 import {Drawer} from '@/components/ui/Drawer';
 import EventEditor from '@/components/EventEditor';
-export default async function ManageEvents({searchParams}:{searchParams:Promise<{msg?:string;periodo?:string;dal?:string;p?:string;q?:string;stato?:string;richieste?:string}>}){
+export default async function ManageEvents({searchParams}:{searchParams:Promise<{msg?:string;periodo?:string;dal?:string;p?:string;q?:string;stato?:string;richieste?:string;nuovo?:string}>}){
  const {supabase,user,staff,admin}=await requireEventManager();
  const s=singleSearchParams(await searchParams),today=todayRome(),periodo=eventPeriod(s.periodo),stato=eventState(s.stato),from=dateFilter(s.dal)||today,page=pageNumber(s.p),size=20,q=cleanSearch(s.q??'');
  let query=supabase.from('eventi_soci').select(s.richieste==='1'?'*,eventi_soci_iscrizioni!inner(id)':'*',{count:'exact'});
@@ -23,7 +23,7 @@ export default async function ManageEvents({searchParams}:{searchParams:Promise<
  const events=(data??[]) as unknown as SocioEvento[];
  const details=await Promise.all(events.map(async e=>{const [p,slots]=await Promise.all([supabase.from('eventi_soci_iscrizioni').select('id',{count:'exact',head:true}).eq('evento_id',e.id).eq('stato','in_attesa'),supabase.rpc('area_soci_posti',{p_evento:e.id})]);return {event:e,pending:p.error?null:p.count,occupancy:slots.error?null:occupancy(e.posti,slots.data)};}));
  return <>
- <PageHeader eyebrow="Eventi associativi" title="Eventi soci" description={staff?'Gestisci tutti gli eventi e le richieste.':'Gestisci gli eventi di cui sei responsabile.'} actions={<Drawer primary title="Nuovo evento" trigger="Nuovo evento"><EventEditor/></Drawer>}/>
+ <PageHeader eyebrow="Eventi associativi" title="Eventi soci" description={staff?'Gestisci tutti gli eventi e le richieste.':'Gestisci gli eventi di cui sei responsabile.'} actions={<Drawer primary title="Nuovo evento" trigger="Nuovo evento" initialOpen={s.nuovo==='1'&&!s.msg}><EventEditor/></Drawer>}/>
  <p className="muted">Le richieste in attesa riservano già un posto. I posti sono assegnati in ordine di arrivo.</p>
  {s.msg&&Object.hasOwn(messaggiEventi,s.msg)&&<Alert announce tone={['ok','rimosso'].includes(s.msg)?'success':'warning'}>{messaggiEventi[s.msg]}</Alert>}
  <SearchBar query={s.q??''} placeholder="Cerca evento o destinazione" resetHref="/gestione-eventi"><label>Periodo<select name="periodo" defaultValue={periodo}><option value="">Tutti</option><option value="prossimi">Prossimi / in corso</option><option value="passati">Passati</option></select></label><label>Stato<select name="stato" defaultValue={stato}><option value="">Tutti</option><option value="aperto">Aperti</option><option value="chiuso">Chiusi</option><option value="annullato">Annullati</option></select></label><label className="check-label"><input type="checkbox" name="richieste" value="1" defaultChecked={s.richieste==='1'}/> Richieste da gestire</label></SearchBar>

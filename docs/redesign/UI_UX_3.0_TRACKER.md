@@ -5,8 +5,8 @@ Data: 26/11/2026. Baseline produzione e HEAD 2.0: `20ae6fcceb5307d58920aa1527a83
 | Fase | Stato | Note |
 |---|---|---|
 | 1 — Fondazioni | CI superata | Commit 7b39eb3; run 45897134510 success (lint, TS, static, build, browser, audit, integrazione DB effimero). Collaudo visuale autenticato manuale aperto. |
-| 2 — AppShell | Implementato; gate da verificare | Header/account, nome titolare univoco, ricerca con sessione e scope espliciti, sidebar, menu mobile e barra rapida, test dedicati. |
-| 3 — Centro operativo e segreteria | Non iniziato | KPI, soci, moduli, riquadro Nereia |
+| 2 — AppShell | CI superata | Commit b343311; run 45897856873, entrambi i job success. Browser autenticato manuale aperto. |
+| 3 — Centro operativo e segreteria | Implementato; gate da verificare | Dashboard, Nereia, archivi, scheda socio, form, navigazione contestuale. |
 | 4 — Didattica e impianti | Non iniziato | Corsi, calendario, piscine |
 | 5 — Operazioni associative | Non iniziato | Incassi, attrezzature, eventi, documenti, organi sociali, admin |
 | 6 — Aree utente e mobile | Non iniziato | Area personale, istruttori, login, responsive, Nereia |
@@ -40,20 +40,20 @@ Ruoli indicativi dal codice di navigazione e dalle guardie 2.0; la verifica di a
 | `app/gestionale/incassi/[id]/page.tsx` | `/gestionale/incassi/[id]` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
 | `app/gestionale/incassi/page.tsx` | `/gestionale/incassi` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
 | `app/gestionale/incassi/posizione/[id]/page.tsx` | `/gestionale/incassi/posizione/[id]` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
-| `app/gestionale/moduli/[modulo]/page.tsx` | `/gestionale/moduli/[modulo]` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
+| `app/gestionale/moduli/[modulo]/page.tsx` | `/gestionale/moduli/[modulo]` | Staff; admin-only/contestuale ove previsto | 5 | Pattern condivisi implementati; redesign altre aree aperto | NV/NV/NV/NV |
 | `app/gestionale/moduli/attrezzature/page.tsx` | `/gestionale/moduli/attrezzature` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
 | `app/gestionale/moduli/consegne/page.tsx` | `/gestionale/moduli/consegne` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
 | `app/gestionale/moduli/contabilita/page.tsx` | `/gestionale/moduli/contabilita` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
 | `app/gestionale/moduli/iscrizioni/page.tsx` | `/gestionale/moduli/iscrizioni` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
 | `app/gestionale/moduli/piscine/page.tsx` | `/gestionale/moduli/piscine` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
 | `app/gestionale/moduli/revisioni/page.tsx` | `/gestionale/moduli/revisioni` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
-| `app/gestionale/page.tsx` | `/gestionale` | Staff; admin-only/contestuale ove previsto | 3 | Non iniziato | NV/NV/NV/NV |
+| `app/gestionale/page.tsx` | `/gestionale` | Staff; admin-only/contestuale ove previsto | 3 | Implementato; collaudo aperto | NV/NV/NV/NV |
 | `app/gestionale/programmi-didattici/page.tsx` | `/gestionale/programmi-didattici` | Staff; admin-only/contestuale ove previsto | 4 | Non iniziato | NV/NV/NV/NV |
 | `app/gestionale/report/page.tsx` | `/gestionale/report` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
-| `app/gestionale/richieste/[id]/page.tsx` | `/gestionale/richieste/[id]` | Staff; admin-only/contestuale ove previsto | 3 | Non iniziato | NV/NV/NV/NV |
-| `app/gestionale/richieste/page.tsx` | `/gestionale/richieste` | Staff; admin-only/contestuale ove previsto | 3 | Non iniziato | NV/NV/NV/NV |
-| `app/gestionale/soci/[id]/page.tsx` | `/gestionale/soci/[id]` | Staff; admin-only/contestuale ove previsto | 3 | Non iniziato | NV/NV/NV/NV |
-| `app/gestionale/soci/page.tsx` | `/gestionale/soci` | Staff; admin-only/contestuale ove previsto | 3 | Non iniziato | NV/NV/NV/NV |
+| `app/gestionale/richieste/[id]/page.tsx` | `/gestionale/richieste/[id]` | Staff; admin-only/contestuale ove previsto | 3 | Implementato; collaudo aperto | NV/NV/NV/NV |
+| `app/gestionale/richieste/page.tsx` | `/gestionale/richieste` | Staff; admin-only/contestuale ove previsto | 3 | Implementato; collaudo aperto | NV/NV/NV/NV |
+| `app/gestionale/soci/[id]/page.tsx` | `/gestionale/soci/[id]` | Staff; admin-only/contestuale ove previsto | 3 | Implementato; collaudo aperto | NV/NV/NV/NV |
+| `app/gestionale/soci/page.tsx` | `/gestionale/soci` | Staff; admin-only/contestuale ove previsto | 3 | Implementato; collaudo aperto | NV/NV/NV/NV |
 | `app/gestionale/utenti/[id]/elimina/page.tsx` | `/gestionale/utenti/[id]/elimina` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
 | `app/gestionale/utenti/[id]/page.tsx` | `/gestionale/utenti/[id]` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
 | `app/gestionale/utenti/page.tsx` | `/gestionale/utenti` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
@@ -80,17 +80,17 @@ Ruoli indicativi dal codice di navigazione e dalle guardie 2.0; la verifica di a
 28 moduli censiti da lib/modules.ts; stato non iniziato per tutti; applicare pattern elenco, dettaglio, creazione, modifica, dialog, errore, vuoto e mobile se esistenti. Ruoli da confermare dai controlli server; le voci admin-only rilevate esplicitamente sono mantenute.
 | Route | Accesso preliminare | Fase | Stato | D/M/F/S |
 |---|---|---|---|---|
-| `/gestionale/moduli/anagrafiche` | Staff; verificare restrizioni | 3 | Non iniziato | NV/NV/NV/NV |
-| `/gestionale/moduli/adesioni` | Staff; verificare restrizioni | 3 | Non iniziato | NV/NV/NV/NV |
-| `/gestionale/moduli/tesseramenti` | Staff; verificare restrizioni | 3 | Non iniziato | NV/NV/NV/NV |
+| `/gestionale/moduli/anagrafiche` | Staff; verificare restrizioni | 3 | Implementato; collaudo aperto | NV/NV/NV/NV |
+| `/gestionale/moduli/adesioni` | Staff; verificare restrizioni | 3 | Implementato; collaudo aperto | NV/NV/NV/NV |
+| `/gestionale/moduli/tesseramenti` | Staff; verificare restrizioni | 3 | Implementato; collaudo aperto | NV/NV/NV/NV |
 | `/gestionale/moduli/stagioni` | Admin | 5 | Non iniziato | NV/NV/NV/NV |
 | `/gestionale/moduli/corsi` | Staff; verificare restrizioni | 4 | Non iniziato | NV/NV/NV/NV |
 | `/gestionale/moduli/edizioni` | Staff; verificare restrizioni | 4 | Non iniziato | NV/NV/NV/NV |
 | `/gestionale/moduli/iscrizioni` | Staff; verificare restrizioni | 4 | Non iniziato | NV/NV/NV/NV |
 | `/gestionale/moduli/istruttori` | Staff; verificare restrizioni | 4 | Non iniziato | NV/NV/NV/NV |
 | `/gestionale/moduli/qualifiche` | Staff; verificare restrizioni | 4 | Non iniziato | NV/NV/NV/NV |
-| `/gestionale/moduli/brevetti` | Staff; verificare restrizioni | 3 | Non iniziato | NV/NV/NV/NV |
-| `/gestionale/moduli/certificati` | Staff; verificare restrizioni | 3 | Non iniziato | NV/NV/NV/NV |
+| `/gestionale/moduli/brevetti` | Staff; verificare restrizioni | 3 | Implementato; collaudo aperto | NV/NV/NV/NV |
+| `/gestionale/moduli/certificati` | Staff; verificare restrizioni | 3 | Implementato; collaudo aperto | NV/NV/NV/NV |
 | `/gestionale/moduli/programmi` | Staff; verificare restrizioni | 4 | Non iniziato | NV/NV/NV/NV |
 | `/gestionale/moduli/versioni` | Staff; verificare restrizioni | 4 | Non iniziato | NV/NV/NV/NV |
 | `/gestionale/moduli/piscine` | Staff; verificare restrizioni | 4 | Non iniziato | NV/NV/NV/NV |
@@ -132,6 +132,14 @@ Ruoli indicativi dal codice di navigazione e dalle guardie 2.0; la verifica di a
 - Ricerca: staff (persone, allievi iscritti/conclusi, edizioni, eventi, attrezzature), istruttore non staff (edizioni assegnate, eventi di cui è responsabile), documenti associativi pubblicati per soci secondo RLS. Per soci normali non esporre anagrafiche, iscrizioni altrui o dettagli non collegabili: l'accesso a corsi ed eventi resta dalle rispettive aree. Esclusi documenti personali/sanitari/interni e note. Niente storage URLs o service role. Query min 2 caratteri, max 80/4 parole, 300ms debounce, 6 per gruppo, indicazione parzialità; scope istruttore limitato a 100 collegamenti/200 assegnazioni (parzialità dichiarata). Nessun log query, nessuna persistenza. Link effettivi e guardie esistenti a destinazione.
 - F2 browser autenticato manuale e verifica visiva su tutte le viewport ancora aperti. CI nuova da controllare; nessun deploy o SQL.
 - Aggiunti test eseguibili con client Supabase simulato (anonimo, account disabilitato, ruoli, errore parziale) e Playwright per ruoli sintetici ove configurati. Nessun test con sessione reale di produzione. Normalizzazione maiuscole solo in visualizzazione e iniziali nome/cognome del titolare.
+
+## F3 — Segreteria
+- Baseline F2: run 45897856873, entrambi i job success. Riferimenti riaperti localmente: MASTER_PROMPT_SESTO_CONTINENTE_3.0_DEFINITIVO.md, §§5.1–5.3, 6–10 e mockup 01–04 del pacchetto definitivo. Nessuna immagine dimostrativa o dato personale nel repository.
+- Dashboard: quattro scorciatoie reali prima di priorità e riepiloghi; nuovo evento apre drawer con ?nuovo=1, stessa guardia e azione; nuova persona non crea adesione; incasso apre scelta posizione. Nereia informativo dopo lezioni/eventi. 5+4 KPI invariati, zero e errore distinti. Amministrazione e altre funzioni conservate.
+- Soci: filtri, conteggi esatti per stato e stagione/ricerca (adesioni, non persone uniche), paginazione server; CF mascherato solo nell'elenco, completo nella scheda autorizzata; stagione nascosta solo quando filtro singolo; avatar/nomi formattati solo a schermo. Navigazione contestuale 7 aree.
+- Scheda: tutte le 13 tab e URL conservati, 6 sotto Altro; identità, azioni, riepiloghi reali, documenti recenti solo secondo RLS, dati dettagliati caricati in base alla tab. Tesseramenti mostrati come conteggio registrato (non attestazione di validità); nessun dato clinico. Azioni e controlli server invariati.
+- Moduli: sezioni personali/recapiti/fiscali/verifiche particolari, campi facoltativi invariati, assistenza CF preservata, checkbox allineate, apertura dettagli in caso di errore, azioni persistenti su desktop e normali su telefono per non coprire campi. Pattern generico disponibile anche nelle altre aree; non marcarle completamente riprogettate. Domande: filtri/stati, verifica e cronologia invariati.
+- Test e collaudo autenticato ancora da eseguire; nessun deploy, SQL, migrazione o modifica ai dati.
 
 ## Correzione funzionale trasversale — corsi e deroghe istruttori
 - Elenco e dettaglio: direttore, responsabile e aiuto-istruttori da assegnazioni effettive; nessuna correzione automatica di duplicati o dati storici.
