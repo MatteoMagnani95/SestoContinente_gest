@@ -44,3 +44,27 @@ test('ExcelJS: rifiuta fogli troppo estesi senza importazione parziale',async()=
  const result=await parseHistoricalFile(Buffer.from(await workbook.xlsx.writeBuffer()),'prova.xlsx',columns);
  assert.equal(result.error,'righe');
 });
+
+test('Staging: invia tutte le righe in una sola richiesta e verifica eventuale risposta incerta',async()=>{
+ const code=ts.transpileModule(readFileSync(new URL('../app/gestionale/importazione/actions.ts',import.meta.url),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
+ const make=({rowsError=null,count=201,checkError=null}={})=>{
+  const writes=[],parsed=Array.from({length:201},(_,i)=>({codice_fiscale:'CF'+i,nome:'A',cognome:'B'}));
+  const supabase={rpc:async()=>({data:[]}),from(table){
+   if(table==='importazioni_batch')return {insert:()=>({select:()=>({single:async()=>({data:{id:'batch'}})})})};
+   if(table==='importazioni_righe')return {insert:async rows=>{writes.push(rows);return {error:rowsError};},select:()=>({eq:async()=>({count,error:checkError})})};
+   throw Error('unexpected table '+table);
+  }};
+  const deps={'next/navigation':{redirect:where=>{throw Error('REDIRECT '+where);}},'next/cache':{revalidatePath:()=>{}},'@/lib/import-file':{parseHistoricalFile:async()=>({rows:parsed,error:null})},'@/lib/security':{requireStaff:async()=>({supabase,user:{id:'staff'}})},'@/lib/importazione':{headings:()=>columns,normalizzaRiga:r=>r,erroriRiga:()=>[]}};
+  const exported={};new Function('exports','require',code)(exported,id=>deps[id]??require(id));
+  const form=new FormData();form.set('tipo','soci');form.set('file',new File(['test'],'test.csv'));
+  return {writes,run:()=>exported.stageImport(form)};
+ };
+ for(const cfg of [{},{rowsError:{code:'NETWORK'}}]){
+  const m=make(cfg);await assert.rejects(m.run(),/REDIRECT \/gestionale\/importazione\?batch=batch/);
+  assert.equal(m.writes.length,1);assert.equal(m.writes[0].length,201);
+ }
+ for(const cfg of [{rowsError:{code:'NETWORK'},count:100},{rowsError:{code:'NETWORK'},checkError:{code:'NETWORK'}}]){
+  const m=make(cfg);await assert.rejects(m.run(),/REDIRECT \/gestionale\/importazione\?msg=database/);
+  assert.equal(m.writes.length,1);assert.equal(m.writes[0].length,201);
+ }
+});
