@@ -607,7 +607,7 @@ END; $sesto_old$) THEN RAISE EXCEPTION '0017: definizione % non corrispondente; 
  IF NOT EXISTS(SELECT 1 FROM pg_class WHERE oid=to_regclass('storage.objects') AND relrowsecurity) THEN RAISE EXCEPTION 'RLS Storage mancante'; END IF;
  IF NOT EXISTS(SELECT 1 FROM pg_policy WHERE polrelid=to_regclass('storage.objects') AND polname='file_medico_solo_server' AND NOT polpermissive) THEN RAISE EXCEPTION '0019: protezione Storage medico mancante'; END IF;
  IF NOT EXISTS(SELECT 1 FROM pg_policy WHERE polrelid=to_regclass('public.documenti') AND polname='documento_medico_riservato' AND NOT polpermissive) THEN RAISE EXCEPTION '0019: protezione documenti medici mancante'; END IF;
- IF NOT EXISTS(SELECT 1 FROM public.ruoli_utente r JOIN auth.users u ON u.id=r.utente_id WHERE r.ruolo='amministratore' AND u.deleted_at IS NULL AND (u.banned_until IS NULL OR u.banned_until<now())) THEN RAISE EXCEPTION 'Nessun amministratore attivo: proteggere prima l accesso'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.ruoli_utente ru JOIN auth.users u ON u.id=ru.utente_id WHERE ru.ruolo='amministratore' AND u.deleted_at IS NULL AND (u.banned_until IS NULL OR u.banned_until<now())) THEN RAISE EXCEPTION 'Nessun amministratore attivo: proteggere prima l accesso'; END IF;
  IF to_regclass('supabase_migrations.schema_migrations') IS NOT NULL THEN
   EXECUTE 'SELECT string_agg(version::text, '', '' ORDER BY version) FROM supabase_migrations.schema_migrations' INTO history;
   RAISE NOTICE 'Versioni registrate da CLI (possono non includere esecuzioni manuali): %',coalesce(history,'nessuna');
