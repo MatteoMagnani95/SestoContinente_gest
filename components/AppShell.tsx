@@ -28,6 +28,10 @@ export default function AppShell({access,children}:{access:NavigationAccess;chil
   if(menu.current?.open)menu.current.close();setOpen(false);
   if(restore)trigger.current?.focus();
  }
+ function navigateFromMenu(){
+  closeMenu(false);
+  document.getElementById('sc-main')?.focus({preventScroll:true});
+ }
  function showMenu(){
   trigger.current=document.activeElement instanceof HTMLElement?document.activeElement:null;
   if(menu.current&&!menu.current.open){menu.current.showModal();setOpen(true);}
@@ -46,7 +50,7 @@ export default function AppShell({access,children}:{access:NavigationAccess;chil
   read();const observer=new MutationObserver(read);if(content.current)observer.observe(content.current,{childList:true,subtree:true,characterData:true});return()=>observer.disconnect();
  },[path]);
  useEffect(()=>{
-  const desktop=window.matchMedia('(min-width: 1001px)');const update=()=>{if(desktop.matches&&menu.current?.open)closeMenu(false);};
+  const desktop=window.matchMedia('(min-width: 1001px)');const update=()=>{if(desktop.matches&&menu.current?.open)navigateFromMenu();};
   desktop.addEventListener('change',update);return()=>desktop.removeEventListener('change',update);
  },[]);
  const back=backTarget(path,access),target=back?restoredTarget(back,contexts):null;
@@ -57,8 +61,8 @@ export default function AppShell({access,children}:{access:NavigationAccess;chil
  <dialog ref={menu} id="sc-mobile-menu" className="sc-mobile-menu" aria-labelledby="sc-menu-title" onCancel={e=>{e.preventDefault();closeMenu();}} onClose={()=>setOpen(false)} onClick={e=>{if(e.target===e.currentTarget)closeMenu();}}>
   <div className="sc-mobile-menu-inner">
    <header className="sc-mobile-menu-heading"><h2 id="sc-menu-title">Menu</h2><button type="button" className="sc-icon-button" onClick={()=>closeMenu()} aria-label="Chiudi menu" autoFocus><Icon name="close"/></button></header>
-   {staff&&<StaffNav isAdmin={access.admin} idPrefix="mobile" onNavigate={()=>closeMenu(false)}/>}
-   <nav className="sc-mobile-areas" aria-label="Aree e account"><AreaLinks access={access} onNavigate={()=>closeMenu(false)}/>{access.enabled&&access.personal&&access.unread!==null&&<Link href="/area-personale?tab=notifiche" onClick={()=>closeMenu(false)}>Notifiche ({access.unread})</Link>}{access.signedIn&&<LogoutButton/>}</nav>
+   {staff&&<StaffNav isAdmin={access.admin} idPrefix="mobile" onNavigate={navigateFromMenu}/>}
+   <nav className="sc-mobile-areas" aria-label="Aree e account"><AreaLinks access={access} onNavigate={navigateFromMenu}/>{access.enabled&&access.personal&&access.unread!==null&&<Link href="/area-personale?tab=notifiche" onClick={navigateFromMenu}>Notifiche ({access.unread})</Link>}{access.signedIn&&<LogoutButton/>}</nav>
   </div>
  </dialog>
  <GlobalCancelButtons/>
