@@ -52,7 +52,11 @@ jobs:
         run: |
           set -euo pipefail
           supabase --version
-          test -f supabase/config.toml || supabase init
+          # CLI 3.4 creates config.jsonc by default. Convert the generated
+          # local configuration before the TOML-only validation helper.
+          if [ ! -f supabase/config.toml ] && [ ! -f supabase/config.jsonc ]; then supabase init; fi
+          if [ ! -f supabase/config.toml ]; then supabase config convert --to toml; fi
+          test -f supabase/config.toml
           python3 scripts/qa-local-config.py
           supabase start > "$RUNNER_TEMP/sesto-supabase-start.log" 2>&1 || { echo "Avvio/migrazioni Supabase locale non riusciti; nessuna chiave nei log pubblici."; exit 1; }
           status=$(mktemp)
