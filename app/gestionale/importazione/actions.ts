@@ -1,8 +1,7 @@
 'use server';
 import {redirect} from 'next/navigation';
 import {revalidatePath} from 'next/cache';
-import ExcelJS from 'exceljs';
-import {parse as parseCsv} from 'csv-parse/sync';
+import {parseHistoricalFile} from '@/lib/import-file';
 import {requireStaff} from '@/lib/security';
 import {headings,normalizzaRiga,erroriRiga,type TipoImportazione} from '@/lib/importazione';
 const where='/gestionale/importazione';
@@ -14,30 +13,9 @@ export async function stageImport(form:FormData){
  if(!['soci','corsi'].includes(tipo))q('tipo');
  const file=form.get('file');if(!(file instanceof File)||file.size<2||file.size>2_000_000)q('file');
  if(!/\.(csv|xlsx)$/i.test(file.name))q('file');
- let input:Record<string,unknown>[]=[];
- try{
-  if(file.name.toLowerCase().endsWith('.csv')){
-   input=parseCsv(Buffer.from(await file.arrayBuffer()).toString('utf8').replace(/^\uFEFF/,''),{columns:true,skip_empty_lines:true,trim:true,bom:true}) as Record<string,unknown>[];
-  }else{
-   const book=new ExcelJS.Workbook();
-   // ExcelJS e @types/node possono utilizzare dichiarazioni Buffer non allineate.
-   // Il valore è un Buffer Node.js valido; adeguiamo solo il tipo atteso da load().
-   const workbookBytes=Buffer.from(await file.arrayBuffer());
-   await book.xlsx.load(workbookBytes as unknown as Parameters<typeof book.xlsx.load>[0]);
-   const sheet=book.worksheets[0];if(!sheet)throw Error('No sheet');
-   const header=sheet.getRow(1).values as (string|undefined)[];
-   for(let i=2;i<=sheet.rowCount;i++){
-    const row=sheet.getRow(i),obj:Record<string,string>={};let filled=false;
-    for(let c=1;c<=sheet.columnCount;c++){
-     const name=String(header[c]??'').trim();const val=row.getCell(c).text.trim();
-     if(name){obj[name]=val;if(val)filled=true;}
-    }
-    if(filled)input.push(obj);
-   }
-  }
- }catch{q('formato');}
- if(input.length<1||input.length>1000)q('righe');
- const needed=headings(tipo);if(!needed.every(h=>Object.hasOwn(input[0],h)))q('intestazioni');
+ const parsed=await parseHistoricalFile(Buffer.from(await file.arrayBuffer()),file.name,headings(tipo));
+ if(parsed.error)q(parsed.error);
+ const input=parsed.rows;
  const mapped=input.map(row=>normalizzaRiga(row,tipo));
  const cfSet=[...new Set(mapped.map(r=>r.codice_fiscale).filter(Boolean))];
  const {data:existing,error:lookupError}=await supabase.rpc('cf_storici_esistenti',{p_cf:cfSet});
