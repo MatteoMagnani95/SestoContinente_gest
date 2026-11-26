@@ -79,3 +79,6 @@ La presenza di una guard nel file non garantisce che sia invocata in ogni percor
 
 ## F0 — decisione conservativa
 Conservare le route già paginate e le RPC esistenti; audit ulteriore in PAGE_REQUIREMENTS. Per i ruoli non assumere che requireUser da solo autorizzi operazioni: verificare controllo interno e policy. Fase 1 non modifica auth, RLS, RPC o DB. Configurazione staging e testi ufficiali non verificabili da GitHub.
+
+## Inventario SQL dettagliato
+[SQL_AUDIT.md](SQL_AUDIT.md) raccoglie i riferimenti testuali alle policy, funzioni, FK e altri costrutti sensibili delle 19 migrazioni. È un indice di audit statico, non una verifica delle autorizzazioni effettive.
