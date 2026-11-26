@@ -137,7 +137,7 @@ export async function authorizeInstructorEnrollment(form:FormData){
  if(form.get('deroga_istruttore')!=='on'||motivo.length<5)return {field:'deroga_motivo',error:'Conferma la deroga e indica la motivazione.'};
  const {error}=await supabase.rpc('autorizza_deroga_iscrizione',{p_edizione:id,p_iscrizione:iscrizione,p_motivo:motivo});
  if(error)return {error:error.code==='P3520'?'L’incarico nella stessa edizione non ammette deroghe.':'Deroga non registrata: verifica qualifica, stato e autorizzazioni.'};
- refresh(id);redirect(detailHref(id,'deroga_autorizzata'));
+ refresh(id);redirect(courseViewHref(id,'allievi','deroga_autorizzata'));
 }
 
 export async function updateEnrollment(form:FormData){
