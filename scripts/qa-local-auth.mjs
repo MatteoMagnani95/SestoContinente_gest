@@ -89,7 +89,7 @@ export async function runAuth({app,admin}){
   const recovery=page.locator('details').filter({hasText:'Password dimenticata?'});
   await recovery.locator('input[name=email]').fill(email);
   await recovery.getByRole('button',{name:'Invia link di recupero'}).click();
-  await expect(recovery.getByText('Se l’account esiste e la richiesta è stata accettata',{exact:false})).toBeVisible();
+  await expect(recovery.getByText('Se l’account esiste e l’invio va a buon fine',{exact:false})).toBeVisible();
   await follow('recovery','/nuova-password');
   await page.locator('input[name=password]').fill(newPassword);
   await page.locator('input[name=confirm]').fill(newPassword);
@@ -100,8 +100,29 @@ export async function runAuth({app,admin}){
   await page.getByRole('button',{name:'Accedi',exact:true}).click();
   await expect(page.getByRole('alert').filter({hasText:'Email o password non corrette'})).toBeVisible();
   await page.locator('input[name=password]').fill(newPassword);
+  // Rileva anche eventuali messaggi transitori prima della navigazione completa.
+  const falseErrors=[];
+  await page.exposeFunction('reportLoginError',message=>falseErrors.push(message));
+  await page.evaluate(()=>{
+   const form=document.querySelector('input[name=password]')?.closest('form');
+   if(!form)throw Error('Login form missing');
+   // L'errore del tentativo precedente è lecito fino al nuovo submit.
+   form.addEventListener('submit',()=>{
+    const previousAlerts=new Set(form.querySelectorAll('[role=alert]'));
+    const observer=new MutationObserver(()=>{
+     for(const alert of form.querySelectorAll('[role=alert]')){
+      if(previousAlerts.has(alert))continue;
+      const text=alert.textContent??'';
+      if(/Email o password non corrette|Operazione non completata|Accesso temporaneamente non disponibile/.test(text))void window.reportLoginError(text);
+     }
+    });
+    observer.observe(form,{childList:true,subtree:true,characterData:true});
+   },{once:true});
+  });
   await page.getByRole('button',{name:'Accedi',exact:true}).click();
-  await expect(page).toHaveURL(/\/richiesta\/stato$/);await logout();
+  await expect(page).toHaveURL(/\/richiesta\/stato$/);
+  assert.deepEqual(falseErrors,[],'Nessun errore rosso durante un login riuscito');
+  await logout();
   console.log('OK UI login/logout, recupero via email locale, password con spazi e vecchia password rifiutata');
  }finally{await context.close();await browser.close();}
 }

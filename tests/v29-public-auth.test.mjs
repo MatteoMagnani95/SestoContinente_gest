@@ -46,9 +46,9 @@ test('Registrazione: privacy obbligatoria e checkbox facoltativa negativa; passw
  try{
   const base={email:'USER@example.test',password:' password 123 ',confirm:' password 123 ',immagini_checkbox:'1',privacy_versione_vista:'1',immagini_versione_vista:'1'};
   assert.ok((await m.actions.registerAction(form(base))).error);assert.equal(writes.length,0);
-  await assert.rejects(m.actions.registerAction(form({...base,presa_visione:'on'})),/redirect:\/registrati\?ok=verifica/);
+  assert.deepEqual(await m.actions.registerAction(form({...base,presa_visione:'on'})),{next:'/registrati?ok=verifica'});
   assert.equal(writes[0].password,base.password);assert.equal(writes[0].options.data.immagini,'no');
-  await assert.rejects(m.actions.registerAction(form({...base,presa_visione:'on',immagini:'si'})),/redirect:\/registrati\?ok=verifica/);
+  assert.deepEqual(await m.actions.registerAction(form({...base,presa_visione:'on',immagini:'si'})),{next:'/registrati?ok=verifica'});
   assert.equal(writes[1].options.data.immagini,'si');
  }finally{if(old===undefined)delete process.env.NEXT_PUBLIC_SITE_URL;else process.env.NEXT_PUBLIC_SITE_URL=old;}
 });
@@ -107,7 +107,7 @@ test('Logout: successo soltanto dopo signOut, errore distinto; nuova password co
  await assert.rejects(fail.actions.logoutAction(),/redirect:\/\?msg=uscita_non_riuscita/);
  assert.ok((await m.actions.newPasswordAction(form({password:' password 123 ',confirm:'password 123'}))).error);
  assert.equal(passwords.length,0);
- await assert.rejects(m.actions.newPasswordAction(form({password:' password 123 ',confirm:' password 123 '})),/redirect:\/smista/);
+ assert.deepEqual(await m.actions.newPasswordAction(form({password:' password 123 ',confirm:' password 123 '})),{next:'/smista'});
  assert.deepEqual(passwords,[' password 123 ']);
 });
 test('Callback: verifica e recupero interni, link non valido e redirect esterni bloccati',async()=>{
@@ -132,4 +132,75 @@ test('Dichiarazioni: la versione mancante e la scelta obsoleta impediscono il sa
  const stale=mock({rpcError:{code:'P3508'}});
  assert.match((await stale.actions.saveApplicationAction(form({...base,immagini_scelta_attesa:'42'}))).error,/cambiata/);
  assert.equal(stale.calls[0].payload.p_scelta_attesa,'42');
+});
+
+test('Recovery: normalizzazione indirizzo, callback canonico e risposte indistinguibili',async()=>{
+ const old=process.env.NEXT_PUBLIC_SITE_URL;
+ process.env.NEXT_PUBLIC_SITE_URL='https://example.test/';
+ const calls=[],warnings=[],oldWarn=console.warn;console.warn=(...args)=>warnings.push(args);
+ try{
+  const result=async error=>mock({auth:{resetPasswordForEmail:async(email,options)=>{calls.push({email,options});if(error==='network')throw Error('private details');return {error};}}}).actions.recoverAction(form({email:' USER@example.test '}));
+  const ok=await result(null);
+  assert.match(ok.notice,/Se l’account esiste/);
+  assert.match(ok.notice,/stesso browser e dispositivo/);
+  for(const error of [{code:'user_not_found',status:404},{code:'email_address_not_authorized',status:403},{code:'over_email_send_rate_limit',status:429},{code:'unexpected_failure',status:500},'network'])assert.deepEqual(await result(error),ok);
+  for(const call of calls)assert.deepEqual(call,{email:'user@example.test',options:{redirectTo:'https://example.test/auth/callback?next=%2Fnuova-password'}});
+  assert.equal(warnings.length,5);
+  assert.doesNotMatch(JSON.stringify(warnings),/user@example\.test|private details/i);
+  const m=mock({auth:{resetPasswordForEmail:async()=>{throw Error('must not send');}}});
+  assert.equal((await m.actions.recoverAction(form({email:'not-an-email'}))).field,'email');
+  delete process.env.NEXT_PUBLIC_SITE_URL;
+  assert.ok((await m.actions.recoverAction(form({email:'user@example.test'}))).error);
+ }finally{
+  console.warn=oldWarn;
+  if(old===undefined)delete process.env.NEXT_PUBLIC_SITE_URL;else process.env.NEXT_PUBLIC_SITE_URL=old;
+ }
+});
+test('Recovery: alias non canoniche rimandano al dominio configurato, senza invio cross-origin',()=>{
+ const page=read('app/accedi/page.tsx');
+ assert.match(page,/requestHeaders\.get\('host'\)\?\.toLowerCase\(\)!==site\.host\.toLowerCase\(\)/);
+ assert.match(page,/new URL\('\/accedi\?recupero=1',site\.origin\)/);
+ assert.match(page,/canonicalRecoveryUrl\?<.*href=\{canonicalRecoveryUrl\}/);
+ assert.match(page,/open=\{recupero==='1'\|\|undefined\}/);
+});
+
+test('Login riuscito restituisce la destinazione senza generare un segnale di redirect',async()=>{
+ const calls=[],m=mock({auth:{signInWithPassword:async payload=>{calls.push(payload);return {data:{session:{user:{id:'test'}}},error:null};}}});
+ assert.deepEqual(await m.actions.loginAction(form({email:' USER@example.test ',password:' password 123 '})),{next:'/smista'});
+ assert.deepEqual(calls,[{email:'user@example.test',password:' password 123 '}]);
+ for(const result of [{data:{session:null},error:null},{data:{session:null},error:{code:'invalid_credentials'}}]){
+  const failure=mock({auth:{signInWithPassword:async()=>result}});
+  const actual=await failure.actions.loginAction(form({email:'user@example.test',password:'not-real'}));
+  assert.ok(actual.error);assert.equal(actual.next,undefined);
+ }
+});
+test('AuthForm: successo mantiene il pulsante occupato e non mostra errori; rifiuto mostra errore',async()=>{
+ const source=read('components/AuthForm.tsx');
+ const js=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
+ async function simulate(action){
+  const events=[],state=[];
+  const react={useId:()=> 'test',useEffect:()=>{},useRef:value=>({current:value}),useState:value=>{const i=state.length;state.push(value);return [value,v=>{state[i]=v;events.push([i,v]);}];}};
+  const jsx=(type,props)=>({type,props});
+  const deps={'react':react,'react/jsx-runtime':{jsx,jsxs:jsx},'@/components/ui/Primitives':{Button:'button',Alert:'alert'}};
+  const exports={};
+  const data=form({email:'user@example.test',password:'synthetic'});
+  const browser={location:{replace:path=>events.push(['navigate',path])}};
+  new Function('exports','require','window','FormData',js)(exports,id=>deps[id]??require(id),browser,function(){return data;});
+  const node=exports.default({action,children:null,label:'Accedi',pendingLabel:'Accesso in corso…'});
+  await node.props.onSubmit({preventDefault(){},currentTarget:{}});
+  return {events,state};
+ }
+ const success=await simulate(async()=>({next:'/smista'}));
+ assert.ok(success.events.some(([key,value])=>key==='navigate'&&value==='/smista'));
+ assert.equal(success.state[1],true);assert.equal(success.state[2],'');
+ const registered=await simulate(async()=>({next:'/registrati?ok=verifica'}));
+ assert.ok(registered.events.some(([key,value])=>key==='navigate'&&value==='/registrati?ok=verifica'));
+ assert.equal(registered.state[2],'');
+ const external=await simulate(async()=>({next:'https://example.invalid'}));
+ assert.ok(!external.events.some(([key])=>key==='navigate'));
+ const failed=await simulate(async()=>({error:'Credenziali non corrette'}));
+ assert.equal(failed.state[2],'Credenziali non corrette');assert.equal(failed.state[1],false);
+ assert.ok(!failed.events.some(([key])=>key==='navigate'));
+ const unavailable=await simulate(async()=>{throw Error('network');});
+ assert.equal(unavailable.state[2],'Operazione non completata. Riprova.');assert.equal(unavailable.state[1],false);
 });
