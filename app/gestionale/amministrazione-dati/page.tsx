@@ -1,6 +1,7 @@
 import {Drawer,ConfirmDialog} from '@/components/ui/Drawer';
 import ActionForm from '@/components/ui/ActionForm';
 import Link from 'next/link';
+import {tutteLePagine} from '@/lib/pagine';
 import {requireAdmin} from '@/lib/security';
 import {staffSections,modules} from '@/lib/modules';
 import {manageFamilyLink,removeNotification,editNotification} from './actions';
@@ -8,11 +9,11 @@ export default async function DataAdmin({searchParams}:{searchParams:Promise<{ms
  const {supabase}=await requireAdmin();const {msg,np='1',tp='1'}=await searchParams;
  const npage=Math.max(1,Math.min(10000,parseInt(np,10)||1)),tpage=Math.max(1,Math.min(10000,parseInt(tp,10)||1)),size=50;
  const [peopleResult,linksResult,notificationsResult]=await Promise.all([
-  supabase.from('persone').select('id,cognome,nome').order('cognome').order('nome').limit(1000),
+  tutteLePagine((da,a)=>supabase.from('persone').select('id,cognome,nome').order('cognome').order('nome').order('id').range(da,a)),
   supabase.from('gest_elenco_relazioni_tutori').select('*',{count:'exact'}).order('sort_cognome').order('sort_nome').order('minore_id').order('tutore_id').range((tpage-1)*size,tpage*size-1),
   supabase.from('gest_elenco_notifiche_admin').select('*',{count:'exact'}).order('sort_cognome',{nullsFirst:false}).order('sort_nome',{nullsFirst:false}).order('email',{nullsFirst:false}).order('id').range((npage-1)*size,npage*size-1)]);
  const people=peopleResult.data??[];
- const name=(id:string)=>{const p=people.find(x=>x.id===id);return p?`${p.cognome} ${p.nome}`:id;};
+ const name=(id:string)=>{const p=people.find(x=>x.id===id);return p?`${p.cognome} ${p.nome}`:'Anagrafica non disponibile';};
  return <><div className="page-intro"><p className="eyebrow">Solo amministratori</p><h1>Amministrazione dati</h1><p>Accedi agli archivi e gestisci le informazioni attraverso le sezioni operative. I vincoli, le delibere e lo storico contabile rimangono protetti.</p></div>
  {msg&&<p className="notice" role="status">{msg==='salvato'?'Modifiche salvate.':msg==='rimosso'?'Elemento eliminato.':'Operazione non completata: controlla dati, collegamenti e permessi.'}</p>}
  <section className="panel"><h2>Archivi operativi</h2><div className="buttons"><Link href="/gestionale/utenti" className="button">Account e ruoli</Link><Link href="/gestionale/richieste" className="button ghost">Domande di adesione</Link><Link href="/gestionale/corsi" className="button ghost">Corsi guidati</Link><Link href="/gestionale/calendario-visivo" className="button ghost">Calendario visivo</Link><Link href="/gestione-eventi" className="button ghost">Eventi soci</Link><Link href="/documenti" className="button ghost">Documenti</Link><Link href="/organi-sociali" className="button ghost">Organi sociali</Link><Link href="/gestionale/programmi-didattici" className="button ghost">Moduli didattici</Link><Link href="/gestionale/incassi" className="button ghost">Registra incassi</Link><Link href="/gestionale/archivio-incassi" className="button ghost">Archivio incassi e rettifiche</Link><Link href="/gestionale/importazione" className="button ghost">Importazione</Link></div>{staffSections.map(s=><div key={s.title}><h3>{s.title}</h3><div className="buttons">{s.items.filter(k=>k!=='pagamenti').map(k=><Link key={k} href={`/gestionale/moduli/${k}`} className="button ghost">{modules[k].label}</Link>)}</div></div>)}</section>
