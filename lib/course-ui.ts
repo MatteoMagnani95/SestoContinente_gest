@@ -6,6 +6,9 @@ export function courseViewHref(id:string,tab:CourseTab,msg?:string,lesson?:strin
 export const disciplines=['ARA','APNEA','NUOTO_LIBERO'] as const;
 export function validDiscipline(value?:string){return disciplines.find(x=>x===value)??'';}
 export function validLevel(value?:string){return ['1','2','3','4','5'].includes(value??'')?Number(value):null;}
+export function canListCourseStudent(person:{isDirector?:boolean;assignedToEdition?:boolean;isInstructor?:boolean;alreadyEnrolled?:boolean},allowOverride=false){
+ return !person.isDirector&&!person.assignedToEdition&&!person.alreadyEnrolled&&(!person.isInstructor||allowOverride);
+}
 export function enrollmentEligibility(input:{isDirector:boolean;alreadyEnrolled:boolean;eligible:boolean;membership?:string|null;hasValidCard?:boolean;unavailable?:boolean}){
  if(input.isDirector)return 'Direttore del corso: non può essere allievo';
  if(input.alreadyEnrolled)return 'Iscrizione già registrata';

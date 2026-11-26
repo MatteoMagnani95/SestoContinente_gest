@@ -25,6 +25,7 @@ Ramo: feature/gestionale-2.0-redesign. PR #4 in bozza. Nessun merge, rilascio o 
 5. `20261126163420_coerenza_direzione.sql`
 6. `20261126171000_anteprima_importazione_atomica.sql` (F7)
 7. `20261126172500_serializza_prenotazioni_guidate.sql` (F7: lock ordinati sulle corsie)
+8. `20261126213000_deroga_istruttori_corsi.sql` (intervento successivo 3.0; dopo il pacchetto unico 2.0, solo su staging autorizzato prima del rilascio del codice). La migrazione introduce audit delle deroghe, RLS staff, RPC e trigger reciproci; non modifica iscrizioni o qualifiche storiche. La CI applica esplicitamente questa migrazione dopo il pacchetto 2.0 e prima del test di integrazione. Non fa parte dello SQL unico 2.0.
 
 Applicare solo dopo verifica staging e backup, nell'ordine canonico e prima di distribuire il codice che usa le nuove RPC. Le vecchie RPC dichiarative sono mantenute per la compatibilità della versione 0019 e il rollback applicativo; le nuove pagine richiedono le nuove RPC e il campo origine. Non rieseguire copie SQL root. Nessuna migrazione di questa lista applicata sul database reale.
 

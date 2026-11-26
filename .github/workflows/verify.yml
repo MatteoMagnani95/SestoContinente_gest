@@ -99,6 +99,8 @@ jobs:
           # Safe second execution: must validate without reapplying any DDL.
           psql "$TEST_0019_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f docs/redesign/AGGIORNAMENTO_UNICO_2_0.sql
       - run: npm run test:patch19
+      - name: Applica migrazione deroghe istruttori su database effimero
+        run: psql "$TEST_0019_DATABASE_URL" -X -v ON_ERROR_STOP=1 -1 -f supabase/migrations/20261126213000_deroga_istruttori_corsi.sql
       - run: npm run test:integration
       - name: Audit storico in sola lettura (dati sintetici)
         run: psql "$TEST_0019_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f docs/redesign/F5_HISTORICAL_AUDIT.sql

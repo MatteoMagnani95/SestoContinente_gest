@@ -2,7 +2,7 @@ name: QA Supabase locale (isolato)
 on:
   workflow_dispatch:
   push:
-    branches: ['release/gestionale-consolidato']
+    branches: ['release/gestionale-consolidato', 'fix/deroga-istruttori-corsi']
   pull_request:
     branches: ['main', 'feature/gestionale-2.0-redesign', 'release/gestionale-consolidato']
     paths:
@@ -30,7 +30,7 @@ permissions:
   contents: read
 jobs:
   local-qa:
-    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/release/gestionale-consolidato' || github.head_ref == 'release/gestionale-consolidato' || github.head_ref == 'feature/gestionale-2.0-redesign' || github.head_ref == 'fix/password-recovery-login' || github.head_ref == 'fix/account-common-navigation'
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/release/gestionale-consolidato' || github.ref == 'refs/heads/fix/deroga-istruttori-corsi' || github.head_ref == 'release/gestionale-consolidato' || github.head_ref == 'feature/gestionale-2.0-redesign' || github.head_ref == 'fix/password-recovery-login' || github.head_ref == 'fix/account-common-navigation'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
