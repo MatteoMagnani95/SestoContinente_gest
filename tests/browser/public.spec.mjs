@@ -228,3 +228,11 @@ test('Endpoint riservati aggiuntivi e callback senza codice non divulgano dati n
   expect(location.searchParams.get('msg')).toBe(target==='/nuova-password'?'recupero_scaduto':'verifica');
  }
 });
+
+test('Messaggi URL sconosciuti non provocano errori sulle pagine pubbliche',async({page})=>{
+ for(const path of ['/accedi','/registrati'])for(const msg of ['__proto__','constructor','toString']){
+  const response=await page.goto(path+'?msg='+msg);
+  expect(response.status()).toBe(200);
+  await expect(page.getByRole('heading',{level:1})).toBeVisible();
+ }
+});

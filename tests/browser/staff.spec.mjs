@@ -71,3 +71,20 @@ for(const path of routes){
   }
  });
 }
+
+test('Filtri URL duplicati e messaggi sconosciuti non interrompono gli archivi',async({page})=>{
+ for(const path of ['/gestionale/soci','/gestionale/corsi','/gestionale/richieste','/gestionale/utenti','/gestionale/moduli/anagrafiche','/documenti','/organi-sociali/archivio']){
+  const response=await page.goto(path+'?q=uno&q=due&msg=__proto__');
+  expect(response.status(),path).toBe(200);
+  await expect(page.getByRole('heading',{level:1}).first()).toBeVisible();
+  expect(new URL(page.url()).pathname).toBe(path);
+ }
+});
+test('Paginazione obsoleta offre il ritorno immediato alla prima pagina',async({page})=>{
+ await page.goto('/gestionale/soci?p=9999');
+ const recovery=page.getByRole('navigation',{name:'Paginazione'}).getByRole('link',{name:'Prima pagina'});
+ await expect(recovery).toBeVisible();
+ await recovery.click();
+ await expect(page).toHaveURL(url=>url.pathname==='/gestionale/soci'&&url.searchParams.get('p')==='1');
+ await expect(page.getByRole('table',{name:'Adesioni di soci e allievi'})).toBeVisible();
+});

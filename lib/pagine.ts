@@ -10,5 +10,5 @@ export async function tutteLePagine<T>(leggi:(da:number,a:number)=>PromiseLike<{
    rows.push(...r.data);
    if(r.data.length<500)return {data:rows,error:null};
   }
- }catch(error){return {data:null,error:error??new Error('Lettura paginata non riuscita')};}
+ }catch(error){return {data:null,error:error||new Error('Lettura paginata non riuscita')};}
 }
