@@ -1,9 +1,22 @@
 import Link from 'next/link';
-import type {ReactNode} from 'react';
+import {Children,cloneElement,isValidElement,type ReactElement,type ReactNode} from 'react';
 import {Button,ButtonLink} from './Primitives';
 
+// Some WebKit versions remove implicit table semantics when CSS switches
+// rows and cells to block layout. Only annotate native table elements.
+const tableRoles:Record<string,string>={thead:'rowgroup',tbody:'rowgroup',tfoot:'rowgroup',tr:'row',th:'columnheader',td:'cell'};
+function preserveTableRoles(nodes:ReactNode):ReactNode{
+ return Children.map(nodes,node=>{
+  if(!isValidElement(node))return node;
+  const element=node as ReactElement<{children?:ReactNode;role?:string;scope?:string}>;
+  if(typeof element.type!=='string'||!Object.hasOwn(tableRoles,element.type))return node;
+  const role=element.props.role??(element.type==='th'&&element.props.scope==='row'?'rowheader':tableRoles[element.type]);
+  return cloneElement(element,{role},['thead','tbody','tfoot','tr'].includes(element.type)?preserveTableRoles(element.props.children):element.props.children);
+ });
+}
+
 export function DataTable({label,children,mobileCards=false}:{label:string;children:ReactNode;mobileCards?:boolean}){
- return <div className={'sc-data-table table-panel'+(mobileCards?' sc-mobile-cards':'')} role="region" aria-label={label} tabIndex={0}><table role="table">{children}</table></div>;
+ return <div className={'sc-data-table table-panel'+(mobileCards?' sc-mobile-cards':'')} role="region" aria-label={label} tabIndex={0}><table role="table" aria-label={label}>{mobileCards?preserveTableRoles(children):children}</table></div>;
 }
 export function FilterBar({children}:{children:ReactNode}){return <div className="sc-filter-bar">{children}</div>;}
 export function SearchBar({query='',placeholder='Cerca',action,children,resetHref,hideSearch=false}:{query?:string;placeholder?:string;action?:string;children?:ReactNode;resetHref?:string;hideSearch?:boolean}){
