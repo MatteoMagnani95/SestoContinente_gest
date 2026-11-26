@@ -36,12 +36,12 @@ test('Registrazione: messaggio di configurazione, verifica live server autentica
  const form=read('components/ApplicationForm.tsx'),actions=read('app/actions.ts'),assist=read('components/CodiceFiscaleAssist.tsx');
  assert.match(form,/e\.preventDefault\(\)/);assert.match(form,/if\(result\.error\)\{setError\(result\.error\);return;/);assert.match(form,/disabled=\{pending\|\|cfBlocked\|\|!legalConfigured\}/);
  assert.match(assist,/checkIdentityAction\(identity\)/);assert.match(assist,/ticket===seq/);assert.match(assist,/notice[\s\S]*'error'/);
- assert.match(actions,/if\(!legal\.configured\)return \{error:/);assert.match(actions,/checkIdentityAction[\s\S]*auth\.getUser\(\)/);assert.match(actions,/if\(cf&&!\['ok','omocodia'\]\.includes\(check\.status\)\)return/);
+ assert.match(actions,/if\(!legal\.configured\)return \{error:/);assert.match(actions,/checkIdentityAction[\s\S]*auth\.getUser\(\)/);assert.match(actions,/if\(cf&&!validaCF\(cf\)\)return/);
 });
 test('Rimozioni: schede principali prive di azioni distruttive dirette, editor separato dal form di salvataggio',()=>{
  for(const f of ['app/gestionale/richieste/page.tsx','app/gestionale/soci/page.tsx','app/gestionale/corsi/page.tsx'])assert.doesNotMatch(read(f),/<RemoveRecord/);
  const editor=read('app/gestionale/moduli/[modulo]/page.tsx');
- assert.match(editor,/<\/form>\s*\{record&&!module\.appendOnly&&<RemoveRecord/);
+ assert.match(editor,/<\/EditForm>\s*\{record&&!module\.appendOnly&&<RemoveRecord/);
  assert.match(editor,/if\(editId\)query=query\.eq\('id',editId\)/);
- assert.match(read('app/gestionale/soci/[id]/page.tsx'),/<\/form><RemoveRecord moduleKey="anagrafiche"/);
+ assert.match(read('app/gestionale/soci/[id]/page.tsx'),/<\/EditForm><RemoveRecord moduleKey="anagrafiche"/);
 });

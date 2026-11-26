@@ -1,4 +1,5 @@
 import {redirect} from 'next/navigation';
+import {statoSingolo} from '@/lib/certificati';
 import Link from 'next/link';
 import {requireUser} from '@/lib/security';
 import {markNotification} from './actions';
@@ -13,7 +14,7 @@ export default async function PersonalArea() {
  const [{data:people},{data:memberships},{data:certs},{data:brevetti},{data:quotes},{data:payments},{data:news},{data:alerts}]=await Promise.all([
   ids.length?supabase.from('persone').select('id,nome,cognome,email,telefono').in('id',ids):Promise.resolve({data:[]}),
   ids.length?supabase.from('adesioni').select('persona_id,stato').in('persona_id',ids):Promise.resolve({data:[]}),
-  ids.length?supabase.from('certificati_medici').select('persona_id,scade_il,idoneita_verificata').in('persona_id',ids).order('scade_il',{ascending:false}):Promise.resolve({data:[]}),
+  ids.length?supabase.from('stato_certificati').select('persona_id,scade_il,idoneita_verificata,stato_certificato,documento_id').in('persona_id',ids).order('creato_il',{ascending:false}):Promise.resolve({data:[]}),
   ids.length?supabase.from('brevetti_allievi').select('persona_id,titolo,scade_il').in('persona_id',ids).limit(50):Promise.resolve({data:[]}),
   ids.length?supabase.from('quote_associative').select('id,persona_id,importo_dovuto,scadenza').in('persona_id',ids).limit(50):Promise.resolve({data:[]}),
   ids.length?supabase.from('pagamenti').select('quota_id,importo').in('persona_id',ids).limit(100):Promise.resolve({data:[]}),
@@ -29,7 +30,7 @@ export default async function PersonalArea() {
  return <article className="panel" key={p.id}><span className="eyebrow">{links?.find(l=>l.persona_id===p.id)?.relazione==='tutore'?'Persona rappresentata':'Profilo personale'}</span>
  <h2>{p.nome} {p.cognome}</h2>
  <p>Adesione: <strong>{memberships?.find(a=>a.persona_id===p.id)?.stato.replaceAll('_',' ')??'Non presente'}</strong></p>
- <p>Certificato: <strong>{cert?`${cert.scade_il} · ${cert.idoneita_verificata?'verificato':'da verificare'}`:'Non registrato'}</strong></p>
+ <p>Certificato: <strong>{cert?`${cert.scade_il} · ${statoSingolo(cert.stato_certificato)}`:'Documento mancante'}</strong> · {cert?.documento_id?<Link href={'/documenti/'+cert.documento_id}>Apri certificato</Link>:<Link href="/area-personale/certificato">Carica certificato</Link>}</p>
  <p>Quota: <strong>{quota?`${formatValue(paid,'importo')} versati su ${formatValue(quota.importo_dovuto,'importo')}`:'Non registrata'}</strong></p>
  <p>Brevetti registrati: <strong>{brevetti?.filter(b=>b.persona_id===p.id).length??0}</strong></p>
  </article>})}</div>

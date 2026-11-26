@@ -25,7 +25,7 @@ export async function updateMemberProfile(form:FormData){
  const {data:previous,error:previousError}=await supabase.from('persone').select('nome,cognome,data_nascita,luogo_nascita,provincia_nascita,stato_nascita,sesso_cf,codice_fiscale,codice_catastale_nascita,cf_omocodia_verificata,cf_override_motivo').eq('id',id).single();
  if(previousError||!previous)redirect(memberUrl(id,'errore'));
  const check=await validaSalvataggioAnagrafica(identityFromForm(form),previous,read(form,'cf_omocodia_verificata')==='on',read(form,'cf_override_motivo'));
- if(check.error)redirect(memberUrl(id,check.error));
+ if(check.error)return {error:'Verifica codice fiscale e dati anagrafici.',field:'codice_fiscale'};
  let changes:Record<string,string|boolean|null>;
  try{
   const nome=read(form,'nome');const cognome=read(form,'cognome');
@@ -46,9 +46,9 @@ export async function updateMemberProfile(form:FormData){
    sesso_cf:read(form,'sesso_cf')||null,codice_catastale_nascita:check.code,
    cf_omocodia_verificata:check.omocodia,cf_override_motivo:check.reason,
    telefono:optional(read(form,'telefono'),30)};
- }catch{redirect(memberUrl(id,'dati'));}
+ }catch(err){return {error:err instanceof Error?err.message:'Controlla i dati inseriti.'};}
  const {error}=await supabase.from('persone').update(changes).eq('id',id).select('id').single();
- if(error)redirect(memberUrl(id,error.code==='23505'?'duplicato':'errore'));
+ if(error)return {error:error.code==='23505'?'Codice fiscale già presente.':'Aggiornamento non riuscito.',field:'codice_fiscale'};
  revalidatePath('/gestionale/soci');
  revalidatePath(`/gestionale/soci/${id}`);
  redirect(memberUrl(id,'salvato'));

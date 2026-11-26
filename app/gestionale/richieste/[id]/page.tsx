@@ -1,3 +1,4 @@
+import Dichiarazioni from '@/components/Dichiarazioni';
 import {isTestApplication} from '@/lib/application-config';
 import RemoveRecord from '@/components/RemoveRecord';
 import Link from 'next/link';
@@ -32,11 +33,12 @@ export default async function Review({params,searchParams}:{params:Promise<{id:s
     {msg && (msg!=='approvata'||r.stato==='approvata') && <p role="status" className={`notice ${['presa','approvata','integrazione','respinta'].includes(msg)?'success':'error'}`}>{msg==='approvata'&&testMode?'Domanda di collaudo approvata. Anagrafica associata nel database: si tratta di una simulazione.':queryMessage(msg)}</p>}
     <div className="review-grid"><section className="panel"><h2>Dati forniti</h2>
       <Row label="Nome" value={`${r.nome} ${r.cognome}`}/><Row label="Data di nascita" value={formatDate(r.data_nascita)}/>
-      <Row label="Comune / luogo di nascita" value={r.luogo_nascita}/><Row label="Provincia e Stato di nascita" value={[r.provincia_nascita,r.stato_nascita].filter(Boolean).join(" · ")}/><Row label="Sesso per CF" value={r.sesso_cf}/><Row label="Codice catastale" value={r.codice_catastale_nascita}/><Row label="Codice fiscale" value={r.codice_fiscale??'Non indicato'}/>
+      <Row label="Comune / luogo di nascita" value={r.luogo_nascita}/><Row label="Provincia e Stato di nascita" value={[r.provincia_nascita,r.stato_nascita].filter(Boolean).join(" · ")}/><Row label="Sesso per CF" value={r.sesso_cf}/><Row label="Codice fiscale" value={r.codice_fiscale??'Non indicato'}/>
       <Row label="Residenza" value={`${r.indirizzo}, ${r.cap} ${r.comune}`}/><Row label="Telefono" value={r.telefono}/>
       <Row label="Tutore" value={r.nome_tutore?`${r.nome_tutore} ${r.cognome_tutore} (${r.parentela_tutore})`:'Non previsto'}/>
       <Row label="Presa visione" value={r.presa_visione?(isTestApplication(r)?'Simulata (collaudo)':'Registrata'):'Non registrata'}/>
       <Row label="Statuto" value={r.flag_statuto?(r.versione_statuto??'Versione mancante'):'Non registrato'}/><Row label="Informativa privacy" value={r.flag_privacy?(r.versione_privacy??'Versione mancante'):'Non registrata'}/>
+      <Dichiarazioni dati={r}/>
       <Row label="Data invio" value={formatDate(r.inviata_il)}/>
       {r.stato==='approvata'&&r.persona_id&&<Link className="button" href={`/comunicazioni/soci/${r.persona_id}`}>Prepara email di benvenuto</Link>}
       {r.nota_pubblica && <div className="notice">Comunicazione al richiedente: {r.nota_pubblica}</div>}

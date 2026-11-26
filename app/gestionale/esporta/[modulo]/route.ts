@@ -22,7 +22,7 @@ export async function GET(_request:Request,{params}:{params:Promise<{modulo:stri
  const lines:string[]=[columns.map(escapeCSV).join(';')];
  for(let offset=0;;offset+=PAGE_SIZE){
   const peopleSorted=['adesioni','iscrizioni_corsi','assegnazioni_istruttori','qualifiche_istruttori','brevetti_allievi','certificati_medici','presenze','assegnazioni_attrezzature','quote_associative','tesseramenti','addebiti_corsi','pagamenti'].includes(module.table);
-  let query=supabase.from(peopleSorted?`gest_elenco_${module.table}`:module.table).select(columns.join(','));
+  let query=supabase.from(modulo==='certificati'?'stato_certificati':peopleSorted?`gest_elenco_${module.table}`:module.table).select(columns.join(','));
   if(peopleSorted||module.table==='persone')query=query.order(peopleSorted?'sort_cognome':'cognome',{nullsFirst:false}).order(peopleSorted?'sort_nome':'nome');
   const {data,error}=await query.order('id',{ascending:true}).range(offset,offset+PAGE_SIZE-1);
   if(error)return new Response('Errore lettura',{status:500});

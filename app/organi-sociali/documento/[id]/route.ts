@@ -1,10 +1,11 @@
+import {createAuthAdmin} from '@/lib/supabase/admin';
 import {NextRequest,NextResponse} from 'next/server';
 import {requireBoard} from '@/lib/security';
 import {convertVerbaleDocx} from '@/lib/cda-pdf';
 import {nomeVerbale,percorsoAnteprima} from '@/lib/cda-documenti';
 export async function GET(req:NextRequest,{params}:{params:Promise<{id:string}>}){
  const {id}=await params;if(!/^[a-f0-9-]{36}$/i.test(id))return new NextResponse('Non trovato',{status:404});
- const {supabase}=await requireBoard();const requested=req.nextUrl.searchParams.get('tipo');const tipo=requested==='pdf'?'pdf':requested==='anteprima'?'anteprima':'docx';
+ const {supabase,user}=await requireBoard();const requested=req.nextUrl.searchParams.get('tipo');const tipo=requested==='pdf'?'pdf':requested==='anteprima'?'anteprima':'docx';
  const {data:current}=await supabase.from('cda_verbali').select('stato,percorso_docx,percorso_pdf,data_consiglio,oggetto').eq('id',id).maybeSingle();
  if(!current)return new NextResponse('Non trovato',{status:404});
  let doc=current;
@@ -20,6 +21,13 @@ export async function GET(req:NextRequest,{params}:{params:Promise<{id:string}>}
  const filename=nomeVerbale(doc.data_consiglio,version??id,tipo);const download=tipo==='docx'||req.nextUrl.searchParams.get('download')==='1';
  const bucket=supabase.storage.from('sesto-cda');
  // Existing final PDFs and original Word files remain private, with short-lived links.
+ if(tipo==='docx'&&!version&&doc.stato==='in_approvazione'){
+  const {data:file}=await bucket.download(path);if(!file)return new NextResponse('Non disponibile',{status:404});
+  const admin=createAuthAdmin();if(!admin)return new NextResponse('Lettura non disponibile',{status:503});
+  const {error}=await admin.rpc('leggi_versione_cda',{p_verbale:id,p_docx:doc.percorso_docx,p_utente:user.id});
+  if(error)return new NextResponse('Lettura non registrata',{status:503});
+  return new NextResponse(file.stream(),{headers:{'Content-Type':file.type,'Content-Disposition':`attachment; filename="${filename}"`,'Cache-Control':'private, no-store'}});
+ }
  if(tipo!=='anteprima'){
   const {data,error}=await bucket.createSignedUrl(path,60,download?{download:filename}:undefined);
   if(error||!data?.signedUrl)return new NextResponse('Non disponibile',{status:404});
@@ -32,6 +40,11 @@ export async function GET(req:NextRequest,{params}:{params:Promise<{id:string}>}
  else{
   const {data:word,error}=await bucket.download(doc.percorso_docx);if(error||!word)return new NextResponse('Word non disponibile',{status:404});
   try{const pdf=await convertVerbaleDocx(Buffer.from(await word.arrayBuffer()),{data:doc.data_consiglio,oggetto:doc.oggetto,bozza:true});body=Uint8Array.from(pdf).buffer;}catch{return new NextResponse('Conversione non riuscita',{status:422});}
+ }
+ if(!version&&doc.stato==='in_approvazione'){
+  const admin=createAuthAdmin();if(!admin)return new NextResponse('Lettura non disponibile',{status:503});
+  const {error}=await admin.rpc('leggi_versione_cda',{p_verbale:id,p_docx:doc.percorso_docx,p_utente:user.id});
+  if(error)return new NextResponse('Lettura non registrata',{status:503});
  }
  return new NextResponse(body,{headers:{'Content-Type':'application/pdf','Content-Disposition':`${download?'attachment':'inline'}; filename="${filename}"`,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'}});
 }

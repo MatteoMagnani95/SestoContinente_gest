@@ -33,7 +33,12 @@ async function salvaVersione(supabase:Awaited<ReturnType<typeof requireStaff>>['
  const {error:docErr}=await bucket.upload(path,buffer,{contentType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',upsert:false});
  if(docErr)return 'storage';
  const {error:pdfErr}=await bucket.upload(percorsoAnteprima(path),pdf,{contentType:'application/pdf',upsert:false});
- return pdfErr?'storage':null;
+ if(pdfErr)return 'storage';
+ try{
+  const finale=await convertVerbaleDocx(buffer,info);
+  const {error}=await bucket.upload(path.replace(/[.]docx$/,'.deliberato.pdf'),finale,{contentType:'application/pdf',upsert:false});
+  return error?'storage':null;
+ }catch{return 'conversione';}
 }
 export async function caricaBozza(form:FormData){
  const {supabase,user}=await requireStaff();
@@ -52,13 +57,13 @@ export async function modificaBozza(form:FormData){
  const doc=form.get('documento');let buffer:Buffer|null;
  if(doc instanceof File&&doc.size>0){buffer=await leggiDocx(doc);}
  else{const {data,error:load}=await supabase.storage.from('sesto-cda').download(row.percorso_docx);buffer=!load&&data?Buffer.from(await data.arrayBuffer()):null;}
- if(!buffer)redirect(`${root}/archivio?msg=documento`);
+ if(!buffer)return {error:'Seleziona un documento Word valido di massimo 3 MB.',field:'documento'};
  const path=`${id}/revisione-${crypto.randomUUID()}.docx`;
  const upload=await salvaVersione(supabase,path,buffer,info);
- if(upload)redirect(`${root}/archivio?msg=${upload}`);
+ if(upload)return {error:'Non è stato possibile salvare o convertire il documento.',field:'documento'};
  const {error:update}=await supabase.rpc('modifica_bozza_cda',{p_verbale:id,p_docx_precedente:previous,p_data:info.data,p_oggetto:info.oggetto,p_tipo:info.tipo,p_docx:path});
- if(update)redirect(`${root}/archivio?msg=conflitto`);
- revalidatePath(root);revalidatePath(`${root}/archivio`);redirect(`${root}/archivio?msg=modificata`);
+ if(update)return {error:'La bozza è stata modificata. Riapri la versione corrente.'};
+ revalidatePath(root);revalidatePath(`${root}/archivio`);redirect(`${root}/archivio?msg=modificata&edit=${id}`);
 }
 export async function avviaApprovazione(form:FormData){
  const {supabase}=await requireStaff();const id=val(form,'verbale_id');if(!uuid.test(id))fail('dati');
@@ -68,6 +73,7 @@ export async function avviaApprovazione(form:FormData){
 }
 async function finalizza(supabase:Awaited<ReturnType<typeof requireBoard>>['supabase'],id:string){
  const {data:verbale,error:load}=await supabase.from('cda_verbali').select('id,percorso_docx,data_consiglio,oggetto,stato').eq('id',id).single();
+ if(verbale?.stato==='approvato')return;
  if(load||!verbale||verbale.stato!=='in_approvazione')fail('documento');
  const {data:word,error:download}=await supabase.storage.from('sesto-cda').download(verbale.percorso_docx);
  if(download||!word)fail('documento');
@@ -81,10 +87,23 @@ async function finalizza(supabase:Awaited<ReturnType<typeof requireBoard>>['supa
 }
 export async function approvaVerbale(form:FormData){
  const {supabase}=await requireBoard();const id=val(form,'verbale_id');if(!uuid.test(id))fail('dati');
- const {data:ready,error}=await supabase.rpc('vota_verbale_cda',{p_verbale:id});
- if(error)fail('voto');
+ const {data:ready,error}=await supabase.rpc('approva_versione_cda',{p_verbale:id,p_docx:val(form,'versione')});
+ if(error)fail('lettura');
  if(ready)await finalizza(supabase,id);
  revalidatePath(root);revalidatePath(`${root}/archivio`);redirect(`${root}?msg=${ready?'approvato':'voto_ok'}`);
+}
+export async function sostituisciVerbale(form:FormData){
+ const {supabase}=await requireStaff(),id=val(form,'verbale_id');
+ if(!uuid.test(id))fail('dati');
+ const {data:v}=await supabase.from('cda_verbali').select('percorso_docx,data_consiglio,oggetto').eq('id',id).single();
+ const buffer=await leggiDocx(form.get('documento'));
+ if(!v||!buffer||v.percorso_docx!==val(form,'versione'))return {field:'documento',error:'Seleziona il nuovo documento e verifica la versione.'};
+ const nuovo=crypto.randomUUID();const path=nuovo+'/bozza.docx';
+ const errore=await salvaVersione(supabase,path,buffer,{data:v.data_consiglio,oggetto:v.oggetto});
+ if(errore)return {field:'documento',error:'Caricamento del documento non riuscito.'};
+ const {error}=await supabase.rpc('sostituisci_verbale',{p_vecchio:id,p_docx:v.percorso_docx,p_nuovo:nuovo});
+ if(error)return {error:'Revisione non salvata. Controlla il quorum e che il verbale sia ancora corrente.'};
+ revalidatePath(root);revalidatePath(root+'/archivio');redirect(root+'?msg=avviata');
 }
 export async function riprovaFinalizzazione(form:FormData){
  const {supabase}=await requireStaff();const id=val(form,'verbale_id');if(!uuid.test(id))fail('dati');

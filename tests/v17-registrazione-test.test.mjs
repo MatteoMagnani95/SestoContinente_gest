@@ -28,7 +28,7 @@ test('Disattivazione esplicita; vecchia allowlist ignorata e nessun valore ambig
 });
 test('Identità dal server, documenti fittizi protetti, tracciatura nelle schermate',()=>{
  const action=read('app/actions.ts'),page=read('app/richiesta/documenti-test/page.tsx');
- assert.match(action,/applicationLegalConfig\(user\.id\)/);assert.match(action,/p_versione_statuto:legal\.statutoVersion/);assert.match(action,/!legal\.testMode&&form\.get\('flag_immagini'\)/);
+ assert.match(action,/applicationLegalConfig\(user\.id\)/);assert.match(action,/p_versione_statuto:legal\.statutoVersion/);assert.match(action,/p_versione_immagini:legal\.testMode\?'TEST-COLLAUDO-1':versioneImmagini/);
  assert.match(action,/isTestApplication\(prior\)!==legal\.testMode/);assert.match(page,/requireUser\(\)/);assert.match(page,/!applicationLegalConfig\(user\.id\)\.testMode\)notFound/);
  for(const p of ['app/richiesta/stato/page.tsx','app/gestionale/richieste/page.tsx','app/gestionale/richieste/[id]/page.tsx'])assert.match(read(p),/isTestApplication\(r\)/);
 });
