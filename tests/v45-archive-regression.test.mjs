@@ -47,7 +47,7 @@ test('Messaggi URL: solo chiavi proprie e stringhe',()=>{
 test('Date visualizzate nel fuso italiano anche in prossimità della mezzanotte',()=>{
  const {formatDate}=load('lib/security.ts',{'next/navigation':{},'@/lib/supabase/server':{}});
  assert.equal(formatDate('2026-11-26T23:30:00Z'),'27/11/2026');
- assert.equal(formatDate('2026-07-01T22:30:00Z'),'2/7/2026');
+ assert.equal(formatDate('2026-07-01T22:30:00Z'),'02/07/2026');
  assert.equal(formatDate('2026-11-26'),'26/11/2026');
  assert.equal(formatDate('2026-02-30'),'—');
  assert.equal(formatDate('invalid'),'—');

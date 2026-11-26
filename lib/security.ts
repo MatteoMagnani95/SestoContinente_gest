@@ -13,7 +13,7 @@ export function formatDate(value: string | null | undefined) {
   const dateOnly=/^\d{4}-\d{2}-\d{2}$/.test(value);
   const date=new Date(dateOnly?`${value}T12:00:00Z`:value);
   if(!Number.isFinite(date.getTime())||(dateOnly&&date.toISOString().slice(0,10)!==value))return '—';
-  return date.toLocaleDateString('it-IT',{timeZone:'Europe/Rome'});
+  return date.toLocaleDateString('it-IT',{timeZone:'Europe/Rome',day:'2-digit',month:'2-digit',year:'numeric'});
 }
 export function queryMessage(search?: string) {
   const values: Record<string,string> = {
