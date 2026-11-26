@@ -1,0 +1,45 @@
+/* F4A — public, authentication and applicant surfaces */
+.sc-public-home{max-width:1120px;margin:0 auto;padding:32px 24px 48px;display:grid;gap:24px}
+.sc-home-hero{display:grid;grid-template-columns:1.55fr 1fr;gap:28px;align-items:stretch;background:var(--sc-white);border:1px solid var(--sc-border);border-radius:var(--sc-radius);padding:32px}
+.sc-home-hero h1{font-size:clamp(34px,4.2vw,48px);line-height:1.15;margin:12px 0;color:var(--sc-navy)}
+.sc-home-lead{font-size:22px;font-weight:650;color:var(--sc-teal-ink);margin:8px 0}
+.sc-home-hero p:not(.eyebrow):not(.sc-home-lead){max-width:60ch;color:var(--sc-muted)}
+.sc-home-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:24px}
+.sc-home-identity{background:linear-gradient(145deg,var(--sc-navy),var(--sc-teal-ink));color:white;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;border-radius:var(--sc-radius);padding:24px;min-height:180px;gap:8px}
+.sc-home-symbol{font-size:72px;color:var(--sc-aqua);line-height:1}
+.sc-home-process{padding:24px;background:white;border:1px solid var(--sc-border);border-radius:var(--sc-radius)}
+.sc-home-process h2{margin:0 0 16px}
+.sc-home-process ol{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin:0;padding:0;list-style:none}
+.sc-home-process li{display:flex;align-items:flex-start;gap:12px;padding:12px;background:var(--sc-surface);border-radius:8px}
+.sc-process-number{display:grid;place-items:center;min-width:34px;height:34px;border-radius:50%;background:var(--sc-navy);color:white;font-weight:700}
+.sc-home-process h3{margin:0;font-size:16px}
+.sc-home-process p{font-size:14px;color:var(--sc-muted);margin:6px 0 0}
+.sc-home-note{display:flex;gap:8px;align-items:center;margin-top:16px!important}
+.sc-auth-shell{padding:16px 20px 40px;display:flex;justify-content:center;align-items:flex-start}
+.sc-auth-panel{width:100%;max-width:480px;padding:28px;display:grid;gap:16px}
+.sc-register-shell .sc-auth-panel{max-width:620px}
+.sc-auth-panel h1{font-size:var(--sc-title);margin:0}
+.sc-auth-panel p{margin:0}
+.sc-auth-form{display:grid;gap:12px;min-width:0}
+.sc-auth-form .edit-fields{display:grid;gap:14px}
+.sc-auth-form label{font-size:15px}
+.sc-auth-form input:not([type=checkbox]){min-height:44px;font-size:16px;width:100%}
+.sc-password-control{display:flex;align-items:stretch;gap:8px;min-width:0}
+.sc-password-control input{flex:1;min-width:0}
+.sc-password-control button{flex:none}
+.sc-auth-recovery{border-top:1px solid var(--sc-border);padding-top:12px}
+.sc-auth-recovery summary{color:var(--sc-teal-ink);font-weight:600;cursor:pointer;min-height:44px;padding-block:10px}
+.sc-auth-recovery form{margin-top:12px}
+.sc-registration-steps{list-style:none;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));padding:0;gap:6px;margin:4px 0}
+.sc-registration-steps li{font-size:12px;color:var(--sc-muted);display:flex;flex-direction:column;align-items:center;text-align:center;gap:5px}
+.sc-registration-steps li span{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--sc-neutral-bg)}
+.sc-registration-steps li[aria-current=step]{font-weight:700;color:var(--sc-teal-ink)}
+.sc-registration-steps li[aria-current=step] span{background:var(--sc-teal-ink);color:white}
+.sc-consent-choice{border-top:1px solid var(--sc-border);padding-top:12px;margin-top:12px;display:grid;gap:8px}
+.sc-consent-label{font-weight:650}
+.sc-auth-panel .check-label,.sc-application .check-label{font-size:15px;min-height:44px;align-items:flex-start;line-height:1.5}
+.sc-auth-panel .check-label input,.sc-application .check-label input{width:22px;height:22px;flex:none}
+.sc-auth-panel .sc-form-section{padding:14px;min-inline-size:0}
+.sc-auth-panel .sc-field-hint{font-size:14px;color:var(--sc-muted)}
+@media(max-width:850px){.sc-home-hero{grid-template-columns:1fr;gap:20px;padding:24px}.sc-home-process ol{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.sc-public-home{padding:16px 12px 32px}.sc-home-hero,.sc-home-process{padding:18px}.sc-home-identity{min-height:130px}.sc-home-actions>*{flex:1 1 100%}.sc-home-process ol{grid-template-columns:1fr}.sc-auth-shell{padding:12px 12px 32px}.sc-auth-panel{padding:20px 16px}.sc-registration-steps{grid-template-columns:repeat(2,minmax(0,1fr))}.sc-registration-steps li{flex-direction:row;text-align:left}.sc-registration-steps li span{flex:none}}

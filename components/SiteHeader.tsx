@@ -23,12 +23,13 @@ export function AreaLinks({access,onNavigate}:{access:NavigationAccess;onNavigat
 export function LogoutButton(){return <form action={logoutAction} data-dirty-ignore><button type="submit" className="sc-header-logout"><Icon name="logout"/> Esci</button></form>;}
 export default function SiteHeader({access,onMenu,menuOpen}:{access:NavigationAccess;onMenu:()=>void;menuOpen:boolean}){
  const path=usePathname()??'/';
+ const authPage=['/accedi','/registrati','/nuova-password'].includes(path);
  return <header className="site-header sc-site-header">
  <button type="button" className="sc-mobile-trigger" aria-label="Apri menu" aria-expanded={menuOpen} aria-controls="sc-mobile-menu" onClick={onMenu}><Icon name="menu"/><span>Menu</span></button>
  <Link href="/" className="brand"><span className="brand-symbol" aria-hidden="true">≈</span><span><strong>SESTO CONTINENTE</strong><small>Gestionale associativo</small></span></Link>
  <span className="sc-header-area">{areaLabel(path,access)}</span>
  <nav className="sc-header-nav" aria-label="Account e aree">
  {access.enabled&&access.personal&&access.unread!==null&&<Link className="sc-header-notifications" href="/area-personale#notifiche" aria-label={`Notifiche: ${access.unread} non lette`}><Icon name="bell"/><span>{access.unread}</span></Link>}
- {access.signedIn?<details className="sc-account-menu" key={path}><summary><Icon name="user"/>Account<Icon name="chevron-down"/></summary><div className="sc-account-panel"><AreaLinks access={access}/><LogoutButton/></div></details>:<div className="sc-guest-links"><AreaLinks access={access}/></div>}
+ {access.signedIn?<details className="sc-account-menu" key={path}><summary><Icon name="user"/>Account<Icon name="chevron-down"/></summary><div className="sc-account-panel"><AreaLinks access={access}/><LogoutButton/></div></details>:<div className="sc-guest-links">{authPage?<Link href="/">Home</Link>:<AreaLinks access={access}/>}</div>}
  </nav></header>;
 }

@@ -15,24 +15,26 @@ const asText = (form: FormData, field: string) => String(form.get(field) ?? '').
 // Le password sono credenziali opache: anche gli spazi sono significativi.
 const passwordText = (form: FormData, field: string) => String(form.get(field) ?? '');
 const go = (path: string, msg: string) => redirect(`${path}?msg=${msg}`);
+// Checkbox assente nel nuovo modulo = scelta negativa; i vecchi client senza marker conservano la semantica storica.
+const imageChoice=(form:FormData)=>{const v=asText(form,'immagini');return form.get('immagini_checkbox')==='1'&&v===''?'no':v;};
 
 export async function registerAction(form: FormData) {
   const email = asText(form, 'email').toLowerCase();
   const password = passwordText(form, 'password');
   if (!email.includes('@') || password.length < 10 || password !== passwordText(form, 'confirm')) {
-    go('/registrati', 'password');
+    return {error:'La password deve avere almeno 10 caratteri e corrispondere alla conferma.',field:'password'};
   }
   const supabase = await createClient();
   const origin = process.env.NEXT_PUBLIC_SITE_URL;
-  if (!origin) go('/registrati', 'registrazione');
-  const legal=informativaRegistrazione(),scelta=asText(form,'immagini');
-  if(!legal.url||form.get('presa_visione')!=='on'||!['','si','no'].includes(scelta))go('/registrati','privacy');
+  if (!origin) return {error:'Registrazione temporaneamente non disponibile. Contatta la segreteria.'};
+  const legal=informativaRegistrazione(),scelta=imageChoice(form);
+  if(!legal.url||form.get('presa_visione')!=='on'||!['','si','no'].includes(scelta))return {error:'Apri l’informativa e conferma la presa visione.',field:'presa_visione'};
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: { data:{presa_visione:'si',versione_privacy:legal.versione,immagini:scelta,versione_immagini:legal.test?'TEST-COLLAUDO-1':versioneImmagini},emailRedirectTo: `${origin}/auth/callback?next=%2Frichiesta%2Fnuova` },
   });
-  if (error) go('/registrati', 'registrazione');
+  if (error) return {error:'Registrazione non completata. Controlla i dati o riprova.'};
   if (data.session) redirect('/smista');
   redirect('/registrati?ok=verifica');
 }
@@ -42,7 +44,7 @@ export async function loginAction(form: FormData) {
   const { error } = await supabase.auth.signInWithPassword({
     email: asText(form, 'email'), password: passwordText(form, 'password'),
   });
-  if (error) go('/accedi', 'credenziali');
+  if (error) return {error:error.code==='email_not_confirmed'?'Verifica prima la tua email. Puoi richiedere un nuovo messaggio nella pagina Accedi.':'Email o password non corrette, oppure accesso temporaneamente non disponibile.'};
   redirect('/smista');
 }
 
@@ -61,15 +63,23 @@ export async function recoverAction(form: FormData) {
       redirectTo: `${origin}/auth/callback?next=%2Fnuova-password`,
     });
   }
-  redirect('/accedi?msg=recupero');
+  return {notice:'Se l’account esiste, riceverai un messaggio per recuperare la password.'};
+}
+
+export async function resendVerificationAction(form:FormData){
+ const email=asText(form,'email');const origin=process.env.NEXT_PUBLIC_SITE_URL;
+ if(!origin||!email.includes('@'))return {error:'Controlla l’indirizzo email.'};
+ const supabase=await createClient();
+ await supabase.auth.resend({type:'signup',email,options:{emailRedirectTo:origin+'/auth/callback?next=%2Frichiesta%2Fnuova'}});
+ return {notice:'Se l’account richiede una verifica, riceverai un nuovo messaggio.'};
 }
 
 export async function newPasswordAction(form: FormData) {
   const password = passwordText(form, 'password');
-  if (password.length < 10 || password !== passwordText(form, 'confirm')) go('/nuova-password','password');
+  if (password.length < 10 || password !== passwordText(form, 'confirm')) return {error:'La password deve avere almeno 10 caratteri e corrispondere alla conferma.',field:'password'};
   const { supabase } = await requireUser();
   const { error } = await supabase.auth.updateUser({ password });
-  if (error) go('/nuova-password', 'database');
+  if (error) return {error:'Password non aggiornata. Richiedi un nuovo collegamento di recupero se necessario.'};
   redirect('/smista');
 }
 
@@ -101,7 +111,7 @@ export async function saveApplicationAction(form: FormData) {
   if(!paese||paese.length>100||(provincia&&!/^[A-Z]{2}$/.test(provincia))||(sesso&&!['M','F'].includes(sesso)))return {error:'Completa Stato, provincia e sesso anagrafico.'};
   if(cf&&!validaCF(cf))return {error:'Controlla il formato e il carattere di controllo del codice fiscale.'};
   if(cf){const check=await verificaAnagrafica(identityFromForm(form));if(check.status==='mismatch')return {error:check.message};}
-  const immagini=asText(form,'immagini');if(!['','si','no'].includes(immagini))return {error:'Scelta foto e video non valida.'};
+  const immagini=imageChoice(form);if(!['','si','no'].includes(immagini))return {error:'Scelta foto e video non valida.'};
   const payload = {
     p_nome: asText(form, 'nome'), p_cognome: asText(form, 'cognome'),
     p_data_nascita: birth, p_luogo_nascita: asText(form,'luogo_nascita'),

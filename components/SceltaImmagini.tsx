@@ -1,7 +1,7 @@
 import {testoImmagini} from '@/lib/scelte';
 export default function SceltaImmagini({value,test=false}:{value?:boolean|null;test?:boolean}){
- return <fieldset><legend>{test?'Simulazione foto e video':'Foto e video'} (facoltativo)</legend><p>{testoImmagini}</p>
- <label className="check-label"><input type="radio" name="immagini" value="si" defaultChecked={value===true}/>Autorizzo</label>
- <label className="check-label"><input type="radio" name="immagini" value="no" defaultChecked={value===false}/>Non autorizzo</label>
- <small>Puoi completare l’adesione con entrambe le scelte e revocare il consenso dal profilo.</small></fieldset>;
+ return <div className="sc-consent-choice"><input type="hidden" name="immagini_checkbox" value="1"/>
+ <p className="sc-consent-label">{test?'Simulazione foto e video':'Foto e video'} (facoltativo)</p>
+ <label className="check-label"><input type="checkbox" name="immagini" value="si" defaultChecked={value===true}/><span>Autorizzo: {testoImmagini}</span></label>
+ <p className="sc-field-hint">La scelta non condiziona la registrazione o l’adesione. Puoi revocarla dal profilo.{value===true?' La casella mostra il consenso già registrato; puoi deselezionarla.':''}</p></div>;
 }

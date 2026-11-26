@@ -6,6 +6,7 @@ import './design-tokens.css';
 import './design-system.css';
 import './navigation.css';
 import './data-ui.css';
+import './public-ui.css';
 export const metadata: Metadata = {
   title: { default: 'Sesto Continente | Gestionale', template: '%s | Sesto Continente' },
   description: 'Area riservata del gestionale associativo Sesto Continente.',
