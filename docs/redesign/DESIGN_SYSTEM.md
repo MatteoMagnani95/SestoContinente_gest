@@ -26,3 +26,6 @@ DataTable, SearchBar, FilterBar, Pagination, SearchableSelect, Drawer/Modal/Conf
 
 ## Fase 4A
 AuthForm, PasswordField, homepage e applicant surfaces in app/public-ui.css; riutilizzo componenti comuni. Vedi [PUBLIC_AUTH.md](PUBLIC_AUTH.md).
+
+## Fase 4B
+Dashboard metric link, quick actions, tab di navigazione e timeline in app/secretariat.css. Vedi [SECRETARIAT.md](SECRETARIAT.md).
