@@ -133,3 +133,33 @@ test('Dichiarazioni: la versione mancante e la scelta obsoleta impediscono il sa
  assert.match((await stale.actions.saveApplicationAction(form({...base,immagini_scelta_attesa:'42'}))).error,/cambiata/);
  assert.equal(stale.calls[0].payload.p_scelta_attesa,'42');
 });
+
+test('Recovery: normalizzazione indirizzo, callback canonico e risposte indistinguibili',async()=>{
+ const old=process.env.NEXT_PUBLIC_SITE_URL;
+ process.env.NEXT_PUBLIC_SITE_URL='https://example.test/';
+ const calls=[],warnings=[],oldWarn=console.warn;console.warn=(...args)=>warnings.push(args);
+ try{
+  const result=async error=>mock({auth:{resetPasswordForEmail:async(email,options)=>{calls.push({email,options});if(error==='network')throw Error('private details');return {error};}}}).actions.recoverAction(form({email:' USER@example.test '}));
+  const ok=await result(null);
+  assert.match(ok.notice,/Se l’account esiste/);
+  assert.match(ok.notice,/stesso browser e dispositivo/);
+  for(const error of [{code:'user_not_found',status:404},{code:'email_address_not_authorized',status:403},{code:'over_email_send_rate_limit',status:429},{code:'unexpected_failure',status:500},'network'])assert.deepEqual(await result(error),ok);
+  for(const call of calls)assert.deepEqual(call,{email:'user@example.test',options:{redirectTo:'https://example.test/auth/callback?next=%2Fnuova-password'}});
+  assert.equal(warnings.length,5);
+  assert.doesNotMatch(JSON.stringify(warnings),/user@example\.test|private details/i);
+  const m=mock({auth:{resetPasswordForEmail:async()=>{throw Error('must not send');}}});
+  assert.equal((await m.actions.recoverAction(form({email:'not-an-email'}))).field,'email');
+  delete process.env.NEXT_PUBLIC_SITE_URL;
+  assert.ok((await m.actions.recoverAction(form({email:'user@example.test'}))).error);
+ }finally{
+  console.warn=oldWarn;
+  if(old===undefined)delete process.env.NEXT_PUBLIC_SITE_URL;else process.env.NEXT_PUBLIC_SITE_URL=old;
+ }
+});
+test('Recovery: alias non canoniche rimandano al dominio configurato, senza invio cross-origin',()=>{
+ const page=read('app/accedi/page.tsx');
+ assert.match(page,/requestHeaders\.get\('host'\)\?\.toLowerCase\(\)!==site\.host\.toLowerCase\(\)/);
+ assert.match(page,/new URL\('\/accedi\?recupero=1',site\.origin\)/);
+ assert.match(page,/canonicalRecoveryUrl\?<.*href=\{canonicalRecoveryUrl\}/);
+ assert.match(page,/open=\{recupero==='1'\|\|undefined\}/);
+});

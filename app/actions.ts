@@ -57,17 +57,28 @@ export async function logoutAction() {
 }
 
 export async function recoverAction(form: FormData) {
-  const email = asText(form, 'email');
-  const supabase = await createClient();
+  const email = asText(form, 'email').toLowerCase();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>254)return {error:'Controlla l’indirizzo email.',field:'email'};
   const origin = process.env.NEXT_PUBLIC_SITE_URL;
-  if(!origin)return {error:'Recupero password temporaneamente non disponibile. Contatta la segreteria.'};
-  if(!email.includes('@'))return {error:'Controlla l’indirizzo email.',field:'email'};
-  if (origin && email) {
-    await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${origin}/auth/callback?next=%2Fnuova-password`,
-    });
+  let callback: URL;
+  try {
+    if(!origin)throw new Error('missing-site-url');
+    const site = new URL(origin);
+    if(site.username||site.password||(site.protocol!=='https:'&&!(site.protocol==='http:'&&['localhost','127.0.0.1','[::1]'].includes(site.hostname))))throw new Error('invalid-site-url');
+    callback=new URL('/auth/callback?next=%2Fnuova-password',site.origin);
+  } catch {
+    return {error:'Recupero password temporaneamente non disponibile. Contatta la segreteria.'};
   }
-  return {notice:'Se l’account esiste e la richiesta è stata accettata, riceverai un messaggio per recuperare la password.'};
+  // Non distinguere account esistenti, mancanti o rifiutati dal provider.
+  // Non registrare indirizzi email, token o il testo dell'errore del provider.
+  try {
+    const supabase=await createClient();
+    const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:callback.href});
+    if(error)console.warn('[auth.recovery] richiesta non completata',{code:typeof error.code==='string'&&/^[a-z0-9_]{1,80}$/.test(error.code)?error.code:'unknown',status:typeof error.status==='number'?error.status:undefined});
+  } catch {
+    console.warn('[auth.recovery] errore di comunicazione con il servizio di autenticazione');
+  }
+  return {notice:'Se l’account esiste e l’invio va a buon fine, riceverai un messaggio per recuperare la password. Controlla la posta indesiderata e apri il collegamento nello stesso browser e dispositivo usati per questa richiesta. Se non ricevi il messaggio, verifica l’indirizzo e riprova dopo qualche minuto oppure contatta la segreteria.'};
 }
 
 export async function resendVerificationAction(form:FormData){
