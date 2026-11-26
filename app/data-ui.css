@@ -18,8 +18,12 @@
 .sc-pagination{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-block:16px;font-size:14px;color:var(--sc-muted);}
 .sc-editor-dialog{border:0;padding:0;color:var(--sc-navy);background:var(--sc-white);box-shadow:0 12px 50px #102b3940;max-width:100%;overflow:auto;overscroll-behavior:contain;}
 .sc-editor-dialog::backdrop{background:rgb(16 43 57 / 55%);}
-.sc-editor-drawer{inset:0 0 0 auto;margin:0;width:min(640px,100%);max-height:100vh;max-height:100dvh;height:100vh;height:100dvh;}
-.sc-editor-modal{width:min(520px,calc(100% - 32px));max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);border-radius:var(--sc-radius);}
+/* One centered, landscape editor for every create/edit workflow. Keep the existing
+   variant names for compatibility; destructive confirmations alone stay compact. */
+.sc-editor-drawer,.sc-editor-modal{position:fixed;inset:0;margin:auto;width:min(1040px,calc(100% - 48px));max-width:calc(100% - 48px);height:fit-content;max-height:calc(100vh - 48px);max-height:calc(100dvh - 48px);border-radius:var(--sc-radius);}
+.sc-editor-modal.sc-editor-confirm{width:min(520px,calc(100% - 48px));}
+.sc-editor-body .sc-editor-columns-3{grid-template-columns:repeat(3,minmax(0,1fr));}
+@media(max-width:1000px){.sc-editor-body .sc-editor-columns-3{grid-template-columns:repeat(2,minmax(0,1fr));}}
 .sc-editor-inner{min-width:0;}
 .sc-editor-header{display:flex;align-items:center;justify-content:space-between;gap:16px;position:sticky;top:0;z-index:2;background:white;padding:16px 24px;border-bottom:1px solid var(--sc-border);}
 .sc-editor-header h2{margin:0;font-size:var(--sc-section-title);overflow-wrap:anywhere;}
@@ -30,9 +34,10 @@
 .sc-editor-body legend{padding:0 6px;font-weight:650;}
 .sc-editor-body input:not([type=checkbox]):not([type=radio]),.sc-editor-body select,.sc-editor-body textarea{width:100%;min-height:44px;font-size:16px;border-color:var(--sc-control-border);}
 .sc-editor-body .form-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+@media(min-width:1001px){.sc-editor-body .form-grid.sc-editor-columns-3{grid-template-columns:repeat(3,minmax(0,1fr));}}
 .sc-editor-body label{min-width:0;}
 .sc-editor-body [aria-invalid=true]{border-color:var(--sc-danger-fg)!important;}
-.sc-editor-body .form-actions{gap:10px;flex-wrap:wrap;}
+.sc-editor-body .form-actions{gap:10px;flex-wrap:wrap;justify-content:flex-end;}
 .sc-editor-body .sc-reference-select{display:grid;gap:5px;min-width:0;}
 .sc-editor-body .sc-field-hint{margin:0;color:var(--sc-muted);font-size:13px;}
 .sc-editor-body .calendar-danger{margin-block:16px;}
