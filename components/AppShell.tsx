@@ -77,7 +77,7 @@ export default function AppShell({access,children}:{access:NavigationAccess;chil
   <div className="sc-mobile-menu-inner">
    <header className="sc-mobile-menu-heading"><h2 id="sc-menu-title">Menu</h2><button type="button" className="sc-icon-button" onClick={()=>closeMenu()} aria-label="Chiudi menu" autoFocus><Icon name="close"/></button></header>
    {staff&&<StaffNav isAdmin={access.admin} idPrefix="mobile" onNavigate={navigateFromMenu}/>}
-   <nav className="sc-mobile-areas" aria-label="Aree e account"><AreaLinks access={access} onNavigate={navigateFromMenu}/>{access.enabled&&access.personal&&access.unread!==null&&<Link href="/area-personale?tab=notifiche" onClick={navigateFromMenu}>Notifiche ({access.unread})</Link>}{access.signedIn&&<LogoutButton/>}</nav>
+   <nav className="sc-mobile-areas" aria-label="Aree e account"><AreaLinks access={access} onNavigate={navigateFromMenu}/>{access.enabled&&<Link href={access.personal?'/area-personale?tab=notifiche':'/notifiche'} onClick={navigateFromMenu}>Notifiche{access.unread!==null?` (${access.unread})`:''}</Link>}{access.signedIn&&<LogoutButton/>}</nav>
   </div>
  </dialog>
  <GlobalCancelButtons/>

@@ -13,7 +13,7 @@ Stato: candidato integrato parzialmente, NO-GO. Le verifiche sorgente non sono e
 | REG-008 | Presenze, note, documenti istruttori | #3 | preservato form presenza esplicita, nota salvata e query materiali scoped; controlli aggiuntivi su lezione/assegnazione/iscrizione | v25, browser istruttore |
 | REG-009 | CSV formula injection | #3 | preservata neutralizzazione | v25 |
 | REG-010 | Recupero password, falso errore login | #5 7493e8d | integrata per intero | v29, v25, scripts/qa-local-auth.mjs |
-| REG-011 | Logout, account, notifiche | #7 f99564f | BLOCCATO: CI ultimo SHA non ancora verificata | account-common-navigation, browser e QA locale |
+| REG-011 | Logout, account, notifiche | #7 f99564f | integrata nel candidato; collaudo integrato da verificare | account-common-navigation, browser e QA locale |
 | REG-012 | Componenti CdA | #8 f136cbd | integrata per intero | cda-componenti-save, browser staff/roles |
 | REG-013 | Pannelli, focus, responsive | #8 f136cbd | integrata per intero | cda-componenti-save, browser pubblici, staff, roles |
 | REG-014 | Deroga istruttori | #6 3.0 | ESCLUSA: estrarre funzionalità e migrazione in ramo funzionale autonomo | v48-course-instructor-override, test DB e UI |
@@ -36,3 +36,6 @@ Il delta originale toccava 28 file. I seguenti sono stati riconciliati senza sos
 
 ### Primo gate del candidato
 CI ordinaria 45900482031 su 0c1ec5a: database success, lint e TypeScript success; 4 test automatici falliti per mock obsoleti delle funzioni calendario in v38/v40. Correzione: caricare helper reali, clock fisso via todayRome, lasciare inalterate le asserzioni di compensazione e conservazione storage; aggiunto test di data impossibile/futura senza consumo transito. Nuovo gate necessario. QA 45900482052 del vecchio SHA non vale per il nuovo candidato.
+
+## Integrazione della PR #7
+Origine f99564fc805aceec089b4bb855b6704b81526db6, CI ordinaria 45900175385 e QA 45900175348 superate, 36 logout effettivi su nove account, Chromium/WebKit, 1440/390 px. Integrazione a tre vie sulla base del candidato 58f627b. Conservati i trigger QA di release, recupero password e account e tutte le asserzioni dei test browser della PR #8. Nessuna migrazione SQL aggiunta. Ripetere i gate sul nuovo candidato nella PR #9 prima di approvarlo. Fase 4 sospesa.

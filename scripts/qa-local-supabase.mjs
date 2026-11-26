@@ -5,7 +5,7 @@ import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import {resolve,join} from 'node:path';
 import {createClient} from '@supabase/supabase-js';
 import {Client} from 'pg';
-import {chromium} from '@playwright/test';
+import {chromium,webkit,expect} from '@playwright/test';
 import {PDFDocument} from 'pdf-lib';
 
 const env=process.env, work=resolve(env.QA_WORK_DIR||'.'), root=resolve('.');
@@ -79,8 +79,42 @@ async function seed(){
   console.log('OK account sintetici e fixture locali');
  }finally{await db.end();}
 }
+// Exercise actual logout, not just visibility. Fresh sessions never revoke the
+// stored sessions used by the remaining QA suite. Only synthetic local accounts.
+async function verifyAccountLogout(accounts){
+ for(const [engine,browserType] of [['chromium',chromium],['webkit',webkit]]){
+  const browser=await browserType.launch();
+  try{
+   for(const [role,a] of Object.entries(accounts)){
+    for(const viewport of [{width:1440,height:900},{width:390,height:844}]){
+     const context=await browser.newContext({baseURL:app.href,viewport});
+     try{
+      const page=await context.newPage();await page.goto('/accedi');
+      await page.locator('input[name=email]').first().fill(a.email);
+      await page.locator('input[name=password]').fill(a.password);
+      await page.getByRole('button',{name:'Accedi',exact:true}).click();
+      await page.waitForURL(u=>!['/accedi','/smista','/'].includes(u.pathname),{timeout:30000});
+      const access=await page.request.get('/notifiche',{maxRedirects:0});
+      assert.equal(access.status(),200,'notifiche non accessibili: '+role);
+      const logout=page.getByRole('button',{name:'Esci dal gestionale',exact:true});
+      await expect(logout).toBeVisible();
+      await expect(logout).toBeInViewport({ratio:1});
+      await logout.click();
+      await page.waitForURL(u=>u.pathname==='/accedi'&&u.searchParams.get('msg')==='uscita',{timeout:30000});
+      await page.goto('/notifiche');
+      await expect(page).toHaveURL(u=>u.pathname==='/accedi');
+      await expect(logout).toHaveCount(0);
+      console.log('OK logout locale '+engine+' '+role+' '+viewport.width);
+     }finally{await context.close();}
+    }
+   }
+  }finally{await browser.close();}
+ }
+}
+
 async function sessions(){
  const accounts=JSON.parse(await readFile(accountFile,'utf8'));
+ await verifyAccountLogout(accounts);
  const browser=await chromium.launch();
  try{
   for(const [role,a] of Object.entries(accounts)){

@@ -85,3 +85,12 @@
     padding-inline-end: max(16px, env(safe-area-inset-right));
   }
 }
+
+/* Account essentials must remain reachable regardless of role and viewport. */
+.sc-direct-logout{flex:none;margin:0;}
+.sc-direct-logout .sc-header-logout{min-height:44px;padding:6px 10px;border:1px solid #7da3ae;border-radius:8px;color:white;white-space:nowrap;}
+.sc-direct-logout .sc-header-logout:hover{background:#ffffff18;}
+.sc-direct-logout .sc-header-logout .sc-icon{flex:none;width:18px;height:18px;}
+.sc-account-panel{max-height:min(70vh,calc(100dvh - 90px));overflow-y:auto;overscroll-behavior:contain;}
+@media(max-width:1000px){.sc-direct-logout .sc-header-logout{padding:6px 8px;}.sc-site-header .brand{min-width:0;}.sc-site-header .brand>span:last-child{min-width:0;}}
+@media(max-width:360px){.sc-direct-logout .sc-header-logout .sc-icon{display:none;}.sc-direct-logout .sc-header-logout{padding:6px;}}

@@ -4,7 +4,7 @@ on:
   push:
     branches: ['release/gestionale-consolidato']
   pull_request:
-    branches: ['main', 'feature/gestionale-2.0-redesign']
+    branches: ['main', 'feature/gestionale-2.0-redesign', 'release/gestionale-consolidato']
     paths:
       - '.github/workflows/qa-supabase.yml'
       - 'scripts/qa-local-supabase.mjs'
@@ -19,6 +19,7 @@ on:
       - 'components/**'
       - 'lib/**'
       - 'tests/browser/**'
+      - 'docs/redesign/PAGE_REQUIREMENTS.md'
       - 'playwright.config.mjs'
       - 'next.config.ts'
       - 'package.json'
@@ -29,9 +30,9 @@ permissions:
   contents: read
 jobs:
   local-qa:
-    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/release/gestionale-consolidato' || github.head_ref == 'release/gestionale-consolidato' || github.head_ref == 'feature/gestionale-2.0-redesign' || github.head_ref == 'fix/password-recovery-login'
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/release/gestionale-consolidato' || github.head_ref == 'release/gestionale-consolidato' || github.head_ref == 'feature/gestionale-2.0-redesign' || github.head_ref == 'fix/password-recovery-login' || github.head_ref == 'fix/account-common-navigation'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       QA_ISOLATED_ENV: 'true'
       SESTO_TEST_MODE: 'true'

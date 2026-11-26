@@ -9,7 +9,7 @@ export function AreaLinks({access,onNavigate}:{access:NavigationAccess;onNavigat
  if(!access.signedIn)return <><Link href="/accedi" onClick={onNavigate}>Accedi</Link><Link href="/registrati" onClick={onNavigate}>Richiedi adesione</Link></>;
  if(!access.enabled)return <Link href="/accedi" onClick={onNavigate}>Accedi nuovamente</Link>;
  return <>
- {homeFor(access)==='/smista'&&<Link href={homeFor(access)} onClick={onNavigate}>Continua la domanda</Link>}
+ <Link href={homeFor(access)} onClick={onNavigate}>{homeFor(access)==='/smista'?'Continua la domanda':'La mia home'}</Link>
  {access.staff&&<Link href="/gestionale" onClick={onNavigate}>Gestionale</Link>}
  {access.personal&&<Link href="/area-personale" onClick={onNavigate}>Area personale</Link>}
  {access.member&&<Link href="/area-soci" onClick={onNavigate}>Area soci</Link>}
@@ -18,9 +18,10 @@ export function AreaLinks({access,onNavigate}:{access:NavigationAccess;onNavigat
  <Link href="/richiesta/stato" onClick={onNavigate}>La mia domanda</Link>
  <Link href="/documenti" onClick={onNavigate}>Documenti</Link>
  <Link href="/area-personale/profilo" onClick={onNavigate}>Il mio profilo e consensi</Link>
+ <Link href="/nuova-password" onClick={onNavigate}>Cambia password</Link>
  </>;
 }
-export function LogoutButton(){return <form action={logoutAction} data-dirty-ignore><button type="submit" className="sc-header-logout"><Icon name="logout"/> Esci</button></form>;}
+export function LogoutButton({direct=false}:{direct?:boolean}={}){return <form action={logoutAction} data-dirty-ignore className={direct?'sc-direct-logout':undefined}><button type="submit" className="sc-header-logout" aria-label={direct?'Esci dal gestionale':undefined}><Icon name="logout"/> Esci</button></form>;}
 export default function SiteHeader({access,onMenu,menuOpen}:{access:NavigationAccess;onMenu:()=>void;menuOpen:boolean}){
  const path=usePathname()??'/';
  const authPage=['/accedi','/registrati','/nuova-password'].includes(path);
@@ -29,7 +30,9 @@ export default function SiteHeader({access,onMenu,menuOpen}:{access:NavigationAc
  <Link href="/" className="brand"><span className="brand-symbol" aria-hidden="true">≈</span><span><strong>SESTO CONTINENTE</strong><small>Gestionale associativo</small></span></Link>
  <span className="sc-header-area">{areaLabel(path,access)}</span>
  <nav className="sc-header-nav" aria-label="Account e aree">
- {access.enabled&&access.personal&&access.unread!==null&&<Link className="sc-header-notifications" href="/area-personale?tab=notifiche" aria-label={`Notifiche: ${access.unread} non lette`}><Icon name="bell"/><span>{access.unread}</span></Link>}
+ {access.enabled&&<Link className="sc-header-notifications" href={access.personal?'/area-personale?tab=notifiche':'/notifiche'} aria-label={access.unread===null?'Notifiche':`Notifiche: ${access.unread} non lette`}><Icon name="bell"/><span>{access.unread??'—'}</span></Link>}
  {access.signedIn?<details className="sc-account-menu" key={path}><summary><Icon name="user"/>Account<Icon name="chevron-down"/></summary><div className="sc-account-panel"><AreaLinks access={access}/><LogoutButton/></div></details>:<div className="sc-guest-links">{authPage?<Link href="/">Home</Link>:<AreaLinks access={access}/>}</div>}
- </nav></header>;
+ </nav>
+ {access.signedIn&&<LogoutButton direct/>}
+ </header>;
 }

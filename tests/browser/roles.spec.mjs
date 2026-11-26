@@ -18,6 +18,9 @@ test('Viste e navigazione per ruolo sintetico, solo lettura',async({page},info)=
   for(const size of [{width:320,height:568},{width:390,height:844},{width:768,height:1024},{width:844,height:390},{width:1280,height:800}]){
    await page.setViewportSize(size);
    expect(await page.evaluate(()=>document.documentElement.scrollWidth),role+' '+path+' '+size.width).toBeLessThanOrEqual(size.width+1);
+   const logout=page.getByRole('button',{name:'Esci dal gestionale',exact:true});
+   await expect(logout).toBeVisible();
+   await expect(logout).toBeInViewport({ratio:1});
   }
   await page.setViewportSize({width:390,height:844});
   await page.locator('.sc-mobile-trigger').click();

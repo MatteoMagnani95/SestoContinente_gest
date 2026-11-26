@@ -61,3 +61,6 @@ Snapshot 2026-11-26. Stato: NO-GO al rilascio, nessuna integrazione applicativa 
 - PR7: nuovo SHA f99564fc805aceec089b4bb855b6704b81526db6, nessuna CI PR disponibile al primo controllo; non integrare fino a verifica completa. Conflitti previsti: workflow QA, roles.spec.mjs.
 - Workflow verifica ordinaria e QA locale ora abilitati sul ramo release (push e PR), senza deployment. Aprire al massimo una PR in bozza verso main come veicolo CI, senza merge; sarà la stessa PR finale quando i gate sono superati. Non chiudere PR sorgenti finché non è verificata la copertura.
 - F4 3.0 resta bloccata. Non importare il release nel redesign fino al gate e alla decisione sulla deroga istruttori.
+
+## Integrazione della PR #7
+Origine f99564fc805aceec089b4bb855b6704b81526db6, CI ordinaria 45900175385 e QA 45900175348 superate, 36 logout effettivi su nove account, Chromium/WebKit, 1440/390 px. Integrazione a tre vie sulla base del candidato 58f627b. Conservati i trigger QA di release, recupero password e account e tutte le asserzioni dei test browser della PR #8. Nessuna migrazione SQL aggiunta. Ripetere i gate sul nuovo candidato nella PR #9 prima di approvarlo. Fase 4 sospesa.

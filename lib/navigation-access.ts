@@ -18,6 +18,6 @@ export const getNavigationAccess=cache(async():Promise<NavigationAccess>=>{
  const allowed=new Set(roles.error?[]:(roles.data??[]).map(r=>r.ruolo));
  const admin=allowed.has('amministratore'),staff=admin||allowed.has('segreteria');
  const personal=!request.error&&!links.error&&(request.data?.stato==='approvata'||(links.count??0)>0);
- const alerts=personal?await supabase.from('notifiche').select('id',{head:true,count:'exact'}).eq('utente_id',user.id).is('letta_il',null):null;
+ const alerts=await supabase.from('notifiche').select('id',{head:true,count:'exact'}).eq('utente_id',user.id).is('letta_il',null);
  return {signedIn:true,enabled:true,staff,admin,instructor:allowed.has('istruttore'),board:staff||allowed.has('consigliere_cda'),personal,member:!member.error&&member.data===true,unread:alerts&&!alerts.error?alerts.count:null};
 });
