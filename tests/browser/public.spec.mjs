@@ -198,3 +198,33 @@ test('Autenticazione: nomi accessibili distinti, etichette e reflow equivalente 
  await expect(page.getByRole('button',{name:'Mostra password',exact:true})).toHaveCount(1);
  await expect(page.getByRole('button',{name:'Mostra conferma password',exact:true})).toHaveCount(1);
 });
+
+test('Sicurezza HTTP: header delle pagine e risposte riservate non memorizzabili',async({request})=>{
+ for(const path of ['/','/accedi','/registrati','/area-personale','/documenti/'+syntheticId,'/organi-sociali/documento/'+syntheticId,'/gestionale/importazione/modello?tipo=soci']){
+  const response=await request.get(path,{maxRedirects:0});
+  const headers=response.headers();
+  expect(headers['x-content-type-options'],path).toBe('nosniff');
+  expect(headers['x-frame-options'],path).toBe('DENY');
+  expect(headers['referrer-policy'],path).toBe('no-referrer');
+  expect(headers['content-security-policy'],path).toContain("frame-ancestors 'none'");
+  expect(headers['cache-control'],path).toContain('no-store');
+  expect(headers['x-powered-by'],path).toBeUndefined();
+ }
+});
+test('Endpoint riservati aggiuntivi e callback senza codice non divulgano dati né redirigono fuori sito',async({request,baseURL})=>{
+ for(const path of ['/organi-sociali/documento/'+syntheticId+'?tipo=pdf','/organi-sociali/documento/'+syntheticId+'?tipo=anteprima','/gestionale/importazione/modello?tipo=soci','/gestionale/importazione/modello?tipo=corsi']){
+  const response=await request.get(path,{maxRedirects:0});
+  expect([303,307,308]).toContain(response.status());
+  const location=new URL(response.headers().location,baseURL);
+  expect(location.origin).toBe(new URL(baseURL).origin);
+  expect(location.pathname).toBe('/accedi');
+ }
+ for(const target of ['https://example.invalid','//example.invalid','/\\example.invalid','/nuova-password']){
+  const response=await request.get('/auth/callback?next='+encodeURIComponent(target),{maxRedirects:0});
+  expect([303,307,308]).toContain(response.status());
+  const location=new URL(response.headers().location,baseURL);
+  expect(location.origin).toBe(new URL(baseURL).origin);
+  expect(location.pathname).toBe('/accedi');
+  expect(location.searchParams.get('msg')).toBe(target==='/nuova-password'?'recupero_scaduto':'verifica');
+ }
+});
