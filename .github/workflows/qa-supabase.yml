@@ -2,7 +2,7 @@ name: QA Supabase locale (isolato)
 on:
   workflow_dispatch:
   pull_request:
-    branches: ['main']
+    branches: ['main', 'feature/gestionale-2.0-redesign', 'release/gestionale-consolidato']
     paths:
       - '.github/workflows/qa-supabase.yml'
       - 'scripts/qa-local-supabase.mjs'
@@ -17,6 +17,8 @@ on:
       - 'components/**'
       - 'lib/**'
       - 'tests/browser/**'
+      - 'docs/redesign/REGRESSION_TRACKER.md'
+      - 'docs/redesign/UI_UX_3.0_TRACKER.md'
       - 'playwright.config.mjs'
       - 'next.config.ts'
       - 'package.json'
@@ -27,7 +29,7 @@ permissions:
   contents: read
 jobs:
   local-qa:
-    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'feature/gestionale-2.0-redesign'
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'feature/gestionale-2.0-redesign' || github.head_ref == 'feature/gestionale-3.0-ui-ux'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:

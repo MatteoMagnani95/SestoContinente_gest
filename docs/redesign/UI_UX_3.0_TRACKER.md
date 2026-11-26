@@ -6,8 +6,8 @@ Data: 26/11/2026. Baseline produzione e HEAD 2.0: `20ae6fcceb5307d58920aa1527a83
 |---|---|---|
 | 1 — Fondazioni | CI superata | Commit 7b39eb3; run 45897134510 success (lint, TS, static, build, browser, audit, integrazione DB effimero). Collaudo visuale autenticato manuale aperto. |
 | 2 — AppShell | CI superata | Commit b343311; run 45897856873, entrambi i job success. Browser autenticato manuale aperto. |
-| 3 — Centro operativo e segreteria | Implementato; gate da verificare | Dashboard, Nereia, archivi, scheda socio, form, navigazione contestuale. |
-| 4 — Didattica e impianti | Non iniziato | Corsi, calendario, piscine |
+| 3 — Centro operativo e segreteria | Implementato; CI ordinaria verde; gate esteso aperto | Commit 8c2a313, run 45899245776: 258 test automatici, 66 browser pubblici, DB effimero success. QA autenticata e coordinamento release richiesti. |
+| 4 — Didattica e impianti | BLOCCATA — non avviata | Coordinamento con release/gestionale-consolidato e gate esteso F3 obbligatori; vedi REGRESSION_TRACKER.md. |
 | 5 — Operazioni associative | Non iniziato | Incassi, attrezzature, eventi, documenti, organi sociali, admin |
 | 6 — Aree utente e mobile | Non iniziato | Area personale, istruttori, login, responsive, Nereia |
 | 7 — Collaudo e rilascio | Non iniziato | Preview isolata, verifica autorizzazioni e regressioni |
@@ -151,3 +151,6 @@ Ruoli indicativi dal codice di navigazione e dalle guardie 2.0; la verifica di a
 
 ## Gate F3 — regressioni di integrazione
 - Run 45898473176 sul commit concorrente 5491c14: 248 test statici passati, 4 falliti; integrazione DB non superata (trigger deroga non installato nel setup CI). Run F3 45898862122 in coda al controllo iniziale. Corretti setup CI effimero (migrazione successiva al pacchetto 2.0), inventario azioni staff, test disabled con motivo, mock qualifiche/incarichi e test di deroga positiva/negativa; documentata migrazione e aggiunta verifica schema fail-fast. Nessuna modifica alle regole applicative, alla migrazione SQL o al database reale. F4 non avviata fino a esito del gate aggiornato.
+
+## Protocollo anti-regressione vincolante — 26/11/2026
+Il documento [REGRESSION_TRACKER.md](./REGRESSION_TRACKER.md) integra e prevale sulle precedenti istruzioni di avanzamento del master 3.0: nessuna fase successiva senza sincronizzazione delle sole correzioni approvate dal ramo release/gestionale-consolidato e gate esteso verde sul commit esatto. Mantiene tutti i mockup e il lavoro F1–F3. Il commit 8c2a313 ha superato la CI ordinaria 45899245776 (entrambi i job success). I 66 test browser sono pubblici/non autenticati: non equivalgono a matrice dei ruoli. La F4 non è stata committata, né iniziata sul ramo. Nessun merge, pubblicazione o SQL produzione. Workflow QA locale esteso alla PR 3.0; verifiche aggiuntive logout desktop/mobile per ogni account sintetico prima di generare le sessioni riutilizzabili. Il gate resta NO-GO fino a risultati effettivi e coordinamento.

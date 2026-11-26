@@ -86,13 +86,36 @@ async function sessions(){
   for(const [role,a] of Object.entries(accounts)){
    const context=await browser.newContext({baseURL:app.href});
    try{
-    const page=await context.newPage();await page.goto('/accedi');
-    await page.locator('input[name=email]').first().fill(a.email);
-    await page.locator('input[name=password]').fill(a.password);
-    await page.getByRole('button',{name:'Accedi',exact:true}).click();
-    await page.waitForURL(u=>!['/accedi','/smista','/'].includes(u.pathname),{timeout:30000});
-    const access=await page.request.get('/richiesta/stato',{maxRedirects:0});
-    assert.equal(access.status(),200,'sessione non valida: '+role);
+    const page=await context.newPage();
+    const loginUI=async()=>{
+     await page.goto('/accedi');
+     await page.locator('input[name=email]').first().fill(a.email);
+     await page.locator('input[name=password]').fill(a.password);
+     await page.getByRole('button',{name:'Accedi',exact:true}).click();
+     await page.waitForURL(u=>!['/accedi','/smista','/'].includes(u.pathname),{timeout:30000});
+     const access=await page.request.get('/richiesta/stato',{maxRedirects:0});
+     assert.equal(access.status(),200,'sessione non valida: '+role);
+    };
+    // Each logout has its own freshly issued session. Do not revoke a storage state
+    // that other Playwright projects will reuse. Test only synthetic local accounts.
+    for(const viewport of [{width:1440,height:900},{width:390,height:844}]){
+     await page.setViewportSize(viewport);
+     await loginUI();
+     if(viewport.width>1000){
+      const menu=page.locator('.sc-account-menu');
+      await menu.locator('summary').click();
+      await menu.getByRole('button',{name:'Esci',exact:true}).click();
+     }else{
+      await page.locator('.sc-mobile-trigger').click();
+      const menu=page.getByRole('dialog',{name:'Menu'});
+      await menu.getByRole('button',{name:'Esci',exact:true}).click();
+     }
+     await page.waitForURL(u=>u.pathname==='/accedi'&&u.searchParams.get('msg')==='uscita',{timeout:30000});
+     const protectedPage=await page.request.get('/richiesta/stato',{maxRedirects:0});
+     assert.ok([301,302,303,307,308].includes(protectedPage.status()),'accesso ancora attivo dopo logout: '+role+' '+viewport.width);
+     console.log('OK logout locale '+role+' '+viewport.width);
+    }
+    await loginUI();
     await context.storageState({path:join(work,role+'.json')});
     console.log('OK sessione locale '+role);
    }finally{await context.close();}
