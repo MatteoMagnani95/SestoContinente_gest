@@ -45,3 +45,10 @@ Snapshot 2026-11-26. Stato: NO-GO al rilascio, nessuna integrazione applicativa 
 - [x] Analizzate sovrapposizioni dei file e dipendenze.
 - [ ] Integrazione baseline e fix (fase successiva).
 - [ ] Collaudo complessivo e PR unica.
+
+## Checkpoint coordinamento anti-regressione — 26 novembre, aggiornamento successivo
+- PR #5, SHA 7493e8d11c4bf1466ef96ca73100950f7a0769fa: entrambe le CI 45898643203 e 45898643074 completate con successo.
+- PR #8, nuovo SHA f136cbd6dcd846a3bc5d26f44fa566e9eb2fee0b: CI 45899125174 completata con successo. Ora include anche pannelli centrati orizzontali; verificare compatibilità con il 3.0 senza imporne il layout.
+- PR #7, SHA d914e28a38245079e94b9e37eb5d17c0a0af218f: 237/238 test superati; fallimento inventario route in tests/v43-release-gates.test.mjs, route mancante app/notifiche/page.tsx. Build e browser saltati. Correggere inventario reale e rifare tutti i gate, senza indebolire il test.
+- PR #6, SHA 5205ba294171134360c3280beb2be7a787644e08: verificati il documento docs/redesign/REGRESSION_TRACKER.md con REG-001–015 e il blocco F4; run 45899921780 e 45899921809 in corso al rilevamento. F4 resta bloccata fino a gate esteso verde e sincronizzazione con release funzionale approvata. Il registro deve conservare i test comportamentali di ogni correzione, anche dopo adeguamenti di layout.
+- Il ramo release contiene ancora solo documentazione rispetto a main: nessuna approvazione implicita all'importazione nel 3.0. Prossimo passo: integrare baseline 2.0 e patch verdi sul release, tenere PR7 bloccata e richiedere estrazione indipendente della deroga istruttori. Nessun merge su main, modifica DB produzione o deploy.
