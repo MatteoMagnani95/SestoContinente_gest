@@ -82,7 +82,8 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  }
  const {q='',msg='',p='1',corsia,inizio,fine,edit,stato}=await searchParams;
  const feedback=msg==='corsia_occupata'&&modulo==='prenotazioni'?bookingConflictText(corsia,inizio,fine):status[msg];
- const page=Math.min(100,Math.max(1,Number.parseInt(p,10)||1));
+ const editId=edit&&/^[0-9a-f-]{36}$/i.test(edit)?edit:null;
+ const page=editId?1:Math.min(100,Math.max(1,Number.parseInt(p,10)||1));
  const perPage=30;
  const personViews=new Set(['adesioni', 'iscrizioni_corsi', 'assegnazioni_istruttori', 'qualifiche_istruttori', 'brevetti_allievi', 'certificati_medici', 'presenze', 'assegnazioni_attrezzature', 'quote_associative', 'saldi_quote', 'saldi_corsi', 'tesseramenti', 'addebiti_corsi']);
  const personSorted=personViews.has(module.table);
@@ -92,14 +93,13 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  let query=supabase.from(medical?'stato_certificati':personSorted?`gest_elenco_${module.table}`:module.table).select('*',{count:'exact'});
  if(medical&&stato&&Object.hasOwn(statiCertificato,stato))query=query.eq('stato_certificato',stato);
  const searchField=module.fields.find(f=>f.type==='text' || (!f.type&&f.name!=='codice_fiscale'));
- const safeSearch=q.trim().slice(0,80).replace(/[%_\\]/g,'');
- if(safeSearch&&(personSorted||module.table==='persone')){const cleaned=safeSearch.replace(/[(),.]/g,' ').trim();if(cleaned)query=query.or(`${personSorted?'sort_cognome':'cognome'}.ilike.%${cleaned}%,${personSorted?'sort_nome':'nome'}.ilike.%${cleaned}%`);}
+ const safeSearch=editId?'':q.trim().slice(0,80).replace(/[%_\\]/g,'');
+ if(safeSearch&&(personSorted||medical||module.table==='persone')){const cleaned=safeSearch.replace(/[(),.]/g,' ').trim();if(cleaned)query=query.or(`${personSorted||medical?'sort_cognome':'cognome'}.ilike.%${cleaned}%,${personSorted||medical?'sort_nome':'nome'}.ilike.%${cleaned}%`);}
  else if(safeSearch&&searchField)query=query.ilike(searchField.name,`%${safeSearch}%`);
- const editId=edit&&/^[0-9a-f-]{36}$/i.test(edit)?edit:null;
  if(editId)query=query.eq('id',editId);
- const primary=personSorted?'sort_cognome':module.table==='persone'?'cognome':module.fields.find(f=>['nome','titolo','codice','tipo'].includes(f.name))?.name??module.order??'id';
+ const primary=personSorted||medical?'sort_cognome':module.table==='persone'?'cognome':module.fields.find(f=>['nome','titolo','codice','tipo'].includes(f.name))?.name??module.order??'id';
  query=query.order(primary,{ascending:true,nullsFirst:false});
- if(personSorted||module.table==='persone')query=query.order(personSorted?'sort_nome':'nome',{ascending:true});
+ if(personSorted||medical||module.table==='persone')query=query.order(personSorted||medical?'sort_nome':'nome',{ascending:true});
  const {data,error,count}=await query.order('id',{ascending:true}).range((page-1)*perPage,page*perPage-1);
  const refs=[...new Set(module.fields.map(f=>f.ref?.table).filter((v):v is string=>Boolean(v)))];
  const references:Record<string,Row[]>={};
