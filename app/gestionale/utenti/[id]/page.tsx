@@ -23,7 +23,7 @@ export default async function EditAccount({params,searchParams}:{params:Promise<
  const protectedAccount=id===user.id||a.ruoli.includes('amministratore');const configured=authAdminConfigured(),removed=Boolean(a.rimosso_il),disabled=Boolean(a.bloccato_fino&&new Date(a.bloccato_fino)>new Date());
  const historical=(deps??[]).some((d:{tabella:string})=>!['ruoli_utente','collegamenti_persone'].includes(d.tabella));
  return <><Link href="/gestionale/utenti" className="back-link">← Torna agli utenti</Link><div className="page-intro"><p className="eyebrow">Gestione account</p><h1>{[a.cognome,a.nome].filter(Boolean).join(' ')||a.email||'Account rimosso'}</h1><p>{a.email??'—'} · {accountState(a)}</p></div>
- {msg&&<p className="notice" role="status">{accountMessages[msg]??accountMessages.errore}</p>}
+ {msg&&<p className="notice" role="status">{typeof msg==='string'&&Object.hasOwn(accountMessages,msg)?accountMessages[msg]:accountMessages.errore}</p>}
  <section className="panel"><h2>Informazioni</h2><p>Creato: {formatDate(a.creato_il)} · Email verificata: {formatDate(a.confermato_il)} · Ultimo accesso: {formatDate(a.ultimo_accesso)}</p><details><summary>Identificativo tecnico account</summary><p className="tiny muted">UID: {a.id}</p></details></section>
  {!configured&&<p className="notice warning">Chiave Auth amministrativa non configurata su Vercel.</p>}
  {protectedAccount&&<p className="notice warning">Account protetto. Per bloccare o rimuovere un altro amministratore occorre prima revocarne il ruolo. Non puoi operare sul tuo account da questa scheda.</p>}

@@ -122,7 +122,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  const scopedEdition=editionId&&UUID_RE.test(editionId)&&module.fields.some(f=>f.name==='edizione_id')?editionId:'';
  const dateColumn=modulo==='attrezzature'?'prossima_revisione':['certificati','tesseramenti','brevetti'].includes(modulo)?'scade_il':null;
  const ui=moduleUi[modulo];
- const feedback=msg==='corsia_occupata'&&modulo==='prenotazioni'?bookingConflictText(corsia,inizio,fine):status[msg];
+ const feedback=msg==='corsia_occupata'&&modulo==='prenotazioni'?bookingConflictText(corsia,inizio,fine):Object.hasOwn(status,msg)?status[msg]:undefined;
  const editId=edit&&UUID_RE.test(edit)?edit:null;
  if(modulo==='calendario'&&editId)redirect(`/gestionale/calendario-visivo/${editId}`);
  if(modulo==='calendario'&&nuovo==='1')redirect('/gestionale/calendario-visivo?nuovo=1'+(scopedPool?'&piscina='+scopedPool:'')+(scopedEdition?'&edizione='+scopedEdition:''));

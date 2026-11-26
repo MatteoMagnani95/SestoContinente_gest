@@ -83,7 +83,7 @@ export default async function Incassi({searchParams}:{searchParams:Promise<{tab?
   <div className="page-intro"><p className="eyebrow">Segreteria · Contabilità</p><h1>Incassi e saldi</h1>
    <p>Versamenti associativi e corsi, saldi aggiornati dal database e contabilizzazione automatica.</p></div>
   <div className="notice warning">Le registrazioni sono definitive e producono un movimento contabile. Verifica la ricezione del pagamento prima della conferma.</div>
-  {p.msg&&feedback[p.msg]&&<p role="status" className={`notice ${p.msg==='salvato'?'success':'warning'}`}>{feedback[p.msg]}</p>}
+  {typeof p.msg==='string'&&Object.hasOwn(feedback,p.msg)&&<p role="status" className={`notice ${p.msg==='salvato'?'success':'warning'}`}>{feedback[p.msg]}</p>}
   <form className="panel payment-filters" action="/gestionale/incassi" method="get">
    <label>Tipologia<select name="tab" defaultValue={tab}><option value="quota">Quote associative</option><option value="corso">Quote corsi</option></select></label>
    <label>Stagione<select name="stagione" defaultValue={selectedSeason} required><option value="">Seleziona stagione…</option>{(seasons??[]).map(s=><option key={s.id} value={s.id}>{s.nome}{s.attiva?' (attiva)':''}</option>)}</select></label>

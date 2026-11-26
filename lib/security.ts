@@ -37,7 +37,7 @@ export function queryMessage(search?: string) {
     respinta:'Domanda respinta.',
     recupero:'Se l’account esiste, riceverai un messaggio per recuperare la password.',
   };
-  return search ? (values[search] ?? '') : '';
+  return typeof search==='string'&&Object.hasOwn(values,search)?values[search]:'';
 }
 export async function requireUser() {
   const supabase = await createClient();
