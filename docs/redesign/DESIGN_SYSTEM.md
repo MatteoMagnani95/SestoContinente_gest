@@ -32,3 +32,6 @@ Dashboard metric link, quick actions, tab di navigazione e timeline in app/secre
 
 ## Fase 4C
 Riutilizzati DataTable mobileCards, SearchableSelect, Drawer/ConfirmDialog, EditForm, MetricCard, StatusBadge e tab F4B. CourseStudentPicker e CourseLessonFields con input contestuali; LessonComposer con riordino da tastiera. Vedi [COURSES.md](COURSES.md).
+
+## Fase 4D
+Calendario in app/calendar-ui.css, controlli con PageHeader/Drawer, viste con etichette, preflight condiviso CourseLanePicker, BookingConflictPreview, CourseScheduleFields; riuso DataTable mobileCards e SearchableSelect. Vedi [CALENDAR.md](CALENDAR.md).
