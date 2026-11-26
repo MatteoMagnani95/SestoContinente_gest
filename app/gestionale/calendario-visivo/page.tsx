@@ -81,7 +81,7 @@ export default async function CalendarPage({searchParams}:{searchParams:Promise<
  </section>
  {!lessonReadFailed&&<>
  {!visible.length&&<EmptyState title="Nessuna lezione nel periodo selezionato" description="Cambia data o filtri, oppure programma una nuova lezione." action={canCreate?<ButtonLink href={calendarHref(context,{nuovo:true,creaGiorno:day})}>Programma lezione</ButtonLink>:undefined}/>}
- <div className={'sc-calendar sc-calendar-'+view} aria-label={'Calendario '+view}>
+ <div className={'sc-calendar sc-calendar-'+view} role="region" tabIndex={0} aria-label={'Calendario '+view}>
  {['settimana','mese'].includes(view)&&weekdays.map(x=><div className="sc-calendar-weekday" key={x}>{x.slice(0,3)}</div>)}
  {days.map(d=>{const bounds=dayBounds(d),records=visible.filter(l=>overlaps(l.inizio,l.fine,bounds.from,bounds.to));return <section key={d} className={'sc-calendar-day'+(d===today?' sc-calendar-today':'')+(view==='mese'&&d.slice(0,7)!==day.slice(0,7)?' sc-calendar-outside':'')} aria-label={dayName(d)}>
  <div className="sc-calendar-day-head"><Link href={calendarHref({...context,giorno:d,vista:'giorno'})} aria-current={d===today?'date':undefined}>{dayName(d)} {d===today&&<span className="sc-today-label">Oggi</span>}</Link>{canCreate&&<Link className="sc-calendar-add" aria-label={'Nuova lezione '+dayName(d)} href={calendarHref(context,{nuovo:true,creaGiorno:d})}>+</Link>}</div>

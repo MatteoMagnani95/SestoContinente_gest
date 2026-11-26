@@ -53,3 +53,17 @@ export async function checkLaneConflicts(form:FormData):Promise<LanePreview>{
  if(result.error||!result.data)return {status:'error',message:'Occupazione non verificabile. Riprova prima di prenotare.'};
  return {status:'ready',conflicts:result.data.map(({id,corsia_id,lezione_id,inizio,fine})=>({id,corsia_id,lezione_id,inizio,fine})),checkedAt:new Date().toISOString()};
 }
+
+// Controllo preliminare anche per l'archivio prenotazioni, con esclusione della sola riga modificata.
+export async function checkBookingConflict(form:FormData):Promise<LanePreview>{
+ const {supabase}=await requireStaff();
+ let lesson='',lane='',id='',inizio='',fine='';
+ try{lesson=uuidValue(form,'lezione_id');lane=uuidValue(form,'corsia_id');({inizio,fine}=lessonInterval(form));id=String(form.get('id')??'');if(id&&!UUID_RE.test(id))throw Error();}catch{return {status:'error',message:'Indica lezione, corsia e intervallo valido.'};}
+ const [lessonResult,laneResult]=await Promise.all([supabase.from('lezioni').select('piscina_id,inizio,fine,annullata_il').eq('id',lesson).maybeSingle(),supabase.from('corsie').select('piscina_id').eq('id',lane).maybeSingle()]);
+ if(lessonResult.error||laneResult.error||!lessonResult.data||!laneResult.data)return {status:'error',message:'Lezione o corsia non verificabile.'};
+ if(lessonResult.data.annullata_il)return {status:'error',message:'La lezione è annullata.'};
+ if(lessonResult.data.piscina_id!==laneResult.data.piscina_id||Date.parse(inizio)<Date.parse(lessonResult.data.inizio)||Date.parse(fine)>Date.parse(lessonResult.data.fine))return {status:'error',message:'Corsia e orario devono essere coerenti con la piscina e l’intervallo della lezione.'};
+ const result=await tutteLePagine((da,a)=>{let query=supabase.from('prenotazioni_corsie').select('id,corsia_id,lezione_id,inizio,fine').eq('corsia_id',lane).eq('stato','confermata').lt('inizio',fine).gt('fine',inizio);if(id)query=query.neq('id',id);return query.order('inizio').order('id').range(da,a);});
+ if(result.error||!result.data)return {status:'error',message:'Occupazione non verificabile. Riprova.'};
+ return {status:'ready',conflicts:result.data,checkedAt:new Date().toISOString()};
+}

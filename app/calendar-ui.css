@@ -34,3 +34,5 @@
 @media(min-width:1200px){.sc-calendar-giorno .sc-calendar-day,.sc-calendar-agenda .sc-calendar-day{display:grid;grid-template-columns:minmax(160px,1fr) repeat(3,minmax(0,1fr));align-items:start}.sc-calendar-giorno .sc-calendar-day-head,.sc-calendar-agenda .sc-calendar-day-head{grid-row:span 2}}
 @media(max-width:1199px){.sc-calendar-settimana,.sc-calendar-mese{grid-template-columns:1fr}.sc-calendar-weekday{display:none}.sc-calendar-day{min-height:0}.sc-calendar-period h2{order:-1;flex-basis:100%;text-align:left}.sc-calendar-event{padding:12px}}
 @media(max-width:480px){.sc-calendar-views>a{flex:1 1 40%}.sc-calendar-period>a{flex:1 1 40%}.sc-calendar-filter{grid-template-columns:minmax(0,1fr)}}
+
+@media(min-width:1200px){.sc-calendar-settimana,.sc-calendar-mese{grid-template-columns:repeat(7,minmax(145px,1fr));overflow-x:auto;max-width:100%;padding-bottom:8px}.sc-calendar-day-head>a:first-child{min-height:44px}}

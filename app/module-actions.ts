@@ -105,10 +105,7 @@ export async function saveModuleRecord(form:FormData) {
  if(key==='corsie'&&id){
   const {data:previous,error:readError}=await supabase.from('corsie').select('piscina_id').eq('id',id).maybeSingle();
   if(readError||!previous)return {error:'Corsia non disponibile.'};
-  if(previous.piscina_id!==changes.piscina_id){
-   const {count,error}=await supabase.from('prenotazioni_corsie').select('id',{count:'exact',head:true}).eq('corsia_id',id);
-   if(error||count===null||count>0)return {field:'piscina_id',error:'Non puoi spostare una corsia con prenotazioni storiche o non verificabili. Configura una nuova corsia nell’altra piscina.'};
-  }
+  if(previous.piscina_id!==changes.piscina_id)return {field:'piscina_id',error:'La corsia resta associata all’impianto originale per tutelare le relazioni storiche. Configura una nuova corsia nell’altra piscina.'};
  }
  if(key==='prenotazioni'){
   const start=Date.parse(String(changes.inizio)),end=Date.parse(String(changes.fine));
