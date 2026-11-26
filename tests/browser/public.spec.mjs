@@ -57,7 +57,7 @@ for(const path of [
   '/documenti/'+syntheticId,
   '/documenti/'+syntheticId+'?download=1',
   '/gestionale/esporta/contabilita',
-  '/gestionale/corsi/'+syntheticId+'/stampe'
+  '/gestionale/corsi/'+syntheticId+'/stampe?tipo=programma'
 ]){
   test('Endpoint riservato senza sessione: '+path,async({request,baseURL})=>{
     const response=await request.get(path,{maxRedirects:0});
