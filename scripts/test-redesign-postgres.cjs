@@ -76,6 +76,20 @@ async function main() {
     await staff.query("select admin_rettifica_incasso($1,'Rettifica di collaudo')",[final]);
     assert.equal(await residual(),40);
     console.log('OK incassi: retry concorrente, movimento unico, saldo, eccedenza e rettifica');
+
+    // Il destinatario può leggere e aggiornare solo le proprie notifiche.
+    const notification = await value(root,"insert into notifiche(utente_id,tipo,riferimento,titolo,messaggio) values($1,'collaudo',$2,'Prova','Messaggio sintetico') returning id",[memberId,randomUUID()]);
+    const otherNotification = await value(root,"insert into notifiche(utente_id,tipo,riferimento,titolo,messaggio) values($1,'collaudo',$2,'Prova','Messaggio sintetico') returning id",[staffId,randomUUID()]);
+    assert.equal(await value(member,'select count(*)::int from notifiche where id=$1',[otherNotification]),0);
+    await member.query('select segna_notifica_letta($1)',[otherNotification]);
+    assert.equal(await value(root,'select letta_il is null from notifiche where id=$1',[otherNotification]),true);
+    await member.query('select segna_notifica_letta($1)',[notification]);
+    const readAt = await value(root,'select letta_il::text from notifiche where id=$1',[notification]);
+    assert.ok(readAt);
+    await member.query('select segna_notifica_letta($1)',[notification]);
+    assert.equal(await value(root,'select letta_il::text from notifiche where id=$1',[notification]),readAt);
+    console.log('OK notifiche: isolamento tra account, lettura e idempotenza');
+
   } finally {
     await Promise.all(clients.map(db=>db.end()));
   }
