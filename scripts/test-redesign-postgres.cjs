@@ -195,6 +195,26 @@ async function main() {
     assert.equal(await value(staff,'select count(*)::int from presenze where lezione_id=$1',[reverse]),0);
     console.log('OK presenze: istruttore assegnato, doppio ordine concorrente, annullamento e modifica diretta protetti');
 
+    // Scadenze: solo residui positivi, destinatari collegati e retry idempotente.
+    await root.query("update quote_associative set scadenza=current_date+7 where id=$1 or persona_id=$2",[debt,participants[0]]);
+    await root.query("update impostazioni_promemoria set giorni_anticipo=array[7],attivo=true where tipo='quota_associativa'");
+    await assert.rejects(member.query('select genera_promemoria()'),{code:'42501'});
+    const service=await session();
+    await service.query('set role service_role');
+    await service.query("select set_config('request.jwt.claim.role','service_role',false)");
+    await service.query('select genera_promemoria()');
+    const dueCount=()=>value(root,"select count(*)::int from notifiche where tipo='quota_associativa' and utente_id=$1 and riferimento=$2",[teacherId,debt+':7']);
+    assert.equal(await dueCount(),1);
+    assert.equal(await value(root,"select count(*)::int from notifiche n join quote_associative q on split_part(n.riferimento,':',1)=q.id::text where n.tipo='quota_associativa' and q.persona_id=$1",[participants[0]]),0);
+    await service.query('select genera_promemoria()');
+    assert.equal(await dueCount(),1);
+    await staff.query(pay,[person,debt,40,randomUUID()]);
+    assert.equal(await residual(),0);
+    await service.query('select genera_promemoria()');
+    assert.equal(await dueCount(),1);
+    console.log('OK scadenze: quota residua, esclusione saldate, destinatario, idempotenza e ruolo cron');
+
+
 
   } finally {
     await Promise.all(clients.map(db=>db.end()));
