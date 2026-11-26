@@ -59,8 +59,8 @@ test('Area personale: saldo ufficiale della stagione attiva, non somma pagamenti
 });
 test('Report: conteggi esatti e residui ufficiali, finestre di calendario italiane',()=>{
  const s=read('app/gestionale/report/page.tsx');
- assert.match(s,/from\('saldi_quote'\)\.select\('id',\{head:true,count:'exact'\}\)\.gt\('residuo',0\)/);
- assert.match(s,/asRomeISO\(\x60\$\{shiftDay\(cutoff,1\)\}T00:00\x60\)/);
+ assert.match(s,/tutteLePagine\(\(da,a\)=>supabase\.from\('saldi_quote'\).*gt\('residuo',0\).*range\(da,a\)/);
+ assert.match(s,/reportPeriod\(today,s\.periodo,s\.dal,s\.al\)/);assert.match(s,/romeDay\(l\.inizio\)/);
  assert.doesNotMatch(s,/from\('pagamenti'\)/);
 });
 test('Iscrizioni: paginazione nella stessa sezione, dati incompleti non trasformati in zero',()=>{

@@ -63,7 +63,7 @@ export async function stageImport(form:FormData){
 }
 export async function commitImport(form:FormData){
  const {supabase}=await requireStaff();const batch=text(form.get('batch'));
- if(!/^[a-f0-9-]{36}$/i.test(batch))q('batch');
+ if(form.get('conferma')!=='on'||!/^[a-f0-9-]{36}$/i.test(batch))q('batch');
  const {data,error}=await supabase.rpc('conferma_importazione',{p_batch:batch});
  if(error)redirect(`${where}?batch=${batch}&msg=quarantena`);
  revalidatePath(where);redirect(`${where}?batch=${batch}&msg=importato&n=${data}`);
