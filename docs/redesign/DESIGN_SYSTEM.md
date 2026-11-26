@@ -38,3 +38,6 @@ Calendario in app/calendar-ui.css, controlli con PageHeader/Drawer, viste con et
 
 ## Fase 4E
 Riutilizzati PageHeader, Drawer, ConfirmDialog, EditForm, DataTable, Pagination, SearchableSelect, StatusBadge e MetricCard. Nuove card eventi con capienza e tab, BoardAdmissions/BoardFile/BoardDraftFields e DocumentDestination. Vedi [ASSOCIATION.md](ASSOCIATION.md).
+
+## Fase 4F
+MetricCard, DataTable mobileCards, Drawer, SearchableSelect, PaymentReview e grafico mensile in finance-ui.css. Vedi [FINANCE.md](FINANCE.md).
