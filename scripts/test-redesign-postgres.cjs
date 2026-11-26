@@ -214,6 +214,24 @@ async function main() {
     assert.equal(await dueCount(),1);
     console.log('OK scadenze: quota residua, esclusione saldate, destinatario, idempotenza e ruolo cron');
 
+    // Il lotto e le righe dell'anteprima sono una sola operazione.
+    const previewRpc='select crea_anteprima_importazione($1,$2,$3::jsonb)';
+    const fixtureRows=[{dati:{codice_fiscale:'COLLAUDO00000000'},errori:['CF sintetico non valido']},{dati:{codice_fiscale:'COLLAUDO00000001'},errori:[]}];
+    const countBatches=()=>value(root,'select count(*)::int from importazioni_batch');
+    const beforeBatch=await countBatches();
+    await assert.rejects(member.query(previewRpc,['soci',false,JSON.stringify(fixtureRows)]),{code:'42501'});
+    await assert.rejects(staff.query(previewRpc,['soci',false,JSON.stringify([fixtureRows[0],{dati:{}}])]),{code:'22023'});
+    await assert.rejects(staff.query(previewRpc,['soci',false,'[]']),{code:'22023'});
+    assert.equal(await countBatches(),beforeBatch);
+    const previewBatch=await value(staff,previewRpc,['soci',false,JSON.stringify(fixtureRows)]);
+    assert.equal(await countBatches(),beforeBatch+1);
+    assert.deepEqual((await staff.query('select numero,dati,errori from importazioni_righe where batch_id=$1 order by numero',[previewBatch])).rows,fixtureRows.map((r,i)=>({numero:i+2,...r})));
+    assert.equal(await value(member,'select count(*)::int from importazioni_righe where batch_id=$1',[previewBatch]),0);
+    await assert.rejects(staff.query('select conferma_importazione($1)',[previewBatch]));
+    assert.equal(await value(staff,'select stato from importazioni_batch where id=$1',[previewBatch]),'anteprima');
+    console.log('OK importazione: anteprima atomica, rifiuto input incompleto, isolamento e quarantena');
+
+
 
 
   } finally {
