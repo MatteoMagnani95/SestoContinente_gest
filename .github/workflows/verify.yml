@@ -77,3 +77,5 @@ jobs:
           done
       - run: npm run test:patch19
       - run: npm run test:integration
+      - name: Audit storico in sola lettura (dati sintetici)
+        run: psql "$TEST_0019_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f docs/redesign/F5_HISTORICAL_AUDIT.sql
