@@ -3,7 +3,8 @@ import {modules,isModuleKey,type Module} from '@/lib/modules';
 const escapeCSV=(input:unknown):string=>{
  const raw=String(input??'');
  // Le celle che iniziano con formule sono neutralizzate per Excel/Calc.
- const safe=/^[=+\-@\t\r]/.test(raw)?`'${raw}`:raw;
+ // Neutralizza anche formule precedute da spazi o caratteri di controllo.
+ const safe=/^[\s\uFEFF]*[=+\-@]|^[\t\r\n]/u.test(raw)?`'${raw}`:raw;
  return `"${safe.replaceAll('"','""')}"`;
 };
 export async function GET(_request:Request,{params}:{params:Promise<{modulo:string}>}){

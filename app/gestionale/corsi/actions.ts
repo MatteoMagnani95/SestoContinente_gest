@@ -114,7 +114,9 @@ export async function addEnrollment(form:FormData){
   const {data:member}=await supabase.from('gest_soci_iscrivibili').select('persona_id').eq('persona_id',person).eq('stagione_id',edition.stagione_id).limit(1);
   if(!member?.length)redirect(detailHref(id,'adesione'));
  }
- const {error}=await supabase.rpc('iscrivi_con_contatto',{p_edizione:id,p_persona:person,p_nome:valueOf(form,'emergenza_nome',160),p_telefono:valueOf(form,'emergenza_telefono',32),p_richiesta:false});
+ let nomeEmergenza:string,telefonoEmergenza:string;
+ try{nomeEmergenza=valueOf(form,'emergenza_nome',160);telefonoEmergenza=valueOf(form,'emergenza_telefono',32);}catch{redirect(detailHref(id,'iscrizione'));}
+ const {error}=await supabase.rpc('iscrivi_con_contatto',{p_edizione:id,p_persona:person,p_nome:nomeEmergenza,p_telefono:telefonoEmergenza,p_richiesta:false});
  if(error)redirect(detailHref(id,error.code==='P3421'?'direttore':error.code==='23505'?'gia_iscritto':error.code==='P3413'?'adesione':'iscrizione'));
  refresh(id);redirect(detailHref(id,'iscritto'));
 }
