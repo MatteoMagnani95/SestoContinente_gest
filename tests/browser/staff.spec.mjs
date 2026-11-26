@@ -88,3 +88,31 @@ test('Paginazione obsoleta offre il ritorno immediato alla prima pagina',async({
  await expect(page).toHaveURL(url=>url.pathname==='/gestionale/soci'&&url.searchParams.get('p')==='1');
  await expect(page.getByRole('table',{name:'Adesioni di soci e allievi'})).toBeVisible();
 });
+
+test('CdA: selezione, campi obbligatori, validazione visibile e annullamento senza scritture',async({page})=>{
+ await page.goto('/organi-sociali?tab=componenti');
+ const add=page.getByRole('button',{name:'Aggiungi componente'});
+ // Un archivio locale vuoto deve mostrare un messaggio invece di offrire un form inutilizzabile.
+ if(await page.getByText('Non ci sono anagrafiche disponibili per registrare un componente.').count()){
+  await expect(add).toHaveCount(0);return;
+ }
+ await expect(add).toBeVisible();
+ for(const size of [{width:390,height:844},{width:1280,height:800}]){
+  await page.setViewportSize(size);
+  await add.click();
+  const dialog=page.getByRole('dialog',{name:'Aggiungi componente'});
+  const person=dialog.locator('select[name="persona_id"]'),role=dialog.locator('select[name="carica"]'),date=dialog.locator('input[name="dal"]');
+  const save=dialog.getByRole('button',{name:'Registra componente'});
+  await expect(person).toBeVisible();await expect(role).toBeVisible();await expect(date).toBeVisible();
+  await save.click();
+  await expect(dialog.getByRole('alert')).toContainText('Compila correttamente');
+  expect(await dialog.locator('form').evaluate(f=>f.checkValidity())).toBe(false);
+  await person.selectOption({index:1});await role.selectOption('Consigliere');await date.fill('2026-11-26');
+  expect(await dialog.locator('form').evaluate(f=>f.checkValidity())).toBe(true);
+  await expect(save).toBeEnabled();
+  expect(await dialog.locator('form').evaluate(f=>[...new FormData(f).keys()])).toEqual(['persona_id','carica','dal']);
+  await dialog.getByRole('button',{name:'Annulla',exact:true}).click();
+  await page.getByRole('button',{name:'Esci senza salvare'}).click();
+  await expect(dialog).toBeHidden();await expect(add).toBeFocused();
+ }
+});
