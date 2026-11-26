@@ -44,3 +44,10 @@ test('Ruolo limitato: accessi incrociati e risorse amministrative negati',async(
   await expect(page).toHaveURL(url=>url.pathname!==path&&url.pathname!=='/accedi'&&url.searchParams.get('msg')==='permessi');
  }
 });
+
+test('CdA: il consigliere senza ruolo di segreteria non può aggiungere componenti',async({page},info)=>{
+ test.skip(info.project.metadata.role!=='board','Controllo riservato al ruolo consigliere sintetico');
+ await page.goto('/organi-sociali?tab=componenti');
+ await expect(page.getByRole('heading',{name:'Componenti CdA'})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Aggiungi componente'})).toHaveCount(0);
+});
