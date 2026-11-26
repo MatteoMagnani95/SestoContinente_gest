@@ -41,7 +41,7 @@ test('Registrazione: messaggio di configurazione, verifica live server autentica
 test('Rimozioni: schede principali prive di azioni distruttive dirette, editor separato dal form di salvataggio',()=>{
  for(const f of ['app/gestionale/richieste/page.tsx','app/gestionale/soci/page.tsx','app/gestionale/corsi/page.tsx'])assert.doesNotMatch(read(f),/<RemoveRecord/);
  const editor=read('app/gestionale/moduli/[modulo]/page.tsx');
- assert.match(editor,/<\/EditForm>\s*\{record&&!module\.appendOnly&&<RemoveRecord/);
+ assert.match(editor,/<\/EditForm>\s*\{record&&!module\.appendOnly&&!lockedVersion&&<RemoveRecord/);
  assert.match(editor,/if\(editId\)query=query\.eq\('id',editId\)/);
  assert.match(read('app/gestionale/soci/[id]/page.tsx'),/<\/EditForm><RemoveRecord moduleKey="anagrafiche"/);
 });
