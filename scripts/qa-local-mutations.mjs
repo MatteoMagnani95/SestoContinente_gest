@@ -93,6 +93,83 @@ export async function runMutations({app,admin,accounts,fixtures,work}){
   assert.equal(await count('presenze',presence),1);
   console.log('OK UI registrazione e aggiornamento presenza, chiave unica');
 
+  // Course request with emergency contact, persisted atomically.
+  await member.goto('/area-personale/corsi?tab=catalogo');
+  const course=member.locator('article').filter({has:member.getByRole('heading',{name:'Seconda edizione sintetica',exact:true})});
+  await course.getByRole('button',{name:'Richiedi iscrizione',exact:true}).click();
+  const courseForm=member.getByRole('dialog',{name:/Richiedi iscrizione/});
+  await courseForm.locator('select[name=persona_id]').selectOption(accounts.member.person);
+  await courseForm.locator('input[name=emergenza_nome]').fill('Contatto sintetico');
+  await courseForm.locator('input[name=emergenza_telefono]').fill('0000000000');
+  await courseForm.getByRole('button',{name:'Richiedi iscrizione',exact:true}).click();
+  await expect(member).toHaveURL(/msg=inviata/);
+  const enrollment={edizione_id:fixtures.secondEdition,persona_id:accounts.member.person};
+  assert.equal((await one('iscrizioni_corsi','stato',enrollment)).stato,'in_attesa');
+  assert.deepEqual(await one('contatti_emergenza','nominativo,telefono',{persona_id:accounts.member.person}),{nominativo:'Contatto sintetico',telefono:'0000000000'});
+  assert.equal(await count('iscrizioni_corsi',enrollment),1);
+  console.log('OK UI richiesta corso e contatto emergenza atomici');
+
+  // Partial payment, settlement and explicit correction of the second payment.
+  const debt=fixtures.openQuota;
+  const balance=async()=>Number((await one('saldi_quote','residuo',{id:debt})).residuo);
+  assert.equal(await balance(),10);
+  async function pay(amount,expected){
+   await staff.goto('/gestionale/incassi?tab=quota&debito='+debt);
+   await staff.getByRole('button',{name:'Registra versamento',exact:true}).click();
+   const panel=staff.getByRole('dialog',{name:/Registra versamento/});
+   await panel.locator('input[name=importo]').fill(String(amount));
+   await panel.locator('select[name=metodo]').selectOption('contanti');
+   await panel.locator('input[name=conferma]').check();
+   await panel.getByRole('button',{name:'Registra definitivamente'}).click();
+   await expect(staff).toHaveURL(/msg=salvato/);
+   await expect.poll(balance).toBe(expected);
+  }
+  await pay(4,6);await pay(6,0);
+  assert.equal(await count('pagamenti',{quota_id:debt}),2);
+  const payment=await one('pagamenti','id',{quota_id:debt,importo:6});
+  assert.equal(await count('movimenti_economici',{pagamento_id:payment.id}),1);
+  await staff.goto('/gestionale/incassi/'+payment.id);
+  await staff.getByRole('button',{name:'Rettifica versamento'}).click();
+  const correction=staff.getByRole('dialog',{name:'Rettifica versamento'});
+  await correction.locator('textarea[name=motivo]').fill('Rettifica sintetica di collaudo');
+  await correction.locator('input[name=conferma]').check();
+  await correction.getByRole('button',{name:'Rimuovi'}).click();
+  await expect(staff).toHaveURL(/msg=rettificato/);
+  assert.equal(await balance(),6);
+  assert.equal(await count('pagamenti',{quota_id:debt}),1);
+  assert.equal(await count('rettifiche_incassi',{pagamento_id:payment.id}),1);
+  assert.equal(await count('movimenti_economici',{pagamento_id:payment.id}),0);
+  console.log('OK UI incasso parziale, saldo, movimento unico e rettifica con storico');
+
+  // Revision, delivery and return update the same inventory record.
+  const equipment=fixtures.equipment,asset='/gestionale/attrezzature/'+equipment;
+  await staff.goto(asset);
+  await staff.getByRole('button',{name:'Registra revisione'}).click();
+  const revision=staff.getByRole('dialog',{name:'Registra revisione'});
+  const nextDate=new Date(Date.now()+90*86400000).toISOString().slice(0,10);
+  await revision.locator('input[name=tipo]').fill('Revisione sintetica');
+  await revision.locator('input[name=prossimo_intervento]').fill(nextDate);
+  await revision.getByRole('button',{name:'Salva revisione'}).click();
+  await expect(staff).toHaveURL(/msg=salvato/);
+  assert.equal(await count('revisioni_attrezzature',{attrezzatura_id:equipment}),1);
+  assert.equal((await one('attrezzature','prossima_revisione',{id:equipment})).prossima_revisione,nextDate);
+  await staff.goto(asset);
+  await staff.getByRole('link',{name:'Registra consegna'}).click();
+  const loan=staff.getByRole('dialog',{name:'Registra consegna'});
+  await loan.locator('select[name=persona_id]').selectOption(accounts.member.person);
+  await loan.getByRole('button',{name:'Registra consegna'}).click();
+  await expect(staff).toHaveURL(/msg=salvato/);
+  assert.equal((await one('attrezzature','stato',{id:equipment})).stato,'assegnata');
+  const loanId=(await one('assegnazioni_attrezzature','id',{attrezzatura_id:equipment})).id;
+  await staff.goto(asset);await staff.getByRole('button',{name:'Registra restituzione'}).click();
+  const returned=staff.getByRole('dialog',{name:'Registra restituzione'});
+  await returned.locator('input[name=conferma]').check();
+  await returned.getByRole('button',{name:'Registra restituzione'}).click();
+  await expect(staff).toHaveURL(/msg=salvato/);
+  assert.equal((await one('attrezzature','stato',{id:equipment})).stato,'disponibile');
+  assert.ok((await one('assegnazioni_attrezzature','restituita_il',{id:loanId})).restituita_il);
+  console.log('OK UI revisione, prestito e restituzione con stato coerente');
+
   // Actual signed-upload path (>3 MiB), no real medical content.
   const pdf=await PDFDocument.create();pdf.addPage();
   await pdf.attach(randomBytes(4*1024*1024),'fixture.bin',{mimeType:'application/octet-stream'});
