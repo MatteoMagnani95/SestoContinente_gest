@@ -33,7 +33,7 @@ export async function recordGuidedPayment(form:FormData){
  if(!['quota','corso'].includes(tab)||![charge,persona,request].every(x=>uuid.test(x))||
     !validPaymentDate(date)||!methods.includes(method)||value===null||reference.length>150||note.length>1000||
     form.get('conferma')!=='on'){
-  back(form,'dati');
+  return {error:'Controlla importo, data, modalità e conferma di ricezione del versamento.'};
  }
  const {error}=await supabase.rpc('registra_pagamento_guidato',{
   p_persona:persona,p_quota:tab==='quota'?charge:null,
@@ -45,7 +45,7 @@ export async function recordGuidedPayment(form:FormData){
   const msg=error.code==='P3401'?'eccede':error.code==='P3402'?'duplicato':
     error.code==='P3403'?'dati':error.code==='42501'?'permessi':
     error.code==='23505'?'duplicato':'database';
-  back(form,msg);
+  return {error:msg==='eccede'?'L’importo supera il residuo. Aggiorna la posizione prima di riprovare.':msg==='duplicato'?'Versamento già registrato o richiesta duplicata. Controlla lo storico prima di ripetere.':msg==='permessi'?'Operazione non autorizzata.':'Registrazione non completata. Controlla la posizione e riprova.'};
  }
  revalidatePath('/gestionale/incassi');
  revalidatePath('/gestionale/soci');

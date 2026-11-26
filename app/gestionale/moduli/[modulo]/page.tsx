@@ -229,12 +229,12 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  <Link className="button ghost" href={'/gestionale/esporta/'+modulo}>Esporta archivio CSV</Link>
  </FilterBar>
  {editId&&<p><Link href={href(1)}>Torna all’elenco completo</Link></p>}
- {error?<div className="notice error" role="alert">Impossibile leggere i dati. Riprova o contatta l’amministratore.</div>:<DataTable label={module.label}><thead><tr>
- {module.columns.map(c=><th key={c} scope="col" className={numeric(c)?'sc-number':undefined}>{columnLabel(c,module)}</th>)}
- {!module.appendOnly&&<th scope="col">Azioni</th>}
- </tr></thead><tbody>{rows.map(row=><tr key={row.id}>
- {module.columns.map(c=><td key={c} className={numeric(c)?'sc-number':undefined}>{display(row,c)}</td>)}
- {!module.appendOnly&&<td><div className="sc-row-actions">{modulo==='calendario'?<Link href={'/gestionale/calendario-visivo/'+row.id}>Modifica lezione e corsie</Link>:<Drawer key={row.id+'-'+msg} title={'Modifica '+entityLabel(modulo)+' · '+rowLabel(row,references,module)} trigger="Modifica" initialOpen={msg!=='salvato'&&editId===row.id}><Editor module={module} moduleKey={modulo} record={row} references={references} admin={isAdministrator===true}/></Drawer>}</div></td>}
+ {error?<div className="notice error" role="alert">Impossibile leggere i dati. Riprova o contatta l’amministratore.</div>:<DataTable label={module.label} mobileCards><thead role="rowgroup"><tr role="row">
+ {module.columns.map(c=><th key={c} role="columnheader" scope="col" className={numeric(c)?'sc-number':undefined}>{columnLabel(c,module)}</th>)}
+ {!module.appendOnly&&<th role="columnheader" scope="col">Azioni</th>}
+ </tr></thead><tbody role="rowgroup">{rows.map(row=><tr key={row.id} role="row">
+ {module.columns.map(c=><td key={c} role="cell" data-label={columnLabel(c,module)} className={numeric(c)?'sc-number':undefined}>{display(row,c)}</td>)}
+ {!module.appendOnly&&<td role="cell" data-label="Azioni"><div className="sc-row-actions">{modulo==='calendario'?<Link href={'/gestionale/calendario-visivo/'+row.id}>Modifica lezione e corsie</Link>:<Drawer key={row.id+'-'+msg} title={'Modifica '+entityLabel(modulo)+' · '+rowLabel(row,references,module)} trigger="Modifica" initialOpen={msg!=='salvato'&&editId===row.id}><Editor module={module} moduleKey={modulo} record={row} references={references} admin={isAdministrator===true}/></Drawer>}</div></td>}
  </tr>)}
  {!rows.length&&<tr><td colSpan={module.columns.length+(module.appendOnly?0:1)} className="empty-cell">Nessun risultato con questi filtri.</td></tr>}
  </tbody></DataTable>}

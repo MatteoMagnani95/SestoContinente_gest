@@ -18,9 +18,9 @@ export async function uploadDocument(form:FormData){
  const isStaff=roles?.some(x=>['amministratore','segreteria'].includes(x.ruolo))??false;
  const isAdmin=roles?.some(x=>x.ruolo==='amministratore')??false;
  const file=form.get('file');
- if(!(file instanceof File)||file.size<=0||file.size>10*1024*1024||!mimeToExt[file.type])redirect('/documenti?msg=file');
+ if(!(file instanceof File)||file.size<=0||file.size>10*1024*1024||!mimeToExt[file.type])return {error:'Seleziona un file PDF o immagine valido, massimo 10 MB.',field:'file'};
  const buffer=Buffer.from(await file.arrayBuffer());
- if(!realMime(buffer,file.type))redirect('/documenti?msg=file');
+ if(!realMime(buffer,file.type))return {error:'Seleziona un file PDF o immagine valido, massimo 10 MB.',field:'file'};
  const nome=String(form.get('nome')||file.name).trim().slice(0,150);
  const categoria=String(form.get('categoria')||'Altro').trim().slice(0,80);
  const ambito=isStaff?String(form.get('ambito')||'associazione'):'personale';
@@ -30,19 +30,19 @@ export async function uploadDocument(form:FormData){
  const edizione=isStaff?String(form.get('edizione_id')||'').trim():'';
  const versione=isStaff?String(form.get('programma_versione_id')||'').trim():'';
  const conservazione=String(form.get('scadenza_conservazione')||'').trim();
- if(ambito==='associazione'&&visibilita==='soci'&&(!isAdmin||utente||persona||edizione||versione))redirect('/documenti?msg=permessi');
+ if(ambito==='associazione'&&visibilita==='soci'&&(!isAdmin||utente||persona||edizione||versione))return {error:'La visibilità selezionata non è consentita.'};
  if(!nome||!categoria||!['associazione','personale','didattica','amministrativo'].includes(ambito)||
  !['staff','proprietario','soci','istruttori'].includes(visibilita)||
  (ambito==='personale'&&(!utente||!['staff','proprietario'].includes(visibilita)))||
  (utente&&!uuid.test(utente))||(persona&&!uuid.test(persona))||(edizione&&!uuid.test(edizione))||(versione&&!uuid.test(versione))||
- (conservazione&&!/^\d{4}-\d{2}-\d{2}$/.test(conservazione)))redirect('/documenti?msg=dati');
+ (conservazione&&!/^\d{4}-\d{2}-\d{2}$/.test(conservazione)))return {error:'Controlla ambito, visibilità e collegamenti del documento.'};
  const path=`${user.id}/${randomUUID()}.${mimeToExt[file.type]}`;
  const {data,error}=await supabase.from('documenti').insert({nome,categoria,ambito,visibilita,
   utente_id:utente||null,persona_id:persona||null,edizione_id:edizione||null,programma_versione_id:versione||null,
   percorso_storage:path,mime:file.type,dimensione_bytes:file.size,caricato_da:user.id,scadenza_conservazione:conservazione||null}).select('id').single();
- if(error||!data)redirect('/documenti?msg=errore');
+ if(error||!data)return {error:'Caricamento non completato. Verifica il file e i permessi.'};
  const uploaded=await supabase.storage.from('sesto-documenti').upload(path,buffer,{contentType:file.type,upsert:false});
- if(uploaded.error){await supabase.rpc('annulla_upload_documento',{p_id:data.id});redirect('/documenti?msg=errore');}
+ if(uploaded.error){await supabase.rpc('annulla_upload_documento',{p_id:data.id});return {error:'Caricamento non completato. Verifica il file e i permessi.'};}
  revalidatePath('/documenti');redirect('/documenti?msg=ok');
 }
 export async function deleteDocument(form:FormData){
@@ -69,7 +69,8 @@ export async function editDocumentMetadata(form:FormData){
  const {data:role}=await supabase.from('ruoli_utente').select('ruolo').eq('utente_id',user.id).eq('ruolo','amministratore').maybeSingle();
  if(!role)redirect('/documenti?msg=permessi');
  const id=String(form.get('id')??''),nome=String(form.get('nome')??'').trim(),categoria=String(form.get('categoria')??'').trim();
- if(!uuid.test(id)||!nome||nome.length>150||!categoria||categoria.length>80)redirect('/documenti?msg=dati');
+ if(!uuid.test(id)||!nome||nome.length>150||!categoria||categoria.length>80)return {error:'Controlla nome e categoria del documento.'};
  const {data,error}=await supabase.from('documenti').update({nome,categoria}).eq('id',id).select('id').maybeSingle();
- revalidatePath('/documenti');revalidatePath('/area-soci');redirect(`/documenti?msg=${error||!data?'errore':'modificato'}`);
+ if(error||!data)return {error:'Modifiche non salvate. Verifica i dati e le autorizzazioni.'};
+ revalidatePath('/documenti');revalidatePath('/area-soci');redirect('/documenti?msg=modificato');
 }

@@ -58,18 +58,18 @@ export async function saveModuleRecord(form:FormData) {
  if(key==='anagrafiche') {
   for(const fld of ['provincia_nascita','provincia_residenza']) {
    const val=String(changes[fld]??'').toUpperCase();
-   if(val&&!/^[A-Z]{2}$/.test(val))redirect(errorPath(key,'dati'));
+   if(val&&!/^[A-Z]{2}$/.test(val))return {error:"Controlla i campi obbligatori e i formati."};
    changes[fld]=val||null;
   }
   for(const fld of ['stato_nascita','stato_residenza']){
    const val=String(changes[fld]??'');
-   if(val.length>(fld==='stato_nascita'?100:15))redirect(errorPath(key,'dati'));
+   if(val.length>(fld==='stato_nascita'?100:15))return {error:"Controlla i campi obbligatori e i formati."};
    changes[fld]=val?val[0].toUpperCase()+val.slice(1).toLowerCase():null;
   }
   let previous:import('@/lib/verifica-anagrafica').Identity & {codice_catastale_nascita?:unknown;cf_omocodia_verificata?:unknown;cf_override_motivo?:unknown}|null=null;
   if(id){
    const {data,error}=await supabase.from('persone').select('nome,cognome,data_nascita,luogo_nascita,provincia_nascita,stato_nascita,sesso_cf,codice_fiscale,codice_catastale_nascita,cf_omocodia_verificata,cf_override_motivo').eq('id',id).single();
-   if(error||!data)redirect(errorPath(key,'database'));
+   if(error||!data)return {error:"Operazione non completata. Controlla i dati e riprova."};
    previous=data;
   }
   const check=await validaSalvataggioAnagrafica(identityFromForm(form),previous,form.get('cf_omocodia_verificata')==='on',text(form,'cf_override_motivo'));
@@ -79,24 +79,24 @@ export async function saveModuleRecord(form:FormData) {
   changes.cf_override_motivo=check.reason;
   changes.codice_fiscale=String(changes.codice_fiscale??'').toUpperCase()||null;
  }
- if(key==='iscrizioni'&&!id&&changes.stato!=='iscritto')redirect(errorPath(key,'socio_non_iscrivibile'));
+ if(key==='iscrizioni'&&!id&&changes.stato!=='iscritto')return {error:"Il socio non soddisfa i requisiti di iscrizione."};
  if(key==='istruttori'){
   const person=String(changes.persona_id??'');
   const {data:qualified}=await supabase.from('qualifiche_istruttori').select('id').eq('persona_id',person).limit(1);
-  if(!qualified?.length)redirect(errorPath(key,'vincolo'));
+  if(!qualified?.length)return {error:"Operazione non consentita: controlla duplicati, capienza, date e collegamenti."};
  }
  if(key==='adesioni'&&changes.verbale_cda_id){
   const {data:verbale}=await supabase.from('cda_verbali').select('id').eq('id',String(changes.verbale_cda_id)).eq('stato','approvato').in('tipo',['Approvazione Adesioni Soci','Misto']).maybeSingle();
-  if(!verbale)redirect(errorPath(key,'vincolo'));
+  if(!verbale)return {error:"Operazione non consentita: controlla duplicati, capienza, date e collegamenti."};
  }
  if(key==='addebiti'&&id){
   // Non riassegnare un debito a un altro socio/corso (anche con pagamenti esistenti).
   const {data:existing,error}=await supabase.from('addebiti_corsi').select('iscrizione_id').eq('id',id).single();
-  if(error||!existing||existing.iscrizione_id!==changes.iscrizione_id)redirect(errorPath(key,'iscrizione_vincolata'));
+  if(error||!existing||existing.iscrizione_id!==changes.iscrizione_id)return {error:"La quota non può essere riassegnata a un'altra iscrizione."};
  }
  if(key==='addebiti'&&!id){
   const {data:eligible,error}=await supabase.from('iscrizioni_corsi').select('id,edizione:edizioni_corsi!inner(stato,stagione:stagioni!inner(attiva))').eq('id',String(changes.iscrizione_id)).eq('stato','iscritto').eq('edizione.stato','attivo').eq('edizione.stagione.attiva',true).maybeSingle();
-  if(error||!eligible)redirect(errorPath(key,'iscrizione_non_attiva'));
+  if(error||!eligible)return {error:"Seleziona un allievo iscritto a un corso attivo della stagione attiva."};
  }
  if(key==='comunicazioni'&&!id) changes.autore_id=user.id;
  let query;
@@ -125,11 +125,11 @@ export async function saveModuleRecord(form:FormData) {
    if(corsia?.numero!==undefined&&corsia.numero!==null)params.set('corsia',String(corsia.numero));
    if(typeof changes.inizio==='string')params.set('inizio',changes.inizio);
    if(typeof changes.fine==='string')params.set('fine',changes.fine);
-   redirect(`/gestionale/moduli/${encodeURIComponent(key)}?${params.toString()}`);
+   return {error:`Corsia${params.get('corsia')?' '+params.get('corsia'):''} già prenotata nell’intervallo richiesto. Scegli un’altra corsia o modifica l’orario.`,field:'corsia_id'};
   }
-  if(key==='prenotazioni'&&error.code==='23505')redirect(errorPath(key,'corsia_duplicata'));
-  if(key==='iscrizioni'&&error.code==='P3413')redirect(errorPath(key,'socio_non_iscrivibile'));
-  if(key==='addebiti'&&error.code==='P3412')redirect(errorPath(key,id?'iscrizione_vincolata':'iscrizione_non_attiva'));
+  if(key==='prenotazioni'&&error.code==='23505')return {error:"Questa corsia è già associata alla lezione."};
+  if(key==='iscrizioni'&&error.code==='P3413')return {error:"Il socio non soddisfa i requisiti di iscrizione."};
+  if(key==='addebiti'&&error.code==='P3412')return {error:id?'La quota non può essere riassegnata.':'Seleziona un’iscrizione attiva.'};
   const constraint=['23505','23P01','23503','23514'].includes(error.code??'');
   return {error:constraint?'Controlla duplicati, date e collegamenti.':'Impossibile salvare le modifiche.'};
  }

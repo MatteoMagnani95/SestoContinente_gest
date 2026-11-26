@@ -2,8 +2,8 @@ import Link from 'next/link';
 import type {ReactNode} from 'react';
 import {Button,ButtonLink} from './Primitives';
 
-export function DataTable({label,children}:{label:string;children:ReactNode}){
- return <div className="sc-data-table table-panel" role="region" aria-label={label} tabIndex={0}><table>{children}</table></div>;
+export function DataTable({label,children,mobileCards=false}:{label:string;children:ReactNode;mobileCards?:boolean}){
+ return <div className={'sc-data-table table-panel'+(mobileCards?' sc-mobile-cards':'')} role="region" aria-label={label} tabIndex={0}><table role="table">{children}</table></div>;
 }
 export function FilterBar({children}:{children:ReactNode}){return <div className="sc-filter-bar">{children}</div>;}
 export function SearchBar({query='',placeholder='Cerca',action,children,resetHref,hideSearch=false}:{query?:string;placeholder?:string;action?:string;children?:ReactNode;resetHref?:string;hideSearch?:boolean}){

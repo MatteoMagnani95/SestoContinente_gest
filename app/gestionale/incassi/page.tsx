@@ -1,3 +1,4 @@
+import EditForm from '@/components/EditForm';
 import {Drawer,ConfirmDialog} from '@/components/ui/Drawer';
 import ActionForm from '@/components/ui/ActionForm';
 import Link from 'next/link';
@@ -92,7 +93,7 @@ export default async function Incassi({searchParams}:{searchParams:Promise<{tab?
      <td>{tab==='quota'?fmtDate(b.scadenza):courseNames.get(b.edizione_id??'')??'—'}</td>
      <td>{euros(b.importo_dovuto)}</td><td>{euros(b.versato)}</td><td><strong>{euros(b.residuo)}</strong></td>
      <td><div className="sc-row-actions">{Number(b.residuo)>0?
-      <Drawer title={'Registra versamento · '+(names.get(b.persona_id)??'Socio')} trigger="Registra versamento" primary><p>Dovuto: <strong>{euros(b.importo_dovuto)}</strong> · Versato: {euros(b.versato)} · Residuo: <strong>{euros(b.residuo)}</strong></p><ActionForm action={recordGuidedPayment} className="payment-form">
+      <Drawer title={'Registra versamento · '+(names.get(b.persona_id)??'Socio')} trigger="Registra versamento" primary><p>Dovuto: <strong>{euros(b.importo_dovuto)}</strong> · Versato: {euros(b.versato)} · Residuo: <strong>{euros(b.residuo)}</strong></p><EditForm action={recordGuidedPayment} className="payment-form">
        <input type="hidden" name="tab" value={tab}/><input type="hidden" name="debito_id" value={b.id}/>
        <input type="hidden" name="persona_id" value={b.persona_id}/><input type="hidden" name="richiesta_id" value={randomUUID()}/>
        <input type="hidden" name="stagione" value={selectedSeason}/><input type="hidden" name="filtro_persona" value={personFilter}/>
@@ -104,7 +105,7 @@ export default async function Incassi({searchParams}:{searchParams:Promise<{tab?
        <label>Note<input name="note" type="text" maxLength={1000} placeholder="Facoltative"/></label>
        <label className="payment-confirm"><input type="checkbox" name="conferma" required/> Confermo che il versamento è stato realmente ricevuto</label>
        <button className="button" type="submit">Registra definitivamente</button>
-      </ActionForm></Drawer>
+      </EditForm></Drawer>
       :<strong className="payment-paid">Saldo completo</strong>}
      <Link href={`/gestionale/moduli/${(tab==='quota'?'quote':'addebiti')}?edit=${b.id}`}>Gestisci quota</Link></div></td></tr>)}
     {!balances.length&&<tr><td colSpan={6}>Nessun addebito trovato per i filtri selezionati.</td></tr>}

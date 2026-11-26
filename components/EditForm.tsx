@@ -18,7 +18,7 @@ export default function EditForm({action,children,className='stack'}:{action:(da
    const response=await action(data);
    if(response){
     const field=response.field?form.elements.namedItem(response.field):null;
-    setAnchor(field instanceof HTMLElement?field.closest('label'):null);
+    setAnchor(field instanceof HTMLElement?field.closest('.sc-field')??field.closest('label'):null);
     setFailure(response);if(field instanceof HTMLElement)field.focus();
    }else markFormSaved(form);
   }catch{setAnchor(null);setFailure({error:'Salvataggio non riuscito. Puoi riprovare conservando i dati inseriti.'});}
