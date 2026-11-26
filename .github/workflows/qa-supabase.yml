@@ -7,6 +7,7 @@ on:
       - '.github/workflows/qa-supabase.yml'
       - 'scripts/qa-local-supabase.mjs'
       - 'scripts/qa-local-mutations.mjs'
+      - 'scripts/qa-local-performance.mjs'
       - 'package-lock.json'
       - 'supabase/migrations/**'
       - 'app/**'
@@ -42,7 +43,7 @@ jobs:
           version: latest
       - name: Dipendenze e browser
         run: |
-          npm install --no-audit --no-fund
+          npm ci --no-audit --no-fund
           npx playwright install --with-deps chromium webkit
       - name: Avvia solo Supabase locale, mai link a un progetto remoto
         shell: bash
@@ -96,6 +97,8 @@ jobs:
           npm run test:browser -- --project='*-staff' --project='*-secretary' --project='*-member' --project='*-instructor' --project='*-board' --project='*-applicant'
       - name: Salvataggi reali tramite interfaccia e controllo database
         run: node scripts/qa-local-supabase.mjs mutations
+      - name: Benchmark browser autenticato su archivi sintetici
+        run: node scripts/qa-local-supabase.mjs performance
       - name: Rimuovi sessioni sintetiche e arresta servizi locali
         if: always()
         shell: bash
