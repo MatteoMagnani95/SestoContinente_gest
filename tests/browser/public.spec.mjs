@@ -36,3 +36,35 @@ test('Il collegamento riservato richiede accesso e il campo password conserva gl
   await expect(input).toHaveAttribute('type','text');
   await expect(input).toHaveValue(' password di prova ');
 });
+
+const syntheticId='00000000-0000-4000-8000-000000000001';
+for(const path of [
+  '/gestionale/soci','/gestionale/soci/'+syntheticId,
+  '/gestionale/corsi/'+syntheticId,'/gestionale/incassi',
+  '/gestionale/calendario-visivo','/gestionale/utenti',
+  '/area-personale','/area-personale/certificato','/area-soci',
+  '/istruttore','/gestione-eventi','/organi-sociali','/documenti',
+  '/richiesta/nuova','/richiesta/stato','/nuova-password'
+]){
+  test('Accesso anonimo negato: '+path,async({page})=>{
+    await page.goto(path);
+    await expect(page).toHaveURL(/\/accedi\?msg=account(?:&|$)/);
+    await expect(page.locator('input[name="password"]')).toBeVisible();
+  });
+}
+
+for(const path of [
+  '/documenti/'+syntheticId,
+  '/documenti/'+syntheticId+'?download=1',
+  '/gestionale/esporta/contabilita',
+  '/gestionale/corsi/'+syntheticId+'/stampe'
+]){
+  test('Endpoint riservato senza sessione: '+path,async({request,baseURL})=>{
+    const response=await request.get(path,{maxRedirects:0});
+    expect([303,307,308]).toContain(response.status());
+    const location=new URL(response.headers().location,baseURL);
+    expect(location.origin).toBe(new URL(baseURL).origin);
+    expect(location.pathname).toBe('/accedi');
+    expect(location.searchParams.get('msg')).toBe('account');
+  });
+}
