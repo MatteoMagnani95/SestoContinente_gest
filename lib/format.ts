@@ -1,3 +1,4 @@
+import {asRomeISO} from './course-tools';
 export function formatValue(value: unknown, field?: string): string {
  if (value === null || value === undefined || value === '') return '—';
  if (typeof value === 'boolean') return value ? 'Sì' : 'No';
@@ -20,15 +21,6 @@ export function datetimeForInput(value: unknown): string {
  return parts.replace(' ','T');
 }
 export function italianLocalToISO(value: string): string {
- // L'offset è ricavato per la data scelta, non dall'ora del server Vercel.
- if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) throw new Error('Data e ora non valide');
- const guess = new Date(`${value}:00Z`);
- if(Number.isNaN(guess.getTime())) throw new Error('Data e ora non valide');
- const tz=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Rome',timeZoneName:'shortOffset'}).formatToParts(guess)
-  .find(p=>p.type==='timeZoneName')?.value ?? 'GMT+1';
- const match=tz.match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/);
- const offset=match?`${match[1]}${match[2].padStart(2,'0')}:${match[3]??'00'}`:'+01:00';
- const result=new Date(`${value}:00${offset}`);
- if(Number.isNaN(result.getTime())) throw new Error('Data e ora non valide');
- return result.toISOString();
+  // Una sola conversione, con validazione degli orari inesistenti o ambigui al cambio DST.
+  return asRomeISO(value);
 }

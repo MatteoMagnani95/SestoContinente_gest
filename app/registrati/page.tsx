@@ -1,21 +1,24 @@
 import SceltaImmagini from '@/components/SceltaImmagini';
 import {informativaRegistrazione} from '@/lib/registrazione';
+import {getNavigationAccess} from '@/lib/navigation-access';
+import {redirect} from 'next/navigation';
 import Link from 'next/link';
-import { registerAction } from '@/app/actions';
-import { queryMessage } from '@/lib/security';
-export default async function Register({searchParams}:{searchParams:Promise<{msg?:string,ok?:string}>}){
-  const legal=informativaRegistrazione();
-  const {msg,ok}=await searchParams;
-  return <div className="auth-shell"><div className="panel auth-panel"><p className="eyebrow">Nuovo account</p><h1>Inizia da qui</h1><p className="muted">Crea il tuo accesso personale. La domanda di adesione si compila dopo la verifica dell'email.</p>
-    {msg && <p className="notice error" role="alert">{queryMessage(msg)}</p>}
-    {ok && <div className="notice success" role="status"><strong>Controlla la tua email.</strong> Se l'indirizzo è valido, riceverai un link di conferma. Dopo averlo aperto potrai compilare la domanda.</div>}
-    <form action={registerAction} className="stack">
-      <label>Email<input name="email" type="email" autoComplete="email" required/></label>
-      <label>Password <span className="muted tiny">(minimo 10 caratteri)</span><input name="password" type="password" minLength={10} autoComplete="new-password" required/></label>
-      <label>Conferma password<input name="confirm" type="password" minLength={10} autoComplete="new-password" required/></label>
-      {legal.url?<label className="check-label"><input required type="checkbox" name="presa_visione"/><span>{legal.test?'Simulo la presa visione':'Confermo la presa visione'} dell’<a target="_blank" rel="noopener noreferrer" href={legal.url}>informativa sul trattamento dei dati personali</a> · {legal.versione}</span></label>:<p role="alert">La segreteria deve configurare l’informativa privacy.</p>}
-      <SceltaImmagini test={legal.test}/><button className="button" type="submit" disabled={!legal.url}>Crea account</button>
-    </form>
-    <p className="auth-bottom">Hai già un account? <Link href="/accedi">Accedi</Link></p>
-  </div></div>;
+import {registerAction} from '@/app/actions';
+import {queryMessage} from '@/lib/security';
+import {Alert,ButtonLink} from '@/components/ui/Primitives';
+import AuthForm from '@/components/AuthForm';
+import PasswordField from '@/components/PasswordField';
+export default async function Register({searchParams}:{searchParams:Promise<{msg?:string;ok?:string}>}){
+ const [{msg,ok},access]=await Promise.all([searchParams,getNavigationAccess()]);
+ if(access.enabled)redirect('/smista');
+ const legal=informativaRegistrazione();
+ return <div className="sc-auth-shell sc-register-shell"><section className="sc-card sc-auth-panel"><p className="eyebrow">Adesione · Account</p><h1>Crea il tuo account</h1><p>Prima crea un accesso personale; dopo la verifica email potrai compilare la domanda di adesione.</p>
+ <ol className="sc-registration-steps" aria-label="Passaggi per l’adesione">{['Creazione account','Verifica email','Domanda di adesione','Verifica associativa'].map((step,i)=><li key={step} aria-current={i===(ok==='verifica'?1:0)?'step':undefined}><span>{i+1}</span>{step}</li>)}</ol>
+ {legal.test&&<Alert tone="warning" title="COLLAUDO" announce>Usa esclusivamente dati inventati. Le dichiarazioni sono simulate.</Alert>}
+ {msg&&queryMessage(msg)&&<Alert tone="danger" announce>{queryMessage(msg)}</Alert>}
+ {ok==='verifica'?<><Alert tone="info" title="Controlla la tua email" announce>Se la richiesta è valida, riceverai un collegamento di conferma. Controlla anche la posta indesiderata.</Alert><ButtonLink href="/accedi">Vai all’accesso</ButtonLink><p>Non è ancora arrivata? <Link href="/accedi">Richiedi una nuova email dalla pagina Accedi.</Link></p></>:<>
+ {!legal.url&&<Alert tone="warning" announce>Registrazione non disponibile: la segreteria deve configurare l’informativa privacy ufficiale.</Alert>}
+ <AuthForm action={registerAction} label="Crea account" pendingLabel="Creazione in corso…" disabled={!legal.url}><label>Email<input name="email" type="email" required autoComplete="email" autoCapitalize="none"/></label><PasswordField newPassword/><p className="sc-field-hint">Almeno 10 caratteri. Gli spazi fanno parte della password.</p><PasswordField name="confirm" label="Conferma password" newPassword/>
+ <fieldset className="sc-form-section"><legend>Privacy e dichiarazioni</legend><input type="hidden" name="privacy_versione_vista" value={legal.versione}/>{legal.url&&<label className="check-label"><input required type="checkbox" name="presa_visione"/><span>{legal.test?'Simulo la presa visione':'Confermo la presa visione'} dell’<a target="_blank" rel="noopener noreferrer" href={legal.url}>informativa sul trattamento dei dati personali</a> · {legal.versione} (obbligatorio)</span></label>}<SceltaImmagini test={legal.test}/></fieldset></AuthForm></>}
+ <p className="auth-bottom">Hai già un account? <Link href="/accedi">Accedi</Link></p></section></div>;
 }

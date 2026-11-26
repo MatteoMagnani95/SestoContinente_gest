@@ -9,7 +9,7 @@ test('Area soci: titolare, adesione attiva, stagione nei suoi termini, quota sal
  assert.match(access,/a\.stato='attiva' AND s\.attiva/);
  assert.match(access,/BETWEEN s\.dal AND s\.al/);assert.match(access,/q\.importo_dovuto <= COALESCE\(\(SELECT sum\(p\.importo\)/);
  assert.match(access,/c\.utente_id=auth\.uid\(\) AND c\.relazione='titolare'/);assert.doesNotMatch(access,/is_staff/);
- assert.match(read('app/area-soci/page.tsx'),/if\(!people\.length\)return/);assert.match(read('components/SiteHeader.tsx'),/access\.data===true/);
+ assert.match(read('app/area-soci/page.tsx'),/if\(!people\.length\)return/);assert.match(read('lib/navigation-access.ts'),/member\.data===true/);assert.match(read('components/SiteHeader.tsx'),/access\.member&&/);
 });
 test('Capienza: lock condiviso, indice univoco per richieste attive, prenotazioni in attesa occupano posti',()=>{
  const booking=section('area_soci_iscrivi','area_soci_decidi');
@@ -34,14 +34,14 @@ test('Documenti associativi: RLS restrittiva e pubblicazione limitata ad amminis
 });
 test('Registrazione: messaggio di configurazione, verifica live server autenticata, esito non distruttivo',()=>{
  const form=read('components/ApplicationForm.tsx'),actions=read('app/actions.ts'),assist=read('components/CodiceFiscaleAssist.tsx');
- assert.match(form,/e\.preventDefault\(\)/);assert.match(form,/if\(result\.error\)\{setError\(result\.error\);return;/);assert.match(form,/disabled=\{pending\|\|cfBlocked\|\|!legalConfigured\}/);
+ assert.match(form,/e\.preventDefault\(\)/);assert.match(form,/if\(result\.error\)\{setError\(result\.error\);[\s\S]*?return;\}if\(result\.next\)/);assert.match(form,/disabled=\{pending\|\|cfBlocked\|\|!legalConfigured\}/);
  assert.match(assist,/checkIdentityAction\(identity\)/);assert.match(assist,/ticket===seq/);assert.match(assist,/notice[\s\S]*'error'/);
  assert.match(actions,/if\(!legal\.configured\)return \{error:/);assert.match(actions,/checkIdentityAction[\s\S]*auth\.getUser\(\)/);assert.match(actions,/if\(cf&&!validaCF\(cf\)\)return/);
 });
 test('Rimozioni: schede principali prive di azioni distruttive dirette, editor separato dal form di salvataggio',()=>{
  for(const f of ['app/gestionale/richieste/page.tsx','app/gestionale/soci/page.tsx','app/gestionale/corsi/page.tsx'])assert.doesNotMatch(read(f),/<RemoveRecord/);
  const editor=read('app/gestionale/moduli/[modulo]/page.tsx');
- assert.match(editor,/<\/EditForm>\s*\{record&&!module\.appendOnly&&<RemoveRecord/);
+ assert.match(editor,/<\/EditForm>\s*\{record&&!module\.appendOnly&&!lockedVersion&&<RemoveRecord/);
  assert.match(editor,/if\(editId\)query=query\.eq\('id',editId\)/);
  assert.match(read('app/gestionale/soci/[id]/page.tsx'),/<\/EditForm><RemoveRecord moduleKey="anagrafiche"/);
 });

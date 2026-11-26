@@ -1,0 +1,109 @@
+name: Verifica gestionale
+
+on:
+  pull_request:
+  push:
+    branches:
+      - 'fix/**'
+      - 'feature/gestionale-2.0-redesign'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-no-real-credentials
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      SESTO_TEST_MODE: 'false'
+    steps:
+      - name: Scarica sorgenti
+        uses: actions/checkout@v4
+      - name: Configura Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Installa dipendenze
+        run: npm ci --no-audit --no-fund
+      - name: Lint applicazione
+        run: npm run lint
+      - name: Controllo TypeScript
+        run: npm run typecheck
+      - name: Test automatici
+        run: npm run test:static
+      - name: Build produzione
+        run: npm run build
+
+      - name: Browser su pagine pubbliche e accessi riservati
+        run: |
+          npx playwright install --with-deps chromium webkit
+          npm run start -- --hostname 127.0.0.1 --port 3314 > /tmp/sesto-next.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:3314/ >/dev/null && break; sleep 1; done
+          npm run test:browser
+
+      - name: Audit dipendenze runtime (alto o critico blocca il gate)
+        run: npm audit --omit=dev --audit-level=high --json > dependency-audit.json
+      - name: Conserva dipendenze risolte e rapporto audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-evidence
+          path: |
+            package-lock.json
+            dependency-audit.json
+          if-no-files-found: warn
+          retention-days: 7
+
+  database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: sesto_test_redesign
+          POSTGRES_PASSWORD: solo-ci-locale
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_0019_DATABASE_URL: postgres://postgres:solo-ci-locale@127.0.0.1:5432/sesto_test_redesign
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --no-audit --no-fund
+      - name: Inizializza il database effimero e verifica le migrazioni
+        run: |
+          psql "$TEST_0019_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f tests/postgres/platform.sql
+          for migration in supabase/migrations/*.sql; do
+            if [[ "$(basename "$migration")" > "20261125223000_patch_0019.sql" ]]; then break; fi
+            psql "$TEST_0019_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f "$migration" > /dev/null
+          done
+          # The standalone upgrade requires an active administrator (as in the existing deployment).
+          psql "$TEST_0019_DATABASE_URL" -X -v ON_ERROR_STOP=1 <<'SQL'
+          INSERT INTO auth.users(id,email,email_confirmed_at) VALUES ('00000000-0000-4000-8000-000000000020','upgrade-admin@example.invalid',now());
+          INSERT INTO public.ruoli_utente(utente_id,ruolo) VALUES ('00000000-0000-4000-8000-000000000020','amministratore');
+          SQL
+          psql "$TEST_0019_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f docs/redesign/AGGIORNAMENTO_UNICO_2_0.sql
+          # Safe second execution: must validate without reapplying any DDL.
+          psql "$TEST_0019_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f docs/redesign/AGGIORNAMENTO_UNICO_2_0.sql
+      - run: npm run test:patch19
+      - run: npm run test:integration
+      - name: Audit storico in sola lettura (dati sintetici)
+        run: psql "$TEST_0019_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f docs/redesign/F5_HISTORICAL_AUDIT.sql
+      - name: Benchmark sintetico, paginazione e isolamento RLS
+        run: node scripts/test-performance-ci.cjs
+      - name: Prova ripristino su secondo database effimero
+        env:
+          QA_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+        run: bash scripts/test-restore-ci.sh

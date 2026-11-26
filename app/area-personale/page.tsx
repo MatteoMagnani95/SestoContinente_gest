@@ -1,42 +1,60 @@
+import {PageHeader,ButtonLink,StatusBadge,Alert,MetricCard,SectionHeader} from '@/components/ui/Primitives';
+import {Pagination} from '@/components/ui/DataTable';
+import {readCourseChunks} from '@/lib/course-ui';
+import {tutteLePagine} from '@/lib/pagine';
+import {personalTabs,selectedTab} from '@/lib/personal-ui';
+import {pageNumber,singleSearchParams} from '@/lib/module-ui';
+import {statusTone} from '@/lib/secretariat';
+import ActionForm from '@/components/ui/ActionForm';
 import {redirect} from 'next/navigation';
 import {statoSingolo} from '@/lib/certificati';
 import Link from 'next/link';
 import {requireUser} from '@/lib/security';
 import {markNotification} from './actions';
 import {formatValue} from '@/lib/format';
-export default async function PersonalArea() {
+export default async function PersonalArea({searchParams}:{searchParams:Promise<{tab?:string;p?:string;msg?:string}>}) {
+ const params=singleSearchParams(await searchParams),tab=selectedTab(personalTabs,params.tab),page=pageNumber(params.p),size=20;
  const {supabase,user}=await requireUser();
- const {data:request}=await supabase.from('richieste').select('id,stato').eq('utente_id',user.id).maybeSingle();
- const {data:links}=await supabase.from('collegamenti_persone').select('persona_id,relazione').eq('utente_id',user.id);
+ const {data:request,error:requestError}=await supabase.from('richieste').select('id,stato').eq('utente_id',user.id).maybeSingle();
+ const {data:links,error:linksError}=await tutteLePagine((da,a)=>supabase.from('collegamenti_persone').select('persona_id,relazione').eq('utente_id',user.id).order('persona_id').range(da,a));
+ if(requestError||linksError)return <div className="container narrow"><h1>Area personale non disponibile</h1><p role="alert">Non è stato possibile verificare il profilo. Riprova prima di procedere.</p><Link href="/smista">Riprova</Link></div>;
  if(request?.stato!=='approvata'&&(!links||links.length===0))redirect('/richiesta/stato');
- const ids=links?.map(x=>x.persona_id)??[];
- const {data:areaSociAccess}=await supabase.rpc('area_soci_accesso');
- const [{data:people},{data:memberships},{data:certs},{data:brevetti},{data:quotes},{data:payments},{data:news},{data:alerts}]=await Promise.all([
-  ids.length?supabase.from('persone').select('id,nome,cognome,email,telefono').in('id',ids):Promise.resolve({data:[]}),
-  ids.length?supabase.from('adesioni').select('persona_id,stato').in('persona_id',ids):Promise.resolve({data:[]}),
-  ids.length?supabase.from('stato_certificati').select('persona_id,scade_il,idoneita_verificata,stato_certificato,documento_id').in('persona_id',ids).order('creato_il',{ascending:false}):Promise.resolve({data:[]}),
-  ids.length?supabase.from('brevetti_allievi').select('persona_id,titolo,scade_il').in('persona_id',ids).limit(50):Promise.resolve({data:[]}),
-  ids.length?supabase.from('quote_associative').select('id,persona_id,importo_dovuto,scadenza').in('persona_id',ids).limit(50):Promise.resolve({data:[]}),
-  ids.length?supabase.from('pagamenti').select('quota_id,importo').in('persona_id',ids).limit(100):Promise.resolve({data:[]}),
-  supabase.from('comunicazioni').select('id,titolo,contenuto,pubblicata_il').eq('attiva',true).order('pubblicata_il',{ascending:false}).limit(10),
-  supabase.from('notifiche').select('id,titolo,messaggio,creata_il').eq('utente_id',user.id).is('letta_il',null).order('creata_il',{ascending:false}).limit(20),
+ const ids=[...new Set(links?.map(x=>x.persona_id)??[])];
+ const [{data:areaSociAccess},{data:season,error:seasonError}]=await Promise.all([supabase.rpc('area_soci_accesso'),supabase.from('stagioni').select('id,nome').eq('attiva',true).maybeSingle()]);
+ const overview=tab==='panoramica';
+ const showMemberships=overview||tab==='tessere';
+ const showBalances=overview||tab==='quote';
+ const needsPeople=showMemberships||showBalances||tab==='brevetti';
+ const emptyPage={data:[],error:null,count:0};
+ const [{data:people,error:peopleError},{data:memberships,error:membershipError},{data:certs,error:certError},{data:quotes,error:quoteError},{data:news,error:newsError,count:newsCount},{data:alerts,error:alertError,count:alertCount}]=await Promise.all([
+  needsPeople&&ids.length?readCourseChunks(ids,(group,da,a)=>supabase.from('persone').select('id,nome,cognome').in('id',group).order('id').range(da,a)):Promise.resolve({data:[],error:null}),
+  showMemberships&&ids.length&&season?readCourseChunks(ids,(group,da,a)=>supabase.from('adesioni').select('id,persona_id,stato').in('persona_id',group).eq('stagione_id',season.id).order('id').range(da,a)):Promise.resolve({data:[],error:null}),
+  overview&&ids.length?readCourseChunks(ids,(group,da,a)=>supabase.from('stato_certificati').select('id,persona_id,scade_il,stato_certificato,documento_id').in('persona_id',group).order('creato_il',{ascending:false}).order('id',{ascending:false}).range(da,a)):Promise.resolve({data:[],error:null}),
+  showBalances&&ids.length&&season?readCourseChunks(ids,(group,da,a)=>supabase.from('saldi_quote').select('id,persona_id,stagione_id,importo_dovuto,versato,residuo').in('persona_id',group).eq('stagione_id',season.id).order('id').range(da,a)):Promise.resolve({data:[],error:null}),
+  tab==='comunicazioni'?supabase.from('comunicazioni').select('id,titolo,contenuto,pubblicata_il',{count:'exact'}).eq('attiva',true).order('pubblicata_il',{ascending:false}).order('id').range((page-1)*size,page*size-1):emptyPage,
+  overview||tab==='notifiche'?supabase.from('notifiche').select('id,titolo,messaggio,creata_il',{count:'exact',head:overview}).eq('utente_id',user.id).is('letta_il',null).order('creata_il',{ascending:false}).order('id').range((page-1)*size,page*size-1):emptyPage,
  ]);
- return <div className="container"><div className="page-intro"><p className="eyebrow">Area personale</p><h1>La tua associazione</h1><p>Adesioni, corsi, brevetti, documenti e comunicazioni in un unico posto.</p></div>
- <div className="buttons" style={{marginBottom:25}}>{areaSociAccess===true&&<Link className="button" href="/area-soci">Area soci</Link>}<Link className="button" href="/area-personale/corsi">I miei corsi e iscrizioni</Link><Link className="button ghost" href="/documenti">Documenti personali</Link><Link className="button ghost" href="/area-personale/certificato">Carica certificato medico</Link><Link className="button ghost" href="/area-personale/profilo">Modifica recapiti</Link><Link className="button ghost" href="/richiesta/stato">Domanda di adesione</Link></div>
- <div className="cards">{people?.map(p=>{
- const quota=quotes?.find(q=>q.persona_id===p.id);
- const paid=quota?payments?.filter(x=>x.quota_id===quota.id).reduce((a,x)=>a+Number(x.importo),0)??0:0;
- const cert=certs?.find(c=>c.persona_id===p.id);
- return <article className="panel" key={p.id}><span className="eyebrow">{links?.find(l=>l.persona_id===p.id)?.relazione==='tutore'?'Persona rappresentata':'Profilo personale'}</span>
- <h2>{p.nome} {p.cognome}</h2>
- <p>Adesione: <strong>{memberships?.find(a=>a.persona_id===p.id)?.stato.replaceAll('_',' ')??'Non presente'}</strong></p>
- <p>Certificato: <strong>{cert?`${cert.scade_il} · ${statoSingolo(cert.stato_certificato)}`:'Documento mancante'}</strong> · {cert?.documento_id?<Link href={'/documenti/'+cert.documento_id}>Apri certificato</Link>:<Link href="/area-personale/certificato">Carica certificato</Link>}</p>
- <p>Quota: <strong>{quota?`${formatValue(paid,'importo')} versati su ${formatValue(quota.importo_dovuto,'importo')}`:'Non registrata'}</strong></p>
- <p>Brevetti registrati: <strong>{brevetti?.filter(b=>b.persona_id===p.id).length??0}</strong></p>
- </article>})}</div>
- <div className="cards">
- <section className="panel"><h2>Notifiche</h2>{alerts?.length?alerts.map(n=><div className="timeline-item" key={n.id}><strong>{n.titolo}</strong><p>{n.messaggio}</p><form action={markNotification}><input type="hidden" name="id" value={n.id}/><button className="button ghost">Segna come letta</button></form></div>):<p className="muted">Nessuna nuova notifica.</p>}</section>
- <section className="panel"><h2>Comunicazioni</h2>{news?.length?news.map(n=><div className="timeline-item" key={n.id}><strong>{n.titolo}</strong><p>{n.contenuto}</p><small>{formatValue(n.pubblicata_il)}</small></div>):<p className="muted">Nessuna comunicazione recente.</p>}</section>
- </div><div className="notice warning"><strong>Attenzione:</strong> l'approvazione della domanda non certifica il pagamento della quota o il tesseramento. La segreteria completerà le verifiche.</div>
- </div>;
+ const brevetti=overview?await Promise.all(ids.map(async id=>{const {count,error}=await supabase.from('brevetti_allievi').select('id',{head:true,count:'exact'}).eq('persona_id',id);return {id,count:error?null:count};})):[];
+ const [cards,courseDebts,patents]=await Promise.all([
+ tab==='tessere'?readCourseChunks((memberships??[]).map(x=>x.id),(group,da,a)=>supabase.from('tesseramenti').select('id,adesione_id,ente,numero_tessera,emessa_il,scade_il,stato').in('adesione_id',group).order('id').range(da,a)):{data:[],error:null},
+ tab==='quote'&&season?readCourseChunks(ids,(group,da,a)=>supabase.from('saldi_corsi').select('id,persona_id,edizione_id,importo_dovuto,versato,residuo').in('persona_id',group).eq('stagione_id',season.id).order('id').range(da,a)):{data:[],error:null},
+ tab==='brevetti'?readCourseChunks(ids,(group,da,a)=>supabase.from('brevetti_allievi').select('id,persona_id,titolo,ente,numero_brevetto,ottenuto_il,scade_il').in('persona_id',group).order('ottenuto_il',{ascending:false}).order('id').range(da,a)):{data:[],error:null}
+ ]);
+ const courseNames=await readCourseChunks([...new Set((courseDebts.data??[]).map(x=>x.edizione_id))],(group,da,a)=>supabase.from('edizioni_corsi').select('id,nome').in('id',group).order('id').range(da,a));
+ const money=(x:unknown)=>formatValue(Number(x),'importo');
+ const fullName=(id:string)=>{const p=people?.find(x=>x.id===id);return p?p.nome+' '+p.cognome:'Profilo non disponibile';};
+ const pageLink=(n:number)=>'?tab='+tab+'&p='+n;
+ return <>
+ <PageHeader eyebrow="Area personale" title="La tua associazione" description="Consulta le tue attività e quelle delle persone che rappresenti, senza note interne." actions={<ButtonLink href="/area-personale/profilo" variant="secondary">Profilo e dichiarazioni</ButtonLink>}/>
+ <div className="sc-personal-actions">{areaSociAccess===true&&<ButtonLink href="/area-soci" icon="calendar">Eventi e area soci</ButtonLink>}<ButtonLink href="/area-personale/corsi" icon="course">Corsi e lezioni</ButtonLink><ButtonLink href="/documenti" variant="secondary" icon="document">Documenti</ButtonLink><ButtonLink href="/area-personale/certificato" variant="secondary" icon="certificate">Certificato medico</ButtonLink><ButtonLink href="/richiesta/stato" variant="secondary">Domanda di adesione</ButtonLink></div>
+ <nav className="sc-secretariat-tabs" aria-label="Sezioni area personale">{personalTabs.map(([key,label])=><Link key={key} href={'?tab='+key} aria-current={tab===key?'page':undefined}>{label}</Link>)}</nav>
+ {peopleError&&<Alert tone="danger">Profili collegati non disponibili.</Alert>}
+ {seasonError?<Alert tone="warning">Stagione non verificabile.</Alert>:<p>{season?'Stagione attiva: '+season.nome:'Nessuna stagione attiva configurata.'}</p>}
+ {tab==='panoramica'&&<><div className="sc-metrics"><Link href="?tab=notifiche"><MetricCard icon="bell" label="Notifiche da leggere" value={alertError?'—':alertCount??'—'}/></Link><Link href="?tab=brevetti"><MetricCard icon="certificate" label="Brevetti registrati" value={brevetti.some(b=>b.count===null)?'—':brevetti.reduce((n,b)=>n+(b.count??0),0)}/></Link></div><div className="sc-personal-grid">{people?.map(p=>{const quota=quotes?.find(q=>q.persona_id===p.id),cert=certs?.find(c=>c.persona_id===p.id);return <article className="sc-card" key={p.id}><p className="eyebrow">{links?.find(l=>l.persona_id===p.id)?.relazione==='tutore'?'Persona rappresentata':'Profilo personale'}</p><h2>{p.nome} {p.cognome}</h2><p>Adesione: <strong>{seasonError||membershipError?'Non verificabile':!season?'Nessuna stagione attiva':memberships?.find(a=>a.persona_id===p.id)?.stato.replaceAll('_',' ')??'Non presente'}</strong></p><p>Certificato: <strong>{certError?'Non verificabile':cert?formatValue(cert.scade_il)+' · '+statoSingolo(cert.stato_certificato):'Documento mancante'}</strong></p><p>{cert?.documento_id?<Link href={'/documenti/'+cert.documento_id}>Apri certificato</Link>:<Link href={`/area-personale/certificato?persona=${p.id}`}>Carica certificato</Link>}</p><p>Quota: <strong>{seasonError||quoteError?'Non verificabile':!season?'Nessuna stagione attiva':quota?money(quota.residuo)+' residui':'Non registrata'}</strong></p><Link href="?tab=quote">Dettaglio quote e saldi</Link></article>;})}</div><Alert tone="info">L’approvazione della domanda non certifica il pagamento della quota o il tesseramento.</Alert></>}
+ {tab==='tessere'&&<section className="sc-card"><h2>Adesioni e tesseramenti della stagione</h2>{membershipError||cards.error||seasonError?<Alert tone="warning">Dati non verificabili.</Alert>:!season?<p>Nessuna stagione attiva.</p>:people?.map(p=>{const m=memberships?.find(a=>a.persona_id===p.id);return <article className="timeline-item" key={p.id}><h3>{fullName(p.id)}</h3><p>Adesione: {m?.stato.replaceAll('_',' ')??'Non presente'}</p>{(cards.data??[]).filter(c=>c.adesione_id===m?.id).map(c=><div key={c.id}><strong>{c.ente} · {c.numero_tessera??'Numero non acquisito'}</strong><p>Scadenza {formatValue(c.scade_il)} · <StatusBadge tone={statusTone(c.stato)}>{c.stato.replaceAll('_',' ')}</StatusBadge></p></div>)}{!(cards.data??[]).some(c=>c.adesione_id===m?.id)&&<p>Nessun tesseramento registrato.</p>}</article>;})}</section>}
+ {tab==='quote'&&<section className="sc-card"><h2>Quote e saldi della stagione</h2>{seasonError||quoteError||courseDebts.error?<Alert tone="warning">Saldi non verificabili.</Alert>:!season?<p>Nessuna stagione attiva.</p>:people?.map(p=><article key={p.id} className="timeline-item"><h3>{fullName(p.id)}</h3>{(quotes??[]).filter(q=>q.persona_id===p.id).map(q=><div key={q.id}><strong>Quota associativa</strong><p>Dovuto {money(q.importo_dovuto)} · Versato {money(q.versato)} · Residuo {money(q.residuo)}</p></div>)}{(courseDebts.data??[]).filter(q=>q.persona_id===p.id).map(q=><div key={q.id}><strong>{courseNames.data?.find(e=>e.id===q.edizione_id)?.nome??'Quota corso'}</strong><p>Dovuto {money(q.importo_dovuto)} · Versato {money(q.versato)} · Residuo {money(q.residuo)}</p></div>)}{!(quotes??[]).some(q=>q.persona_id===p.id)&&!(courseDebts.data??[]).some(q=>q.persona_id===p.id)&&<p>Nessuna quota registrata.</p>}</article>)}</section>}
+ {tab==='brevetti'&&<section className="sc-card"><h2>Brevetti</h2>{patents.error?<Alert tone="warning">Brevetti non disponibili.</Alert>:!patents.data?.length?<p>Nessun brevetto registrato.</p>:patents.data.slice((page-1)*size,page*size).map(b=><article className="timeline-item" key={b.id}><h3>{b.titolo}</h3><p>{fullName(b.persona_id)} · {b.ente??'Ente non indicato'}</p><p>Numero {b.numero_brevetto??'Non acquisito'} · Rilasciato {formatValue(b.ottenuto_il)} · Scadenza {formatValue(b.scade_il)}</p></article>)}<Pagination page={page} size={size} count={patents.error?null:patents.data?.length??0} href={pageLink} label="brevetti"/></section>}
+ {tab==='notifiche'&&<section className="sc-card" id="notifiche"><h2>Notifiche da leggere</h2>{params.msg==='letta'&&<Alert tone="success">Notifica segnata come letta.</Alert>}{params.msg==='notifica_errore'&&<Alert tone="warning">Impossibile aggiornare la notifica.</Alert>}{alertError?<Alert tone="warning">Notifiche non disponibili.</Alert>:alerts?.length?alerts.map(n=><article className="timeline-item" key={n.id}><strong>{n.titolo}</strong><p className="sc-prewrap">{n.messaggio}</p><p className="tiny muted">{formatValue(n.creata_il)}</p><ActionForm action={markNotification}><input type="hidden" name="id" value={n.id}/><button className="button ghost">Segna come letta</button></ActionForm></article>):<p>Nessuna nuova notifica.</p>}<Pagination page={page} size={size} count={alertError?null:alertCount} href={pageLink} label="notifiche"/><p className="tiny muted">Segnare una notifica come letta non risolve l’eventuale scadenza.</p></section>}
+ {tab==='comunicazioni'&&<section className="sc-card"><h2>Comunicazioni</h2>{newsError?<Alert tone="warning">Comunicazioni non disponibili.</Alert>:news?.length?news.map(n=><article className="timeline-item" key={n.id}><h3>{n.titolo}</h3><p className="sc-prewrap">{n.contenuto}</p><small>{formatValue(n.pubblicata_il)}</small></article>):<p>Nessuna comunicazione recente.</p>}<Pagination page={page} size={size} count={newsError?null:newsCount} href={pageLink} label="comunicazioni"/></section>}
+ </>;
 }

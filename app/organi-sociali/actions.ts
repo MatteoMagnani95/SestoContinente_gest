@@ -1,4 +1,5 @@
 'use server';
+import {tutteLePagine} from '@/lib/pagine';
 import {redirect} from 'next/navigation';
 import {revalidatePath} from 'next/cache';
 import {requireBoard,requireStaff} from '@/lib/security';
@@ -10,11 +11,11 @@ const val=(f:FormData,k:string)=>String(f.get(k)??'').trim();
 function fail(reason:string):never{return redirect(`${root}?msg=${reason}`);}
 export async function salvaComponente(form:FormData){
  const {supabase}=await requireStaff();const persona_id=val(form,'persona_id'),carica=val(form,'carica'),dal=val(form,'dal');
- if(!uuid.test(persona_id)||!['Presidente','Vice Presidente','Segretaria','Tesoriere','Consigliere'].includes(carica)||!/\d{4}-\d{2}-\d{2}/.test(dal))fail('dati');
- const start=new Date(`${dal}T12:00:00Z`);if(Number.isNaN(start.getTime()))fail('dati');
+ if(!uuid.test(persona_id)||!['Presidente','Vice Presidente','Segretaria','Tesoriere','Consigliere'].includes(carica)||!/^\d{4}-\d{2}-\d{2}$/.test(dal))return {error:'Controlla componente, carica e data.'};
+ const start=new Date(`${dal}T12:00:00Z`);if(Number.isNaN(start.getTime())||start.toISOString().slice(0,10)!==dal)return {error:'Data di inizio mandato non valida.'};
  start.setUTCFullYear(start.getUTCFullYear()+4);const al=start.toISOString().slice(0,10);
  const {error}=await supabase.from('cda_componenti').insert({persona_id,carica,dal,al});
- if(error)fail('componente');revalidatePath(root);redirect(`${root}?msg=componente_ok`);
+ if(error)return {error:'Componente non registrato: controlla mandato e duplicati.'};revalidatePath(root);redirect(`${root}?msg=componente_ok`);
 }
 function metadati(form:FormData){
  const data=val(form,'data_consiglio'),oggetto=val(form,'oggetto'),tipo=val(form,'tipo');
@@ -43,17 +44,17 @@ async function salvaVersione(supabase:Awaited<ReturnType<typeof requireStaff>>['
 export async function caricaBozza(form:FormData){
  const {supabase,user}=await requireStaff();
  const info=metadati(form),buffer=await leggiDocx(form.get('documento'));
- if(!info||!buffer)fail('documento');
+ if(!info||!buffer)return {error:'Controlla data, oggetto, tipologia e Word (massimo 3 MB).'};
  const id=crypto.randomUUID(),percorso_docx=`${id}/bozza.docx`;
- const upload=await salvaVersione(supabase,percorso_docx,buffer,info);if(upload)fail(upload);
+ const upload=await salvaVersione(supabase,percorso_docx,buffer,info);if(upload)return {error:'Caricamento o conversione non riusciti.',field:'documento'};
  const {error}=await supabase.from('cda_verbali').insert({id,data_consiglio:info.data,oggetto:info.oggetto,tipo:info.tipo,percorso_docx,creato_da:user.id});
- if(error)fail('verbale');revalidatePath(root);revalidatePath(`${root}/archivio`);redirect(`${root}/archivio?msg=bozza_ok`);
+ if(error)return {error:'Bozza non registrata. Verifica le autorizzazioni e contatta la segreteria se il problema persiste.'};revalidatePath(root);revalidatePath(`${root}/archivio`);redirect(`${root}/archivio?msg=bozza_ok`);
 }
 export async function modificaBozza(form:FormData){
  const {supabase}=await requireStaff();const id=val(form,'verbale_id'),previous=val(form,'percorso_docx');
- const info=metadati(form);if(!uuid.test(id)||!info)fail('dati');
+ const info=metadati(form);if(!uuid.test(id)||!info)return {error:'Controlla data, oggetto e tipologia.'};
  const {data:row,error}=await supabase.from('cda_verbali').select('stato,percorso_docx').eq('id',id).single();
- if(error||!row||row.stato!=='bozza'||row.percorso_docx!==previous)redirect(`${root}/archivio?msg=conflitto`);
+ if(error||!row||row.stato!=='bozza'||row.percorso_docx!==previous)return {error:'La bozza è cambiata. Riapri la versione corrente.'};
  const doc=form.get('documento');let buffer:Buffer|null;
  if(doc instanceof File&&doc.size>0){buffer=await leggiDocx(doc);}
  else{const {data,error:load}=await supabase.storage.from('sesto-cda').download(row.percorso_docx);buffer=!load&&data?Buffer.from(await data.arrayBuffer()):null;}
@@ -66,10 +67,10 @@ export async function modificaBozza(form:FormData){
  revalidatePath(root);revalidatePath(`${root}/archivio`);redirect(`${root}/archivio?msg=modificata&edit=${id}`);
 }
 export async function avviaApprovazione(form:FormData){
- const {supabase}=await requireStaff();const id=val(form,'verbale_id');if(!uuid.test(id))fail('dati');
- const ids=form.getAll('adesione_id').map(String);if(ids.some(x=>!uuid.test(x)))fail('dati');
+ const {supabase}=await requireStaff();const id=val(form,'verbale_id');if(!uuid.test(id))return {error:'Verbale non valido.'};
+ const ids=form.getAll('adesione_id').map(String);if(ids.some(x=>!uuid.test(x))||new Set(ids).size!==ids.length)return {error:'Adesioni non valide o duplicate.'};
  const {error}=await supabase.rpc('prepara_verbale_cda',{p_verbale:id,p_adesioni:ids});
- if(error)fail('quorum');revalidatePath(root);redirect(`${root}?msg=avviata`);
+ if(error)return {error:'Votazione non avviata. Verifica gli aventi diritto alla data della seduta, gli account collegati e le adesioni selezionate.'};revalidatePath(root);redirect(`${root}?msg=avviata`);
 }
 async function finalizza(supabase:Awaited<ReturnType<typeof requireBoard>>['supabase'],id:string){
  const {data:verbale,error:load}=await supabase.from('cda_verbali').select('id,percorso_docx,data_consiglio,oggetto,stato').eq('id',id).single();
@@ -107,8 +108,8 @@ export async function sostituisciVerbale(form:FormData){
 }
 export async function riprovaFinalizzazione(form:FormData){
  const {supabase}=await requireStaff();const id=val(form,'verbale_id');if(!uuid.test(id))fail('dati');
- const {data,error}=await supabase.rpc('cda_progressi');
- const row=(Array.isArray(data)?data:[]).find((p:{verbale_id:string})=>p.verbale_id===id) as {approvati:number;totali:number}|undefined;
+ const {data,error}=await tutteLePagine((da,a)=>supabase.rpc('cda_progressi').order('verbale_id').range(da,a));
+ const row=((Array.isArray(data)?data:[]) as {verbale_id:string;approvati:number;totali:number}[]).find(p=>p.verbale_id===id) as {approvati:number;totali:number}|undefined;
  if(error||!row||Number(row.totali)<=0||Number(row.approvati)!==Number(row.totali))fail('quorum');
  await finalizza(supabase,id);revalidatePath(root);revalidatePath(`${root}/archivio`);redirect(`${root}/archivio?msg=approvato`);
 }
