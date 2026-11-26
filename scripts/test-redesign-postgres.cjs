@@ -151,6 +151,19 @@ async function main() {
     await staff.query('select annulla_lezione_guidata($1)',[adjacent]);
     assert.equal(await value(staff,"select count(*)::int from prenotazioni_corsie where lezione_id=$1 and stato='confermata'",[adjacent]),0);
     console.log('OK calendario: conflitto concorrente, rollback atomico, adiacenza, tutela prenotazioni parziali e annullamento');
+    // Due corsie in ordine inverso: stesso ordine effettivo dei lock, nessun deadlock.
+    const lane2=await value(staff,'insert into corsie(piscina_id,numero) values($1,2) returning id',[pool]);
+    const multi="select crea_lezione_guidata($1,$2,(current_date+4+time '10:00') at time zone 'Europe/Rome',(current_date+4+time '11:00') at time zone 'Europe/Rome',$3,$4::uuid[],null,null)";
+    for(let i=0;i<5;i++){
+      const attempts=await Promise.allSettled([staff,otherStaff].map((db,j)=>value(db,multi,[editions[j],'Multi '+i+' '+j,pool,j?[lane2,lane]:[lane,lane2]])));
+      assert.equal(attempts.filter(r=>r.status==='fulfilled').length,1);
+      assert.equal(attempts.find(r=>r.status==='rejected').reason.code,'23P01');
+      const created=attempts.find(r=>r.status==='fulfilled').value;
+      assert.equal(await value(staff,"select count(*)::int from prenotazioni_corsie where lezione_id=$1 and stato='confermata'",[created]),2);
+      await staff.query('select annulla_lezione_guidata($1)',[created]);
+    }
+    console.log('OK calendario: cinque conflitti concorrenti multicorsia in ordine inverso senza deadlock');
+
 
     // Registro presenze: il ruolo istruttore non può modificare la lezione,
     // ma deve poter acquisire il lock tramite il trigger protetto.
