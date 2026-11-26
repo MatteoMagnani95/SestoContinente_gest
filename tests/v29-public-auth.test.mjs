@@ -114,12 +114,12 @@ test('Callback: verifica e recupero interni, link non valido e redirect esterni 
  let failed=false;const codes=[];
  const {GET}=load('app/auth/callback/route.ts',{'next/server':{NextResponse:{redirect:url=>({url:url.href})}},'@/lib/supabase/server':{createClient:async()=>({auth:{exchangeCodeForSession:async code=>{codes.push(code);return {error:failed?{}:null};}}})}});
  const request=(next,code='synthetic-code')=>{const url=new URL('https://example.test/auth/callback');if(next!==null)url.searchParams.set('next',next);if(code)url.searchParams.set('code',code);return {url:url.href,nextUrl:url};};
- assert.equal((await GET(request('/nuova-password'))).url,'https://example.test/nuova-password');
- assert.equal((await GET(request('/richiesta/nuova'))).url,'https://example.test/richiesta/nuova');
- for(const next of ['//evil.example','/\\evil.example','https://evil.example/','/\u0000evil.example'])assert.equal((await GET(request(next))).url,'https://example.test/richiesta/nuova');
+ assert.equal((await GET(request('/nuova-password'))).headers.get('location'),'/nuova-password');
+ assert.equal((await GET(request('/richiesta/nuova'))).headers.get('location'),'/richiesta/nuova');
+ for(const next of ['/a/..//evil.example','//evil.example','/\\evil.example','https://evil.example/','/\u0000evil.example'])assert.equal((await GET(request(next))).headers.get('location'),'/richiesta/nuova');
  failed=true;
- assert.equal((await GET(request('/nuova-password'))).url,'https://example.test/accedi?msg=recupero_scaduto');
- assert.equal((await GET(request('/richiesta/nuova',''))).url,'https://example.test/accedi?msg=verifica');
+ assert.equal((await GET(request('/nuova-password'))).headers.get('location'),'/accedi?msg=recupero_scaduto');
+ assert.equal((await GET(request('/richiesta/nuova',''))).headers.get('location'),'/accedi?msg=verifica');
  assert.ok(codes.length>=7);
 });
 
