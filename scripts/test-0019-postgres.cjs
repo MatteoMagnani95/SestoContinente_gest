@@ -29,6 +29,28 @@ async function main() {
   assert.equal(await scalar(a,"select scelta from scelte_iscrizione where tipo='immagini' order by id desc limit 1"),false);
   assert.equal(await scalar(b,"select count(*)::int from scelte_iscrizione where utente_id=$1",[socio]),0);
   console.log('OK adesione con rifiuto, consenso revocabile e separazione persone');
+
+  // Nuova UI: provenienza e confronto atomico della scelta visualizzata.
+  const currentChoice=()=>scalar(a,"select id::text from scelte_iscrizione where tipo='immagini' order by id desc limit 1");
+  const oldChoice=await currentChoice();
+  await a.query("select scegli_immagini_verificata(true,'foto1',$1)",[oldChoice]);
+  const positive=await currentChoice();
+  assert.equal(await scalar(a,"select origine from scelte_iscrizione where id=$1",[positive]),'profilo');
+  await a.query("select scegli_immagini_verificata(false,'foto1',$1)",[positive]);
+  const revoked=await currentChoice();
+  await assert.rejects(a.query("select scegli_immagini_verificata(true,'foto1',$1)",[positive]),{code:'P3508'});
+  await a.query("select scegli_immagini_verificata(false,'foto1',$1)",[positive]);
+  assert.equal(await currentChoice(),revoked);
+  assert.equal(await scalar(a,"select scelta from scelte_iscrizione where id=$1",[revoked]),false);
+  assert.equal(await scalar(a,"select origine from scelte_iscrizione where tipo='privacy' order by id limit 1"),'registrazione');
+  const saveV20=salva.replace('salva_domanda_v19','salva_domanda_v20').replace(/\)$/,',$2)');
+  await assert.rejects(a.query(saveV20,[true,positive]),{code:'P3508'});
+  // La verifica della modalità precede la scrittura anche quando la RPC è invocata direttamente.
+  await assert.rejects(a.query(saveV20.replace("'stat1'","'TEST-COLLAUDO-1'"),[false,revoked]),{code:'P3509'});
+  await assert.rejects(a.query("select registra_scelta_verificata(true,'foto1',$1,'domanda')",[revoked]),{code:'42501'});
+  assert.equal(await currentChoice(),revoked);
+  console.log('OK dichiarazioni: origine, revoca protetta, retry e separazione modalità');
+
   const season=await scalar(root,"select id from stagioni where attiva limit 1");
   for(const p of [allievo,dir,secondo]){
    const ad=await scalar(root,"insert into adesioni(stagione_id,persona_id,stato) values($1,$2,'attiva') returning id",[season,p]);
