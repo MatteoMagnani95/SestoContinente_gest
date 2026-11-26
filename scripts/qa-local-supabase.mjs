@@ -144,4 +144,7 @@ if(process.argv[2]==='seed')await seed();else if(process.argv[2]==='sessions')aw
 }else if(process.argv[2]==='performance'){
  const {runPerformance}=await import('./qa-local-performance.mjs');
  await runPerformance({app,database,accounts:JSON.parse(await readFile(accountFile,'utf8')),work});
-}else throw Error('Usare seed, sessions, mutations o performance');
+}else if(process.argv[2]==='auth'){
+ const {runAuth}=await import('./qa-local-auth.mjs');
+ await runAuth({app,admin});
+}else throw Error('Usare seed, sessions, mutations, performance o auth');
