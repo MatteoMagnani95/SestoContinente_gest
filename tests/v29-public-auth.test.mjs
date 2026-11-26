@@ -46,9 +46,9 @@ test('Registrazione: privacy obbligatoria e checkbox facoltativa negativa; passw
  try{
   const base={email:'USER@example.test',password:' password 123 ',confirm:' password 123 ',immagini_checkbox:'1',privacy_versione_vista:'1',immagini_versione_vista:'1'};
   assert.ok((await m.actions.registerAction(form(base))).error);assert.equal(writes.length,0);
-  await assert.rejects(m.actions.registerAction(form({...base,presa_visione:'on'})),/redirect:\/registrati\?ok=verifica/);
+  assert.deepEqual(await m.actions.registerAction(form({...base,presa_visione:'on'})),{next:'/registrati?ok=verifica'});
   assert.equal(writes[0].password,base.password);assert.equal(writes[0].options.data.immagini,'no');
-  await assert.rejects(m.actions.registerAction(form({...base,presa_visione:'on',immagini:'si'})),/redirect:\/registrati\?ok=verifica/);
+  assert.deepEqual(await m.actions.registerAction(form({...base,presa_visione:'on',immagini:'si'})),{next:'/registrati?ok=verifica'});
   assert.equal(writes[1].options.data.immagini,'si');
  }finally{if(old===undefined)delete process.env.NEXT_PUBLIC_SITE_URL;else process.env.NEXT_PUBLIC_SITE_URL=old;}
 });
@@ -107,7 +107,7 @@ test('Logout: successo soltanto dopo signOut, errore distinto; nuova password co
  await assert.rejects(fail.actions.logoutAction(),/redirect:\/\?msg=uscita_non_riuscita/);
  assert.ok((await m.actions.newPasswordAction(form({password:' password 123 ',confirm:'password 123'}))).error);
  assert.equal(passwords.length,0);
- await assert.rejects(m.actions.newPasswordAction(form({password:' password 123 ',confirm:' password 123 '})),/redirect:\/smista/);
+ assert.deepEqual(await m.actions.newPasswordAction(form({password:' password 123 ',confirm:' password 123 '})),{next:'/smista'});
  assert.deepEqual(passwords,[' password 123 ']);
 });
 test('Callback: verifica e recupero interni, link non valido e redirect esterni bloccati',async()=>{
@@ -193,6 +193,11 @@ test('AuthForm: successo mantiene il pulsante occupato e non mostra errori; rifi
  const success=await simulate(async()=>({next:'/smista'}));
  assert.ok(success.events.some(([key,value])=>key==='navigate'&&value==='/smista'));
  assert.equal(success.state[1],true);assert.equal(success.state[2],'');
+ const registered=await simulate(async()=>({next:'/registrati?ok=verifica'}));
+ assert.ok(registered.events.some(([key,value])=>key==='navigate'&&value==='/registrati?ok=verifica'));
+ assert.equal(registered.state[2],'');
+ const external=await simulate(async()=>({next:'https://example.invalid'}));
+ assert.ok(!external.events.some(([key])=>key==='navigate'));
  const failed=await simulate(async()=>({error:'Credenziali non corrette'}));
  assert.equal(failed.state[2],'Credenziali non corrette');assert.equal(failed.state[1],false);
  assert.ok(!failed.events.some(([key])=>key==='navigate'));

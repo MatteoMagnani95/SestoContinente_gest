@@ -36,8 +36,7 @@ export async function registerAction(form: FormData) {
     options: { data:{presa_visione:'si',versione_privacy:legal.versione,immagini:scelta,versione_immagini:legal.test?'TEST-COLLAUDO-1':versioneImmagini},emailRedirectTo: `${origin}/auth/callback?next=%2Frichiesta%2Fnuova` },
   });
   if (error) return {error:'Registrazione non completata. Controlla i dati o riprova.'};
-  if (data.session) redirect('/smista');
-  redirect('/registrati?ok=verifica');
+  return {next:data.session?'/smista' as const:'/registrati?ok=verifica' as const};
 }
 
 export async function loginAction(form: FormData) {
@@ -98,7 +97,7 @@ export async function newPasswordAction(form: FormData) {
   const { supabase } = await requireUser();
   const { error } = await supabase.auth.updateUser({ password });
   if (error) return {error:'Password non aggiornata. Richiedi un nuovo collegamento di recupero se necessario.'};
-  redirect('/smista');
+  return {next:'/smista' as const};
 }
 
 export async function saveApplicationAction(form: FormData) {

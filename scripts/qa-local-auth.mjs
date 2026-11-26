@@ -108,8 +108,10 @@ export async function runAuth({app,admin}){
    if(!form)throw Error('Login form missing');
    // L'errore del tentativo precedente è lecito fino al nuovo submit.
    form.addEventListener('submit',()=>{
+    const previousAlerts=new Set(form.querySelectorAll('[role=alert]'));
     const observer=new MutationObserver(()=>{
      for(const alert of form.querySelectorAll('[role=alert]')){
+      if(previousAlerts.has(alert))continue;
       const text=alert.textContent??'';
       if(/Email o password non corrette|Operazione non completata|Accesso temporaneamente non disponibile/.test(text))void window.reportLoginError(text);
      }

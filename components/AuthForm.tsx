@@ -1,7 +1,7 @@
 'use client';
 import {useEffect,useId,useRef,useState,type FormEvent,type ReactNode} from 'react';
 import {Button,Alert} from '@/components/ui/Primitives';
-type Result={error?:string;field?:string;notice?:string;next?:'/smista'}|void;
+type Result={error?:string;field?:string;notice?:string;next?:'/smista'|'/registrati?ok=verifica'}|void;
 export default function AuthForm({action,children,label,pendingLabel,disabled=false}:{action:(form:FormData)=>Promise<Result>;children:ReactNode;label:string;pendingLabel:string;disabled?:boolean}){
  const formRef=useRef<HTMLFormElement>(null),errorId=useId();
  const [errorField,setErrorField]=useState<string|undefined>();
@@ -20,10 +20,10 @@ export default function AuthForm({action,children,label,pendingLabel,disabled=fa
   try{
    const result=await action(data);
    if(result?.error){setError(result.error);setErrorField(result.field);}
-   else if(result?.next==='/smista'){
+   else if(result?.next==='/smista'||result?.next==='/registrati?ok=verifica'){
     // Navigazione completa: i cookie di sessione appena scritti sono disponibili
     // al server e il router non mostra una pagina anonima in cache.
-    window.location.replace('/smista');navigating=true;
+    window.location.replace(result.next);navigating=true;
    }else if(result?.notice)setNotice(result.notice);
   }
   catch{setError('Operazione non completata. Riprova.');}
