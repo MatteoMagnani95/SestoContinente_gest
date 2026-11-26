@@ -157,3 +157,17 @@ test('Drawer condiviso: fullscreen su telefono e tablet, scroll verticale e conf
   await dialog.evaluate(e=>e.close());
  }
 });
+
+test('Viewport visibile ridotta: pannello e pulsante finale restano raggiungibili',async({page})=>{
+ await page.setViewportSize({width:390,height:844});await page.setContent(responsiveFixture());
+ await page.evaluate(()=>{document.documentElement.style.setProperty('--sc-visual-height','390px');document.documentElement.style.setProperty('--sc-visual-top','30px');document.documentElement.setAttribute('data-sc-keyboard','');});
+ const dialog=page.getByRole('dialog',{name:'Editor sintetico',includeHidden:true});
+ await dialog.evaluate(e=>e.showModal());const rect=await dialog.boundingBox();
+ expect(rect.height).toBeLessThanOrEqual(391);
+ expect(rect.y).toBeGreaterThanOrEqual(29);
+ expect(rect.y+rect.height).toBeLessThanOrEqual(421);
+ const button=dialog.getByRole('button',{name:'Conferma'});await button.scrollIntoViewIfNeeded();
+ const final=await button.boundingBox();
+ expect(final.y+final.height).toBeLessThanOrEqual(421);
+ await dialog.evaluate(e=>e.close());
+});
