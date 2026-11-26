@@ -82,7 +82,7 @@ begin
  if not coalesce(public.is_staff(),false) or auth.uid() is null then raise exception 'Non autorizzato' using errcode='42501'; end if;
  if p_motivo is null or char_length(btrim(p_motivo)) not between 5 and 500 then raise exception 'Motivazione obbligatoria' using errcode='P3521'; end if;
  select direttore_id into v_direttore from public.edizioni_corsi where id=p_edizione for update;
- select persona_id into v_persona from public.iscrizioni_corsi where id=p_iscrizione and edizione_id=p_edizione and stato in ('iscritto','in_attesa') for update;
+ select persona_id into v_persona from public.iscrizioni_corsi where id=p_iscrizione and edizione_id=p_edizione and stato in ('iscritto','in_attesa','ritirato','respinto') for update;
  if not found or not exists(select 1 from public.qualifiche_istruttori where persona_id=v_persona) then raise exception 'Iscrizione o qualifica non disponibile' using errcode='P3521'; end if;
  if v_direttore=v_persona or exists(select 1 from public.assegnazioni_istruttori where edizione_id=p_edizione and persona_id=v_persona) then raise exception 'Incarico nella stessa edizione' using errcode='P3520'; end if;
  insert into public.deroghe_iscrizioni_corsi(iscrizione_id,motivo) values(p_iscrizione,btrim(p_motivo));
