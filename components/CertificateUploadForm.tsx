@@ -19,13 +19,13 @@ export default function CertificateUploadForm({children}:{children:ReactNode}){
     if(!ticket){setError('Formato o permessi non validi.');return;}
     const db=createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!,process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
     const {error:uploadError}=await db.storage.from('sesto-documenti').uploadToSignedUrl(ticket.path,ticket.token,file,{contentType:file.type});
-    if(uploadError){setError('Caricamento interrotto. Riprova.');return;}
+    if(uploadError){setError('Trasferimento temporaneo non confermato. Nessun certificato è stato registrato; riprova il trasferimento.');return;}
     values.delete('file');values.set('transito',ticket.path);
    }
    const result=await caricaCertificato(values);
    if(result.error){setError(result.error);return;}
    form.reset();markFormSaved(form);router.replace('/area-personale/certificato?msg=ok&persona='+values.get('persona_id'));router.refresh();
-  }catch{setError('Invio non riuscito. Riprova.');}
+  }catch{setError('Esito non confermato. Controlla i certificati caricati prima di ripetere l’invio.');}
   finally{lock.current=false;setPending(false);}
  }
  return <form data-dirty-form id="carica" className="panel stack" onSubmit={submit}><fieldset className="edit-fields" disabled={pending}>{children}</fieldset>{error&&<p role="alert">{error}</p>}{pending&&<p role="status">Caricamento in corso…</p>}</form>;
