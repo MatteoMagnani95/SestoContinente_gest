@@ -146,3 +146,5 @@ Ruoli indicativi dal codice di navigazione e dalle guardie 2.0; la verifica di a
 - Selettori staff ordinari e avanzati: qualifiche istruttori escluse di default, deroga esplicita con motivazione; direttore e istruttori della stessa edizione sempre esclusi. Area personale: rinvio alla segreteria.
 - Migrazione proposta: 20261126213000_deroga_istruttori_corsi.sql; RLS staff, audit, vincoli reciproci e RPC atomica; regolarizzazione iscrizioni storiche senza cancellazione.
 - Test statici v48 e integrazione PostgreSQL nel collaudo esistente. CI da verificare; nessun merge, rilascio o intervento sul DB di produzione. PR esistente #6.
+
+- Rifiniture F3: modifica anagrafica diretta, quattro gruppi anche nel drawer scheda socio, stato e scadenza più recente del tesseramento associato all’adesione attiva (non attestazione di validità), footer sticky anche mobile salvo tastiera aperta/schermo molto basso. Test statici aggiunti e scenari Playwright con fixture sintetiche. Integrazione concorrente: preservato integralmente l’intervento corsi su branch; la sua migrazione separata NON è stata applicata in produzione.

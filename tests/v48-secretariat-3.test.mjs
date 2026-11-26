@@ -29,3 +29,12 @@ test('F3: anagrafica mantiene gruppi, obbligatorietà originaria e assistenza fi
  for(const k of ['Dati personali','Residenza e recapiti','Dati fiscali','Verifiche particolari'])assert.ok(s.includes(k));
  assert.match(s,/required:field.required\?\?false/);assert.match(s,/<CodiceFiscaleAssist\/>/);assert.match(s,/!fields.some\(f=>f.required\)/);assert.match(s,/action=\{saveModuleRecord\}/);assert.match(read('components/EditForm.tsx'),/instanceof HTMLDetailsElement\)el.open=true/);
 });
+
+test('F3: modifica anagrafica diretta, tesseramento per adesione attiva e quattro gruppi di campi',()=>{
+ const s=read('app/gestionale/soci/[id]/page.tsx');
+ assert.match(s,/\?tab=anagrafica&modifica=1/);assert.match(s,/initialOpen=\{modifica==='1'&&!msg\}/);
+ assert.match(s,/from\('tesseramenti'\).select\('id,ente,scade_il,stato'\).eq\('adesione_id',active.id\)/);
+ const editor=s.slice(s.indexOf('<EditForm action={updateMemberProfile}'),s.indexOf('</EditForm>',s.indexOf('<EditForm action={updateMemberProfile}')));
+ for(const name of ['nome','cognome','data_nascita','luogo_nascita','provincia_nascita','stato_nascita','indirizzo','cap','comune','provincia_residenza','stato_residenza','telefono','email','codice_fiscale','sesso_cf','cf_omocodia_verificata','cf_override_motivo'])assert.ok(editor.includes('name="'+name+'"'),name);
+ assert.equal((editor.match(/\brequired\b/g)||[]).length,2);assert.match(editor,/<CodiceFiscaleAssist\/>/);
+});

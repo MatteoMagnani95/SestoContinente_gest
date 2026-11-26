@@ -59,9 +59,9 @@ function Section({id,title,href,children}:{id:string;title:string;href?:string;c
 }
 function None({children='Nessun elemento registrato.'}:{children?:React.ReactNode}){return <p className="muted tiny">{children}</p>;}
 
-export default async function MemberDetail({params,searchParams}:{params:Promise<{id:string}>;searchParams:Promise<{msg?:string;tab?:string;p?:string;p2?:string}>}){
+export default async function MemberDetail({params,searchParams}:{params:Promise<{id:string}>;searchParams:Promise<{msg?:string;tab?:string;p?:string;p2?:string;modifica?:string}>}){
  const {id}=await params;
- const {msg,tab:rawTab,p,p2}=singleSearchParams(await searchParams);
+ const {msg,tab:rawTab,p,p2,modifica}=singleSearchParams(await searchParams);
  const tab=memberTab(rawTab??(msg==='salvato'?'anagrafica':msg==='adesione_creata'?'adesioni':undefined));
  const page=pageNumber(p),secondPage=pageNumber(p2),size=30;
  const overview=tab==='panoramica';
@@ -135,6 +135,7 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
  const newSeasons=memberError?[]:seasons.filter(s=>!allMembershipRows.some(m=>m.stagione_id===s.id));
  const active=allMembershipRows.find(m=>seasons.find(s=>s.id===m.stagione_id)?.attiva);
  const currentSeason=seasons.find(s=>s.attiva);
+ const currentCard=overview&&!memberError&&active?await supabase.from('tesseramenti').select('id,ente,scade_il,stato').eq('adesione_id',active.id).order('scade_il',{ascending:false,nullsFirst:false}).order('id').limit(1).maybeSingle():{data:null,error:null};
  const {data:emergenza,error:emergencyError}=tab==='anagrafica'?await supabase.from('contatti_emergenza').select('nominativo,telefono').eq('persona_id',id).maybeSingle():{data:null,error:null};
  const {data:domanda,error:applicationError}=tab==='adesioni'?await supabase.from('richieste').select('id,utente_id,flag_privacy,versione_privacy,data_accettazione,immagini_scelta,immagini_versione,immagini_il,flag_immagini,versione_statuto,flag_statuto').eq('persona_id',id).order('modificato_il',{ascending:false}).limit(1).maybeSingle():{data:null,error:null};
  const titolare=tab==='adesioni'?(domanda?.utente_id??accountLinks?.find(a=>a.relazione==='titolare')?.utente_id):undefined;
@@ -147,7 +148,7 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
  const courseBalances=courseBalancesResult.data??[];
  const debt=balanceError?null:balances.reduce((sum,q)=>sum+Number(q.residuo),0);
  const courseDebt=courseBalancesResult.error?null:courseBalances.reduce((sum,q)=>sum+Number(q.residuo),0);
- const partialErrors=Boolean(memberError||balanceError||paymentResult.error||enrollmentResult.error||certResult.error||patentResult.error||qualificationResult.error||assignmentResult.error||documentResult.error||guardianResult.error||wardResult.error||equipmentResult.error||cardResult.error||courseBalancesResult.error||emergencyError||applicationError||consentError||boardError||editionsError||coursesError||equipmentNamesError||familyError);
+ const partialErrors=Boolean(currentCard.error||memberError||balanceError||paymentResult.error||enrollmentResult.error||certResult.error||patentResult.error||qualificationResult.error||assignmentResult.error||documentResult.error||guardianResult.error||wardResult.error||equipmentResult.error||cardResult.error||courseBalancesResult.error||emergencyError||applicationError||consentError||boardError||editionsError||coursesError||equipmentNamesError||familyError);
  const pageLink=(next:number,secondary=false)=>listHref({tab,p:String(secondary?page:next),p2:String(secondary?next:secondPage)});
  const pager=(result:{count:number|null;error:unknown},label:string,secondary=false)=><Pagination page={secondary?secondPage:page} size={size} count={result.error?null:result.count} href={p=>pageLink(p,secondary)} label={label}/>;
  const sectionError=(error:unknown)=>error?<Alert tone="danger" announce>Informazioni non disponibili. Riprova prima di eseguire operazioni.</Alert>:null;
@@ -155,7 +156,7 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
  <header className="sc-member-hero sc-page-header-marine sc-area-secretariat">
  <PersonAvatar nome={person.nome} cognome={person.cognome} large/>
  <div className="sc-member-identity"><p className="eyebrow">Segreteria · Scheda unificata</p><h1>{displayName(person.cognome)} {displayName(person.nome)}</h1><p>{currentSeason?.nome??'Stagione attiva non disponibile'}</p><p>{person.email??person.telefono??'Recapiti non acquisiti'}</p><StatusBadge tone={memberError?'neutral':statusTone(active?.stato??'')}>{memberError?'Stato non disponibile':active?statusLabel(active.stato):'Nessuna adesione nella stagione attiva'}</StatusBadge></div>
- <div className="sc-member-hero-actions"><ButtonLink href={`/comunicazioni/soci/${id}`} variant="secondary" icon="document">Scrivi al socio</ButtonLink><ButtonLink href={'/gestionale/incassi?persona='+id+'&stato=residuo'} variant="secondary" icon="wallet">Registra pagamento</ButtonLink><ButtonLink href="?tab=anagrafica" icon="user">Anagrafica</ButtonLink></div>
+ <div className="sc-member-hero-actions"><ButtonLink href={`/comunicazioni/soci/${id}`} variant="secondary" icon="document">Scrivi al socio</ButtonLink><ButtonLink href={'/gestionale/incassi?persona='+id+'&stato=residuo'} variant="secondary" icon="wallet">Registra pagamento</ButtonLink><ButtonLink href="?tab=anagrafica&modifica=1" icon="user">Modifica anagrafica</ButtonLink></div>
  </header>
  {msg&&Object.hasOwn(statusMessage,msg)&&<p role="status" className={`notice ${['salvato','adesione_creata','elemento_salvato'].includes(msg)?'success':'warning'}`}>{statusMessage[msg]}</p>}
  {partialErrors&&<Alert tone="warning">Una o più sezioni non sono disponibili. Non interpretare dati mancanti come assenza di registrazioni.</Alert>}
@@ -165,7 +166,7 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
  </nav>
  {tab==='panoramica'&&<section className="sc-secretariat-section sc-member-overview"><h2>Panoramica socio</h2><p className="muted">Stato associativo, attività e scadenze registrate.</p><div className="sc-metrics">
  <Link className="sc-metric-link" href="?tab=adesioni"><MetricCard label="Adesione nella stagione attiva" area="secretariat" icon="users" value={memberError?'—':active?statusLabel(active.stato):'Non presente'}/></Link>
- <Link className="sc-metric-link" href="?tab=tesseramenti"><MetricCard label="Tesseramenti registrati" area="pool" icon="document" value={exactCount(cardResult)} note="Tutte le stagioni; consulta scadenze e stati"/></Link>
+ <Link className="sc-metric-link" href="?tab=tesseramenti"><MetricCard label="Tesseramento della stagione attiva" area="pool" icon="document" value={memberError||currentCard.error||!currentSeason?'—':currentCard.data?statusLabel(currentCard.data.stato):'Non presente'} note={currentCard.data?'Scadenza più recente: '+formatValue(currentCard.data.scade_il):'Registrati nello storico: '+exactCount(cardResult)}/></Link>
  <Link className="sc-metric-link" href="?tab=certificati"><MetricCard label="Certificato più recente" area="certificate" icon="certificate" value={certResult.error?'—':newestCert?statoSingolo(certLabel(newestCert)):'Non presente'} note={certResult.error||!newestCert?undefined:'Scadenza: '+formatValue(newestCert.scade_il)}/></Link>
  <Link className="sc-metric-link" href="?tab=brevetti"><MetricCard label="Brevetti registrati" area="teaching" icon="course" value={exactCount(patentResult)}/></Link>
  </div><div className="sc-member-overview-grid">
@@ -182,22 +183,34 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
      <div><span className="k">Indirizzo di residenza</span><strong>{[person.indirizzo,person.cap,person.comune].filter(Boolean).join(' · ')||'—'}</strong></div>
      <div><span className="k">Recapiti</span><strong>{person.email??'—'} · {person.telefono??'—'}</strong></div>
     </div>
-    <h3>Contatto di emergenza</h3><p>{emergencyError?'Non disponibile':emergenza?emergenza.nominativo+' · '+emergenza.telefono:'Non acquisito'}</p><Drawer title={'Modifica anagrafica · '+person.cognome+' '+person.nome} trigger="Modifica anagrafica e recapiti" primary>
+    <h3>Contatto di emergenza</h3><p>{emergencyError?'Non disponibile':emergenza?emergenza.nominativo+' · '+emergenza.telefono:'Non acquisito'}</p><Drawer title={'Modifica anagrafica · '+person.cognome+' '+person.nome} trigger="Modifica anagrafica e recapiti" primary initialOpen={modifica==='1'&&!msg}>
      <EditForm action={updateMemberProfile} className="stack sc-secretariat-form"><input type="hidden" name="id" value={person.id}/>
-      <div className="form-grid">
-       {(['nome','cognome','codice_fiscale','luogo_nascita','indirizzo','cap','comune','telefono','email'] as const).map(key=>
-        <label key={key}>{({nome:'Nome',cognome:'Cognome',codice_fiscale:'Codice fiscale',luogo_nascita:'Comune di nascita (o città estera)',indirizzo:'Indirizzo di residenza',cap:'CAP',comune:'Comune di residenza',telefono:'Telefono',email:'Email di contatto'})[key]}
-         <input name={key} type={key==='email'?'email':'text'} maxLength={key==='email'?254:key==='indirizzo'?250:key==='luogo_nascita'?150:100}
-          required={key==='nome'||key==='cognome'} defaultValue={person[key]??''}/></label>)}
+      <p className="tiny muted sc-form-legend">* Campi obbligatori. Gli altri sono facoltativi.</p>
+      <fieldset><legend>Dati personali</legend><div className="form-grid">
+       <label>Nome <span aria-hidden="true" className="sc-required-star">*</span><input name="nome" required maxLength={100} defaultValue={person.nome}/></label>
+       <label>Cognome <span aria-hidden="true" className="sc-required-star">*</span><input name="cognome" required maxLength={100} defaultValue={person.cognome}/></label>
        <label>Data di nascita<input name="data_nascita" type="date" defaultValue={person.data_nascita??''}/></label>
+       <label>Comune di nascita (o città estera)<input name="luogo_nascita" maxLength={150} defaultValue={person.luogo_nascita??''}/></label>
        <label>Provincia nascita<input name="provincia_nascita" maxLength={2} defaultValue={person.provincia_nascita??''}/></label>
        <label>Stato di nascita<input name="stato_nascita" maxLength={100} defaultValue={person.stato_nascita??''}/></label>
+      </div></fieldset>
+      <fieldset><legend>Residenza e recapiti</legend><div className="form-grid">
+       <label>Indirizzo di residenza<input name="indirizzo" maxLength={250} defaultValue={person.indirizzo??''}/></label>
+       <label>CAP<input name="cap" maxLength={100} defaultValue={person.cap??''}/></label>
+       <label>Comune di residenza<input name="comune" maxLength={100} defaultValue={person.comune??''}/></label>
        <label>Provincia residenza<input name="provincia_residenza" maxLength={2} defaultValue={person.provincia_residenza??''}/></label>
        <label>Stato residenza<input name="stato_residenza" maxLength={15} defaultValue={person.stato_residenza??''}/></label>
+       <label>Telefono<input name="telefono" maxLength={100} defaultValue={person.telefono??''}/></label>
+       <label>Email di contatto<input name="email" type="email" maxLength={254} defaultValue={person.email??''}/></label>
+      </div></fieldset>
+      <fieldset><legend>Dati fiscali</legend><div className="form-grid">
+       <label>Codice fiscale<input name="codice_fiscale" maxLength={100} defaultValue={person.codice_fiscale??''}/></label>
        <label>Sesso per CF<select name="sesso_cf" defaultValue={person.sesso_cf??''}><option value="">Non indicato</option><option value="M">M</option><option value="F">F</option></select></label>
+      </div></fieldset>
+      <details className="sc-advanced-fields" open={Boolean(person.cf_omocodia_verificata||person.cf_override_motivo)||undefined}><summary>Verifiche particolari (omocodia)</summary><div className="form-grid">
        <label className="check-label"><input type="checkbox" name="cf_omocodia_verificata" defaultChecked={person.cf_omocodia_verificata}/><span>Omocodia verificata con documentazione</span></label>
        <label>Motivazione verifica documentale CF<input name="cf_override_motivo" maxLength={500} defaultValue={person.cf_override_motivo??''} placeholder="Es. omocodia attestata da tessera sanitaria"/></label>
-      </div><CodiceFiscaleAssist/><div className="form-actions"><button type="submit" className="button">Salva modifiche</button><CancelEditButton/></div>
+      </div></details><CodiceFiscaleAssist/><div className="form-actions"><button type="submit" className="button">Salva modifiche</button><CancelEditButton/></div>
       <p className="tiny muted">Le rettifiche vengono registrate nel registro operazioni, senza copiare i dati anagrafici nel log.</p>
      </EditForm><RemoveRecord moduleKey="anagrafiche" id={person.id} back="soci" label={person.cognome+' '+person.nome}/>{isAdmin===true&&Boolean(accountLinks?.length)&&<div className="stack"><p className="muted tiny">Per rimuovere l’account insieme ai dati esclusivi collegati, usa la cancellazione completa. I profili condivisi sono conservati.</p>{accountLinks?.map(a=><Link key={a.utente_id} href={`/gestionale/utenti/${a.utente_id}/elimina`} className="button danger">Elimina account e dati ({a.relazione})</Link>)}</div>}</Drawer>
    </Section>}

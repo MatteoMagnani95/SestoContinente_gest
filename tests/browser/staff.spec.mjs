@@ -103,3 +103,36 @@ test('Sidebar comprimibile, menu attivo e ricerca da tastiera',async({page})=>{
  await expect(dialog.getByRole('searchbox')).toBeFocused();await page.keyboard.press('Escape');
  await expect(dialog).toBeHidden();await expect(trigger).toBeFocused();
 });
+
+test('F3: centro operativo e collegamenti reali alle bozze, senza salvare',async({page})=>{
+ await page.goto('/gestionale');
+ await expect(page.getByRole('heading',{name:'Centro operativo'})).toBeVisible();
+ const shortcuts=page.getByRole('navigation',{name:'Azioni principali'});await expect(shortcuts.getByRole('link')).toHaveCount(4);
+ await expect(page.locator('.sc-dashboard-priorities .sc-metrics').locator('article')).toHaveCount(5);
+ await expect(page.locator('.sc-dashboard-summary .sc-metrics').locator('article')).toHaveCount(4);
+ await expect(page.locator('.sc-staff-content').getByRole('complementary',{name:'Progetto Nereia'})).toBeVisible();
+ await shortcuts.getByRole('link',{name:'Nuova persona'}).click();
+ const person=page.getByRole('dialog',{name:'Aggiungi persona'});await expect(person).toBeVisible();
+ await expect(person.locator('input[name="nome"]')).toHaveAttribute('required','');
+ await expect(person.locator('input[name="cognome"]')).toHaveAttribute('required','');
+ await expect(person.locator('input[name="data_nascita"]')).not.toHaveAttribute('required','');
+ await person.getByText('Verifiche particolari (omocodia)',{exact:true}).click();
+ await expect(person.locator('input[name="cf_omocodia_verificata"]')).toBeVisible();
+ await person.getByRole('button',{name:'Chiudi pannello'}).click();await expect(person).toBeHidden();
+ await page.goto('/gestionale');await page.getByRole('navigation',{name:'Azioni principali'}).getByRole('link',{name:'Nuovo evento'}).click();
+ await expect(page.getByRole('dialog',{name:'Nuovo evento'})).toBeVisible();
+ await page.getByRole('dialog',{name:'Nuovo evento'}).getByRole('button',{name:'Chiudi pannello'}).click();
+});
+test('F3: ogni tab socio raggiungibile con URL legacy e menu Altro',async({page})=>{
+ test.skip(!fixtures.person,'Richiede persona sintetica QA_FIXTURE_IDS');
+ await page.goto('/gestionale/soci/'+fixtures.person);
+ const nav=page.getByRole('navigation',{name:'Sezioni della scheda socio'});
+ await expect(nav.getByRole('link')).toHaveCount(7);
+ await nav.getByText('Altro',{exact:true}).click();
+ await expect(nav.getByRole('link')).toHaveCount(13);
+ for(const key of ['panoramica','anagrafica','adesioni','tesseramenti','corsi','pagamenti','certificati','brevetti','documenti','istruttore','attrezzature','famiglia','cronologia']){
+  await page.goto('/gestionale/soci/'+fixtures.person+'?tab='+key);
+  await expect(page.locator('.sc-member-tabbar a[aria-current="page"]')).toHaveCount(1);
+  await expect(page.locator('.sc-member-tabbar a[aria-current="page"]')).toBeVisible();
+ }
+});
