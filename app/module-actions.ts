@@ -1,6 +1,7 @@
 'use server';
 import {memberTabForModule} from '@/lib/secretariat';
 import {courseDuplicate} from '@/lib/course-errors';
+import {todayRome} from '@/lib/area-soci';
 import {paymentAmount,validPaymentDate} from '@/lib/payment-tools';
 import {redirect} from 'next/navigation';
 import {revalidatePath} from 'next/cache';
@@ -58,6 +59,35 @@ export async function saveModuleRecord(form:FormData) {
    continue;
   }
   changes[field.name]=raw;
+ }
+ if(key==='attrezzature'){
+  if(id){
+   const {count,error}=await supabase.from('assegnazioni_attrezzature').select('id',{count:'exact',head:true}).eq('attrezzatura_id',id).is('restituita_il',null);
+   if(error||count===null)return {error:'Prestiti non verificabili.'};
+   if(count>0&&changes.stato!=='assegnata'||count===0&&changes.stato==='assegnata')return {field:'stato',error:'Lo stato deve essere coerente con i prestiti aperti.'};
+   const {count:reviews,error:reviewError}=await supabase.from('revisioni_attrezzature').select('id',{count:'exact',head:true}).eq('attrezzatura_id',id);
+   if(reviewError||reviews===null)return {error:'Revisioni non verificabili.'};
+   if(reviews>0){delete changes.ultima_revisione;delete changes.prossima_revisione;}
+  }else if(changes.stato==='assegnata')return {error:'Registra una consegna per assegnare l’attrezzatura.'};
+ }
+ if(key==='revisioni'){
+  const date=String(changes.data_intervento??''),next=String(changes.prossimo_intervento??'');
+  if(!validPaymentDate(date)||date>todayRome()||next&&(!validPaymentDate(next)||next<date))return {field:'data_intervento',error:'Controlla data intervento e prossima revisione.'};
+  if(id){const {data:old,error}=await supabase.from('revisioni_attrezzature').select('attrezzatura_id,data_intervento,prossimo_intervento').eq('id',id).maybeSingle();
+   if(error||!old)return {error:'Revisione non disponibile.'};
+   if(old.attrezzatura_id!==changes.attrezzatura_id||old.data_intervento!==changes.data_intervento||old.prossimo_intervento!==changes.prossimo_intervento)return {error:'Le date e l’attrezzatura di una revisione storica sono protette fino alla verifica della sincronizzazione. Puoi aggiornare gli altri dati.'};
+  }else{
+   let similar=supabase.from('revisioni_attrezzature').select('id',{count:'exact',head:true}).eq('attrezzatura_id',String(changes.attrezzatura_id)).eq('data_intervento',date).eq('tipo',String(changes.tipo));similar=next?similar.eq('prossimo_intervento',next):similar.is('prossimo_intervento',null);
+   const {count,error}=await similar;if(error||count===null)return {error:'Impossibile verificare interventi simili.'};
+   if(count>0&&form.get('conferma_simile')!=='on')return {error:'Esiste un intervento simile. Verifica lo storico e conferma soltanto se distinto.'};
+  }
+ }
+ if(key==='consegne'){
+  if(id)return {error:'Usa il pulsante Registra restituzione. I dati storici del prestito non sono riscrivibili da questo modulo.'};
+  if(!changes.persona_id&&!changes.edizione_id)return {error:'Seleziona almeno una persona o un corso.'};
+  if(changes.restituita_il||!validPaymentDate(String(changes.assegnata_il))||String(changes.assegnata_il)>todayRome())return {error:'Controlla la data della consegna. Registra la restituzione separatamente.'};
+  const {data:item,error}=await supabase.from('attrezzature').select('stato').eq('id',String(changes.attrezzatura_id)).maybeSingle();
+  if(error||!item||item.stato!=='disponibile')return {field:'attrezzatura_id',error:'Attrezzatura non disponibile per la consegna.'};
  }
  if(key==='contabilita'){
   const amount=paymentAmount(text(form,'importo'));
