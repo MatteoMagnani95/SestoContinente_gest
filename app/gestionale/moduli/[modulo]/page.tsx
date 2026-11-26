@@ -3,7 +3,8 @@ import {DataTable,FilterBar,SearchBar,Pagination} from '@/components/ui/DataTabl
 import SearchableSelect from '@/components/ui/SearchableSelect';
 import {StatusBadge,PageHeader} from '@/components/ui/Primitives';
 import {moduleUi,cleanSearch,pageNumber,listHref,entityLabel} from '@/lib/module-ui';
-import {dateFilter,searchTerms} from '@/lib/secretariat';
+import {tutteLePagine} from '@/lib/pagine';
+import {dateFilter,searchTerms,memberTabForModule} from '@/lib/secretariat';
 import {romeDay,shiftDay} from '@/lib/calendar-tools';
 import {statiCertificato,statoSingolo} from '@/lib/certificati';
 import Cronologia from '@/components/Cronologia';
@@ -76,7 +77,7 @@ function Editor({module,moduleKey,record,references,admin=false,personId=''}:{mo
  return <><EditForm action={saveModuleRecord} className="module-form stack">
 
  <input type="hidden" name="modulo" value={moduleKey}/>
- {record&&<input type="hidden" name="id" value={record.id}/>}{record&&moduleKey==='certificati'&&<input type="hidden" name="documento_atteso" value={String(record.documento_id??'')}/>}
+ {record&&<input type="hidden" name="id" value={record.id}/>}{personId&&<input type="hidden" name="return_persona" value={personId}/>}{record&&moduleKey==='certificati'&&<input type="hidden" name="documento_atteso" value={String(record.documento_id??'')}/>}
  {gruppi.map(({titolo,fields})=><fieldset key={titolo}><legend>{titolo}</legend><div className="form-grid">{moduleKey==='iscrizioni'&&!record&&<EligibleEnrollmentSelect editions={(references.edizioni_corsi??[]) as unknown as {id:string;nome:string;stagione_id:string;stato:string}[]} initialPerson={personId} eligible={(references.gest_soci_iscrivibili??[]) as unknown as {persona_id:string;stagione_id:string;nome:string;cognome:string}[]}/>} {fields.filter(f=>!(moduleKey==='iscrizioni'&&!record&&['edizione_id','persona_id','stato'].includes(f.name))).map(f=>moduleKey==='addebiti'&&f.name==='iscrizione_id'?<EnrollmentInput key={f.name} field={f} value={record?.[f.name]} references={references} editing={!!record}/>:(moduleKey==='iscrizioni'||moduleKey==='brevetti')&&record&&['persona_id','edizione_id'].includes(f.name)?<label key={f.name}>{f.label}<input type="hidden" name={f.name} value={String(record[f.name]??'')}/><input readOnly value={labelOf(references[f.ref?.table??'']?.find(r=>r.id===record[f.name])??({id:''} as Row),f.ref?.labels??['id'])||'Non acquisito'}/></label>:<FieldInput scope={moduleKey+'-'+(record?.id??'new')} key={`${record?.id??'new'}-${f.name}`} field={moduleKey==='iscrizioni'&&record&&f.name==='stato'?{...f,options:f.options?.filter(o=>o===record.stato||!['in_attesa','iscritto'].includes(o)||((references.edizioni_corsi??[]).some(e=>e.id===record.edizione_id&&['programmato','attivo'].includes(String(e.stato)))&&(references.gest_soci_iscrivibili??[]).some(e=>e.persona_id===record.persona_id&&e.stagione_id===(references.edizioni_corsi??[]).find(x=>x.id===record.edizione_id)?.stagione_id)))}:f} value={record?.[f.name]??(moduleKey==='certificati'&&f.name==='esito_verifica'&&record?(record.idoneita_verificata?'valido':record.documento_id?'in_attesa':'non_valido'):undefined)??(!record&&f.name==='persona_id'&&references[f.ref?.table??'']?.some(r=>r.id===personId)?personId:undefined)??(!record&&moduleKey==='anagrafiche'&&['stato_nascita','stato_residenza'].includes(f.name)?'Italia':undefined)} references={references}/>)}</div></fieldset>)}
  {moduleKey==='anagrafiche'&&<CodiceFiscaleAssist/>}<div className="form-actions"><button type="submit" className="button">{record?'Salva modifiche':'Salva '+entityLabel(moduleKey)}</button><CancelEditButton/></div>
  </EditForm>
@@ -92,7 +93,7 @@ function bookingConflictText(corsia?:string,inizio?:string,fine?:string):string{
  const fascia=dal&&al?` dalle ${dal} alle ${al}`:' nell’intervallo richiesto';
  return `Corsia${numero} già prenotata${fascia}. Scegli un’altra corsia o modifica l’orario.`;
 }
-export default async function ModulePage({params,searchParams}:{params:Promise<{modulo:string}>;searchParams:Promise<{q?:string;msg?:string;p?:string;corsia?:string;inizio?:string;fine?:string;edit?:string;stato?:string;f?:string;v?:string;ordine?:string;dir?:string;filtro_modulo?:string;dal?:string;al?:string;persona?:string;nuovo?:string;pm?:string}>}){
+export default async function ModulePage({params,searchParams}:{params:Promise<{modulo:string}>;searchParams:Promise<{q?:string;msg?:string;p?:string;corsia?:string;inizio?:string;fine?:string;edit?:string;stato?:string;f?:string;v?:string;ordine?:string;dir?:string;filtro_modulo?:string;dal?:string;al?:string;persona?:string;nuovo?:string;pm?:string;stagione?:string}>}){
  const {modulo}=await params;
  if(!isModuleKey(modulo))notFound();
  if(modulo==='pagamenti')redirect('/gestionale/incassi');
@@ -103,7 +104,8 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
   const {data}=await supabase.from('ruoli_utente').select('ruolo').eq('utente_id',user.id).eq('ruolo','amministratore').maybeSingle();
   if(!data)redirect('/gestionale?msg=permessi');
  }
- const {q='',msg='',p='1',corsia,inizio,fine,edit,stato,f,v,ordine,dir,filtro_modulo,dal:rawDal,al:rawAl,persona,nuovo}=await searchParams;
+ const {q='',msg='',p='1',corsia,inizio,fine,edit,stato,f,v,ordine,dir,filtro_modulo,dal:rawDal,al:rawAl,persona,nuovo,stagione:rawSeason}=await searchParams;
+ const seasonId=rawSeason&&UUID_RE.test(rawSeason)&&module.fields.some(f=>f.name==='stagione_id')?rawSeason:'';
  const today=romeDay(new Date().toISOString()),dal=dateFilter(rawDal),al=dateFilter(rawAl);
  const personId=persona&&UUID_RE.test(persona)?persona:'';
  const personField=module.fields.some(f=>f.name==='persona_id');
@@ -136,6 +138,9 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  if(!editId&&dateColumn&&dal)query=query.gte(dateColumn,dal);
  if(!editId&&dateColumn&&al)query=query.lte(dateColumn,al);
  if(!editId&&personId&&personField)query=query.eq('persona_id',personId);
+ if(!editId&&seasonId)query=query.eq('stagione_id',seasonId);
+ let scopeError=false;
+ if(!editId&&personId&&modulo==='tesseramenti'){const ids=await tutteLePagine((da,a)=>supabase.from('adesioni').select('id').eq('persona_id',personId).order('id').range(da,a));scopeError=Boolean(ids.error);const keys=(ids.data??[]).map(x=>x.id);query=keys.length?query.in('adesione_id',keys):query.eq('id','00000000-0000-0000-0000-000000000000');}
  const selectableFilters=module.fields.filter(field=>field.type==='select'&&field.options?.length&&(!medical||field.name!=='esito_verifica'));
  const [filterName,filterValue]=filtro_modulo?.split(':',2)??[f??'',v??''];
  const selectedFilter=selectableFilters.find(field=>field.name===filterName&&field.options?.includes(filterValue));
@@ -216,7 +221,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
   const existing=references.edizioni_corsi??[];references.edizioni_corsi=[...available,...existing.filter(r=>!available.some(e=>e.id===r.id)&&!['programmato','attivo'].includes(String(r.stato)))];
  }
  const rows=(data??[]) as Row[];
- const href=(page:number)=>listHref({q,p:String(page),stato,dal,al,persona:personId,vista:modulo==='iscrizioni'?'elenco':undefined,filtro_modulo:selectedFilter?selectedFilter.name+':'+filterValue:undefined,ordine,dir});
+ const href=(page:number)=>listHref({q,p:String(page),stato,dal,al,persona:personId,stagione:seasonId,vista:modulo==='iscrizioni'?'elenco':undefined,filtro_modulo:selectedFilter?selectedFilter.name+':'+filterValue:undefined,ordine,dir});
  const numeric=(c:string)=>module.fields.some(field=>field.name===c&&field.type==='number');
  const display=(row:Row,c:string)=>{
   if(medical&&c==='documento_id')return row[c]?<Link href={'/documenti/'+row[c]}>Apri certificato</Link>:<Link href={'/area-personale/certificato?persona='+row.persona_id}>Carica certificato</Link>;
@@ -232,7 +237,8 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  };
  return <>
  <PageHeader eyebrow="Gestionale" title={module.label} description={module.description} actions={!editId&&<Drawer primary title={ui.create} trigger={ui.create} initialOpen={nuovo==='1'&&!msg}><Editor module={module} moduleKey={modulo} references={references} personId={personId}/></Drawer>}/>
- {personId&&personField&&<div className="sc-row-actions"><Link className="sc-button sc-button-secondary" href={'/gestionale/soci/'+personId+'?tab='+({adesioni:'adesioni',certificati:'certificati',iscrizioni:'corsi',brevetti:'brevetti',qualifiche:'istruttore',consegne:'attrezzature'} as Record<string,string>)[modulo]}>Torna alla scheda socio</Link><span className="muted">Elenco limitato alla persona selezionata</span></div>}
+ {personId&&memberTabForModule(modulo)&&<div className="sc-row-actions"><Link className="sc-button sc-button-secondary" href={'/gestionale/soci/'+personId+'?tab='+memberTabForModule(modulo)}>Torna alla scheda socio</Link><span className="muted">Elenco contestuale alla scheda selezionata</span></div>}
+ {scopeError&&<p role="alert" className="notice error">Non è stato possibile leggere le adesioni collegate. Elenco non disponibile.</p>}
  {feedback&&<p className={'notice '+(['salvato','eliminato'].includes(msg)?'success':'warning')} role="status">{feedback}</p>}
  {enrollmentLoadError&&<p className="notice error">Impossibile caricare tutte le iscrizioni dei corsi. Riprova o verifica i permessi.</p>}
  {referenceError&&<p className="notice warning" role="alert">Alcuni elenchi di scelta non sono completi. Ricarica la pagina prima di modificare i collegamenti.</p>}
@@ -240,7 +246,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  {missingQuery&&<section className="panel"><h3>Allievi senza certificato registrato</h3>{senzaFile?.error?<p role="alert">Elenco non disponibile.</p>:<><p>{senzaFile?.count??0} allievi senza certificato con questi filtri</p><ul>{senzaFile?.data?.map(p=><li key={p.id}>{p.cognome} {p.nome} · Documento mancante · <Link href={'/area-personale/certificato?persona='+p.id}>Carica certificato</Link></li>)}</ul><Pagination page={missingPage} size={perPage} count={senzaFile?.count??null} label="allievi" href={pm=>listHref({q,stato,persona:personId,p:String(page),pm:String(pm),ordine,dir})}/></>}</section>}
  <FilterBar>
  <SearchBar query={q} placeholder={ui.search||'Filtri e ordinamento'} resetHref={'/gestionale/moduli/'+modulo} hideSearch={!ui.search}>
- {modulo==='iscrizioni'&&<input type="hidden" name="vista" value="elenco"/>}{medical&&stato&&<input type="hidden" name="stato" value={stato}/>} {personId&&personField&&<input type="hidden" name="persona" value={personId}/>}{dateColumn&&<><label>Scadenza dal<input type="date" name="dal" defaultValue={dal}/></label><label>Scadenza al<input type="date" name="al" defaultValue={al}/></label></>}
+ {modulo==='iscrizioni'&&<input type="hidden" name="vista" value="elenco"/>}{medical&&stato&&<input type="hidden" name="stato" value={stato}/>} {personId&&memberTabForModule(modulo)&&<input type="hidden" name="persona" value={personId}/>} {module.fields.some(f=>f.name==='stagione_id')&&<label>Stagione<select name="stagione" defaultValue={seasonId}><option value="">Tutte</option>{(references.stagioni??[]).map(s=><option key={s.id} value={s.id}>{String(s.nome??'Stagione')}</option>)}</select></label>}{dateColumn&&<><label>Scadenza dal<input type="date" name="dal" defaultValue={dal}/></label><label>Scadenza al<input type="date" name="al" defaultValue={al}/></label></>}
  {selectableFilters.length>0&&<label>Filtra per<select name="filtro_modulo" defaultValue={selectedFilter?selectedFilter.name+':'+filterValue:''}><option value="">Tutti</option>{selectableFilters.map(field=><optgroup key={field.name} label={field.label}>{field.options?.map(value=><option key={value} value={field.name+':'+value}>{value.replaceAll('_',' ')}</option>)}</optgroup>)}</select></label>}
  <label>Ordina per<select name="ordine" defaultValue={selectedSort??''}><option value="">Ordine predefinito</option>{sortable.map(field=><option key={field.name} value={field.name}>{field.label}</option>)}</select></label>
  <label>Direzione<select name="dir" defaultValue={dir==='desc'?'desc':'asc'}><option value="asc">Crescente</option><option value="desc">Decrescente</option></select></label>
@@ -248,15 +254,15 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  <Link className="button ghost" href={'/gestionale/esporta/'+modulo}>Esporta archivio CSV</Link>
  </FilterBar>
  {editId&&<p><Link href={href(1)}>Torna all’elenco completo</Link></p>}
- {error?<div className="notice error" role="alert">Impossibile leggere i dati. Riprova o contatta l’amministratore.</div>:<DataTable label={module.label} mobileCards><thead role="rowgroup"><tr role="row">
+ {error||scopeError?<div className="notice error" role="alert">Impossibile leggere i dati. Riprova o contatta l’amministratore.</div>:<DataTable label={module.label} mobileCards><thead role="rowgroup"><tr role="row">
  {module.columns.map(c=><th key={c} role="columnheader" scope="col" className={numeric(c)?'sc-number':undefined}>{columnLabel(c,module)}</th>)}
  {!module.appendOnly&&<th role="columnheader" scope="col">Azioni</th>}
  </tr></thead><tbody role="rowgroup">{rows.map(row=><tr key={row.id} role="row">
  {module.columns.map(c=><td key={c} role="cell" data-label={columnLabel(c,module)} className={numeric(c)?'sc-number':undefined}>{display(row,c)}</td>)}
- {!module.appendOnly&&<td role="cell" data-label="Azioni"><div className="sc-row-actions">{modulo==='anagrafiche'&&<Link href={'/gestionale/soci/'+row.id}>Apri scheda</Link>}{modulo==='calendario'?<Link href={'/gestionale/calendario-visivo/'+row.id}>Modifica lezione e corsie</Link>:<Drawer key={row.id+'-'+msg} title={'Modifica '+entityLabel(modulo)+' · '+rowLabel(row,references,module)} trigger="Modifica" initialOpen={msg!=='salvato'&&editId===row.id}><Editor module={module} moduleKey={modulo} record={row} references={references} admin={isAdministrator===true}/></Drawer>}</div></td>}
+ {!module.appendOnly&&<td role="cell" data-label="Azioni"><div className="sc-row-actions">{modulo==='anagrafiche'&&<Link href={'/gestionale/soci/'+row.id}>Apri scheda</Link>}{modulo==='calendario'?<Link href={'/gestionale/calendario-visivo/'+row.id}>Modifica lezione e corsie</Link>:<Drawer key={row.id+'-'+msg} title={'Modifica '+entityLabel(modulo)+' · '+rowLabel(row,references,module)} trigger="Modifica" initialOpen={msg!=='salvato'&&editId===row.id}><Editor module={module} moduleKey={modulo} record={row} references={references} admin={isAdministrator===true} personId={personId}/></Drawer>}</div></td>}
  </tr>)}
  {!rows.length&&<tr><td colSpan={module.columns.length+(module.appendOnly?0:1)} className="empty-cell">Nessun risultato con questi filtri.</td></tr>}
  </tbody></DataTable>}
- {!editId&&<Pagination page={page} size={perPage} count={error?null:count} href={href} label={medical?'certificati registrati':'risultati'}/>}
+ {!editId&&<Pagination page={page} size={perPage} count={error||scopeError?null:count} href={href} label={medical?'certificati registrati':'risultati'}/>}
  </>;
 }

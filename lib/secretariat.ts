@@ -18,3 +18,6 @@ export function statusTone(value:string):'success'|'warning'|'danger'|'info'|'ne
 }
 export const memberTabs=[['panoramica','Panoramica'],['anagrafica','Anagrafica e recapiti'],['adesioni','Adesioni e dichiarazioni'],['tesseramenti','Tesseramenti'],['corsi','Corsi'],['pagamenti','Pagamenti'],['certificati','Certificati'],['brevetti','Brevetti'],['documenti','Documenti'],['istruttore','Qualifiche istruttore'],['attrezzature','Attrezzature'],['famiglia','Famiglia e collegamenti'],['cronologia','Cronologia']] as const;
 export function memberTab(value?:string){return memberTabs.find(([key])=>key===value)?.[0]??'panoramica';}
+
+const moduleTabs:Record<string,string>={adesioni:'adesioni',tesseramenti:'tesseramenti',certificati:'certificati',iscrizioni:'corsi',brevetti:'brevetti',qualifiche:'istruttore',istruttori:'istruttore',consegne:'attrezzature',quote:'pagamenti',addebiti:'pagamenti'};
+export function memberTabForModule(key:string){return Object.hasOwn(moduleTabs,key)?moduleTabs[key]:undefined;}

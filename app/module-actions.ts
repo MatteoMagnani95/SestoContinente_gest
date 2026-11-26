@@ -1,4 +1,5 @@
 'use server';
+import {memberTabForModule} from '@/lib/secretariat';
 import {courseDuplicate} from '@/lib/course-errors';
 import {redirect} from 'next/navigation';
 import {revalidatePath} from 'next/cache';
@@ -136,6 +137,8 @@ export async function saveModuleRecord(form:FormData) {
  }
  revalidatePath(`/gestionale/moduli/${key}`);
  revalidatePath('/gestionale');
+ const returnPerson=text(form,'return_persona'),tab=memberTabForModule(key);
+ if(tab&&uuid.test(returnPerson)&&changes.persona_id===returnPerson){revalidatePath('/gestionale/soci/'+returnPerson);redirect('/gestionale/soci/'+returnPerson+'?tab='+tab+'&msg=elemento_salvato');}
  if(key==='iscrizioni'&&id)redirect('/gestionale/corsi/'+changes.edizione_id+'?msg=iscritto#allievi');
  redirect(id?errorPath(key,'salvato')+'&edit='+id:errorPath(key,'salvato'));
 }
