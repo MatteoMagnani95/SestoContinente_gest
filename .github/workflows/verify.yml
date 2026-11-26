@@ -86,8 +86,17 @@ jobs:
         run: |
           psql "$TEST_0019_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f tests/postgres/platform.sql
           for migration in supabase/migrations/*.sql; do
+            if [[ "$(basename "$migration")" > "20261125223000_patch_0019.sql" ]]; then break; fi
             psql "$TEST_0019_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f "$migration" > /dev/null
           done
+          # The standalone upgrade requires an active administrator (as in the existing deployment).
+          psql "$TEST_0019_DATABASE_URL" -X -v ON_ERROR_STOP=1 <<'SQL'
+          INSERT INTO auth.users(id,email,email_confirmed_at) VALUES ('00000000-0000-4000-8000-000000000020','upgrade-admin@example.invalid',now());
+          INSERT INTO public.ruoli_utente(utente_id,ruolo) VALUES ('00000000-0000-4000-8000-000000000020','amministratore');
+          SQL
+          psql "$TEST_0019_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f docs/redesign/AGGIORNAMENTO_UNICO_2_0.sql
+          # Safe second execution: must validate without reapplying any DDL.
+          psql "$TEST_0019_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f docs/redesign/AGGIORNAMENTO_UNICO_2_0.sql
       - run: npm run test:patch19
       - run: npm run test:integration
       - name: Audit storico in sola lettura (dati sintetici)
