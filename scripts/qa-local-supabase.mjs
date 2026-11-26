@@ -24,7 +24,7 @@ const checked=(result,label)=>{if(result.error)throw Error(label+': '+(result.er
 const accountFile=join(work,'accounts.json');
 async function seed(){
  const accounts={}, db=new Client({connectionString:database.href});await db.connect();
- const roleMap={staff:'amministratore',secretary:'segreteria',member:'socio',memberB:'socio',instructor:'istruttore',board:'consigliere_cda',applicant:null};
+ const roleMap={staff:'amministratore',secretary:'segreteria',member:'socio',memberB:'socio',instructor:'istruttore',board:'consigliere_cda',guardian:'tutore',unassigned:'istruttore',applicant:null};
  const value=async(sql,args=[])=>Object.values((await db.query(sql,args)).rows[0])[0];
  try{
   for(const [key,role] of Object.entries(roleMap)){
@@ -39,6 +39,11 @@ async function seed(){
     await db.query("insert into collegamenti_persone values($1,$2,'titolare')",[user.id,person]);
    }
   }
+  const represented=randomUUID();
+  await db.query("insert into persone(id,nome,cognome,data_nascita) values($1,'Minore','Sintetico',(current_date-interval '12 years')::date)",[represented]);
+  await db.query("insert into collegamenti_persone values($1,$2,'tutore')",[accounts.guardian.id,represented]);
+  await db.query("insert into relazioni_tutori(minore_id,tutore_id,parentela) values($1,$2,'Genitore di prova')",[represented,accounts.guardian.person]);
+  accounts.guardian.represented=represented;
   const season=await value("update stagioni set dal=current_date-30,al=current_date+100 where attiva returning id");
   const quotas=[];
   for(const key of ['member','memberB','instructor','board']){
@@ -65,7 +70,8 @@ async function seed(){
   await db.query("insert into cda_componenti(persona_id,carica,dal,al) values($1,'Consigliere',current_date,(current_date+interval '4 years')::date)",[accounts.board.person]);
   await db.query('commit');
   await db.query("insert into notifiche(utente_id,tipo,riferimento,titolo,messaggio) values($1,'collaudo',$2,'Notifica sintetica','Messaggio di prova')",[accounts.staff.id,randomUUID()]);
-  const fixtures={person:accounts.member.person,edition,lesson,event,equipment,payment,account:accounts.member.id};
+  const notification=await value("insert into notifiche(utente_id,tipo,riferimento,titolo,messaggio) values($1,'collaudo',$2,'Notifica socio sintetica','Messaggio di prova') returning id",[accounts.member.id,randomUUID()]);
+  const fixtures={person:accounts.member.person,edition,lesson,event,equipment,payment,account:accounts.member.id,notification};
   await writeFile(accountFile,JSON.stringify(accounts),{mode:0o600});
   await writeFile(join(work,'fixtures.json'),JSON.stringify(fixtures),{mode:0o600});
   console.log('OK account sintetici e fixture locali');
@@ -112,6 +118,17 @@ async function sessions(){
     else{assert.equal(response.status(),200);assert.deepEqual(await response.body(),Buffer.from(bytes));assert.match(response.headers()['cache-control'],/no-store/);}
    }finally{await ctx.close();}
   }
+  const fixtures=JSON.parse(await readFile(join(work,'fixtures.json'),'utf8'));
+  const [guardian,unassigned,assigned]=await Promise.all([login(accounts.guardian),login(accounts.unassigned),login(accounts.instructor)]);
+  assert.equal(checked(await guardian.rpc('owns_person',{p_persona:accounts.guardian.represented}),'represented person'),true);
+  assert.equal(checked(await guardian.from('persone').select('id').eq('id',accounts.guardian.represented),'represented RLS').length,1);
+  assert.equal(checked(await guardian.from('persone').select('id').eq('id',accounts.member.person),'unrelated RLS').length,0);
+  assert.equal(checked(await guardian.rpc('owns_person',{p_persona:accounts.member.person}),'unrelated person'),false);
+  assert.equal(checked(await assigned.rpc('insegna_edizione',{p_edizione:fixtures.edition}),'assigned instructor'),true);
+  assert.equal(checked(await unassigned.rpc('insegna_edizione',{p_edizione:fixtures.edition}),'unassigned instructor'),false);
+  assert.ok((await unassigned.from('presenze').insert({lezione_id:fixtures.lesson,persona_id:accounts.member.person,presente:true})).error);
+  assert.equal(checked(await unassigned.rpc('allievi_del_mio_corso').eq('edizione_id',fixtures.edition),'unassigned learners').length,0);
+  console.log('OK tutore: isolamento persone rappresentate; istruttore non assegnato: nessun accesso didattico laterale');
   // Revocation must affect an already-issued access token, not just future login.
   checked(await admin.auth.admin.updateUserById(accounts.memberB.id,{ban_duration:'1h'}),'disable synthetic account');
   assert.equal(checked(await b.rpc('account_corrente_abilitato'),'disabled account'),false);
@@ -119,4 +136,7 @@ async function sessions(){
   console.log('OK Auth JWT, isolamento anagrafiche, Storage privato, download e revoca account');
  }finally{await browser.close();}
 }
-if(process.argv[2]==='seed')await seed();else if(process.argv[2]==='sessions')await sessions();else throw Error('Usare seed o sessions');
+if(process.argv[2]==='seed')await seed();else if(process.argv[2]==='sessions')await sessions();else if(process.argv[2]==='mutations'){
+ const {runMutations}=await import('./qa-local-mutations.mjs');
+ await runMutations({api,app,admin,accounts:JSON.parse(await readFile(accountFile,'utf8')),fixtures:JSON.parse(await readFile(join(work,'fixtures.json'),'utf8')),work});
+}else throw Error('Usare seed, sessions o mutations');
