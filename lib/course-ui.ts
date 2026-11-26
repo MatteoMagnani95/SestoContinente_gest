@@ -31,3 +31,10 @@ export function legacyCourseTab(hash:string):CourseTab|undefined{
  const key=hash.replace(/^#/,'');if(key==='composizione')return 'lezioni';
  return courseTabs.find(([tab])=>tab===key)?.[0];
 }
+
+export function courseListView(value?:string):'schede'|'tabella'{return value==='tabella'?'tabella':'schede';}
+/** Presentation only. Never infer availability from an unknown count. */
+export function courseCapacity(count:number|null,capacity:number):number|null{
+ if(count===null||!Number.isFinite(count)||count<0||!Number.isFinite(capacity)||capacity<=0)return null;
+ return Math.min(100,Math.round(count/capacity*100));
+}

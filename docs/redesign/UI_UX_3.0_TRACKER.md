@@ -6,8 +6,8 @@ Data: 26/11/2026. Baseline produzione e HEAD 2.0: `20ae6fcceb5307d58920aa1527a83
 |---|---|---|
 | 1 — Fondazioni | CI superata | Commit 7b39eb3; run 45897134510 success (lint, TS, static, build, browser, audit, integrazione DB effimero). Collaudo visuale autenticato manuale aperto. |
 | 2 — AppShell | CI superata | Commit b343311; run 45897856873, entrambi i job success. Browser autenticato manuale aperto. |
-| 3 — Centro operativo e segreteria | Implementato; CI ordinaria verde; gate esteso aperto | Commit 8c2a313, run 45899245776: 258 test automatici, 66 browser pubblici, DB effimero success. QA autenticata e coordinamento release richiesti. |
-| 4 — Didattica e impianti | BLOCCATA — non avviata | Coordinamento con release/gestionale-consolidato e gate esteso F3 obbligatori; vedi REGRESSION_TRACKER.md. |
+| 3 — Centro operativo e segreteria | Gate sincronizzato superato | ff356d1: CI 45906661406 e QA 45906661502 tentativo 2 success; 280 statici, 68 browser ordinari, 166 autenticati, 72 logout. |
+| 4 — Didattica e impianti | In corso — F4A implementata, gate aperto | Schede corsi, tabella e prossime lezioni; F4B didattica e impianti non ancora implementata. |
 | 5 — Operazioni associative | Non iniziato | Incassi, attrezzature, eventi, documenti, organi sociali, admin |
 | 6 — Aree utente e mobile | Non iniziato | Area personale, istruttori, login, responsive, Nereia |
 | 7 — Collaudo e rilascio | Non iniziato | Preview isolata, verifica autorizzazioni e regressioni |
@@ -32,9 +32,9 @@ Ruoli indicativi dal codice di navigazione e dalle guardie 2.0; la verifica di a
 | `app/gestionale/attrezzature/[id]/page.tsx` | `/gestionale/attrezzature/[id]` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
 | `app/gestionale/calendario-visivo/[id]/page.tsx` | `/gestionale/calendario-visivo/[id]` | Staff; admin-only/contestuale ove previsto | 4 | Non iniziato | NV/NV/NV/NV |
 | `app/gestionale/calendario-visivo/page.tsx` | `/gestionale/calendario-visivo` | Staff; admin-only/contestuale ove previsto | 4 | Non iniziato | NV/NV/NV/NV |
-| `app/gestionale/corsi/[id]/page.tsx` | `/gestionale/corsi/[id]` | Staff; admin-only/contestuale ove previsto | 4 | Non iniziato | NV/NV/NV/NV |
-| `app/gestionale/corsi/nuovo/page.tsx` | `/gestionale/corsi/nuovo` | Staff; admin-only/contestuale ove previsto | 4 | Non iniziato | NV/NV/NV/NV |
-| `app/gestionale/corsi/page.tsx` | `/gestionale/corsi` | Staff; admin-only/contestuale ove previsto | 4 | Non iniziato | NV/NV/NV/NV |
+| `app/gestionale/corsi/[id]/page.tsx` | `/gestionale/corsi/[id]` | Staff; admin-only/contestuale ove previsto | 4 | F4A implementata; collaudo aperto | NV/NV/NV/NV |
+| `app/gestionale/corsi/nuovo/page.tsx` | `/gestionale/corsi/nuovo` | Staff; admin-only/contestuale ove previsto | 4 | F4A implementata; collaudo aperto | NV/NV/NV/NV |
+| `app/gestionale/corsi/page.tsx` | `/gestionale/corsi` | Staff; admin-only/contestuale ove previsto | 4 | F4A implementata; collaudo aperto | NV/NV/NV/NV |
 | `app/gestionale/economia/page.tsx` | `/gestionale/economia` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
 | `app/gestionale/importazione/page.tsx` | `/gestionale/importazione` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
 | `app/gestionale/incassi/[id]/page.tsx` | `/gestionale/incassi/[id]` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
@@ -161,3 +161,6 @@ PR #7 f99564f verificata nei run 45900175385 e 45900175348, inclusi 36 logout ef
 
 ## Sincronizzazione F3 con release 2.0
 Release 302e9e9 approvata (run 45905569811 e 45905569823 success); importazione funzionale REG-001–015 e riconciliazione dei test con a59469a. Inserita route /notifiche nell'inventario; preservati asset, ricerca, sidebar, dashboard e segreteria. Nuovo gate esteso obbligatorio: F4 non avviata. Nessun deploy o SQL produzione.
+
+## F4A — elenco e scheda corso
+Gate F3 sincronizzato GO su ff356d1: CI 45906661406, QA 45906661502 tentativo 2 entrambe verdi; 280 automatici, 68 browser pubblici, 166 autenticati, 72 logout. Avviata F4A: cards differenziate per disciplina, vista tabella alternativa, filtri/paginazione conservati in URL (parametro vista_corsi separato dal percorso iscrizioni legacy), capienza reale con errore esplicito, staff reale, header di area didattica, riepilogo prossime cinque lezioni future non annullate; dieci tab e link storici intatti. Nuova edizione riusa header comune. Nessuna modifica ad azioni, SQL, RPC o RLS. Test aggiunti. Mockup originali non direttamente recuperati in questa sessione: implementazione basata sul perimetro documentato, verifica visuale di conformità aperta. F4B didattica/impianti da completare dopo gate F4A.

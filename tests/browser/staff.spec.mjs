@@ -171,3 +171,19 @@ test('F3: ogni tab socio raggiungibile con URL legacy e menu Altro',async({page}
   await expect(page.locator('.sc-member-tabbar a[aria-current="page"]')).toBeVisible();
  }
 });
+
+
+test('F4A: schede corsi, tabella e filtri preservati su desktop e mobile',async({page})=>{
+ await page.goto('/gestionale/corsi');
+ const views=page.getByRole('navigation',{name:'Vista corsi'});
+ await expect(views.getByRole('link',{name:'Schede'})).toHaveAttribute('aria-current','page');
+ if(fixtures.edition){await expect(page.locator('.sc-course-card').filter({has:page.locator('a[href="/gestionale/corsi/'+fixtures.edition+'"]')})).toBeVisible();}
+ await views.getByRole('link',{name:'Tabella'}).click();
+ await expect(page.getByRole('table',{name:'Edizioni dei corsi'})).toBeVisible();
+ await page.getByRole('button',{name:'Cerca',exact:true}).click();
+ await expect(page).toHaveURL(url=>url.searchParams.get('vista_corsi')==='tabella');
+ await views.getByRole('link',{name:'Schede'}).click();
+ await page.setViewportSize({width:390,height:844});
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(391);
+ if(fixtures.edition){await page.goto('/gestionale/corsi/'+fixtures.edition+'?tab=panoramica');await expect(page.getByRole('heading',{name:'Prossime lezioni'})).toBeVisible();await expect(page.getByRole('navigation',{name:'Sezioni del corso'}).getByRole('link')).toHaveCount(10);}
+});

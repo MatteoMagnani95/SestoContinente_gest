@@ -88,3 +88,10 @@ test('Vincoli SQL già presenti e versioni protette; stampe complete o errore',(
  const f=read('app/gestionale/corsi/[id]/stampe/route.ts');assert.match(f,/tutteLePagine/);assert.match(f,/readCourseChunks/);assert.match(f,/Registro incompleto/);assert.match(f,/Cache-Control':'private, no-store'/);
  const l=read('components/LessonComposer.tsx');assert.match(l,/Sposta modulo in alto/);assert.match(l,/Sposta modulo in basso/);assert.match(l,/data-dirty-track/);
 });
+
+test('F4A: vista corsi validata, capienza visuale non inventata e filtri conservati',()=>{
+ assert.equal(h.courseListView(undefined),'schede');assert.equal(h.courseListView('tabella'),'tabella');assert.equal(h.courseListView('elenco'),'schede');
+ assert.equal(h.courseCapacity(0,15),0);assert.equal(h.courseCapacity(5,15),33);assert.equal(h.courseCapacity(20,15),100);assert.equal(h.courseCapacity(null,15),null);assert.equal(h.courseCapacity(3,0),null);
+ const s=read('app/gestionale/corsi/page.tsx');assert.match(s,/vista_corsi:mode/);assert.match(s,/name="vista_corsi" value=\{view\}/);assert.match(s,/courseCapacity\(enrollmentError\?null:n,e.massimo_partecipanti\)/);assert.match(s,/cap!==null&&<progress/);assert.match(s,/aria-label="Vista corsi"/);
+ const detail=read('app/gestionale/corsi/[id]/page.tsx');assert.match(detail,/Prossime lezioni/);assert.match(detail,/lessonError\?<Alert/);assert.match(detail,/Date.parse\(l.inizio\)>=Date.now\(\)/);
+});
