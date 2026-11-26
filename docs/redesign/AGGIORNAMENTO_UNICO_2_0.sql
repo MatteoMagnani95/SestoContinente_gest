@@ -8,14 +8,18 @@
 -- Non registra versioni fittizie in supabase_migrations.schema_migrations.
 -- Eseguire come proprietario del database nel SQL Editor, durante manutenzione.
 -- Prima: verificare backup e ambiente, non eseguire su progetto sbagliato.
-BEGIN;
-SET LOCAL lock_timeout = '15s';
-SET LOCAL statement_timeout = '180s';
-SELECT pg_advisory_xact_lock(hashtextextended('sesto:upgrade:2.0',0));
-
-CREATE TEMP TABLE sesto20_expected_functions(signature text PRIMARY KEY, source text NOT NULL, definer boolean NOT NULL) ON COMMIT DROP;
-INSERT INTO pg_temp.sesto20_expected_functions VALUES
-  ('public.registra_revisione(uuid,uuid,date,date,text,text,numeric,text,boolean)', $sesto_body$
+-- Revisione SQL Editor: un solo statement atomico, senza tabelle temporanee.
+-- Le definizioni attese vivono in variabili locali JSONB, non nel catalogo.
+DO $sesto20_all$
+DECLARE
+ expected_functions jsonb;
+ expected_triggers jsonb;
+BEGIN
+ PERFORM set_config('lock_timeout','15s',true);
+ PERFORM set_config('statement_timeout','180s',true);
+ PERFORM pg_advisory_xact_lock(hashtextextended('sesto:upgrade:2.0',0));
+ SELECT jsonb_agg(to_jsonb(v)) INTO expected_functions FROM (VALUES
+ ('public.registra_revisione(uuid,uuid,date,date,text,text,numeric,text,boolean)', $sesto_body$
 declare
   precedente public.revisioni_attrezzature%rowtype;
 begin
@@ -393,18 +397,18 @@ begin
  update public.prenotazioni_corsie set stato='annullata'
  where lezione_id=p_lezione and stato='confermata';
  update public.lezioni set annullata_il=now() where id=p_lezione;
-end; $sesto_body$, false);
-
-CREATE TEMP TABLE sesto20_expected_triggers(tabella text, nome text, funzione text) ON COMMIT DROP;
-INSERT INTO pg_temp.sesto20_expected_triggers VALUES
-  ('revisioni_attrezzature','correggi_date_revisione','correggi_date_revisione'),
+end; $sesto_body$, false)
+ ) AS v(signature,source,definer);
+ SELECT jsonb_agg(to_jsonb(v)) INTO expected_triggers FROM (VALUES
+ ('revisioni_attrezzature','correggi_date_revisione','correggi_date_revisione'),
   ('lezioni','proteggi_lezione_registrata','proteggi_lezione_registrata'),
   ('assegnazioni_istruttori','blocca_incarico_responsabile','blocca_incarico_responsabile'),
   ('edizioni_corsi','coerenza_direttore','verifica_coerenza_direzione'),
-  ('assegnazioni_istruttori','coerenza_responsabile','verifica_coerenza_direzione');
+  ('assegnazioni_istruttori','coerenza_responsabile','verifica_coerenza_direzione')
+ ) AS v(tabella,nome,funzione);
 
-DO $sesto_preflight$
-DECLARE r record; obj text; history text;
+ <<preflight_step>>
+ DECLARE r record; obj text; history text;
 BEGIN
  IF to_regclass('auth.users') IS NULL OR to_regclass('storage.objects') IS NULL OR to_regclass('storage.buckets') IS NULL THEN
   RAISE EXCEPTION 'Progetto Supabase non inizializzato: Auth/Storage mancanti';
@@ -615,27 +619,26 @@ END; $sesto_old$) THEN RAISE EXCEPTION '0017: definizione % non corrispondente; 
  END IF;
  RAISE NOTICE 'Baseline 0001-0019: controlli di compatibilita e sicurezza superati';
 END;
-$sesto_preflight$;
 
-DO $sesto_upgrade$
-DECLARE missing integer; badtriggers integer; has_origin boolean; partial boolean;
+ <<upgrade_step>>
+ DECLARE missing integer; badtriggers integer; has_origin boolean; partial boolean;
 BEGIN
- SELECT count(*) INTO missing FROM pg_temp.sesto20_expected_functions e
+ SELECT count(*) INTO missing FROM jsonb_to_recordset(expected_functions) AS e(signature text, source text, definer boolean)
  LEFT JOIN pg_proc p ON p.oid=to_regprocedure(e.signature)
  WHERE p.oid IS NULL OR p.prosrc IS DISTINCT FROM e.source OR p.prosecdef IS DISTINCT FROM e.definer
  OR NOT coalesce('search_path=""'=ANY(p.proconfig),false);
- SELECT count(*) INTO badtriggers FROM pg_temp.sesto20_expected_triggers e
+ SELECT count(*) INTO badtriggers FROM jsonb_to_recordset(expected_triggers) AS e(tabella text, nome text, funzione text)
  WHERE NOT EXISTS(SELECT 1 FROM pg_trigger t WHERE t.tgrelid=to_regclass('public.'||e.tabella)
    AND t.tgname=e.nome AND t.tgenabled IN ('O','A') AND t.tgfoid=to_regprocedure('public.'||e.funzione||'()'));
  SELECT EXISTS(SELECT 1 FROM pg_attribute WHERE attrelid='public.scelte_iscrizione'::regclass AND attname='origine' AND attnum>0 AND NOT attisdropped AND atttypid='text'::regtype) INTO has_origin;
  IF missing=0 AND badtriggers=0 AND has_origin THEN
   RAISE NOTICE 'Gestionale 2.0 gia aggiornato: nessuna migrazione rieseguita';
-  RETURN;
+  EXIT upgrade_step;
  END IF;
  SELECT EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname=ANY(ARRAY['registra_revisione','correggi_date_revisione','proteggi_lezione_registrata','registra_scelta_verificata','scegli_immagini_verificata','salva_domanda_v20','blocca_incarico_responsabile','verifica_coerenza_direzione','allinea_direttore_responsabile','crea_anteprima_importazione']))
- OR EXISTS(SELECT 1 FROM pg_trigger t JOIN pg_temp.sesto20_expected_triggers e ON t.tgname=e.nome AND t.tgrelid=to_regclass('public.'||e.tabella))
+ OR EXISTS(SELECT 1 FROM pg_trigger t JOIN jsonb_to_recordset(expected_triggers) AS e(tabella text, nome text, funzione text) ON t.tgname=e.nome AND t.tgrelid=to_regclass('public.'||e.tabella))
  OR EXISTS(SELECT 1 FROM pg_attribute WHERE attrelid='public.scelte_iscrizione'::regclass AND attname='origine' AND attnum>0 AND NOT attisdropped)
- OR EXISTS(SELECT 1 FROM pg_temp.sesto20_expected_functions e JOIN pg_proc p ON p.oid=to_regprocedure(e.signature) WHERE p.prosrc=e.source)
+ OR EXISTS(SELECT 1 FROM jsonb_to_recordset(expected_functions) AS e(signature text, source text, definer boolean) JOIN pg_proc p ON p.oid=to_regprocedure(e.signature) WHERE p.prosrc=e.source)
  OR EXISTS(SELECT 1 FROM pg_proc p WHERE p.oid=to_regprocedure('public.modifica_lezione_e_corsie(uuid,text,timestamptz,timestamptz,uuid,uuid[],text,text,text)') AND (strpos(p.prosrc,'P3505')>0 OR strpos(p.prosrc,'sesto:corsia:')>0))
  INTO partial;
  IF partial THEN RAISE EXCEPTION 'Schema 2.0 parziale o divergente. Nessuna modifica. Verificare le migrazioni gia applicate prima di continuare.'; END IF;
@@ -1226,34 +1229,31 @@ begin
  return new;
 end; $$;$sesto_ddl$;
 END;
-$sesto_upgrade$;
 
-DO $sesto_postflight$
-DECLARE e record;
+ <<postflight_step>>
+ DECLARE e record;
 BEGIN
- FOR e IN SELECT * FROM pg_temp.sesto20_expected_functions LOOP
+ FOR e IN SELECT * FROM jsonb_to_recordset(expected_functions) AS ef(signature text, source text, definer boolean) LOOP
   IF NOT EXISTS(SELECT 1 FROM pg_proc p WHERE p.oid=to_regprocedure(e.signature) AND p.prosrc=e.source AND p.prosecdef=e.definer AND 'search_path=""'=ANY(p.proconfig)) THEN RAISE EXCEPTION 'Verifica funzione fallita: %',e.signature; END IF;
  END LOOP;
- FOR e IN SELECT * FROM pg_temp.sesto20_expected_triggers LOOP
+ FOR e IN SELECT * FROM jsonb_to_recordset(expected_triggers) AS et(tabella text, nome text, funzione text) LOOP
   IF NOT EXISTS(SELECT 1 FROM pg_trigger t WHERE t.tgrelid=to_regclass('public.'||e.tabella) AND t.tgname=e.nome AND t.tgenabled IN ('O','A') AND t.tgfoid=to_regprocedure('public.'||e.funzione||'()')) THEN RAISE EXCEPTION 'Verifica trigger fallita: %',e.nome; END IF;
  END LOOP;
  IF NOT EXISTS(SELECT 1 FROM pg_attribute WHERE attrelid='public.scelte_iscrizione'::regclass AND attname='origine' AND atttypid='text'::regtype AND NOT attisdropped) THEN RAISE EXCEPTION 'Colonna origine mancante'; END IF;
  IF NOT EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid='public.scelte_iscrizione'::regclass AND contype='c' AND pg_get_constraintdef(oid) LIKE '%origine%' AND pg_get_constraintdef(oid) LIKE '%registrazione%' AND pg_get_constraintdef(oid) LIKE '%domanda%' AND pg_get_constraintdef(oid) LIKE '%profilo%') THEN RAISE EXCEPTION 'Vincolo origine mancante'; END IF;
- FOR e IN SELECT * FROM pg_temp.sesto20_expected_functions WHERE split_part(split_part(signature,'(',1),'.',2)=ANY(ARRAY['registra_revisione','scegli_immagini_verificata','salva_domanda_v20','allinea_direttore_responsabile','crea_anteprima_importazione','crea_lezione_guidata','modifica_lezione_e_corsie','annulla_lezione_guidata']) LOOP
+ FOR e IN SELECT * FROM jsonb_to_recordset(expected_functions) AS ef(signature text, source text, definer boolean) WHERE split_part(split_part(signature,'(',1),'.',2)=ANY(ARRAY['registra_revisione','scegli_immagini_verificata','salva_domanda_v20','allinea_direttore_responsabile','crea_anteprima_importazione','crea_lezione_guidata','modifica_lezione_e_corsie','annulla_lezione_guidata']) LOOP
   IF NOT has_function_privilege('authenticated',to_regprocedure(e.signature),'EXECUTE') OR has_function_privilege('anon',to_regprocedure(e.signature),'EXECUTE') THEN RAISE EXCEPTION 'Permessi RPC non conformi: %',e.signature; END IF;
  END LOOP;
  RAISE NOTICE 'Verifica finale: 7 migrazioni 2.0 presenti; 16 funzioni e 5 trigger verificati';
 END;
-$sesto_postflight$;
 
--- Ricarica la cache schema PostgREST dopo il commit.
-NOTIFY pgrst, 'reload schema';
-COMMIT;
-
--- Risultato atteso: OK. Conteggi aggregati, nessuna anagrafica o dato sensibile.
-SELECT 'OK - GESTIONALE 2.0: SCHEMA AGGIORNATO E VERIFICATO' AS esito,
- (SELECT count(*) FROM public.persone) AS persone_conservate,
- (SELECT count(*) FROM auth.users) AS account_conservati,
- (SELECT count(*) FROM public.edizioni_corsi) AS edizioni_conservate,
- (SELECT count(*) FROM public.pagamenti) AS pagamenti_conservati,
- (SELECT count(*) FROM public.documenti) AS documenti_conservati;
+ PERFORM pg_notify('pgrst','reload schema');
+ RAISE NOTICE 'OK - GESTIONALE 2.0: SCHEMA AGGIORNATO E VERIFICATO';
+ RAISE NOTICE 'Dati conservati: persone %, account %, edizioni %, pagamenti %, documenti %',
+  (SELECT count(*) FROM public.persone),
+  (SELECT count(*) FROM auth.users),
+  (SELECT count(*) FROM public.edizioni_corsi),
+  (SELECT count(*) FROM public.pagamenti),
+  (SELECT count(*) FROM public.documenti);
+END;
+$sesto20_all$;
