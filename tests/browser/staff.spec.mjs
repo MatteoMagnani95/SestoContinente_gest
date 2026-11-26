@@ -104,6 +104,13 @@ test('CdA: selezione, campi obbligatori, validazione visibile e annullamento sen
   const person=dialog.locator('select[name="persona_id"]'),role=dialog.locator('select[name="carica"]'),date=dialog.locator('input[name="dal"]');
   const save=dialog.getByRole('button',{name:'Registra componente'});
   await expect(person).toBeVisible();await expect(role).toBeVisible();await expect(date).toBeVisible();
+  const rect=await dialog.boundingBox();
+  if(size.width>768){
+   expect(Math.abs(rect.x+rect.width/2-size.width/2)).toBeLessThanOrEqual(2);
+   expect(rect.width).toBeGreaterThanOrEqual(900);
+   const x=[(await person.boundingBox()).x,(await role.boundingBox()).x,(await date.boundingBox()).x];
+   expect(x[0]).toBeLessThan(x[1]);expect(x[1]).toBeLessThan(x[2]);
+  }else expect(rect.width).toBe(size.width);
   await save.click();
   await expect(dialog.getByRole('alert')).toContainText('Compila correttamente');
   expect(await dialog.locator('form').evaluate(f=>f.checkValidity())).toBe(false);
