@@ -25,7 +25,7 @@ export async function changeLesson(form:FormData){
   p_lezione:id,p_titolo:titolo,p_inizio:inizio,p_fine:fine,p_piscina:piscina,
   p_corsie:corsie,p_esercizi:esercizi,p_materiale:materiale,p_note:note
  });
- if(error)return {error:error.code==='P3505'?'La lezione contiene prenotazioni di durata parziale. Controlla prima le prenotazioni nell’archivio corsie: nessun dato è stato modificato.':error.code==='23P01'?'Corsia già prenotata nell’intervallo richiesto. Le prenotazioni originali non sono state modificate.':'Modifica non salvata. Verifica periodo, orario, stato del corso e presenze registrate. Le prenotazioni originali sono conservate.'};
+ if(error)return {error:['40P01','40001'].includes(error.code??'')?'Conflitto temporaneo tra operazioni simultanee. Ricarica e riprova: le prenotazioni originali sono conservate.':error.code==='P3505'?'La lezione contiene prenotazioni di durata parziale. Controlla prima le prenotazioni nell’archivio corsie: nessun dato è stato modificato.':error.code==='23P01'?'Corsia già prenotata nell’intervallo richiesto. Le prenotazioni originali non sono state modificate.':'Modifica non salvata. Verifica periodo, orario, stato del corso e presenze registrate. Le prenotazioni originali sono conservate.'};
  revalidatePath('/gestionale/calendario-visivo');revalidatePath('/gestionale/corsi','layout');
  redirect(calendarLessonHref(id,calendarFormContext(form),'salvata'));
 }
