@@ -8,8 +8,8 @@ import {createCatalogCourse,createEdition} from '../actions';
 import {courseName} from '@/lib/course-tools';
 export default async function NewEdition({searchParams}:{searchParams:Promise<{msg?:string}>}){
  const {supabase}=await requireStaff();const {msg}=await searchParams;
- const {data:people}=await tutteLePagine((da,a)=>supabase.from('persone').select('id,cognome,nome').order('cognome').order('nome').order('id').range(da,a));
- const [{data:catalog},{data:seasons},{data:prices}]=await Promise.all([
+ const {data:people,error:peopleError}=await tutteLePagine((da,a)=>supabase.from('persone').select('id,cognome,nome').order('cognome').order('nome').order('id').range(da,a));
+ const [{data:catalog,error:catalogError},{data:seasons,error:seasonError},{data:prices}]=await Promise.all([
   tutteLePagine((da,a)=>supabase.from('corsi').select('id,nome,tipo,livello').order('tipo').order('livello').order('id').range(da,a)),
   tutteLePagine((da,a)=>supabase.from('stagioni').select('id,nome,dal,al,attiva').order('dal',{ascending:false}).order('id').range(da,a)),
   supabase.from('listino_corsi').select('importo').order('importo').limit(100)
@@ -19,6 +19,7 @@ export default async function NewEdition({searchParams}:{searchParams:Promise<{m
  {msg==='catalogo'&&<p className="notice success">Attività aggiunta al catalogo. Ora puoi creare l'edizione.</p>}
  {msg==='errore'&&<p className="notice warning">Non è stato possibile salvare. Verifica i dati e i duplicati.</p>}
  {msg==='stagione'&&<p className="notice warning">Le date dell'edizione devono rientrare nelle date della stagione selezionata.</p>}
+ {(peopleError||catalogError||seasonError)&&<p role="alert" className="notice error">Non è stato possibile leggere gli elenchi necessari. Riprova prima di creare l’edizione.</p>}
  <div className="course-wizard-grid"><section className="panel"><h2>1. Configura l'edizione</h2>
  <EditForm action={createEdition} className="stack">
  <label>Attività del catalogo<select name="corso_id" required defaultValue=""><option value="">Seleziona attività...</option>{(catalog??[]).map(c=><option key={c.id} value={c.id}>{courseName(c.tipo,c.livello)} · {c.nome}</option>)}</select></label>

@@ -12,7 +12,7 @@ export async function GET(req:NextRequest,{params}:{params:Promise<{id:string}>}
  const {data:edition}=await supabase.from('edizioni_corsi').select('id,nome,inizio,fine').eq('id',id).maybeSingle();
  if(!edition)return new NextResponse('Non trovato',{status:404});
  if(tipo!=='programma'&&(!lessonId||!/^[a-f0-9-]{36}$/i.test(lessonId)))return new NextResponse('Lezione richiesta',{status:400});
- const {data:lessons,error}=await tutteLePagine((da,a)=>{let q=supabase.from('lezioni').select('id,titolo,inizio,fine').eq('edizione_id',id).is('annullata_il',null);if(tipo!=='programma')q=q.eq('id',lessonId!);return q.order('inizio').order('id').range(da,a);});if(error||!lessons?.length)return new NextResponse('Lezioni assenti',{status:404});
+ const {data:lessons,error}=await tutteLePagine((da,a)=>{let q=supabase.from('lezioni').select('id,titolo,inizio,fine').eq('edizione_id',id).is('annullata_il',null);if(tipo!=='programma')q=q.eq('id',lessonId!);return q.order('inizio').order('id').range(da,a);});if(error)return new NextResponse('Dati delle lezioni non disponibili. Riprova.',{status:503});if(!lessons?.length)return new NextResponse('Lezioni assenti',{status:404});
  const lessonIds=lessons.map(l=>l.id);
  const [{data:linkData,error:linksError},{data:students,error:studentsError},{data:teachers,error:teachersError}]=await Promise.all([
   readCourseChunks(lessonIds,(ids,da,a)=>supabase.from('lezione_moduli').select('lezione_id,modulo_id,ordine').in('lezione_id',ids).order('lezione_id').order('ordine').order('modulo_id').range(da,a)),
