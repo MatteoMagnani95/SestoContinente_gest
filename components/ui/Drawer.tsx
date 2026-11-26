@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useId,useRef,useState,type ReactNode} from 'react';
 import {createPortal} from 'react-dom';
+import {usePathname} from 'next/navigation';
 import {requestDiscard} from '@/lib/dirty-navigation';
 import {Icon} from './Icon';
 
@@ -9,7 +10,8 @@ type Props={title:string;trigger:string;children:ReactNode;initialOpen?:boolean;
 export function Drawer({title,trigger,children,initialOpen=false,variant='drawer',primary=false,danger=false}:Props){
  const [open,setOpen]=useState(initialOpen),[mounted,setMounted]=useState(false);
  const dialog=useRef<HTMLDialogElement>(null),button=useRef<HTMLButtonElement>(null),closeButton=useRef<HTMLButtonElement>(null);
- const titleId=useId();
+ const titleId=useId(),path=usePathname();
+ const openedRoute=useRef('');
  const previousInitial=useRef(initialOpen);
  useEffect(()=>setMounted(true),[]);
  useEffect(()=>{if(previousInitial.current!==initialOpen){previousInitial.current=initialOpen;setOpen(initialOpen);}},[initialOpen]);
@@ -26,12 +28,24 @@ export function Drawer({title,trigger,children,initialOpen=false,variant='drawer
  useEffect(()=>{
   const panel=dialog.current;
   if(!open||!mounted||!panel)return;
+  openedRoute.current=window.location.pathname+window.location.search;
   if(!panel.open)panel.showModal();
   closeButton.current?.focus();
   const onCloseRequest=(event:Event)=>{event.preventDefault();close();};
   panel.addEventListener('sc:panel-close',onCloseRequest);
   return()=>{panel.removeEventListener('sc:panel-close',onCloseRequest);if(panel.open)panel.close();};
  },[open,mounted]);
+ useEffect(()=>{
+  if(!open||!mounted)return;
+  const check=()=>{
+   const current=window.location.pathname+window.location.search;
+   if(current===openedRoute.current)return;
+   const msg=new URLSearchParams(window.location.search).get('msg')??'';
+   if(window.location.pathname!==openedRoute.current.split('?')[0]||['ok','salvato','eliminato','modificato','rimosso','iscritto','moduli_salvati','pagato','rettificato'].includes(msg))finish();
+  };
+  const observer=new MutationObserver(check);observer.observe(document.body,{childList:true,subtree:true});window.addEventListener('popstate',check);
+  return()=>{observer.disconnect();window.removeEventListener('popstate',check);};
+ },[path,open,mounted]);
  return <>
  <button ref={button} type="button" className={'sc-button '+(danger?'sc-button-danger':primary?'sc-button-primary':'sc-button-secondary')} aria-haspopup="dialog" onClick={()=>setOpen(true)}>{trigger}</button>
  {mounted&&open&&createPortal(<dialog ref={dialog} data-sc-panel className={'sc-editor-dialog sc-editor-'+variant} aria-labelledby={titleId} onCancel={e=>{e.preventDefault();close();}} onClick={e=>{if(e.target===e.currentTarget)close();}}>

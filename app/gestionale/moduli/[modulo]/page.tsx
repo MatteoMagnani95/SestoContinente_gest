@@ -90,7 +90,7 @@ function bookingConflictText(corsia?:string,inizio?:string,fine?:string):string{
  const fascia=dal&&al?` dalle ${dal} alle ${al}`:' nell’intervallo richiesto';
  return `Corsia${numero} già prenotata${fascia}. Scegli un’altra corsia o modifica l’orario.`;
 }
-export default async function ModulePage({params,searchParams}:{params:Promise<{modulo:string}>;searchParams:Promise<{q?:string;msg?:string;p?:string;corsia?:string;inizio?:string;fine?:string;edit?:string;stato?:string;f?:string;v?:string;ordine?:string;dir?:string}>}){
+export default async function ModulePage({params,searchParams}:{params:Promise<{modulo:string}>;searchParams:Promise<{q?:string;msg?:string;p?:string;corsia?:string;inizio?:string;fine?:string;edit?:string;stato?:string;f?:string;v?:string;ordine?:string;dir?:string;filtro_modulo?:string}>}){
  const {modulo}=await params;
  if(!isModuleKey(modulo))notFound();
  if(modulo==='pagamenti')redirect('/gestionale/incassi');
@@ -101,7 +101,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
   const {data}=await supabase.from('ruoli_utente').select('ruolo').eq('utente_id',user.id).eq('ruolo','amministratore').maybeSingle();
   if(!data)redirect('/gestionale?msg=permessi');
  }
- const {q='',msg='',p='1',corsia,inizio,fine,edit,stato,f,v,ordine,dir}=await searchParams;
+ const {q='',msg='',p='1',corsia,inizio,fine,edit,stato,f,v,ordine,dir,filtro_modulo}=await searchParams;
  const ui=moduleUi[modulo];
  const feedback=msg==='corsia_occupata'&&modulo==='prenotazioni'?bookingConflictText(corsia,inizio,fine):status[msg];
  const editId=edit&&UUID_RE.test(edit)?edit:null;
@@ -120,8 +120,9 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  let query=supabase.from(medical?'stato_certificati':personSorted?`gest_elenco_${module.table}`:module.table).select('*',{count:'exact'});
  if(!editId&&medical&&stato&&Object.hasOwn(statiCertificato,stato))query=query.eq('stato_certificato',stato);
  const selectableFilters=module.fields.filter(field=>field.type==='select'&&field.options?.length&&(!medical||field.name!=='esito_verifica'));
- const selectedFilter=selectableFilters.find(field=>field.name===f&&field.options?.includes(v??''));
- if(!editId&&selectedFilter&&v)query=query.eq(selectedFilter.name,v);
+ const [filterName,filterValue]=filtro_modulo?.split(':',2)??[f??'',v??''];
+ const selectedFilter=selectableFilters.find(field=>field.name===filterName&&field.options?.includes(filterValue));
+ if(!editId&&selectedFilter&&filterValue)query=query.eq(selectedFilter.name,filterValue);
  const safeSearch=editId?'':cleanSearch(q);
  const textFields=personSorted||medical?['sort_cognome','sort_nome']:ui.fields;
  if(safeSearch&&textFields.length)query=query.or(textFields.map(field=>field+'.ilike.%'+safeSearch+'%').join(','));
@@ -161,10 +162,13 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
   if(modulo==='tesseramenti'&&table==='adesioni'){
    const rows:Row[]=[];const currentIds=[...new Set((data??[]).map(r=>String(r.adesione_id??'')).filter(Boolean))];
    const columns='id,sort_cognome,sort_nome,stagione_id';
-   const [{data:members},{data:seasons}]=await Promise.all([supabase.from('gest_elenco_adesioni').select(columns).order('sort_cognome').order('sort_nome').order('id').limit(500),supabase.from('stagioni').select('id,nome').limit(1000)]);
-   const missing=currentIds.filter(id=>!members?.some(r=>r.id===id));
-   const {data:extra}=missing.length?await supabase.from('gest_elenco_adesioni').select(columns).in('id',missing):{data:[]};
-   for(const a of [...(members??[]),...(extra??[])])rows.push({id:a.id,etichetta:`${a.sort_cognome??''} ${a.sort_nome??''} · ${seasons?.find(s=>s.id===a.stagione_id)?.nome??'Stagione'}`});
+   const members:{id:string;sort_cognome:string|null;sort_nome:string|null;stagione_id:string}[]=[];
+   const seasons:{id:string;nome:string}[]=[];
+   for(let offset=0;;offset+=500){const {data:batch,error}=await supabase.from('gest_elenco_adesioni').select(columns).order('sort_cognome').order('sort_nome').order('id').range(offset,offset+499);if(error){referenceError=true;break;}members.push(...(batch??[]));if((batch??[]).length<500)break;}
+   for(let offset=0;;offset+=500){const {data:batch,error}=await supabase.from('stagioni').select('id,nome').order('id').range(offset,offset+499);if(error){referenceError=true;break;}seasons.push(...(batch??[]));if((batch??[]).length<500)break;}
+   const missing=currentIds.filter(id=>!members.some(r=>r.id===id));
+   const {data:extra,error:extraError}=missing.length?await supabase.from('gest_elenco_adesioni').select(columns).in('id',missing):{data:[],error:null};if(extraError)referenceError=true;
+   for(const a of [...members,...(extra??[])])rows.push({id:a.id,etichetta:`${a.sort_cognome??''} ${a.sort_nome??''} · ${seasons.find(s=>s.id===a.stagione_id)?.nome??'Stagione'}`});
    references[table]=rows.sort((a,b)=>String(a.etichetta).localeCompare(String(b.etichetta),'it'));return;
   }
   const ref=module.fields.find(f=>f.ref?.table===table)?.ref;
@@ -195,7 +199,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
   const existing=references.edizioni_corsi??[];references.edizioni_corsi=[...available,...existing.filter(r=>!available.some(e=>e.id===r.id)&&!['programmato','attivo'].includes(String(r.stato)))];
  }
  const rows=(data??[]) as Row[];
- const href=(page:number)=>listHref({q,p:String(page),stato,f,v,ordine,dir});
+ const href=(page:number)=>listHref({q,p:String(page),stato,filtro_modulo:selectedFilter?selectedFilter.name+':'+filterValue:undefined,ordine,dir});
  const numeric=(c:string)=>module.fields.some(field=>field.name===c&&field.type==='number');
  const display=(row:Row,c:string)=>{
   if(medical&&c==='documento_id')return row[c]?<Link href={'/documenti/'+row[c]}>Apri certificato</Link>:<Link href={'/area-personale/certificato?persona='+row.persona_id}>Carica certificato</Link>;
@@ -218,7 +222,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  <FilterBar>
  <SearchBar query={q} placeholder={ui.search||'Filtri e ordinamento'} resetHref={'/gestionale/moduli/'+modulo} hideSearch={!ui.search}>
  {medical&&stato&&<input type="hidden" name="stato" value={stato}/>}
- {selectableFilters.length>0&&<><label>Campo da filtrare<select name="f" defaultValue={selectedFilter?.name??''}><option value="">Tutti</option>{selectableFilters.map(field=><option key={field.name} value={field.name}>{field.label}</option>)}</select></label><label>Valore<select name="v" defaultValue={selectedFilter?v:''}><option value="">Tutti</option>{Array.from(new Set(selectableFilters.flatMap(field=>field.options??[]))).map(value=><option key={value} value={value}>{value.replaceAll('_',' ')}</option>)}</select></label></>}
+ {selectableFilters.length>0&&<label>Filtra per<select name="filtro_modulo" defaultValue={selectedFilter?selectedFilter.name+':'+filterValue:''}><option value="">Tutti</option>{selectableFilters.map(field=><optgroup key={field.name} label={field.label}>{field.options?.map(value=><option key={value} value={field.name+':'+value}>{value.replaceAll('_',' ')}</option>)}</optgroup>)}</select></label>}
  <label>Ordina per<select name="ordine" defaultValue={selectedSort??''}><option value="">Ordine predefinito</option>{sortable.map(field=><option key={field.name} value={field.name}>{field.label}</option>)}</select></label>
  <label>Direzione<select name="dir" defaultValue={dir==='desc'?'desc':'asc'}><option value="asc">Crescente</option><option value="desc">Decrescente</option></select></label>
  </SearchBar>
