@@ -23,3 +23,6 @@ AppShell, SiteHeader, StaffNav, Breadcrumb e back link integrati; nuove icone lo
 
 ## Fase 3
 DataTable, SearchBar, FilterBar, Pagination, SearchableSelect, Drawer/Modal/ConfirmDialog, ActionForm e EditForm integrati. Vedi [DATA_UI.md](DATA_UI.md).
+
+## Fase 4A
+AuthForm, PasswordField, homepage e applicant surfaces in app/public-ui.css; riutilizzo componenti comuni. Vedi [PUBLIC_AUTH.md](PUBLIC_AUTH.md).
