@@ -99,3 +99,26 @@ test('Revoca: checkbox deselezionata usa la RPC esistente e conserva la versione
  await m.cambiaScelta(form({immagini_checkbox:'1'}));
  assert.deepEqual(calls,[{name:'scegli_immagini',payload:{p_scelta:false,p_versione:'Foto e video · 1'}}]);
 });
+
+test('Logout: successo soltanto dopo signOut, errore distinto; nuova password conserva spazi',async()=>{
+ const passwords=[],m=mock({auth:{signOut:async()=>({error:null}),updateUser:async p=>{passwords.push(p.password);return {error:null};}}});
+ await assert.rejects(m.actions.logoutAction(),/redirect:\/accedi\?msg=uscita/);
+ const fail=mock({auth:{signOut:async()=>({error:{code:'unknown'}})}});
+ await assert.rejects(fail.actions.logoutAction(),/redirect:\/\?msg=uscita_non_riuscita/);
+ assert.ok((await m.actions.newPasswordAction(form({password:' password 123 ',confirm:'password 123'}))).error);
+ assert.equal(passwords.length,0);
+ await assert.rejects(m.actions.newPasswordAction(form({password:' password 123 ',confirm:' password 123 '})),/redirect:\/smista/);
+ assert.deepEqual(passwords,[' password 123 ']);
+});
+test('Callback: verifica e recupero interni, link non valido e redirect esterni bloccati',async()=>{
+ let failed=false;const codes=[];
+ const {GET}=load('app/auth/callback/route.ts',{'next/server':{NextResponse:{redirect:url=>({url:url.href})}},'@/lib/supabase/server':{createClient:async()=>({auth:{exchangeCodeForSession:async code=>{codes.push(code);return {error:failed?{}:null};}}})}});
+ const request=(next,code='synthetic-code')=>{const url=new URL('https://example.test/auth/callback');if(next!==null)url.searchParams.set('next',next);if(code)url.searchParams.set('code',code);return {url:url.href,nextUrl:url};};
+ assert.equal((await GET(request('/nuova-password'))).url,'https://example.test/nuova-password');
+ assert.equal((await GET(request('/richiesta/nuova'))).url,'https://example.test/richiesta/nuova');
+ for(const next of ['//evil.example','/\\evil.example','https://evil.example/','/\u0000evil.example'])assert.equal((await GET(request(next))).url,'https://example.test/richiesta/nuova');
+ failed=true;
+ assert.equal((await GET(request('/nuova-password'))).url,'https://example.test/accedi?msg=recupero_scaduto');
+ assert.equal((await GET(request('/richiesta/nuova',''))).url,'https://example.test/accedi?msg=verifica');
+ assert.ok(codes.length>=7);
+});

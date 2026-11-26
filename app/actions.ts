@@ -20,7 +20,8 @@ const go = (path: string, msg: string) => redirect(`${path}?msg=${msg}`);
 export async function registerAction(form: FormData) {
   const email = asText(form, 'email').toLowerCase();
   const password = passwordText(form, 'password');
-  if (!email.includes('@') || password.length < 10 || password !== passwordText(form, 'confirm')) {
+  if (!email.includes('@'))return {error:'Inserisci un indirizzo email valido.',field:'email'};
+  if (password.length < 10 || password !== passwordText(form, 'confirm')) {
     return {error:'La password deve avere almeno 10 caratteri e corrispondere alla conferma.',field:'password'};
   }
   const supabase = await createClient();
@@ -66,7 +67,7 @@ export async function recoverAction(form: FormData) {
       redirectTo: `${origin}/auth/callback?next=%2Fnuova-password`,
     });
   }
-  return {notice:'Se l’account esiste, riceverai un messaggio per recuperare la password.'};
+  return {notice:'Se l’account esiste e la richiesta è stata accettata, riceverai un messaggio per recuperare la password.'};
 }
 
 export async function resendVerificationAction(form:FormData){
@@ -74,7 +75,7 @@ export async function resendVerificationAction(form:FormData){
  if(!origin||!email.includes('@'))return {error:'Controlla l’indirizzo email.'};
  const supabase=await createClient();
  await supabase.auth.resend({type:'signup',email,options:{emailRedirectTo:origin+'/auth/callback?next=%2Frichiesta%2Fnuova'}});
- return {notice:'Se l’account richiede una verifica, riceverai un nuovo messaggio.'};
+ return {notice:'Se l’account richiede una verifica e la richiesta è stata accettata, riceverai un nuovo messaggio.'};
 }
 
 export async function newPasswordAction(form: FormData) {
