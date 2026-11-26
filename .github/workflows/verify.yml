@@ -28,7 +28,7 @@ jobs:
         with:
           node-version: '22'
       - name: Installa dipendenze
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Lint applicazione
         run: npm run lint
       - name: Controllo TypeScript
@@ -81,7 +81,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm install --no-package-lock --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund
       - name: Inizializza il database effimero e verifica le migrazioni
         run: |
           psql "$TEST_0019_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f tests/postgres/platform.sql
