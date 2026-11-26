@@ -1,0 +1,135 @@
+// Invoked only by qa-local-supabase.mjs after all isolation guards.
+// These are real UI writes against synthetic fixtures, never production.
+import assert from 'node:assert/strict';
+import {randomBytes} from 'node:crypto';
+import {join} from 'node:path';
+import {chromium,expect} from '@playwright/test';
+import {PDFDocument} from 'pdf-lib';
+
+export async function runMutations({app,admin,accounts,fixtures,work}){
+ const browser=await chromium.launch();
+ const contexts=[];
+ const one=async(table,columns,filters)=>{
+  let query=admin.from(table).select(columns);
+  for(const [k,v] of Object.entries(filters))query=query.eq(k,v);
+  const {data,error}=await query.single();if(error)throw Error(table+': '+error.code);return data;
+ };
+ const count=async(table,filters)=>{
+  let query=admin.from(table).select('id',{head:true,count:'exact'});
+  for(const [k,v] of Object.entries(filters))query=query.eq(k,v);
+  const {count,error}=await query;if(error)throw Error(table+': '+error.code);return count;
+ };
+ const open=async role=>{
+  const ctx=await browser.newContext({baseURL:app.href,storageState:join(work,role+'.json'),viewport:{width:390,height:844}});
+  contexts.push(ctx);return ctx.newPage();
+ };
+ try{
+  const member=await open('member'),staff=await open('staff'),teacher=await open('instructor');
+  // Notification: real server action, persistent state and no duplicate mutation.
+  await member.goto('/area-personale?tab=notifiche');
+  const notice=member.locator('article').filter({hasText:'Notifica socio sintetica'});
+  await notice.getByRole('button',{name:'Segna come letta'}).click();
+  await expect(member).toHaveURL(/msg=letta/);
+  assert.ok((await one('notifiche','letta_il',{id:fixtures.notification})).letta_il);
+  await member.reload();await expect(notice).toHaveCount(0);
+  console.log('OK UI notifica letta e stato persistente');
+
+  // Update contact and verify the actual stored value after navigation.
+  await member.goto('/area-personale/profilo');
+  await member.getByRole('button',{name:'Modifica recapiti'}).click();
+  const contact=member.getByRole('dialog',{name:/Modifica recapiti/});
+  await contact.locator('input[name=telefono]').fill('0000000000');
+  await contact.getByRole('button',{name:'Salva recapiti'}).click();
+  await expect(member).toHaveURL(/msg=ok/);
+  assert.equal((await one('persone','telefono',{id:accounts.member.person})).telefono,'0000000000');
+  await member.reload();await expect(member.getByText('0000000000',{exact:false})).toBeVisible();
+  console.log('OK UI salvataggio recapiti e rilettura');
+
+  // A stale form must not silently restore a consent after revocation.
+  const consent=page=>page.locator('input[name=immagini]');
+  const save=page=>page.getByRole('button',{name:'Salva scelta'});
+  await consent(member).check();await save(member).click();
+  await expect(member.getByRole('status').filter({hasText:'Consenso acquisito'})).toBeVisible();
+  const stale=await open('member');await stale.goto('/area-personale/profilo');
+  await expect(consent(stale)).toBeChecked();
+  await consent(member).uncheck();await save(member).click();
+  await expect(member.getByRole('status').filter({hasText:'Consenso revocato'})).toBeVisible();
+  await save(stale).click();
+  await expect(stale.getByRole('alert').filter({hasText:'La scelta è stata modificata'})).toBeVisible();
+  const choice=await admin.from('scelte_iscrizione').select('scelta,versione,origine').eq('utente_id',accounts.member.id).eq('tipo','immagini').order('id',{ascending:false}).limit(1).single();
+  assert.ifError(choice.error);assert.deepEqual(choice.data,{scelta:false,versione:'TEST-COLLAUDO-1',origine:'profilo'});
+  console.log('OK UI consenso, revoca e modulo obsoleto respinto');
+
+  // Reserve and release a place through the member UI.
+  await member.goto('/area-soci');
+  const event=member.locator('article').filter({has:member.getByRole('heading',{name:'Evento sintetico',exact:true})});
+  await event.getByRole('button',{name:'Richiedi iscrizione',exact:true}).click();
+  const registration=member.getByRole('dialog',{name:/Richiedi iscrizione/});
+  await registration.locator('select[name=persona_id]').selectOption(accounts.member.person);
+  await registration.getByRole('button',{name:'Richiedi iscrizione',exact:true}).click();
+  await expect(member).toHaveURL(/msg=ok/);
+  const filter={evento_id:fixtures.event,persona_id:accounts.member.person};
+  assert.equal((await one('eventi_soci_iscrizioni','stato',filter)).stato,'in_attesa');
+  await event.getByRole('button',{name:'Disiscriviti',exact:true}).click();
+  const withdrawal=member.getByRole('dialog',{name:/Disiscriviti/});
+  await withdrawal.locator('input[name=conferma]').check();
+  await withdrawal.getByRole('button',{name:'Disiscriviti',exact:true}).click();
+  await expect.poll(async()=>(await one('eventi_soci_iscrizioni','stato',filter)).stato).toBe('ritirata');
+  assert.equal(await count('eventi_soci_iscrizioni',filter),1);
+  console.log('OK UI iscrizione evento e ritiro senza duplicati');
+
+  // Assigned instructor updates a real attendance entry.
+  await teacher.goto('/istruttore?'+new URLSearchParams({tab:'presenze',edizione:fixtures.edition,lezione:fixtures.lesson}));
+  const row=teacher.locator('.sc-attendance-item').filter({hasText:'member'});
+  await row.locator('select[name=presente]').selectOption('si');
+  await row.locator('textarea[name=nota_didattica]').fill('Nota sintetica');
+  await row.getByRole('button',{name:'Registra presenza'}).click();
+  await expect(teacher).toHaveURL(/msg=ok/);
+  const presence={lezione_id:fixtures.lesson,persona_id:accounts.member.person};
+  assert.deepEqual(await one('presenze','presente,nota_didattica',presence),{presente:true,nota_didattica:'Nota sintetica'});
+  await teacher.reload();await row.locator('select[name=presente]').selectOption('no');
+  await row.getByRole('button',{name:'Aggiorna presenza'}).click();
+  await expect.poll(async()=>(await one('presenze','presente',presence)).presente).toBe(false);
+  assert.equal(await count('presenze',presence),1);
+  console.log('OK UI registrazione e aggiornamento presenza, chiave unica');
+
+  // Actual signed-upload path (>3 MiB), no real medical content.
+  const pdf=await PDFDocument.create();pdf.addPage();
+  await pdf.attach(randomBytes(4*1024*1024),'fixture.bin',{mimeType:'application/octet-stream'});
+  const bytes=Buffer.from(await pdf.save());assert.ok(bytes.length>3*1024*1024&&bytes.length<10*1024*1024);
+  const before=await count('certificati_medici',{persona_id:accounts.member.person});
+  await member.goto('/area-personale/certificato');
+  await member.locator('select[name=persona_id]').selectOption(accounts.member.person);
+  const date=new Date(Date.now()-86400000).toISOString().slice(0,10),expiry=new Date(Date.now()+60*86400000).toISOString().slice(0,10);
+  await member.locator('input[name=rilasciato_il]').fill(date);
+  await member.locator('input[name=scade_il]').fill(expiry);
+  await member.locator('input[name=file]').setInputFiles({name:'certificato-sintetico.pdf',mimeType:'application/pdf',buffer:bytes});
+  await member.getByRole('button',{name:'Carica certificato',exact:true}).click();
+  await expect(member).toHaveURL(/msg=ok/,{timeout:60000});
+  assert.equal(await count('certificati_medici',{persona_id:accounts.member.person}),before+1);
+  const cert=await one('certificati_medici','documento_id,idoneita_verificata',{persona_id:accounts.member.person,rilasciato_il:date});
+  assert.equal(cert.idoneita_verificata,false);
+  const download=await member.request.get('/documenti/'+cert.documento_id+'?download=1');
+  assert.equal(download.status(),200);assert.deepEqual(await download.body(),bytes);
+  const staged=await admin.storage.from('sesto-documenti').list(accounts.member.id+'/transito');
+  assert.ifError(staged.error);assert.equal(staged.data.length,0);
+  console.log('OK UI certificato oltre 3 MiB, transito rimosso, file integro e idoneita non convalidata');
+
+  // Quarantine an intentionally invalid historical CSV; never confirm it.
+  await staff.goto('/gestionale/importazione');
+  const csv='codice_fiscale,nome,cognome,data_nascita,luogo_nascita,provincia_nascita,stato_nascita,provincia_residenza,stato_residenza,email,telefono\nINVALIDO,Test,Quarantena,,,,,,,,';
+  await staff.locator('input[name=file]').setInputFiles({name:'quarantena.csv',mimeType:'text/csv',buffer:Buffer.from(csv)});
+  await staff.getByRole('button',{name:'Carica e visualizza anteprima'}).click();
+  await expect(staff).toHaveURL(/batch=/);
+  const batch=new URL(staff.url()).searchParams.get('batch');
+  assert.equal((await one('importazioni_batch','stato',{id:batch})).stato,'anteprima');
+  assert.equal(await count('importazioni_righe',{batch_id:batch}),1);
+  const imported=await one('importazioni_righe','errori,importato_id',{batch_id:batch});
+  assert.ok(imported.errori.length>0);assert.equal(imported.importato_id,null);
+  await staff.getByRole('button',{name:'Conferma importazione definitiva'}).click();
+  await expect(staff.getByRole('dialog',{name:'Conferma importazione'}).getByRole('button',{name:'Importa definitivamente'})).toBeDisabled();
+  console.log('OK UI CSV in quarantena, conferma bloccata e nessuna importazione parziale');
+ }finally{
+  await Promise.all(contexts.map(c=>c.close()));await browser.close();
+ }
+}
