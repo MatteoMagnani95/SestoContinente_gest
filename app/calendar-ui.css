@@ -1,0 +1,38 @@
+/* Sesto Continente 2.0 – calendario operativo */
+.sc-calendar-controls{display:grid;gap:16px;margin-block:16px}
+.sc-calendar-views,.sc-calendar-period{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.sc-calendar-period h2{flex:1;min-width:160px;text-align:center;margin:0;font-size:var(--sc-section-title)}
+.sc-calendar-filter{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:12px;align-items:end}
+.sc-calendar-filter label{min-width:0}
+.sc-calendar-filter select{width:100%;min-width:0}
+.sc-calendar{display:grid;gap:8px;margin-block:16px;min-width:0}
+.sc-calendar-settimana,.sc-calendar-mese{grid-template-columns:repeat(7,minmax(0,1fr))}
+.sc-calendar-weekday{font-weight:600;text-align:center;padding:8px;color:var(--sc-muted)}
+.sc-calendar-day{min-width:0;min-height:110px;border:1px solid var(--sc-border);border-radius:var(--sc-radius-sm);background:var(--sc-white);padding:8px;display:flex;flex-direction:column;gap:8px}
+.sc-calendar-day-head{display:flex;align-items:flex-start;justify-content:space-between;gap:4px}
+.sc-calendar-day-head>a:first-child{font-size:var(--sc-text-small);font-weight:600;color:var(--sc-navy);display:block;min-width:0;overflow-wrap:anywhere;min-height:44px}
+.sc-calendar-add{display:inline-flex;align-items:center;justify-content:center;flex:none;width:44px;height:44px;border:1px solid var(--sc-border);border-radius:8px;font-size:22px;text-decoration:none}
+.sc-calendar-today{border:2px solid var(--sc-calendar);background:#f8f6fc}
+.sc-today-label{display:block;color:var(--sc-calendar);font-weight:700}
+.sc-calendar-outside{background:var(--sc-surface)}
+.sc-calendar-event{display:flex;flex-direction:column;gap:4px;min-height:44px;border-radius:8px;padding:8px;border-left:4px solid var(--sc-calendar);background:#f0ecf7;color:var(--sc-navy);text-decoration:none;font-size:var(--sc-text-small);overflow-wrap:anywhere}
+.sc-calendar-event small{font-size:var(--sc-text-small);color:var(--sc-muted)}
+.sc-calendar-pool{border-left-color:var(--sc-teal);background:#e8f5f3}
+.sc-calendar-theory{border-left-color:var(--sc-calendar)}
+.sc-calendar-cancelled{border-left-color:var(--sc-danger-fg);background:var(--sc-danger-bg)}
+.sc-calendar-empty,.sc-lane-state{font-size:var(--sc-text-small);color:var(--sc-muted)}
+.sc-pool-conditions{padding:12px;margin-block:12px;border:1px solid var(--sc-border);border-radius:8px;background:var(--sc-surface);overflow-wrap:anywhere;white-space:pre-wrap}
+.sc-occupancy-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:12px;align-items:start}
+.sc-lane-board{padding:12px;border:1px solid var(--sc-border);border-radius:8px;min-width:0}
+.sc-lane-day{display:grid;gap:6px;border-top:1px solid var(--sc-border);padding-block:10px;font-size:var(--sc-text-small)}
+.sc-lane-booking{display:flex;flex-direction:column;min-height:44px;padding:8px;background:var(--sc-info-bg);border-left:4px solid var(--sc-info-fg);border-radius:8px;color:var(--sc-navy);overflow-wrap:anywhere;text-decoration:none}
+.sc-lane-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,175px),1fr));gap:8px;margin-block:12px}
+.sc-lane-option{border:1px solid var(--sc-border);border-radius:8px;padding:8px;display:grid;gap:4px}
+.sc-lane-option small{overflow-wrap:anywhere}
+.sc-lane-conflict{border-color:var(--sc-danger-fg);background:var(--sc-danger-bg)}
+.sc-lane-conflict .sc-lane-state{color:var(--sc-danger-fg);font-weight:600}
+@media(min-width:1200px){.sc-calendar-giorno .sc-calendar-day,.sc-calendar-agenda .sc-calendar-day{display:grid;grid-template-columns:minmax(160px,1fr) repeat(3,minmax(0,1fr));align-items:start}.sc-calendar-giorno .sc-calendar-day-head,.sc-calendar-agenda .sc-calendar-day-head{grid-row:span 2}}
+@media(max-width:1199px){.sc-calendar-settimana,.sc-calendar-mese{grid-template-columns:1fr}.sc-calendar-weekday{display:none}.sc-calendar-day{min-height:0}.sc-calendar-period h2{order:-1;flex-basis:100%;text-align:left}.sc-calendar-event{padding:12px}}
+@media(max-width:480px){.sc-calendar-views>a{flex:1 1 40%}.sc-calendar-period>a{flex:1 1 40%}.sc-calendar-filter{grid-template-columns:minmax(0,1fr)}}
+
+@media(min-width:1200px){.sc-calendar-settimana,.sc-calendar-mese{grid-template-columns:repeat(7,minmax(145px,1fr));overflow-x:auto;max-width:100%;padding-bottom:8px}.sc-calendar-day-head>a:first-child{min-height:44px}}

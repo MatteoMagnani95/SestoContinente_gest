@@ -29,6 +29,33 @@ async function main() {
   assert.equal(await scalar(a,"select scelta from scelte_iscrizione where tipo='immagini' order by id desc limit 1"),false);
   assert.equal(await scalar(b,"select count(*)::int from scelte_iscrizione where utente_id=$1",[socio]),0);
   console.log('OK adesione con rifiuto, consenso revocabile e separazione persone');
+
+  // Nuova UI: provenienza e confronto atomico della scelta visualizzata.
+  const currentChoice=()=>scalar(a,"select id::text from scelte_iscrizione where tipo='immagini' order by id desc limit 1");
+  const oldChoice=await currentChoice();
+  await a.query("select scegli_immagini_verificata(true,'foto1',$1)",[oldChoice]);
+  const positive=await currentChoice();
+  assert.equal(await scalar(a,"select origine from scelte_iscrizione where id=$1",[positive]),'profilo');
+  await a.query("select scegli_immagini_verificata(false,'foto1',$1)",[positive]);
+  const revoked=await currentChoice();
+  await assert.rejects(a.query("select scegli_immagini_verificata(true,'foto1',$1)",[positive]),{code:'P3508'});
+  await a.query("select scegli_immagini_verificata(false,'foto1',$1)",[positive]);
+  assert.equal(await currentChoice(),revoked);
+  assert.equal(await scalar(a,"select scelta from scelte_iscrizione where id=$1",[revoked]),false);
+  assert.equal(await scalar(a,"select origine from scelte_iscrizione where tipo='privacy' order by id limit 1"),'registrazione');
+  const saveV20=salva.replace('salva_domanda_v19','salva_domanda_v20').replace(/\)$/,',$2)');
+  await assert.rejects(a.query(saveV20,[true,positive]),{code:'P3508'});
+  // La verifica della modalità precede la scrittura anche quando la RPC è invocata direttamente.
+  await assert.rejects(a.query(saveV20.replace("'stat1'","'TEST-COLLAUDO-1'"),[false,revoked]),{code:'P3509'});
+  await assert.rejects(a.query("select registra_scelta_verificata(true,'foto1',$1,'domanda')",[revoked]),{code:'42501'});
+  assert.equal(await currentChoice(),revoked);
+  const draftV20=saveV20.replace("'Nome','Cognome'","'Altro','Collaudo'").replace("'priv1',true","'priv1',false");
+  const draft=await scalar(b,draftV20,[true,null]);
+  assert.equal(await scalar(b,"select origine from scelte_iscrizione where tipo='immagini' order by id desc limit 1"),'domanda');
+  assert.equal(await scalar(b,'select immagini_scelta from richieste where id=$1',[draft]),true);
+  assert.equal(await scalar(a,'select count(*)::int from richieste where id=$1',[draft]),0);
+  console.log('OK dichiarazioni: origine, revoca protetta, retry e separazione modalità');
+
   const season=await scalar(root,"select id from stagioni where attiva limit 1");
   for(const p of [allievo,dir,secondo]){
    const ad=await scalar(root,"insert into adesioni(stagione_id,persona_id,stato) values($1,$2,'attiva') returning id",[season,p]);
@@ -61,6 +88,24 @@ async function main() {
   assert.ok((await s.query("select autore,registrata_il,campi from cronologia_scheda('corso',$1)",[ed])).rows.some(r=>r.campi?.includes('direttore_id') && r.autore==='Persona Collaudo2' && r.registrata_il));
   assert.equal(await scalar(a,"select count(*)::int from cronologia_scheda('corso',$1)",[ed]),0);
   console.log('OK edizioni concorrenti, edizione distinta, conflitti bidirezionali, brevetto storico e cronologia');
+
+  // Incarichi: rifiuta discrepanze nuove anche via SQL diretto; allinea con consenso.
+  for(const person of [dir,secondo,allievo,cons1])await s.query("insert into qualifiche_istruttori(persona_id,titolo) values($1,'Qualifica sintetica')",[person]);
+  const assign="insert into assegnazioni_istruttori(edizione_id,persona_id,ruolo) values($1,$2,'responsabile') returning id";
+  await assert.rejects(s.query(assign,[ed,dir]),{code:'P3510'});
+  const responsible=await scalar(s,assign,[ed,secondo]);
+  await assert.rejects(s.query('update edizioni_corsi set direttore_id=$1 where id=$2',[dir,ed]),{code:'P3510'});
+  await assert.rejects(s.query("update assegnazioni_istruttori set ruolo='aiuto' where id=$1",[responsible]),{code:'P3510'});
+  const align='select allinea_direttore_responsabile($1,$2,$3,$4)';
+  await assert.rejects(a.query(align,[ed,dir,secondo,secondo]),{code:'42501'});
+  await assert.rejects(s.query(align,[ed,allievo,secondo,secondo]),{code:'P3421'});
+  const aligned=await Promise.allSettled([s,s2].map((db,i)=>db.query(align,[ed,i===0?dir:cons1,secondo,secondo])));
+  assert.equal(aligned.filter(r=>r.status==='fulfilled').length,1);
+  assert.equal(aligned.find(r=>r.status==='rejected').reason.code,'P3511');
+  assert.equal(await scalar(s,"select e.direttore_id=a.persona_id from edizioni_corsi e join assegnazioni_istruttori a on a.edizione_id=e.id where a.id=$1",[responsible]),true);
+  assert.equal(await scalar(s,'select rilasciato_da_id from brevetti_allievi where id=$1',[brevetto]),dir);
+  console.log('OK direzione: coerenza, permessi, allineamento concorrente, incarico e brevetto storico');
+
   async function file(){
    const id=randomUUID(),path=socio+'/certificati/'+id+'.jpg';
    await a.query("insert into documenti(id,nome,categoria,ambito,visibilita,utente_id,persona_id,percorso_storage,mime,dimensione_bytes,caricato_da) values($1,'File di prova','Certificato medico','personale','proprietario',$2,$3,$4,'image/jpeg',12,$2)",[id,socio,allievo,path]);

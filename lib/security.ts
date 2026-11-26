@@ -8,7 +8,12 @@ export const statoLabel: Record<Stato,string> = {
 };
 export function formatDate(value: string | null | undefined) {
   if (!value) return '—';
-  return new Date(value.length === 10 ? `${value}T12:00:00` : value).toLocaleDateString('it-IT');
+  // Date-only fields are calendar dates; instants must be displayed in Italy,
+  // regardless of the timezone of the Next.js server.
+  const dateOnly=/^\d{4}-\d{2}-\d{2}$/.test(value);
+  const date=new Date(dateOnly?`${value}T12:00:00Z`:value);
+  if(!Number.isFinite(date.getTime())||(dateOnly&&date.toISOString().slice(0,10)!==value))return '—';
+  return date.toLocaleDateString('it-IT',{timeZone:'Europe/Rome',day:'2-digit',month:'2-digit',year:'numeric'});
 }
 export function queryMessage(search?: string) {
   const values: Record<string,string> = {
@@ -16,7 +21,7 @@ export function queryMessage(search?: string) {
     credenziali:'Email o password non corrette.',
     registrazione:'Impossibile completare la registrazione. Verifica i dati o riprova.',
     password:'La password deve avere almeno 10 caratteri e corrispondere alla conferma.',
-    account:'Per procedere devi prima accedere.',
+    account:'Accedi per continuare. Se la sessione è scaduta, inserisci nuovamente le credenziali.',
     account_disattivato:'Account non abilitato oppure non verificabile. Contatta la segreteria.',
     email:'Devi verificare il tuo indirizzo email prima di inviare la domanda.',
     verifica:'Non è stato possibile confermare l’email. Richiedi un nuovo messaggio di verifica.',
@@ -27,6 +32,8 @@ export function queryMessage(search?: string) {
     database:'Operazione non completata. Controlla eventuali duplicati o contatta la segreteria.',
     confermata:'Indirizzo email verificato. Puoi proseguire.',
     uscita:'Hai effettuato la disconnessione.',
+    uscita_non_riuscita:'Disconnessione non completata. Riprova dal menu Account.',
+    recupero_scaduto:'Collegamento di recupero non valido o scaduto. Richiedine uno nuovo dalla pagina Accedi.',
     inviata:'Domanda inviata correttamente alla segreteria.',
     salvata:'Bozza salvata.',
     presa:'Domanda presa in carico.',
@@ -35,7 +42,7 @@ export function queryMessage(search?: string) {
     respinta:'Domanda respinta.',
     recupero:'Se l’account esiste, riceverai un messaggio per recuperare la password.',
   };
-  return search ? (values[search] ?? '') : '';
+  return typeof search==='string'&&Object.hasOwn(values,search)?values[search]:'';
 }
 export async function requireUser() {
   const supabase = await createClient();

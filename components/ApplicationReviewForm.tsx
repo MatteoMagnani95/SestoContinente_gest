@@ -2,6 +2,7 @@
 
 import {useRef,useState,type FormEvent} from 'react';
 import {useRouter} from 'next/navigation';
+import {markFormSaved} from '@/lib/dirty-navigation';
 import {decideApplicationAction} from '@/app/actions';
 import {decisionValidation,type ReviewCheck} from '@/lib/application-review';
 
@@ -21,13 +22,13 @@ export default function ApplicationReviewForm({id,testMode,checks}:{id:string;te
   const validation=decisionValidation(action,confirmed,message,note);
   if(validation){setError(validation);return;}
   if(action==='approvata'&&blocked){setError('Risolvi i controlli bloccanti prima di approvare.');return;}
-  const data=new FormData(e.currentTarget);data.set('action',action);
+  const form=e.currentTarget;const data=new FormData(form);data.set('action',action);
   submitting.current=true;setPending(true);setError('');
   let succeeded=false;
   try{
    const result=await decideApplicationAction(data);
    if(result.error){setError(result.error);return;}
-   if(result.next){router.push(result.next);router.refresh();succeeded=true;}
+   if(result.next){markFormSaved(form);router.push(result.next);router.refresh();succeeded=true;}
   }catch{setError('Esito non verificabile. Le note sono ancora presenti: ricarica lo stato della pratica prima di ripetere l’operazione.');}
   finally{if(!succeeded){submitting.current=false;setPending(false);}}
  }
@@ -39,7 +40,7 @@ export default function ApplicationReviewForm({id,testMode,checks}:{id:string;te
   <p className="muted tiny">Controlli indicativi al caricamento della scheda. Il database ripete le verifiche previste quando registri la decisione. Se modifichi i dati in un’altra scheda, ricarica questa pagina.</p>
   <div className="notice warning"><strong>{testMode?'Verifiche simulate — COLLAUDO':'Verifiche manuali obbligatorie'}</strong><p>Controlla identità, poteri del tutore (se previsto), possibili duplicati, competenza statutaria e documentazione. {testMode?'Usa soltanto dati di prova: la conferma non attesta verifiche reali.':'La conferma non sostituisce le verifiche effettive della segreteria.'}</p></div>
   <h3>Decisione della segreteria</h3>
-  <form onSubmit={submit} className="stack">
+  <form data-dirty-form onSubmit={submit} className="stack">
    <input type="hidden" name="id" value={id}/>
    <label>Messaggio per eventuale integrazione<textarea name="messaggio" rows={3} value={message} onChange={e=>setMessage(e.target.value)} disabled={pending} placeholder="Indica le informazioni da correggere (minimo 10 caratteri)"/></label>
    <label>Motivazione interna (obbligatoria per il rifiuto)<textarea name="motivo_interno" rows={3} value={note} onChange={e=>setNote(e.target.value)} disabled={pending} placeholder="Visibile soltanto alla segreteria"/></label>

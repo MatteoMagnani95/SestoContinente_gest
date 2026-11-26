@@ -1,5 +1,6 @@
 'use server';
 
+import {validBirthDate,minorAge,imageChoice} from '@/lib/application-input';
 import {informativaRegistrazione} from '@/lib/registrazione';
 import {versioneImmagini} from '@/lib/scelte';
 import {validaCF} from '@/lib/codice-fiscale';
@@ -12,40 +13,46 @@ import {decisionValidation,isReviewDecision,reviewError,type DecisionResult} fro
 import {identityFromForm,identityFields,verificaAnagrafica,type Identity,type CFResult} from '@/lib/verifica-anagrafica';
 
 const asText = (form: FormData, field: string) => String(form.get(field) ?? '').trim();
+// Le password sono credenziali opache: anche gli spazi sono significativi.
+const passwordText = (form: FormData, field: string) => String(form.get(field) ?? '');
 const go = (path: string, msg: string) => redirect(`${path}?msg=${msg}`);
 
 export async function registerAction(form: FormData) {
   const email = asText(form, 'email').toLowerCase();
-  const password = asText(form, 'password');
-  if (!email.includes('@') || password.length < 10 || password !== asText(form, 'confirm')) {
-    go('/registrati', 'password');
+  const password = passwordText(form, 'password');
+  if (!email.includes('@'))return {error:'Inserisci un indirizzo email valido.',field:'email'};
+  if (password.length < 10 || password !== passwordText(form, 'confirm')) {
+    return {error:'La password deve avere almeno 10 caratteri e corrispondere alla conferma.',field:'password'};
   }
   const supabase = await createClient();
   const origin = process.env.NEXT_PUBLIC_SITE_URL;
-  if (!origin) go('/registrati', 'registrazione');
-  const legal=informativaRegistrazione(),scelta=asText(form,'immagini');
-  if(!legal.url||form.get('presa_visione')!=='on'||!['','si','no'].includes(scelta))go('/registrati','privacy');
-  const { error } = await supabase.auth.signUp({
+  if (!origin) return {error:'Registrazione temporaneamente non disponibile. Contatta la segreteria.'};
+  const legal=informativaRegistrazione(),scelta=imageChoice(form);
+  if(asText(form,'privacy_versione_vista')!==legal.versione||asText(form,'immagini_versione_vista')!==(legal.test?'TEST-COLLAUDO-1':versioneImmagini))return {error:'L’informativa è stata aggiornata. Ricarica la registrazione e leggila nuovamente.'};
+  if(!legal.url||form.get('presa_visione')!=='on'||!['','si','no'].includes(scelta))return {error:'Apri l’informativa e conferma la presa visione.',field:'presa_visione'};
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: { data:{presa_visione:'si',versione_privacy:legal.versione,immagini:scelta,versione_immagini:legal.test?'TEST-COLLAUDO-1':versioneImmagini},emailRedirectTo: `${origin}/auth/callback?next=%2Frichiesta%2Fnuova` },
   });
-  if (error) go('/registrati', 'registrazione');
+  if (error) return {error:'Registrazione non completata. Controlla i dati o riprova.'};
+  if (data.session) redirect('/smista');
   redirect('/registrati?ok=verifica');
 }
 
 export async function loginAction(form: FormData) {
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({
-    email: asText(form, 'email'), password: asText(form, 'password'),
+    email: asText(form, 'email'), password: passwordText(form, 'password'),
   });
-  if (error) go('/accedi', 'credenziali');
+  if (error) return {error:error.code==='email_not_confirmed'?'Verifica prima la tua email. Puoi richiedere un nuovo messaggio nella pagina Accedi.':'Email o password non corrette, oppure accesso temporaneamente non disponibile.'};
   redirect('/smista');
 }
 
 export async function logoutAction() {
   const supabase = await createClient();
-  await supabase.auth.signOut();
+  const {error}=await supabase.auth.signOut();
+  if(error)redirect('/?msg=uscita_non_riuscita');
   redirect('/accedi?msg=uscita');
 }
 
@@ -53,20 +60,30 @@ export async function recoverAction(form: FormData) {
   const email = asText(form, 'email');
   const supabase = await createClient();
   const origin = process.env.NEXT_PUBLIC_SITE_URL;
+  if(!origin)return {error:'Recupero password temporaneamente non disponibile. Contatta la segreteria.'};
+  if(!email.includes('@'))return {error:'Controlla l’indirizzo email.',field:'email'};
   if (origin && email) {
     await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${origin}/auth/callback?next=%2Fnuova-password`,
     });
   }
-  redirect('/accedi?msg=recupero');
+  return {notice:'Se l’account esiste e la richiesta è stata accettata, riceverai un messaggio per recuperare la password.'};
+}
+
+export async function resendVerificationAction(form:FormData){
+ const email=asText(form,'email');const origin=process.env.NEXT_PUBLIC_SITE_URL;
+ if(!origin||!email.includes('@'))return {error:'Controlla l’indirizzo email.'};
+ const supabase=await createClient();
+ await supabase.auth.resend({type:'signup',email,options:{emailRedirectTo:origin+'/auth/callback?next=%2Frichiesta%2Fnuova'}});
+ return {notice:'Se l’account richiede una verifica e la richiesta è stata accettata, riceverai un nuovo messaggio.'};
 }
 
 export async function newPasswordAction(form: FormData) {
-  const password = asText(form, 'password');
-  if (password.length < 10 || password !== asText(form, 'confirm')) go('/nuova-password','password');
+  const password = passwordText(form, 'password');
+  if (password.length < 10 || password !== passwordText(form, 'confirm')) return {error:'La password deve avere almeno 10 caratteri e corrispondere alla conferma.',field:'password'};
   const { supabase } = await requireUser();
   const { error } = await supabase.auth.updateUser({ password });
-  if (error) go('/nuova-password', 'database');
+  if (error) return {error:'Password non aggiornata. Richiedi un nuovo collegamento di recupero se necessario.'};
   redirect('/smista');
 }
 
@@ -75,14 +92,13 @@ export async function saveApplicationAction(form: FormData) {
   if (!user.email_confirmed_at) return {error:'Conferma prima l’indirizzo email.'};
   const birth = asText(form, 'data_nascita');
   const send = asText(form, 'intent') === 'invia';
-  if(!birth || birth<'1900-01-01'||birth>new Date().toISOString().slice(0,10))return {error:'Data di nascita non valida.'};
+  if(!validBirthDate(birth))return {error:'Data di nascita non valida.',field:'data_nascita'};
   const required = ['nome','cognome','luogo_nascita','indirizzo','cap','comune','telefono'];
-  if (required.some(k => asText(form, k).length < 2) || !/^\d{4}-\d{2}-\d{2}$/.test(birth)) {
-    return {error:'Completa correttamente i dati obbligatori, inclusi quelli del tutore se necessario.'};
-  }
-  const minor = new Date(`${birth}T12:00:00`).getTime() >
-    new Date(new Date().setFullYear(new Date().getFullYear()-18)).getTime();
-  if (minor && ['nome_tutore','cognome_tutore','parentela_tutore'].some(k => !asText(form,k))) {
+  const missing=required.find(k=>asText(form,k).length<(k==='telefono'?5:k==='cap'?4:2));
+  if(missing)return {error:'Completa correttamente i dati obbligatori.',field:missing};
+  if(asText(form,'cap').length>10)return {error:'Controlla il CAP.',field:'cap'};
+  const minor = minorAge(birth);
+  if (minor && (['nome_tutore','cognome_tutore'].some(k => asText(form,k).length<2)||!['Madre','Padre','Tutore legale'].includes(asText(form,'parentela_tutore')))) {
     return {error:'Completa correttamente i dati obbligatori, inclusi quelli del tutore se necessario.'};
   }
   const flagStatuto=form.get('flag_statuto')==='on';
@@ -90,32 +106,34 @@ export async function saveApplicationAction(form: FormData) {
   if(!flagStatuto||!flagPrivacy)return {error:'Conferma la presa visione di statuto e informativa privacy.'};
   const legal=applicationLegalConfig(user.id);
   if(!legal.configured)return {error:'Registrazione temporaneamente non disponibile: statuto o informativa privacy non configurati. Contatta la segreteria.'};
+  if(asText(form,'statuto_versione_vista')!==legal.statutoVersion||asText(form,'privacy_versione_vista')!==legal.privacyVersion||asText(form,'immagini_versione_vista')!==(legal.testMode?'TEST-COLLAUDO-1':versioneImmagini))return {error:'I documenti sono stati aggiornati. Ricarica la domanda e conferma nuovamente la presa visione.'};
   const {data:prior,error:priorError}=await supabase.from('richieste').select('versione_statuto,versione_privacy').eq('utente_id',user.id).maybeSingle();
   if(priorError)return {error:'Impossibile verificare la pratica esistente.'};
   if(prior&&(prior.versione_statuto||prior.versione_privacy)&&isTestApplication(prior)!==legal.testMode)return {error:'Non è possibile convertire una pratica reale in collaudo o viceversa. Contatta la segreteria.'};
   const cf=asText(form,'codice_fiscale').toUpperCase();
   const paese=asText(form,'stato_nascita'),provincia=asText(form,'provincia_nascita').toUpperCase(),sesso=asText(form,'sesso_cf');
   if(!paese||paese.length>100||(provincia&&!/^[A-Z]{2}$/.test(provincia))||(sesso&&!['M','F'].includes(sesso)))return {error:'Completa Stato, provincia e sesso anagrafico.'};
-  if(cf&&!validaCF(cf))return {error:'Controlla il formato e il carattere di controllo del codice fiscale.'};
-  if(cf){const check=await verificaAnagrafica(identityFromForm(form));if(check.status==='mismatch')return {error:check.message};}
-  const immagini=asText(form,'immagini');if(!['','si','no'].includes(immagini))return {error:'Scelta foto e video non valida.'};
+  if(cf&&!validaCF(cf))return {error:'Controlla il formato e il carattere di controllo del codice fiscale.',field:'codice_fiscale'};
+  if(cf){const check=await verificaAnagrafica(identityFromForm(form));if(check.status==='mismatch')return {error:check.message,field:'codice_fiscale'};}
+  const immagini=imageChoice(form);const sceltaAttesa=asText(form,'immagini_scelta_attesa');
+  if(!['si','no'].includes(immagini)||!form.has('immagini_scelta_attesa')||(sceltaAttesa&&!/^[1-9]\d{0,18}$/.test(sceltaAttesa)))return {error:'Scelta foto e video non verificabile. Ricarica la domanda.'};
   const payload = {
     p_nome: asText(form, 'nome'), p_cognome: asText(form, 'cognome'),
     p_data_nascita: birth, p_luogo_nascita: asText(form,'luogo_nascita'),
     p_codice_fiscale: cf, p_indirizzo: asText(form,'indirizzo'),
     p_provincia_nascita:provincia||null,p_stato_nascita:paese,p_sesso_cf:sesso||null,p_emergenza_nome:asText(form,'emergenza_nome'),p_emergenza_telefono:asText(form,'emergenza_telefono'),
     p_cap: asText(form,'cap'), p_comune: asText(form,'comune'), p_telefono: asText(form,'telefono'),
-    p_nome_tutore: asText(form,'nome_tutore'), p_cognome_tutore: asText(form,'cognome_tutore'),
-    p_parentela_tutore: asText(form,'parentela_tutore'),
-    p_flag_statuto:flagStatuto,p_flag_privacy:flagPrivacy,p_flag_immagini:immagini===''?null:immagini==='si',p_versione_immagini:legal.testMode?'TEST-COLLAUDO-1':versioneImmagini,
+    p_nome_tutore: minor?asText(form,'nome_tutore'):'', p_cognome_tutore: minor?asText(form,'cognome_tutore'):'',
+    p_parentela_tutore: minor?asText(form,'parentela_tutore'):'',
+    p_flag_statuto:flagStatuto,p_flag_privacy:flagPrivacy,p_flag_immagini:immagini==='si',p_scelta_attesa:sceltaAttesa||null,p_versione_immagini:legal.testMode?'TEST-COLLAUDO-1':versioneImmagini,
     p_versione_statuto:legal.statutoVersion,
     p_versione_privacy:legal.privacyVersion,p_invia:send,
   };
-  const { error } = await supabase.rpc('salva_domanda_v19', payload);
+  const { error } = await supabase.rpc('salva_domanda_v20', payload);
   if (error) {
     // Non esporre all'utente dettagli SQL o anagrafiche potenzialmente duplicate.
-    console.error('salva_domanda_v19 non completata', {code:error.code});
-    return {error:error.code==='PGRST202'?'Funzione di registrazione non disponibile: la segreteria deve verificare l’allineamento delle migrazioni.':error.code==='23505'?'Esiste già una pratica o un record con questi dati. Contatta la segreteria.':error.code==='23514'?'Uno o più dati non rispettano i requisiti della domanda.':error.code==='42501'?'La sessione non è autorizzata a salvare questa domanda.': 'Domanda non salvata. Verifica i dati e lo stato della pratica; se persiste, contatta la segreteria.'};
+    console.error('salva_domanda_v20 non completata', {code:error.code});
+    return {error:error.code==='P3508'?'La scelta foto e video è cambiata. Ricarica la domanda prima di confermarla.':error.code==='P3509'?'Le dichiarazioni di prova e reali non possono essere mescolate.':error.code==='PGRST202'?'Salvataggio temporaneamente non disponibile. Contatta la segreteria.':error.code==='23505'?'Esiste già una pratica con questi dati. Contatta la segreteria.':error.code==='23514'?'Uno o più dati non rispettano i requisiti della domanda.':error.code==='42501'?'La sessione non è autorizzata a salvare questa domanda.': 'Domanda non salvata. Verifica i dati e lo stato della pratica; se persiste, contatta la segreteria.'};
   }
   revalidatePath('/richiesta/stato');
   return {next:`/richiesta/stato?msg=${send ? 'inviata' : 'salvata'}`};

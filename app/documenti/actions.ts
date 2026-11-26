@@ -1,7 +1,9 @@
 'use server';
+import {archiveUploadLimit,checkDocumentDestination} from '@/lib/document-ui';
 import {redirect} from 'next/navigation';
 import {revalidatePath} from 'next/cache';
 import {requireUser} from '@/lib/security';
+import {validPaymentDate} from '@/lib/payment-tools';
 import {randomUUID} from 'node:crypto';
 const mimeToExt:Record<string,string>={'application/pdf':'pdf','image/jpeg':'jpg','image/png':'png','image/webp':'webp'};
 const uuid=/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i;
@@ -14,15 +16,17 @@ function realMime(file:Buffer,mime:string){
 }
 export async function uploadDocument(form:FormData){
  const {supabase,user}=await requireUser();
- const {data:roles}=await supabase.from('ruoli_utente').select('ruolo').eq('utente_id',user.id);
+ const {data:roles,error:roleError}=await supabase.from('ruoli_utente').select('ruolo').eq('utente_id',user.id);
+ if(roleError)return {error:'Autorizzazioni non verificabili.'};
  const isStaff=roles?.some(x=>['amministratore','segreteria'].includes(x.ruolo))??false;
  const isAdmin=roles?.some(x=>x.ruolo==='amministratore')??false;
  const file=form.get('file');
- if(!(file instanceof File)||file.size<=0||file.size>10*1024*1024||!mimeToExt[file.type])redirect('/documenti?msg=file');
+ if(!(file instanceof File)||file.size<=0||file.size>archiveUploadLimit||!mimeToExt[file.type])return {error:'Seleziona un file PDF o immagine valido, massimo 3 MB per questo modulo.',field:'file'};
  const buffer=Buffer.from(await file.arrayBuffer());
- if(!realMime(buffer,file.type))redirect('/documenti?msg=file');
+ if(!realMime(buffer,file.type))return {error:'Il contenuto del file non corrisponde al formato selezionato.',field:'file'};
  const nome=String(form.get('nome')||file.name).trim().slice(0,150);
  const categoria=String(form.get('categoria')||'Altro').trim().slice(0,80);
+ if(categoria.toLocaleLowerCase('it-IT')==='certificato medico')return {field:'categoria',error:'Per i certificati medici usa il caricamento dedicato nell’area personale.'};
  const ambito=isStaff?String(form.get('ambito')||'associazione'):'personale';
  const visibilita=isStaff?String(form.get('visibilita')||'staff'):'proprietario';
  const utente=isStaff?String(form.get('utente_id')||'').trim():user.id;
@@ -30,19 +34,28 @@ export async function uploadDocument(form:FormData){
  const edizione=isStaff?String(form.get('edizione_id')||'').trim():'';
  const versione=isStaff?String(form.get('programma_versione_id')||'').trim():'';
  const conservazione=String(form.get('scadenza_conservazione')||'').trim();
- if(ambito==='associazione'&&visibilita==='soci'&&(!isAdmin||utente||persona||edizione||versione))redirect('/documenti?msg=permessi');
+ if(!checkDocumentDestination({ambito,visibilita,utente,persona,edizione,versione,isAdmin}))return {error:'Controlla destinazione, visibilità e collegamenti. Per documenti sanitari usa la procedura certificati.'};
  if(!nome||!categoria||!['associazione','personale','didattica','amministrativo'].includes(ambito)||
  !['staff','proprietario','soci','istruttori'].includes(visibilita)||
  (ambito==='personale'&&(!utente||!['staff','proprietario'].includes(visibilita)))||
  (utente&&!uuid.test(utente))||(persona&&!uuid.test(persona))||(edizione&&!uuid.test(edizione))||(versione&&!uuid.test(versione))||
- (conservazione&&!/^\d{4}-\d{2}-\d{2}$/.test(conservazione)))redirect('/documenti?msg=dati');
+ (conservazione&&!validPaymentDate(conservazione)))return {error:'Controlla ambito, visibilità e collegamenti del documento.'};
+ if(isStaff&&ambito==='personale'&&persona){
+  const {data:relation,error:relationError}=await supabase.from('collegamenti_persone').select('utente_id').eq('utente_id',utente).eq('persona_id',persona).limit(1);
+  if(relationError||!relation?.length)return {field:'utente_id',error:'L’account scelto non risulta collegato alla persona. Verifica gli intestatari.'};
+ }
  const path=`${user.id}/${randomUUID()}.${mimeToExt[file.type]}`;
  const {data,error}=await supabase.from('documenti').insert({nome,categoria,ambito,visibilita,
   utente_id:utente||null,persona_id:persona||null,edizione_id:edizione||null,programma_versione_id:versione||null,
   percorso_storage:path,mime:file.type,dimensione_bytes:file.size,caricato_da:user.id,scadenza_conservazione:conservazione||null}).select('id').single();
- if(error||!data)redirect('/documenti?msg=errore');
+ if(error||!data)return {error:'Caricamento non completato. Verifica il file e i permessi.'};
  const uploaded=await supabase.storage.from('sesto-documenti').upload(path,buffer,{contentType:file.type,upsert:false});
- if(uploaded.error){await supabase.rpc('annulla_upload_documento',{p_id:data.id});redirect('/documenti?msg=errore');}
+ if(uploaded.error){
+  // La RPC elimina il metadata solo se l'oggetto non esiste. Non presumere
+  // che una risposta interrotta significhi che il provider non abbia salvato.
+  await supabase.rpc('annulla_upload_documento',{p_id:data.id});
+  revalidatePath('/documenti');return {error:'Caricamento non confermato. Controlla l’archivio prima di ripetere l’invio.'};
+ }
  revalidatePath('/documenti');redirect('/documenti?msg=ok');
 }
 export async function deleteDocument(form:FormData){
@@ -69,7 +82,12 @@ export async function editDocumentMetadata(form:FormData){
  const {data:role}=await supabase.from('ruoli_utente').select('ruolo').eq('utente_id',user.id).eq('ruolo','amministratore').maybeSingle();
  if(!role)redirect('/documenti?msg=permessi');
  const id=String(form.get('id')??''),nome=String(form.get('nome')??'').trim(),categoria=String(form.get('categoria')??'').trim();
- if(!uuid.test(id)||!nome||nome.length>150||!categoria||categoria.length>80)redirect('/documenti?msg=dati');
+ if(!uuid.test(id)||!nome||nome.length>150||!categoria||categoria.length>80)return {error:'Controlla nome e categoria del documento.'};
+ if(categoria.toLocaleLowerCase('it-IT')==='certificato medico'){
+  const {data:medical,error:medicalError}=await supabase.rpc('documento_sanitario',{p_id:id});
+  if(medicalError||medical!==true)return {field:'categoria',error:'Per registrare un certificato medico usa il caricamento dedicato nell’area personale.'};
+ }
  const {data,error}=await supabase.from('documenti').update({nome,categoria}).eq('id',id).select('id').maybeSingle();
- revalidatePath('/documenti');revalidatePath('/area-soci');redirect(`/documenti?msg=${error||!data?'errore':'modificato'}`);
+ if(error||!data)return {error:'Modifiche non salvate. Verifica i dati e le autorizzazioni.'};
+ revalidatePath('/documenti');revalidatePath('/area-soci');redirect('/documenti?msg=modificato');
 }

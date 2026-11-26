@@ -38,3 +38,11 @@ export function formatRome(value:string|null|undefined):string{
 }
 export function courseName(type:string,level:number|null){return type==='ARA'?`ARA · Livello ${level??'—'}`:type==='APNEA'?'Apnea':'Nuoto libero';}
 export function detailHref(id:string,msg?:string){return `/gestionale/corsi/${encodeURIComponent(id)}${msg?`?msg=${encodeURIComponent(msg)}`:''}`;}
+
+/** Accept the existing combined editor or the date/time fields used by the calendar. */
+export function lessonInterval(form:FormData){
+ const local=(key:'inizio'|'fine')=>form.has('giorno_'+key)||form.has('ora_'+key)?dateValue(form,'giorno_'+key)+'T'+textValue(form,'ora_'+key,5):textValue(form,key,16);
+ const inizio=asRomeISO(local('inizio')),fine=asRomeISO(local('fine'));
+ if(fine<=inizio)throw new Error('Intervallo non valido');
+ return {inizio,fine};
+}

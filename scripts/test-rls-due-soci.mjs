@@ -12,6 +12,15 @@ const required=['NEXT_PUBLIC_SUPABASE_URL','NEXT_PUBLIC_SUPABASE_ANON_KEY',
 const absent=required.filter(k=>!process.env[k]);
 if(absent.length){console.error(`Variabili richieste mancanti: ${absent.join(', ')}`);process.exit(2);}
 const base=process.env.NEXT_PUBLIC_SUPABASE_URL.replace(/\/$/,'');
+if(process.env.QA_ISOLATED_ENV!=='true'||!['localhost','127.0.0.1'].includes(new URL(base).hostname)){
+ console.error('Test RLS consentito solo su Supabase locale isolato (QA_ISOLATED_ENV=true).');
+ process.exit(2);
+}
+const ids=[process.env.TEST_SOCIO_A_PERSONA_ID,process.env.TEST_SOCIO_B_PERSONA_ID];
+if(ids.some(id=>!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(id))||ids[0].toLowerCase()===ids[1].toLowerCase()||process.env.TEST_SOCIO_A_EMAIL.trim().toLowerCase()===process.env.TEST_SOCIO_B_EMAIL.trim().toLowerCase()){
+ console.error('Usare due account e due anagrafiche sintetiche distinte.');
+ process.exit(2);
+}
 const anon=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 async function token(email,password){
  const response=await fetch(`${base}/auth/v1/token?grant_type=password`,{method:'POST',

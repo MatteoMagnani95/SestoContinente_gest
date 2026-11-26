@@ -1,12 +1,25 @@
-import type { Metadata } from 'next';
-import SiteHeader from '@/components/SiteHeader';
-import GlobalCancelButtons from '@/components/GlobalCancelButtons';
+import type { Metadata, Viewport } from 'next';
+import AppShell from '@/components/AppShell';
+import {getNavigationAccess} from '@/lib/navigation-access';
 import './globals.css';
+import './design-tokens.css';
+import './design-system.css';
+import './navigation.css';
+import './data-ui.css';
+import './public-ui.css';
+import './secretariat.css';
+import './calendar-ui.css';
+import './association-ui.css';
+import './finance-ui.css';
+import './personal-ui.css';
+import './responsive-accessibility.css';
+export const viewport: Viewport = {width:'device-width', initialScale:1, viewportFit:'cover'};
 export const metadata: Metadata = {
   title: { default: 'Sesto Continente | Gestionale', template: '%s | Sesto Continente' },
   description: 'Area riservata del gestionale associativo Sesto Continente.',
   robots: { index: false, follow: false },
 };
-export default function RootLayout({children}:{children:React.ReactNode}) {
-  return <html lang="it"><body><SiteHeader/><GlobalCancelButtons/><main>{children}</main><footer className="footer">Sesto Continente · Gestionale indipendente · Gestionale associativo</footer></body></html>;
+export default async function RootLayout({children}:{children:React.ReactNode}) {
+  const access=await getNavigationAccess();
+  return <html lang="it"><body><AppShell access={access}>{children}</AppShell></body></html>;
 }
