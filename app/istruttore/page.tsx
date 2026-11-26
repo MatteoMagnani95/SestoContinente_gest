@@ -9,9 +9,9 @@ export default async function Instructor({searchParams}:{searchParams:Promise<{m
  const {data:role}=await supabase.from('ruoli_utente').select('ruolo').eq('utente_id',user.id).eq('ruolo','istruttore').maybeSingle();
  if(!role)redirect('/?msg=permessi');
  const {msg}=await searchParams;
- const {data:links}=await supabase.from('collegamenti_persone').select('persona_id').eq('utente_id',user.id);
+ const {data:links,error:linkError}=await supabase.from('collegamenti_persone').select('persona_id').eq('utente_id',user.id);
  const ids=links?.map(l=>l.persona_id)??[];
- const {data:assignments}=ids.length?await supabase.from('assegnazioni_istruttori').select('edizione_id,persona_id,ruolo').in('persona_id',ids):{data:[]};
+ const {data:assignments,error:assignmentError}=ids.length?await supabase.from('assegnazioni_istruttori').select('edizione_id,persona_id,ruolo').in('persona_id',ids):{data:[],error:null};
  const editionIds=[...new Set(assignments?.map(a=>a.edizione_id)??[])];
  const [{data:editions,error:editionError},{data:lessons,error:lessonError},{data:students,error:studentError},{data:studentCards,error:cardError}]=await Promise.all([
  editionIds.length?supabase.from('edizioni_corsi').select('id,nome,inizio,fine,stato').in('id',editionIds):Promise.resolve({data:[],error:null}),
@@ -28,15 +28,15 @@ export default async function Instructor({searchParams}:{searchParams:Promise<{m
  const display=(id:string,edition:string)=>{const p=allowed.find(x=>x.persona_id===id&&x.edizione_id===edition);return `${p?.cognome??''} ${p?.nome??''}`;};
  // La RPC non restituisce mai CF, quote o dettagli medici.
  return <div className="container"><div className="page-intro"><p className="eyebrow">Area istruttore</p><h1>I miei corsi</h1><Link className="button" href="/gestione-eventi">Gestisci eventi soci</Link><p>Calendario, materiali e registrazione delle presenze per le lezioni assegnate.</p></div>
- {(editionError||lessonError||studentError||cardError||presenceError)&&<p className="notice error" role="alert">Alcuni dati del registro non sono disponibili. Riprova prima di registrare presenze.</p>}
+ {(linkError||assignmentError||editionError||lessonError||studentError||cardError||presenceError)&&<p className="notice error" role="alert">Alcuni dati del registro non sono disponibili. Riprova prima di registrare presenze.</p>}
  {msg==='ok'&&<p className="notice success">Presenza registrata.</p>}{msg==='errore'&&<p className="notice error">Operazione non consentita. Verifica assegnazione e iscrizione dell'allievo.</p>}
  <div className="cards">{editions?.map(e=><article className="panel" key={e.id}><h2>{e.nome}</h2><p>{formatValue(e.inizio)} – {formatValue(e.fine)}</p><p>Stato: {e.stato}</p><p>Allievi iscritti: {studentError?'—':students?.filter(s=>s.edizione_id===e.id&&s.stato==='iscritto').length??0}</p>{assignments?.some(a=>a.edizione_id===e.id&&a.ruolo==='responsabile')&&<Link className="button" href={`/comunicazioni/corsi/${e.id}`}>Scrivi ai corsisti</Link>}</article>)}
- {!editions?.length&&<div className="notice">Non risulti assegnato ad alcuna edizione di corso. Chiedi alla segreteria di collegare la tua anagrafica e assegnare il ruolo di istruttore.</div>}</div>
+ {!linkError&&!assignmentError&&!editionError&&!editions?.length&&<div className="notice">Non risulti assegnato ad alcuna edizione di corso. Chiedi alla segreteria di collegare la tua anagrafica e assegnare il ruolo di istruttore.</div>}</div>
  <section className="panel"><h2>Lezioni e presenze</h2>{lessons?.map(l=><div key={l.id} className="timeline-item"><h3>{formatValue(l.inizio)} · {l.titolo}</h3><p className="muted">Materiale: {l.materiale||'Non specificato'}</p>
  {!presenceError&&!studentError&&!cardError&&students?.filter(s=>s.edizione_id===l.edizione_id).sort((a,b)=>display(a.persona_id,l.edizione_id).localeCompare(display(b.persona_id,l.edizione_id),'it')).map(s=>{const saved=presence?.find(p=>p.lezione_id===l.id&&p.persona_id===s.persona_id);return <form action={recordAttendance} key={`${l.id}-${s.persona_id}`} className="attendance-line">
  <input type="hidden" name="lezione_id" value={l.id}/><input type="hidden" name="persona_id" value={s.persona_id}/>
  <strong>{allowed.find(p=>p.edizione_id===l.edizione_id&&p.persona_id===s.persona_id)?.cognome??'Allievo'} {allowed.find(p=>p.edizione_id===l.edizione_id&&p.persona_id===s.persona_id)?.nome??''}</strong><span className="tiny">{allowed.find(p=>p.edizione_id===l.edizione_id&&p.persona_id===s.persona_id)?.email??''} · {allowed.find(p=>p.edizione_id===l.edizione_id&&p.persona_id===s.persona_id)?.telefono??''}</span><span className="status">{allowed.find(p=>p.edizione_id===l.edizione_id&&p.persona_id===s.persona_id)?.certificato_valido?'Certificato valido':'Certificato non valido / da verificare'}</span>
- <select name="presente" aria-label="Presenza" required defaultValue={saved?saved.presente?"si":"no":""}><option value="">Seleziona presenza...</option><option value="si">Presente</option><option value="no">Assente</option></select>
+ <select name="presente" aria-label="Presenza" required defaultValue={saved?.presente===true?"si":saved?.presente===false?"no":""}><option value="">Seleziona presenza...</option><option value="si">Presente</option><option value="no">Assente</option></select>
  <input type="text" name="nota_didattica" aria-label="Nota didattica" defaultValue={saved?.nota_didattica??""} maxLength={2000} placeholder="Nota didattica (facoltativa)"/>
  <button type="submit" className="button ghost">{saved?"Aggiorna":"Registra"}</button></form>;})}
  </div>)}{!lessons?.length&&<p className="muted">Nessuna lezione associata.</p>}</section>
