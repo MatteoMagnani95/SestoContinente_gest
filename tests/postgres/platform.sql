@@ -12,7 +12,7 @@ create table auth.users (
 create function auth.uid() returns uuid language sql stable as $$
   select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid
 $$;
-create function auth.role() returns text language sql stable as $$select current_user::text$$;
+create function auth.role() returns text language sql stable as $$select coalesce(nullif(current_setting('request.jwt.claim.role',true),''),current_user::text)$;
 create table storage.buckets (
   id text primary key, name text, public boolean, file_size_limit bigint, allowed_mime_types text[]
 );
