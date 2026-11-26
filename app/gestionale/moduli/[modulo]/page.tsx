@@ -3,7 +3,7 @@ import {Drawer} from '@/components/ui/Drawer';
 import {DataTable,FilterBar,SearchBar,Pagination} from '@/components/ui/DataTable';
 import SearchableSelect from '@/components/ui/SearchableSelect';
 import {StatusBadge,PageHeader,ButtonLink,Alert} from '@/components/ui/Primitives';
-import {moduleUi,cleanSearch,pageNumber,listHref,entityLabel} from '@/lib/module-ui';
+import {moduleUi,cleanSearch,pageNumber,listHref,entityLabel,singleSearchParams} from '@/lib/module-ui';
 import {tutteLePagine} from '@/lib/pagine';
 import {validLevel} from '@/lib/course-ui';
 import {dateFilter,searchTerms,memberTabForModule} from '@/lib/secretariat';
@@ -107,14 +107,14 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
   const {data}=await supabase.from('ruoli_utente').select('ruolo').eq('utente_id',user.id).eq('ruolo','amministratore').maybeSingle();
   if(!data)redirect('/gestionale?msg=permessi');
  }
- const {q='',msg='',p='1',corsia,inizio,fine,edit,stato,f,v,ordine,dir,filtro_modulo,dal:rawDal,al:rawAl,persona,nuovo,stagione:rawSeason}=await searchParams;
+ const {q='',msg='',p='1',corsia,inizio,fine,edit,stato,f,v,ordine,dir,filtro_modulo,dal:rawDal,al:rawAl,persona,nuovo,stagione:rawSeason}=singleSearchParams(await searchParams);
  const seasonId=rawSeason&&UUID_RE.test(rawSeason)&&module.fields.some(f=>f.name==='stagione_id')?rawSeason:'';
  const today=romeDay(new Date().toISOString()),dal=dateFilter(rawDal),al=dateFilter(rawAl);
  const personId=persona&&UUID_RE.test(persona)?persona:'';
  const personField=module.fields.some(f=>f.name==='persona_id');
- const editionId=(await searchParams).edizione;
- const catalogLevel=modulo==='corsi'?validLevel((await searchParams).livello):null;
- const scope=await searchParams;
+ const editionId=(singleSearchParams(await searchParams)).edizione;
+ const catalogLevel=modulo==='corsi'?validLevel((singleSearchParams(await searchParams)).livello):null;
+ const scope=singleSearchParams(await searchParams);
  const calendarModule=['corsie','prenotazioni','calendario'].includes(modulo);
  const scopedPool=calendarModule&&scope.piscina&&UUID_RE.test(scope.piscina)?scope.piscina:'';
  const scopedLane=modulo==='prenotazioni'&&scope.corsia_id&&UUID_RE.test(scope.corsia_id)?scope.corsia_id:'';
@@ -136,7 +136,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  const medicalSearch=searchTerms(q)[0]??'';
  const missingFiltered=missingQuery&&medicalSearch?missingQuery.or(`cognome.ilike.%${medicalSearch}%,nome.ilike.%${medicalSearch}%`):missingQuery;
  if(missingFiltered)for(const term of searchTerms(q).slice(1))missingFiltered.or('cognome.ilike.%'+term+'%,nome.ilike.%'+term+'%');
- const missingPage=pageNumber((await searchParams).pm);
+ const missingPage=pageNumber((singleSearchParams(await searchParams)).pm);
  const senzaFile=missingFiltered?await missingFiltered.order('cognome').order('nome').order('id').range((missingPage-1)*perPage,missingPage*perPage-1):null;
  const missingCountQuery=medical&&!dal&&!al?supabase.from('allievi_senza_certificato').select('id',{head:true,count:'exact'}):null;
  if(missingCountQuery&&personId)missingCountQuery.eq('id',personId);

@@ -7,7 +7,7 @@ import {formatDate} from '@/lib/security';
 import {UUID_RE} from '@/lib/course-tools';
 import EditForm from '@/components/EditForm';
 import {DataTable,FilterBar,SearchBar,Pagination} from '@/components/ui/DataTable';
-import {cleanSearch,pageNumber,listHref} from '@/lib/module-ui';
+import {cleanSearch,pageNumber,listHref,singleSearchParams} from '@/lib/module-ui';
 import {Drawer,ConfirmDialog} from '@/components/ui/Drawer';
 import ActionForm from '@/components/ui/ActionForm';
 import Link from 'next/link';
@@ -19,7 +19,7 @@ export default async function Documenti({searchParams}:{searchParams:Promise<{ms
  if(roleError)return <Alert tone="danger">Autorizzazioni non verificabili. Riprova.</Alert>;
  const isStaff=roles?.some(r=>r.ruolo==='amministratore'||r.ruolo==='segreteria')??false;
  const isAdmin=roles?.some(r=>r.ruolo==='amministratore')??false;
- const {msg,pubblica,q='',p,ambito='',persona,visibilita='',ordine:rawOrder}=await searchParams;
+ const {msg,pubblica,q='',p,ambito='',persona,visibilita='',ordine:rawOrder}=singleSearchParams(await searchParams);
  const ordine=['nome','categoria','recente','riesame'].includes(rawOrder??'')?rawOrder!:'recente';
  const personId=persona&&UUID_RE.test(persona)?persona:'';
  const page=pageNumber(p),size=30,search=cleanSearch(q);

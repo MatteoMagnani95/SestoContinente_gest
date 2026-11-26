@@ -31,6 +31,12 @@ export const moduleUi:Record<ModuleKey,{entity:string;create:string;search:strin
 };
 export const extraEntities:Record<string,string>={richieste:'domanda di adesione',cda_componenti:'incarico nell’organo sociale',cda_verbali:'bozza del verbale',moduli_didattici:'modulo didattico'};
 export function entityLabel(key:string){return Object.hasOwn(moduleUi,key)?moduleUi[key as ModuleKey].entity:extraEntities[key]??'elemento';}
-export function cleanSearch(q:string){return q.trim().slice(0,80).replace(/[%_\\(),."]/g,' ').trim();}
-export function pageNumber(p:string|undefined){return Math.max(1,Math.min(100000,Number.parseInt(p??'1',10)||1));}
+export function cleanSearch(q:unknown){return (typeof q==='string'?q:'').trim().slice(0,80).replace(/[%_\\(),."]/g,' ').trim();}
+export function pageNumber(p:unknown){return Math.max(1,Math.min(100000,typeof p==='string'&&/^\d+$/.test(p)?Number(p)||1:1));}
 export function listHref(params:Record<string,string|undefined>){const q=new URLSearchParams();for(const [key,value] of Object.entries(params))if(value)q.set(key,value);return '?'+q.toString();}
+
+// Next.js may supply string[] for repeated query parameters even on pages
+// expecting a single value. Discard ambiguous keys instead of coercing arrays.
+export function singleSearchParams<T extends Record<string,unknown>>(params:T):{[K in keyof T]:string|undefined}{
+ return Object.fromEntries(Object.entries(params).filter(([,v])=>typeof v==='string')) as {[K in keyof T]:string|undefined};
+}

@@ -9,9 +9,9 @@ import {PageHeader,MetricCard,Alert,StatusBadge} from '@/components/ui/Primitive
 import {Drawer} from '@/components/ui/Drawer';
 import ActionForm from '@/components/ui/ActionForm';
 import {DataTable,SearchBar,Pagination} from '@/components/ui/DataTable';
-import {pageNumber,listHref} from '@/lib/module-ui';
+import {pageNumber,listHref,singleSearchParams} from '@/lib/module-ui';
 export default async function Users({searchParams}:{searchParams:Promise<{msg?:string;q?:string;p?:string;ruolo?:string;stato?:string;collegato?:string}>}){
- const {supabase,user}=await requireAdmin();const {msg,q='',p='1',ruolo='',stato='',collegato=''}=await searchParams;
+ const {supabase,user}=await requireAdmin();const {msg,q='',p='1',ruolo='',stato='',collegato=''}=singleSearchParams(await searchParams);
  const page=pageNumber(p),perPage=50;const rows:AccountRow[]=[];let error=false;
  for(let offset=0;;offset+=100){const res=await supabase.rpc('admin_elenco_account',{p_q:'',p_offset:offset,p_limit:100,p_id:null});if(res.error){error=true;break;}const chunk=(res.data??[]) as AccountRow[];rows.push(...chunk);if(chunk.length<100)break;}
  const [linksResult,pendingResult]=await Promise.all([tutteLePagine((da,a)=>supabase.from('collegamenti_persone').select('utente_id,persona_id').order('utente_id').order('persona_id').range(da,a)),tutteLePagine((da,a)=>supabase.from('eliminazioni_account_pendenti').select('utente_id,avviata_il').order('avviata_il').order('utente_id').range(da,a))]);

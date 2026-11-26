@@ -1,3 +1,4 @@
+import {singleSearchParams} from '@/lib/module-ui';
 import Link from 'next/link';
 import {requireStaff} from '@/lib/security';
 import {PageHeader,ButtonLink,StatusBadge,Alert} from '@/components/ui/Primitives';
@@ -20,7 +21,7 @@ function makeHref(filters:{q:string;stagione:string;stato:string;ordine:string},
 }
 export default async function SociPage({searchParams}:{searchParams:Promise<{q?:string;stagione?:string;stato?:string;p?:string;msg?:string;ordine?:string}>}){
  const {supabase}=await requireStaff();
- const params=await searchParams;
+ const params=singleSearchParams(await searchParams);
  const q=(params.q??'').trim().slice(0,80);
  const ordine=params.ordine==='desc'?'desc':'asc';
  const stato=statuses.find(s=>s===params.stato)??'';

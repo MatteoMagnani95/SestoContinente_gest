@@ -1,3 +1,4 @@
+import {singleSearchParams} from '@/lib/module-ui';
 import {PageHeader,ButtonLink,StatusBadge,Alert} from '@/components/ui/Primitives';
 import {DataTable,FilterBar,SearchBar,Pagination} from '@/components/ui/DataTable';
 import {statusTone,searchTerms} from '@/lib/secretariat';
@@ -11,7 +12,7 @@ import {formatValue} from '@/lib/format';
 type Edition={id:string;nome:string;corso_id:string;stagione_id:string;inizio:string;fine:string;stato:string;massimo_partecipanti:number;direttore_id:string|null;corsi:{nome:string;tipo:string;livello:number|null}|null};
 const pageSize=25;
 export default async function Courses({searchParams}:{searchParams:Promise<{q?:string;stato?:string;stagione?:string;p?:string;msg?:string;area?:string;disciplina?:string;livello?:string;ordine?:string}>}){
- const {supabase}=await requireStaff();const p=await searchParams;
+ const {supabase}=await requireStaff();const p=singleSearchParams(await searchParams);
  const iscrizioni=p.area==='iscrizioni';const base=iscrizioni?'/gestionale/moduli/iscrizioni':'/gestionale/corsi';
  const q=(p.q??'').normalize('NFC').replace(/[^\p{L}\p{N} .-]/gu,'').trim().slice(0,70);
  const stato=COURSE_STATES.find(x=>x===p.stato)??'';
