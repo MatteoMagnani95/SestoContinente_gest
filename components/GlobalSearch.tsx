@@ -25,6 +25,12 @@ export default function GlobalSearch(){
  return <>
  <button ref={trigger} type="button" className="sc-global-search-trigger" aria-label="Ricerca globale" aria-haspopup="dialog" aria-expanded={open} aria-keyshortcuts="Control+K Meta+K" onClick={()=>{trigger.current?.focus();show();}}><Icon name="search"/><span>Cerca nel gestionale</span><kbd>⌘/Ctrl K</kbd></button>
  <dialog ref={dialog} className="sc-global-search-dialog" aria-labelledby="sc-global-search-title" onCancel={e=>{e.preventDefault();close();}} onClose={()=>{setOpen(false);}} onClick={e=>{if(e.target===e.currentTarget)close();}} onKeyDown={e=>{
+  if(e.key==='Escape'){
+   e.preventDefault();
+   e.stopPropagation();
+   close();
+   return;
+  }
   if(e.key!=='ArrowDown'&&e.key!=='ArrowUp'&&e.key!=='Enter')return;
   const entries=links();if(!entries.length)return;const i=entries.indexOf(document.activeElement as HTMLAnchorElement);
   if(e.key==='Enter'){if(document.activeElement===input.current){e.preventDefault();entries[0].click();}return;}

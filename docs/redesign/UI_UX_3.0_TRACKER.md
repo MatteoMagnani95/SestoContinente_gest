@@ -154,3 +154,6 @@ Ruoli indicativi dal codice di navigazione e dalle guardie 2.0; la verifica di a
 
 ## Protocollo anti-regressione vincolante — 26/11/2026
 Il documento [REGRESSION_TRACKER.md](./REGRESSION_TRACKER.md) integra e prevale sulle precedenti istruzioni di avanzamento del master 3.0: nessuna fase successiva senza sincronizzazione delle sole correzioni approvate dal ramo release/gestionale-consolidato e gate esteso verde sul commit esatto. Mantiene tutti i mockup e il lavoro F1–F3. Il commit 8c2a313 ha superato la CI ordinaria 45899245776 (entrambi i job success). I 66 test browser sono pubblici/non autenticati: non equivalgono a matrice dei ruoli. La F4 non è stata committata, né iniziata sul ramo. Nessun merge, pubblicazione o SQL produzione. Workflow QA locale esteso alla PR 3.0; verifiche aggiuntive logout desktop/mobile per ogni account sintetico prima di generare le sessioni riutilizzabili. Il gate resta NO-GO fino a risultati effettivi e coordinamento.
+
+## Checkpoint prima della Fase 4
+PR #7 f99564f verificata nei run 45900175385 e 45900175348, inclusi 36 logout effettivi su Supabase locale. Sul redesign, corretta la chiusura con Esc della ricerca globale emersa nella QA 45899921809. Evidenze e dipendenze in REGRESSION_TRACKER.md. Fase 4 bloccata fino a coordinamento e gate esteso sul candidato sincronizzato.
