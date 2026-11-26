@@ -7,6 +7,7 @@ import StaffNav,{staffGroups} from '@/components/StaffNav';
 import { Icon } from '@/components/ui/Icon';
 import { activeItem, areaLabel, backTarget, contextPath, listContext, restoredTarget, staffArea, type NavigationAccess } from '@/lib/navigation';
 import GlobalCancelButtons from '@/components/GlobalCancelButtons';
+import { NereiaProject } from '@/components/ui/BrandLogo';
 
 function Breadcrumb({path,access,title,contexts}:{path:string;access:NavigationAccess;title:string;contexts:Record<string,string>}){
  const staff=staffArea(path,access),items=staff?staffGroups(access.admin).flatMap(g=>g.items):[];
@@ -84,6 +85,6 @@ export default function AppShell({access,children}:{access:NavigationAccess;chil
  <main id="sc-main" tabIndex={-1} className={staff?'sc-main sc-main-staff':'sc-main'}>
  {staff?<div className="container staff-layout sc-staff-layout"><aside className="staff-sidebar sc-staff-sidebar"><div className="sc-sidebar-heading"><strong>{access.admin?'Amministrazione':'Segreteria'}</strong><span>Gestione associativa</span></div><StaffNav isAdmin={access.admin}/></aside><div className="staff-content sc-staff-content">{crumbs}<div ref={content} className="sc-route-content">{children}</div></div></div>:<>{crumbs&&<div className="sc-public-navigation">{crumbs}</div>}<div ref={content} className="sc-route-content">{children}</div></>}
  </main>
- <footer className="footer">Sesto Continente · Gestionale associativo</footer>
+ <footer className="footer sc-branded-footer"><span>Sesto Continente · Gestionale associativo</span><NereiaProject compact/></footer>
  </>;
 }

@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import { logoutAction } from '@/app/actions';
 import { areaLabel, homeFor, type NavigationAccess } from '@/lib/navigation';
 import { Icon } from '@/components/ui/Icon';
+import { BrandMark } from '@/components/ui/BrandLogo';
 
 export function AreaLinks({access,onNavigate}:{access:NavigationAccess;onNavigate?:()=>void}){
  if(!access.signedIn)return <><Link href="/accedi" onClick={onNavigate}>Accedi</Link><Link href="/registrati" onClick={onNavigate}>Richiedi adesione</Link></>;
@@ -26,7 +27,7 @@ export default function SiteHeader({access,onMenu,menuOpen}:{access:NavigationAc
  const authPage=['/accedi','/registrati','/nuova-password'].includes(path);
  return <header className="site-header sc-site-header">
  <button type="button" className="sc-mobile-trigger" aria-label="Apri menu" aria-expanded={menuOpen} aria-controls="sc-mobile-menu" onClick={onMenu}><Icon name="menu"/><span>Menu</span></button>
- <Link href="/" className="brand"><span className="brand-symbol" aria-hidden="true">≈</span><span><strong>SESTO CONTINENTE</strong><small>Gestionale associativo</small></span></Link>
+ <Link href="/" className="brand"><BrandMark/><span><strong>SESTO CONTINENTE</strong><small>Gestionale associativo</small></span></Link>
  <span className="sc-header-area">{areaLabel(path,access)}</span>
  <nav className="sc-header-nav" aria-label="Account e aree">
  {access.enabled&&access.personal&&access.unread!==null&&<Link className="sc-header-notifications" href="/area-personale?tab=notifiche" aria-label={`Notifiche: ${access.unread} non lette`}><Icon name="bell"/><span>{access.unread}</span></Link>}

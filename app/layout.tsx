@@ -13,11 +13,13 @@ import './association-ui.css';
 import './finance-ui.css';
 import './personal-ui.css';
 import './responsive-accessibility.css';
+import './brand-ui.css';
 export const viewport: Viewport = {width:'device-width', initialScale:1, viewportFit:'cover'};
 export const metadata: Metadata = {
   title: { default: 'Sesto Continente | Gestionale', template: '%s | Sesto Continente' },
   description: 'Area riservata del gestionale associativo Sesto Continente.',
   robots: { index: false, follow: false },
+  icons: { icon: [{ url: '/brand/favicon.png', type: 'image/png', sizes: '128x128' }], apple: '/brand/favicon.png' },
 };
 export default async function RootLayout({children}:{children:React.ReactNode}) {
   const access=await getNavigationAccess();

@@ -1,0 +1,34 @@
+/* Sesto Continente 3.0: branding, light surfaces and optional marine accents. */
+h1 {font-family:var(--sc-font)}
+.sc-site-header{background:var(--sc-brand-deep)}
+.sc-site-header .brand{gap:12px}
+.sc-brand-mark{display:inline-grid;place-items:center;flex:none;width:76px;height:44px;background:white;border-radius:10px;padding:4px;box-shadow:0 1px 5px #00000012}
+.sc-brand-mark img{display:block;width:100%;height:auto;max-height:100%;object-fit:contain}
+.sc-brand-full{display:block;width:min(100%,360px);padding:12px;background:white;border-radius:12px}
+.sc-brand-full img{display:block;width:100%;height:auto}
+.sc-home-identity{position:relative;background:var(--sc-brand-deep);overflow:hidden;isolation:isolate;gap:14px}
+.sc-home-identity::before{content:"";position:absolute;inset:auto 0 0;height:68%;background:url('/brand/marine-accent.svg') center bottom/cover no-repeat;opacity:.38;z-index:-1;pointer-events:none}
+.sc-home-identity>span:not(.sc-brand-full){font-weight:650;color:white}
+.sc-nereia-project{display:flex;align-items:center;gap:20px;padding:20px 24px;border:1px solid var(--sc-border);border-radius:var(--sc-radius);background:var(--sc-white);color:var(--sc-navy);box-shadow:var(--sc-shadow)}
+.sc-nereia-project img{display:block;flex:none;width:110px;height:auto;object-fit:contain}
+.sc-nereia-project>div{display:grid;min-width:0;gap:3px;overflow-wrap:anywhere}
+.sc-nereia-project strong{font-size:24px;color:var(--sc-brand-deep)}
+.sc-nereia-project span{font-size:15px;color:var(--sc-muted)}
+.sc-nereia-project .sc-project-label{font-size:13px;font-weight:650;color:var(--sc-teal-ink)}
+.sc-branded-footer{display:flex;justify-content:center;align-items:center;gap:18px;flex-wrap:wrap}
+.sc-nereia-compact{gap:8px;padding:5px 10px;box-shadow:none;text-align:left;background:transparent}
+.sc-nereia-compact img{width:48px}
+.sc-nereia-compact strong{font-size:14px}.sc-nereia-compact span{font-size:12px}
+.sc-heading-title{display:flex;align-items:center;gap:12px;min-width:0}
+.sc-heading-icon{width:54px;height:54px;display:grid;place-items:center;background:var(--sc-tint,var(--sc-system-tint));color:var(--sc-accent,var(--sc-system));border-radius:14px;flex:none}
+.sc-heading-icon .sc-icon{width:28px;height:28px}
+.sc-page-header-marine{position:relative;isolation:isolate;padding:16px;border:1px solid var(--sc-border);border-radius:var(--sc-radius);background:var(--sc-white)}
+.sc-page-header-marine::before{content:"";position:absolute;inset:0;border-radius:inherit;background:url('/brand/marine-accent.svg') right center/auto 100% no-repeat;opacity:.32;pointer-events:none;z-index:-1}
+.sc-page-header-marine .sc-page-header-text{background:rgb(255 255 255 / 90%);border-radius:10px;padding:8px}
+.sc-data-table th{background:var(--sc-pool-tint)}
+.sc-state{border-radius:var(--sc-radius)}
+@media(max-width:1000px){.sc-site-header .brand{gap:8px}.sc-brand-mark{width:65px;height:42px;padding:4px}}
+@media(max-width:600px){.sc-nereia-project{gap:12px;padding:14px}.sc-nereia-project img{width:82px}.sc-nereia-compact img{width:44px}.sc-nereia-project strong{font-size:20px}.sc-nereia-compact strong{font-size:14px}.sc-page-header-marine::before{opacity:.12}.sc-heading-icon{width:44px;height:44px}.sc-heading-icon .sc-icon{width:24px;height:24px}.sc-heading-title{gap:8px}}
+@media(max-width:360px){.sc-brand-mark{width:54px}.sc-nereia-project img{width:70px}.sc-nereia-compact img{width:40px}}
+@media(prefers-reduced-motion:reduce){.sc-quick-action,.sc-brand-mark{transition:none;animation:none}}
+@media print{.sc-branded-footer,.sc-nereia-project,.sc-page-header-marine::before{display:none!important}}

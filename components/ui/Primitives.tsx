@@ -3,7 +3,7 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { Icon, type IconName } from './Icon';
 
 export type Tone = 'success' | 'warning' | 'danger' | 'info' | 'neutral';
-export type Area = 'secretariat' | 'teaching' | 'calendar' | 'equipment' | 'finance' | 'system';
+export type Area = 'secretariat' | 'teaching' | 'calendar' | 'equipment' | 'finance' | 'system' | 'pool' | 'event' | 'certificate' | 'documents';
 type ButtonVariant = 'primary' | 'secondary' | 'danger';
 const toneIcon: Record<Tone, IconName> = { success: 'check', warning: 'warning', danger: 'error', info: 'info', neutral: 'archive' };
 const buttonClass = (variant: ButtonVariant, extra = '') => `sc-button sc-button-${variant} ${extra}`.trim();
@@ -14,8 +14,15 @@ export function Button({ variant = 'primary', icon, children, className = '', ty
 export function ButtonLink({ href, children, icon, variant = 'primary', className = '' }: { href: string; children: ReactNode; icon?: IconName; variant?: ButtonVariant; className?: string }) {
   return <Link href={href} className={buttonClass(variant, className)}>{icon && <Icon name={icon}/>} {children}</Link>;
 }
-export function PageHeader({ title, description, eyebrow, actions }: { title: string; description?: string; eyebrow?: string; actions?: ReactNode }) {
-  return <header className="sc-page-header"><div>{eyebrow && <p className="eyebrow">{eyebrow}</p>}<h1>{title}</h1>{description && <p>{description}</p>}</div>{actions && <div className="actions">{actions}</div>}</header>;
+export function PageHeader({ title, description, eyebrow, actions, area, icon, marine = false }: { title: string; description?: string; eyebrow?: string; actions?: ReactNode; area?: Area; icon?: IconName; marine?: boolean }) {
+  return <header className={`sc-page-header${area ? ' sc-area-'+area : ''}${marine ? ' sc-page-header-marine' : ''}`}>
+    <div className="sc-page-header-text">{eyebrow && <p className="eyebrow">{eyebrow}</p>}<div className="sc-heading-title">{icon && <span className="sc-heading-icon"><Icon name={icon}/></span>}<h1>{title}</h1></div>{description && <p>{description}</p>}</div>
+    {actions && <div className="actions">{actions}</div>}
+  </header>;
+}
+/** Navigation only: callers supply a real, authorized destination. */
+export function QuickActionLink({href, children, icon, area='system'}:{href:string;children:ReactNode;icon:IconName;area?:Area}){
+  return <Link href={href} className={`sc-quick-action sc-area-${area}`}><Icon name={icon}/><span>{children}</span><Icon name="chevron-right"/></Link>;
 }
 export function SectionHeader({ title, description, actions, id }: { title: string; description?: string; actions?: ReactNode; id?: string }) {
   return <header className="sc-section-header"><div><h2 id={id}>{title}</h2>{description && <p>{description}</p>}</div>{actions && <div className="actions">{actions}</div>}</header>;

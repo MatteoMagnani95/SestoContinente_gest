@@ -12,11 +12,11 @@ function luminance(hex) {
 }
 const contrast=(a,b)=>(Math.max(luminance(a),luminance(b))+0.05)/(Math.min(luminance(a),luminance(b))+0.05);
 test('palette di identità e colori semantici centralizzati',()=>{
-  assert.equal(token('navy').toUpperCase(),'#102B39');
-  assert.equal(token('teal').toUpperCase(),'#087E83');
-  assert.equal(token('ocean').toUpperCase(),'#3679B8');
-  assert.equal(token('aqua').toUpperCase(),'#65C9BE');
-  assert.equal(token('surface').toUpperCase(),'#F3F7F8');
+  assert.equal(token('navy').toUpperCase(),'#102D3B');
+  assert.equal(token('teal').toUpperCase(),'#007D83');
+  assert.equal(token('ocean').toUpperCase(),'#285EAE');
+  assert.equal(token('aqua').toUpperCase(),'#46C9C4');
+  assert.equal(token('surface').toUpperCase(),'#F7FAFC');
 });
 test('combinazioni testo/sfondo approvate rispettano 4.5:1',()=>{
   const pairs=[['navy','white'],['teal','white'],['teal-ink','surface'],['teal-ink','white'],['ocean','white'],['muted','surface'],['muted','white'],['aqua','navy'],['secretariat','white'],['teaching','white'],['calendar','white'],['equipment','white'],['finance','white'],['system','white'],...['success','warning','danger','info','neutral'].map(t=>[t+'-fg',t+'-bg'])];
