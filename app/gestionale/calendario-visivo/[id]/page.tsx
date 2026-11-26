@@ -47,7 +47,7 @@ export default async function EditLesson({params,searchParams}:{params:Promise<{
  const returnContext=query.giorno?context:calendarContext({...query,giorno:romeDay(lesson.inizio)});
  return <>
  <Link className="back-link" href={calendarHref(returnContext)}>← Torna al calendario</Link>
- <PageHeader eyebrow="Calendario · Dettaglio lezione" title={lesson.titolo} description={formatRome(lesson.inizio)+' – '+formatRome(lesson.fine)} actions={<StatusBadge tone={lesson.annullata_il?'danger':'info'}>{lesson.annullata_il?'Annullata':lesson.piscina_id?'In piscina':'Senza piscina'}</StatusBadge>}/>
+ <PageHeader area="calendar" icon="calendar" marine eyebrow="Calendario · Dettaglio lezione" title={lesson.titolo} description={formatRome(lesson.inizio)+' – '+formatRome(lesson.fine)} actions={<StatusBadge tone={lesson.annullata_il?'danger':'info'}>{lesson.annullata_il?'Annullata':lesson.piscina_id?'In piscina':'Senza piscina'}</StatusBadge>}/>
  {msg&&Object.hasOwn(messages,msg)&&<Alert announce tone={['salvata','annullata'].includes(msg)?'success':'warning'}>{messages[msg]}</Alert>}
  {failed&&<Alert tone="danger" announce>Non è stato possibile verificare tutti i dati e i vincoli. Le modifiche sono disabilitate.</Alert>}
  {lesson.annullata_il&&<Alert tone="warning">Annullata il {formatRome(lesson.annullata_il)}. Lo storico è conservato.</Alert>}

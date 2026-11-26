@@ -73,7 +73,8 @@ async function seed(){
   await db.query('commit');
   await db.query("insert into notifiche(utente_id,tipo,riferimento,titolo,messaggio) values($1,'collaudo',$2,'Notifica sintetica','Messaggio di prova')",[accounts.staff.id,randomUUID()]);
   const notification=await value("insert into notifiche(utente_id,tipo,riferimento,titolo,messaggio) values($1,'collaudo',$2,'Notifica socio sintetica','Messaggio di prova') returning id",[accounts.member.id,randomUUID()]);
-  const fixtures={person:accounts.member.person,edition,lesson,event,equipment,payment,account:accounts.member.id,notification,openQuota,secondEdition};
+  const lessonDay=await value("select to_char(current_date+1,'YYYY-MM-DD')");
+  const fixtures={person:accounts.member.person,edition,lesson,event,equipment,payment,account:accounts.member.id,notification,openQuota,secondEdition,pool,lane,lessonDay};
   await writeFile(accountFile,JSON.stringify(accounts),{mode:0o600});
   await writeFile(join(work,'fixtures.json'),JSON.stringify(fixtures),{mode:0o600});
   console.log('OK account sintetici e fixture locali');

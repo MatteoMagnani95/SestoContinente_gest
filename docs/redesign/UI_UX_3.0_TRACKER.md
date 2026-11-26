@@ -7,7 +7,7 @@ Data: 26/11/2026. Baseline produzione e HEAD 2.0: `20ae6fcceb5307d58920aa1527a83
 | 1 — Fondazioni | CI superata | Commit 7b39eb3; run 45897134510 success (lint, TS, static, build, browser, audit, integrazione DB effimero). Collaudo visuale autenticato manuale aperto. |
 | 2 — AppShell | CI superata | Commit b343311; run 45897856873, entrambi i job success. Browser autenticato manuale aperto. |
 | 3 — Centro operativo e segreteria | Gate sincronizzato superato | ff356d1: CI 45906661406 e QA 45906661502 tentativo 2 success; 280 statici, 68 browser ordinari, 166 autenticati, 72 logout. |
-| 4 — Didattica e impianti | In corso — F4A implementata, gate aperto | Schede corsi, tabella e prossime lezioni; F4B didattica e impianti non ancora implementata. |
+| 4 — Didattica e impianti | F4A verde; F4B implementata, gate aperto | Corsi, calendario, occupazione, piscine e archivi didattici; collaudo F4B richiesto. |
 | 5 — Operazioni associative | Non iniziato | Incassi, attrezzature, eventi, documenti, organi sociali, admin |
 | 6 — Aree utente e mobile | Non iniziato | Area personale, istruttori, login, responsive, Nereia |
 | 7 — Collaudo e rilascio | Non iniziato | Preview isolata, verifica autorizzazioni e regressioni |
@@ -170,3 +170,6 @@ Pacchetto SestoContinente_3.0_Pacchetto_Definitivo(1).zip aperto e master prompt
 
 ## F4A — sincronizzazione del test browser
 QA 45908246524 sul precedente 0a5c9e6: la prova F4A WebKit ha fallito per navigazione concorrente alla scheda prima del completamento del cambio vista Schede. Aggiunte attese verificabili URL, aria-current, rimozione tabella, visibilità scheda sintetica e verifica overflow a 390 px con polling di Playwright. Nessun controllo rimosso; nessuna modifica applicativa, SQL o permessi. Verifica ordinaria 45908763172 sul 48d4f86 verde; la QA 45908763248 era ancora in corso al rilevamento. Nuovo gate esatto richiesto prima di F4B.
+
+## F4B — calendario, piscine, corsie e archivio didattico
+Master definitivo §5.6 e immagine 07 riletti dal pacchetto allegato. CI F4A a51c7c6: 45909307533 + 45909307432 success (282 automatici, 68 ordinari, 168 autenticati, 72 logout). F4B: header area, legenda e icone lezioni, navigazione agenda mobile, matrice corsia×giorno con intervalli reali e ritorno al contesto, link prenotazioni/piscina, segnalazione titoli non leggibili. Moduli didattici: header, scorciatoie agli archivi e badge tipologia; programmi/versioni, corsie/prenotazioni e altre route CRUD didattiche mantengono editor e protezioni originali. Test browser verifica occupazione di altra edizione, etichette, settimana, viewport 390 e link. Nessun SQL, scrittura produzione o asset mockup in repo. Gate F4B aperto, verifica visuale pixel non ancora eseguita.

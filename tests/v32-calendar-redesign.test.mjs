@@ -90,3 +90,14 @@ test('Struttura calendario, piscine e prenotazioni: nessun percorso generico per
  assert.match(read('app/module-actions.ts'),/key==='calendario'&&!id/);
  const pools=read('app/gestionale/moduli/piscine/page.tsx');assert.match(pools,/requireStaff/);assert.match(pools,/Aggiungi piscina/);assert.match(pools,/Consulta corsie/);assert.match(pools,/RemoveRecord/);
 });
+
+
+test('F4B: matrice semantica, etichette certe, filtri indipendenti e mobile',()=>{
+ const p=read('app/gestionale/calendario-visivo/page.tsx');
+ assert.match(p,/aria-label="Occupazione corsie per giorno"/);assert.match(p,/scope="row" role="rowheader"/);assert.match(p,/scope="col" role="columnheader"/);assert.match(p,/data-day=\{dayName\(d\)\}/);
+ assert.match(p,/allBookings=\(bookingResult.data\?\?\[\]\)/);assert.match(p,/from\('prenotazioni_corsie'\).*eq\('stato','confermata'\)/);assert.match(p,/for\(const b of allBookings\)/);
+ assert.match(p,/extraLessons.error&&<Alert/);assert.match(p,/aria-label="Legenda lezioni"/);assert.match(p,/vista:'agenda'/);
+ assert.match(read('app/calendar-ui.css'),/\.sc-occupancy-matrix-wrap\{overflow:auto;max-width:100%/);assert.match(read('app/calendar-ui.css'),/\.sc-occupancy-matrix \.sc-lane-mobile-day\{display:block/);
+ const modules=read('app/gestionale/programmi-didattici/page.tsx');assert.match(modules,/aria-label="Archivi didattici"/);assert.match(modules,/StatusBadge tone=\{m.tipo==='Piscina'/);assert.match(modules,/action=\{editTeachingModule\}/);
+ const generic=read('app/gestionale/moduli/[modulo]/page.tsx');assert.match(generic,/lockedVersion&&f.name!=='stato'/);assert.match(generic,/!lockedVersion&&<RemoveRecord/);
+});

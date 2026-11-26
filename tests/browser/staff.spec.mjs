@@ -191,3 +191,23 @@ test('F4A: schede corsi, tabella e filtri preservati su desktop e mobile',async(
  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(391);
  if(fixtures.edition){await page.goto('/gestionale/corsi/'+fixtures.edition+'?tab=panoramica');await expect(page.getByRole('heading',{name:'Prossime lezioni'})).toBeVisible();await expect(page.getByRole('navigation',{name:'Sezioni del corso'}).getByRole('link')).toHaveCount(10);}
 });
+
+
+test('F4B: occupazione reale indipendente dal filtro corso, vista settimana e mobile',async({page})=>{
+ test.skip(!fixtures.pool||!fixtures.lessonDay||!fixtures.secondEdition||!fixtures.lesson,'Richiede fixture piscina e lezione QA');
+ const query=new URLSearchParams({giorno:fixtures.lessonDay,vista:'giorno',piscina:fixtures.pool,edizione:fixtures.secondEdition});
+ await page.goto('/gestionale/calendario-visivo?'+query);
+ const matrix=page.getByRole('table',{name:'Occupazione corsie per giorno'});
+ await expect(matrix.getByRole('rowheader')).toHaveCount(1);
+ await expect(matrix.getByRole('link',{name:/Prenotata.*Lezione sintetica/})).toBeVisible();
+ await expect(page.getByRole('region',{name:'Calendario giorno'}).getByText('Lezione sintetica')).toHaveCount(0);
+ query.set('vista','settimana');await page.goto('/gestionale/calendario-visivo?'+query);
+ await expect(matrix.getByRole('columnheader')).toHaveCount(8);
+ await expect(matrix.getByText('Non prenotata nel gestionale').first()).toBeVisible();
+ await page.setViewportSize({width:390,height:844});
+ await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(391);
+ await expect(matrix.getByRole('link',{name:/Prenotata.*Lezione sintetica/})).toBeVisible();
+ await matrix.getByRole('link',{name:/Prenotata.*Lezione sintetica/}).click();
+ await expect(page).toHaveURL(url=>url.pathname==='/gestionale/calendario-visivo/'+fixtures.lesson&&url.searchParams.get('edizione')===fixtures.secondEdition);
+ await expect(page.getByRole('heading',{name:'Lezione sintetica',exact:true})).toBeVisible();
+});
