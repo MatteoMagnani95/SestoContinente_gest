@@ -16,7 +16,7 @@ function back(form:FormData,msg:string):never{
  const persona=txt(form,'filtro_persona');
  if(uuid.test(persona))params.set('persona',persona);
  const stato=txt(form,'stato');
- if(['tutte','non_pagata','parziale','pagata'].includes(stato))params.set('stato',stato);
+ if(['tutte','non_pagata','parziale','pagata','residuo'].includes(stato))params.set('stato',stato);
  redirect(`/gestionale/incassi?${params.toString()}`);
 }
 export async function recordGuidedPayment(form:FormData){
