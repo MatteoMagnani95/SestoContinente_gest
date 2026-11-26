@@ -25,7 +25,7 @@ export function areaLabel(path:string,access:NavigationAccess){
  if(isWithin(path,'/documenti'))return 'Documenti';
  return 'Area pubblica';
 }
-export function homeFor(access:NavigationAccess){return access.staff?'/gestionale':access.board?'/organi-sociali':access.instructor?'/istruttore':access.personal?'/area-personale':access.enabled?'/richiesta/stato':'/';}
+export function homeFor(access:NavigationAccess){return access.staff?'/gestionale':access.board?'/organi-sociali':access.instructor?'/istruttore':access.personal?'/area-personale':access.enabled?'/smista':'/';}
 export type BackTarget={href:string;label:string};
 const simpleBack:Record<string,BackTarget>={
  '/accedi':{href:'/',label:'Torna alla home'},'/registrati':{href:'/',label:'Torna alla home'},

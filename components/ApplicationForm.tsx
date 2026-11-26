@@ -1,6 +1,7 @@
 'use client';
 import { useState,useRef,type FormEvent } from 'react';
 import {useRouter} from 'next/navigation';
+import {markFormSaved} from '@/lib/dirty-navigation';
 import { saveApplicationAction } from '@/app/actions';
 import {validaCF} from '@/lib/codice-fiscale';
 import SceltaImmagini from '@/components/SceltaImmagini';
@@ -31,11 +32,11 @@ export default function ApplicationForm({ saved,sceltaRegistrata,legalConfigured
    if(!legalConfigured){setError('Statuto e informativa privacy non configurati: contatta la segreteria.');return;}
    const data=new FormData(form);const button=(e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement|null;data.set('intent',button?.value==='bozza'?'bozza':'invia');
    submitting.current=true;setPending(true);setError('');
-   try{const result=await saveApplicationAction(data);if(result.error){setError(result.error);return;}if(result.next){router.push(result.next);router.refresh();}}
+   try{const result=await saveApplicationAction(data);if(result.error){setError(result.error);return;}if(result.next){markFormSaved(form);router.push(result.next);router.refresh();}}
    catch{setError('Invio non riuscito. I dati compilati sono ancora presenti: riprova o contatta la segreteria.');}
    finally{submitting.current=false;setPending(false);}
   }
-  return <form onSubmit={submit} className="panel application-form">
+  return <form data-dirty-form onSubmit={submit} className="panel application-form">
     {testMode&&<div className="notice warning" role="status"><strong>COLLAUDO — pratica simulata.</strong> Usa esclusivamente dati inventati. Le dichiarazioni sotto simulano il flusso di adesione: non costituiscono una presa visione di documenti ufficiali.</div>}
     {!legalConfigured&&<div className="notice error" role="alert">Registrazione non disponibile: la segreteria deve configurare statuto e informativa privacy prima di raccogliere le adesioni.</div>}
     <div className="section-head"><span className="step">01</span><div><h2>Dati della persona da iscrivere</h2><p className="muted">Se l'allievo è minorenne, inserisci qui i suoi dati.</p></div></div>

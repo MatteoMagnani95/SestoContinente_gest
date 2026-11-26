@@ -36,7 +36,7 @@ export default function StaffNav({isAdmin=false,onNavigate,idPrefix='desktop'}:{
   const id=idPrefix+'-nav-'+group.id;
   return <section key={group.id} className={'sc-nav-group sc-area-'+group.area}>
    <button type="button" className="sc-nav-group-toggle" aria-expanded={open} aria-controls={id} aria-disabled={current||undefined} onClick={()=>{if(!current)setExpanded(prev=>({...prev,[group.id]:!open}));}}><Icon name={group.icon}/><span>{group.label}</span><Icon name={open?'chevron-down':'chevron-right'}/></button>
-   <div id={id} hidden={!open} className="sc-nav-items">{group.items.map(i=><Link key={i.href} href={i.href} aria-current={active===i.href?(pathname===i.href?'page':'location'):undefined} className={'sc-nav-link'+(active===i.href?' is-active':'')} onClick={onNavigate}>{i.label}</Link>)}</div>
+   <div id={id} hidden={!open} className="sc-nav-items">{group.items.map(i=><Link key={i.href} href={i.href} aria-current={active===i.href?(pathname===i.href?'page':'location'):undefined} className={'sc-nav-link'+(active===i.href?' is-active':'')} onClick={onNavigate}>{active===i.href&&<Icon name={group.icon}/>}<span>{i.label}</span></Link>)}</div>
   </section>;
  })}
  </nav>;

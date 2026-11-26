@@ -33,13 +33,14 @@ export default function AppShell({access,children}:{access:NavigationAccess;chil
   if(menu.current&&!menu.current.open){menu.current.showModal();setOpen(true);}
  }
  useEffect(()=>{closeMenu(false);},[path]);
+ useEffect(()=>{if(!access.enabled)setContexts({});},[access.enabled]);
  useEffect(()=>{
-  const capture=()=>{const p=window.location.pathname;if(contextPath(p)){const value=listContext(p,window.location.search);setContexts(old=>old[p]===value?old:{...old,[p]:value});}};
+  const capture=()=>{const p=window.location.pathname;if(access.enabled&&contextPath(p)){const value=listContext(p,window.location.search);setContexts(old=>old[p]===value?old:{...old,[p]:value});}};
   capture();
   const onClick=(e:MouseEvent)=>{if(e.target instanceof Element&&e.target.closest('a[href]'))capture();};
   document.addEventListener('click',onClick,true);window.addEventListener('popstate',capture);
   return()=>{document.removeEventListener('click',onClick,true);window.removeEventListener('popstate',capture);};
- },[path]);
+ },[path,access.enabled]);
  useEffect(()=>{
   const read=()=>{const value=content.current?.querySelector('h1')?.textContent?.trim()??'';setTitle(old=>old.path===path&&old.value===value?old:{path,value});};
   read();const observer=new MutationObserver(read);if(content.current)observer.observe(content.current,{childList:true,subtree:true,characterData:true});return()=>observer.disconnect();

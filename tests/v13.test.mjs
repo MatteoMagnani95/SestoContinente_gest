@@ -50,7 +50,7 @@ test('CF: omocodia vera e incongruenza non aggirabile con flag',async()=>{
 test('Home e annullamento: percorso per ruolo, un solo pulsante, nessuna generazione automatica CF',()=>{
  assert.match(read('components/SiteHeader.tsx'),/href=\{homeFor\(access\)\}/);
  assert.match(read('app/smista/page.tsx'),/redirect\('\/gestionale'\)/);
- assert.match(read('components/CancelEditButton.tsx'),/form\.reset\(\)/);
+ assert.match(read('components/CancelEditButton.tsx'),/cancelForm\(form/);assert.match(read('lib/dirty-navigation.ts'),/form\.reset\(\)/);
  assert.match(read('components/GlobalCancelButtons.tsx'),/\[data-cancel-form\]/);
  assert.doesNotMatch(read('components/CodiceFiscaleAssist.tsx'),/Genera CF|input\.value\s*=/);
  for(const path of ['app/actions.ts','app/gestionale/soci/actions.ts','app/module-actions.ts'])assert.match(read(path),/verificaAnagrafica|validaSalvataggioAnagrafica/);
