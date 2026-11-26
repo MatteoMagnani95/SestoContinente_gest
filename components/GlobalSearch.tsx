@@ -9,9 +9,9 @@ const initial:SearchResponse={results:[],partial:false};
 export default function GlobalSearch(){
  const path=usePathname(),dialog=useRef<HTMLDialogElement>(null),input=useRef<HTMLInputElement>(null),trigger=useRef<HTMLButtonElement>(null);
  const [open,setOpen]=useState(false),[query,setQuery]=useState(''),[response,setResponse]=useState(initial),[loading,setLoading]=useState(false);
- const serial=useRef(0);
- function close(restore=true){serial.current++;dialog.current?.close();setOpen(false);setQuery('');setResponse(initial);setLoading(false);if(restore)trigger.current?.focus();}
- function show(){if(document.querySelector('dialog[open]'))return;dialog.current?.showModal();setOpen(true);input.current?.focus();}
+ const serial=useRef(0),previousFocus=useRef<HTMLElement|null>(null);
+ function close(restore=true){serial.current++;dialog.current?.close();setOpen(false);setQuery('');setResponse(initial);setLoading(false);if(restore)(previousFocus.current?.isConnected?previousFocus.current:trigger.current)?.focus();}
+ function show(){if(document.querySelector('dialog[open]'))return;previousFocus.current=document.activeElement instanceof HTMLElement?document.activeElement:null;dialog.current?.showModal();setOpen(true);input.current?.focus();}
  useEffect(()=>{const key=(e:KeyboardEvent)=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'&&!e.altKey&&!e.shiftKey){if(document.querySelector('dialog[open]'))return;e.preventDefault();show();}};window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key);},[]);
  useEffect(()=>{close(false);},[path]);
  useEffect(()=>{
@@ -23,7 +23,7 @@ export default function GlobalSearch(){
  const groups=[...new Set(response.results.map(r=>r.category))];
  const links=()=>Array.from(dialog.current?.querySelectorAll<HTMLAnchorElement>('[data-search-result]')??[]);
  return <>
- <button ref={trigger} type="button" className="sc-global-search-trigger" aria-label="Ricerca globale" aria-haspopup="dialog" aria-expanded={open} aria-keyshortcuts="Control+K Meta+K" onClick={show}><Icon name="search"/><span>Cerca nel gestionale</span><kbd>⌘/Ctrl K</kbd></button>
+ <button ref={trigger} type="button" className="sc-global-search-trigger" aria-label="Ricerca globale" aria-haspopup="dialog" aria-expanded={open} aria-keyshortcuts="Control+K Meta+K" onClick={()=>{trigger.current?.focus();show();}}><Icon name="search"/><span>Cerca nel gestionale</span><kbd>⌘/Ctrl K</kbd></button>
  <dialog ref={dialog} className="sc-global-search-dialog" aria-labelledby="sc-global-search-title" onCancel={e=>{e.preventDefault();close();}} onClose={()=>{setOpen(false);}} onClick={e=>{if(e.target===e.currentTarget)close();}} onKeyDown={e=>{
   if(e.key!=='ArrowDown'&&e.key!=='ArrowUp'&&e.key!=='Enter')return;
   const entries=links();if(!entries.length)return;const i=entries.indexOf(document.activeElement as HTMLAnchorElement);

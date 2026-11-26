@@ -20,7 +20,9 @@ export const getNavigationAccess=cache(async():Promise<NavigationAccess>=>{
  const personal=!request.error&&!links.error&&(request.data?.stato==='approvata'||(links.count??0)>0);
  const [alerts,owners]=await Promise.all([personal?supabase.from('notifiche').select('id',{head:true,count:'exact'}).eq('utente_id',user.id).is('letta_il',null):null,supabase.from('collegamenti_persone').select('persona_id').eq('utente_id',user.id).eq('relazione','titolare').limit(2)]);
  const ownerIds=owners.error?[]:(owners.data??[]).map(r=>r.persona_id);
- const owner=ownerIds.length===1?await supabase.from('persone').select('nome').eq('id',ownerIds[0]).maybeSingle():null;
+ const owner=ownerIds.length===1?await supabase.from('persone').select('nome,cognome').eq('id',ownerIds[0]).maybeSingle():null;
  const firstName=owner&&!owner.error&&owner.data?accountFirstName([owner.data]):undefined;
- return {signedIn:true,enabled:true,staff,admin,instructor:allowed.has('istruttore'),board:staff||allowed.has('consigliere_cda'),personal,member:!member.error&&member.data===true,unread:alerts&&!alerts.error?alerts.count:null,firstName};
+ const surname=firstName&&typeof owner?.data?.cognome==='string'?owner.data.cognome.trim():'';
+ const lastInitial=/^\p{L}/u.test(surname)?Array.from(surname)[0]:undefined;
+ return {signedIn:true,enabled:true,staff,admin,instructor:allowed.has('istruttore'),board:staff||allowed.has('consigliere_cda'),personal,member:!member.error&&member.data===true,unread:alerts&&!alerts.error?alerts.count:null,firstName,lastInitial};
 });

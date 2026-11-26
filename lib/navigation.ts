@@ -1,5 +1,5 @@
 /** Pure navigation rules. Authorization is enforced separately on the server. */
-export type NavigationAccess = { signedIn:boolean; enabled:boolean; staff:boolean; admin:boolean; instructor:boolean; board:boolean; personal:boolean; member:boolean; unread:number|null; firstName?:string };
+export type NavigationAccess = { signedIn:boolean; enabled:boolean; staff:boolean; admin:boolean; instructor:boolean; board:boolean; personal:boolean; member:boolean; unread:number|null; firstName?:string; lastInitial?:string };
 export const guestAccess:NavigationAccess={signedIn:false,enabled:false,staff:false,admin:false,instructor:false,board:false,personal:false,member:false,unread:null};
 export type NavItem={href:string;label:string;aliases?:string[];exact?:boolean};
 export const isWithin=(path:string,base:string)=>path===base||path.startsWith(base+'/');
@@ -85,17 +85,18 @@ export function restoredTarget(target:BackTarget,contexts:Record<string,string>)
 export function accountFirstName(owners:readonly {nome:unknown}[]):string|undefined{
  if(owners.length!==1||typeof owners[0].nome!=='string')return undefined;
  const name=owners[0].nome.trim().replace(/\s+/g,' ');
- return name.length<=60&&/^[\p{L}\p{M}][\p{L}\p{M} '\u2019-]*$/u.test(name)?name:undefined;
+ if(name.length>60||!/^[\p{L}\p{M}][\p{L}\p{M} '\u2019-]*$/u.test(name))return undefined;
+ return name===name.toLocaleUpperCase('it')?name.toLocaleLowerCase('it').replace(/(^|[ '\u2019-])\p{L}/gu,s=>s.toLocaleUpperCase('it')):name;
 }
 export function greeting(access:NavigationAccess){return access.enabled&&access.firstName?'Ciao, '+access.firstName:'Ciao';}
-export function initials(access:NavigationAccess){return access.enabled&&access.firstName?Array.from(access.firstName).slice(0,1).join('').toLocaleUpperCase('it'):'';}
+export function initials(access:NavigationAccess){return access.enabled&&access.firstName?(Array.from(access.firstName).slice(0,1).join('')+(access.lastInitial??'')).toLocaleUpperCase('it'):'';}
 export type MobileDestination={href:string;label:string;icon:'home'|'users'|'course'|'calendar'|'document'|'user'|'clipboard'};
 export function mobileDestinations(path:string,access:NavigationAccess):MobileDestination[]{
  if(!access.enabled)return [];
  if(staffArea(path,access)||(path==='/'&&access.staff))return [{href:'/gestionale',label:'Dashboard',icon:'home'},{href:'/gestionale/soci',label:'Soci',icon:'users'},{href:'/gestionale/corsi',label:'Corsi',icon:'course'},{href:'/gestionale/calendario-visivo',label:'Calendario',icon:'calendar'}];
  if(access.instructor&&(isWithin(path,'/istruttore')||isWithin(path,'/gestione-eventi')||(!access.personal&&!access.board)))return [{href:'/istruttore',label:'Corsi',icon:'course'},{href:'/gestione-eventi',label:'Eventi',icon:'calendar'},{href:'/documenti',label:'Documenti',icon:'document'},{href:'/area-personale/profilo',label:'Profilo',icon:'user'}];
  if(access.board&&(isWithin(path,'/organi-sociali')||!access.personal))return [{href:'/organi-sociali',label:'Consiglio',icon:'clipboard'},{href:'/documenti',label:'Documenti',icon:'document'},{href:'/area-personale/profilo',label:'Profilo',icon:'user'}];
- if(access.personal)return [{href:'/area-personale',label:'Area mia',icon:'home'},{href:'/area-personale/corsi',label:'Corsi',icon:'course'},...(access.member?[{href:'/area-soci',label:'Eventi',icon:'calendar' as const}]:[]),{href:'/area-personale/profilo',label:'Profilo',icon:'user'}];
+ if(access.personal)return [{href:'/area-personale',label:'La mia area',icon:'home'},{href:'/area-personale/corsi',label:'Corsi',icon:'course'},...(access.member?[{href:'/area-soci',label:'Eventi',icon:'calendar' as const}]:[]),{href:'/area-personale/profilo',label:'Profilo',icon:'user'}];
  return [{href:'/richiesta/stato',label:'Domanda',icon:'clipboard'},{href:'/documenti',label:'Documenti',icon:'document'},{href:'/area-personale/profilo',label:'Profilo',icon:'user'}];
 }
 export function searchVisible(path:string,access:NavigationAccess){

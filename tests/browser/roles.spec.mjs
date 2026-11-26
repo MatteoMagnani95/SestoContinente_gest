@@ -44,3 +44,21 @@ test('Ruolo limitato: accessi incrociati e risorse amministrative negati',async(
   await expect(page).toHaveURL(url=>url.pathname!==path&&url.pathname!=='/accedi'&&url.searchParams.get('msg')==='permessi');
  }
 });
+
+test('Ricerca e navigazione globale per ruolo: accesso, tastiera e chiusura',async({page},info)=>{
+ const role=info.project.metadata.role;
+ await page.goto(routes[role][0]);
+ const trigger=page.getByRole('button',{name:'Ricerca globale'});
+ if(role==='applicant'){await expect(trigger).toHaveCount(0);return;}
+ await expect(trigger).toBeVisible();
+ await trigger.click();
+ const dialog=page.getByRole('dialog',{name:'Cerca nel gestionale'});
+ await expect(dialog).toBeVisible();
+ await expect(dialog.getByRole('searchbox')).toBeFocused();
+ await dialog.getByRole('searchbox').fill('zzzz-test-nessun-dato');
+ await expect(dialog.getByRole('status')).not.toHaveText('Ricerca in corso…');
+ if(role!=='secretary')await expect(dialog.locator('a[href^="/gestionale/"]')).toHaveCount(0);
+ await page.keyboard.press('Escape');
+ await expect(dialog).toBeHidden();await expect(trigger).toBeFocused();
+ await expect(page.getByRole('navigation',{name:'Navigazione rapida mobile'})).toBeVisible();
+});

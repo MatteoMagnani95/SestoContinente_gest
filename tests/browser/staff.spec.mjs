@@ -88,3 +88,18 @@ test('Paginazione obsoleta offre il ritorno immediato alla prima pagina',async({
  await expect(page).toHaveURL(url=>url.pathname==='/gestionale/soci'&&url.searchParams.get('p')==='1');
  await expect(page.getByRole('table',{name:'Adesioni di soci e allievi'})).toBeVisible();
 });
+
+test('Sidebar comprimibile, menu attivo e ricerca da tastiera',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});await page.goto('/gestionale');
+ const side=page.locator('.sc-staff-sidebar');
+ await side.getByRole('button',{name:'Comprimi menu laterale'}).click();
+ await expect(page.locator('.sc-sidebar-collapsed')).toBeVisible();
+ await page.reload();await expect(page.locator('.sc-sidebar-collapsed')).toBeVisible();
+ await side.getByRole('button',{name:'Espandi menu laterale'}).click();
+ await expect(page.locator('.sc-sidebar-collapsed')).toHaveCount(0);
+ const trigger=page.getByRole('button',{name:'Ricerca globale'});await trigger.focus();
+ await page.keyboard.press('Control+k');
+ const dialog=page.getByRole('dialog',{name:'Cerca nel gestionale'});
+ await expect(dialog.getByRole('searchbox')).toBeFocused();await page.keyboard.press('Escape');
+ await expect(dialog).toBeHidden();await expect(trigger).toBeFocused();
+});

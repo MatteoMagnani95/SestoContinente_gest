@@ -236,3 +236,7 @@ test('Messaggi URL sconosciuti non provocano errori sulle pagine pubbliche',asyn
   await expect(page.getByRole('heading',{level:1})).toBeVisible();
  }
 });
+
+test('La ricerca globale non è disponibile nelle pagine pubbliche',async({page})=>{
+ for(const path of ['/','/accedi','/registrati']){await page.goto(path);await expect(page.getByRole('button',{name:'Ricerca globale'})).toHaveCount(0);await expect(page.getByRole('navigation',{name:'Navigazione rapida mobile'})).toHaveCount(0);}
+});
