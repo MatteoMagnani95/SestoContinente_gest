@@ -48,8 +48,8 @@ test('Letture a blocchi: oltre 100 ID, oltre 500 righe, deduplica ed errore non 
  const failed=await h.readCourseChunks(ids,async keys=>keys.length===100?{data:[1],error:null}:{data:null,error:'errore'});assert.equal(failed.data,null);assert.equal(failed.error,'errore');
 });
 test('Azioni: direttore, contatto incompleto e requisiti mancanti non invocano RPC',async()=>{
- let director=person,eligible=true,calls=[];
- const db={from:table=>table==='edizioni_corsi'?chain({stagione_id:season,stato:'attivo',direttore_id:director}):chain(eligible?[{persona_id:person}]:[]),rpc:async(...args)=>{calls.push(args);return {error:null};}};
+ let director=person,eligible=true,qualified=false,assigned=false,calls=[];
+ const db={from:table=>table==='edizioni_corsi'?chain({stagione_id:season,stato:'attivo',direttore_id:director}):table==='gest_soci_iscrivibili'?chain(eligible?[{persona_id:person}]:[]):table==='qualifiche_istruttori'?chain(qualified?[{id:person}]:[]):table==='assegnazioni_istruttori'?chain(assigned?[{id:person}]:[]):(()=>{throw Error('Tabella mock non prevista: '+table)})(),rpc:async(...args)=>{calls.push(args);return {error:null};}};
  const a=actions(db),f=form({edizione_id:ed,persona_id:person,stato:'iscritto',emergenza_nome:'Nome'});
  assert.match((await a.addEnrollment(f)).error,/direttore/i);director=ed;
  assert.match((await a.addEnrollment(f)).error,/entrambi/);eligible=false;
@@ -57,6 +57,11 @@ test('Azioni: direttore, contatto incompleto e requisiti mancanti non invocano R
  eligible=true;f.delete('emergenza_nome');
  await assert.rejects(a.addEnrollment(f),/REDIRECT.*msg=iscritto/);
  assert.equal(calls.length,1);assert.equal(calls[0][0],'iscrivi_con_contatto');assert.equal(calls[0][1].p_nome,'');assert.equal(calls[0][1].p_telefono,'');
+ qualified=true;assert.match((await a.addEnrollment(f)).error,/deroga/i);assert.equal(calls.length,1);
+ f.set('deroga_istruttore','on');f.set('deroga_motivo','Istruttore ARA in corso APNEA');assigned=true;
+ assert.match((await a.addEnrollment(f)).error,/stessa edizione/i);assert.equal(calls.length,1);
+ assigned=false;await assert.rejects(a.addEnrollment(f),/REDIRECT.*msg=iscritto/);
+ assert.equal(calls.length,2);assert.equal(calls[1][0],'iscrivi_con_deroga');assert.equal(calls[1][1].p_motivo,'Istruttore ARA in corso APNEA');
 });
 test('Creazione lezione: orario italiano, tipo coerente, RPC atomica e messaggio conflitto',async()=>{
  const calls=[];let error=null;

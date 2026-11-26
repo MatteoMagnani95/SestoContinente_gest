@@ -23,6 +23,7 @@ async function main() {
   }
   try {
     const root = await session(), staffId = randomUUID(), memberId = randomUUID();
+    assert.equal(await value(root,"select to_regclass('public.deroghe_iscrizioni_corsi') is not null"),true,'Migrazione deroghe istruttori mancante nel database effimero');
     for (const [id,role] of [[staffId,'amministratore'],[memberId,'socio']]) {
       await root.query('insert into auth.users(id,email,email_confirmed_at) values($1,$2,now())',[id,id+'@example.invalid']);
       await root.query('insert into ruoli_utente(utente_id,ruolo) values($1,$2)',[id,role]);

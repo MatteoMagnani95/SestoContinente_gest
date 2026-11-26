@@ -148,3 +148,6 @@ Ruoli indicativi dal codice di navigazione e dalle guardie 2.0; la verifica di a
 - Test statici v48 e integrazione PostgreSQL nel collaudo esistente. CI da verificare; nessun merge, rilascio o intervento sul DB di produzione. PR esistente #6.
 
 - Rifiniture F3: modifica anagrafica diretta, quattro gruppi anche nel drawer scheda socio, stato e scadenza più recente del tesseramento associato all’adesione attiva (non attestazione di validità), footer sticky anche mobile salvo tastiera aperta/schermo molto basso. Test statici aggiunti e scenari Playwright con fixture sintetiche. Integrazione concorrente: preservato integralmente l’intervento corsi su branch; la sua migrazione separata NON è stata applicata in produzione.
+
+## Gate F3 — regressioni di integrazione
+- Run 45898473176 sul commit concorrente 5491c14: 248 test statici passati, 4 falliti; integrazione DB non superata (trigger deroga non installato nel setup CI). Run F3 45898862122 in coda al controllo iniziale. Corretti setup CI effimero (migrazione successiva al pacchetto 2.0), inventario azioni staff, test disabled con motivo, mock qualifiche/incarichi e test di deroga positiva/negativa; documentata migrazione e aggiunta verifica schema fail-fast. Nessuna modifica alle regole applicative, alla migrazione SQL o al database reale. F4 non avviata fino a esito del gate aggiornato.
