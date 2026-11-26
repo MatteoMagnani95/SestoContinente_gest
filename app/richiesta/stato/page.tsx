@@ -1,3 +1,4 @@
+import Dichiarazioni from '@/components/Dichiarazioni';
 import {isTestApplication} from '@/lib/application-config';
 import Link from 'next/link';
 import { requireUser, formatDate, statoLabel, type Stato, queryMessage } from '@/lib/security';
@@ -12,6 +13,7 @@ export default async function RequestStatus({searchParams}:{searchParams:Promise
     {msg && <div className="notice success" role="status">{queryMessage(msg)}</div>}
     <div className="panel status-panel"><div className="detail-top"><div><div className="muted tiny">Riferimento domanda</div><h2>#{r.id.slice(0,8).toUpperCase()}</h2></div><span className={`status status-${r.stato}`}>{statoLabel[r.stato as Stato]}</span></div>
       <div className="detail-grid"><div><span className="k">Richiedente</span><strong>{r.nome} {r.cognome}</strong></div><div><span className="k">Data invio</span><strong>{formatDate(r.inviata_il)}</strong></div><div><span className="k">Ultimo aggiornamento</span><strong>{formatDate(r.modificato_il)}</strong></div><div><span className="k">Email account</span><strong>{user.email}</strong></div></div>
+      <Dichiarazioni dati={r}/>
       {r.nota_pubblica && <div className="notice">{r.nota_pubblica}</div>}
       {r.stato==='bozza' && <div className="actions"><Link className="button" href="/richiesta/nuova">Continua compilazione</Link></div>}
       {r.stato==='integrazione_richiesta' && <div className="actions"><Link className="button" href="/richiesta/nuova">Correggi e reinvia</Link></div>}

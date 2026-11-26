@@ -1,5 +1,8 @@
 'use server';
 
+import {informativaRegistrazione} from '@/lib/registrazione';
+import {versioneImmagini} from '@/lib/scelte';
+import {validaCF} from '@/lib/codice-fiscale';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
@@ -20,10 +23,12 @@ export async function registerAction(form: FormData) {
   const supabase = await createClient();
   const origin = process.env.NEXT_PUBLIC_SITE_URL;
   if (!origin) go('/registrati', 'registrazione');
+  const legal=informativaRegistrazione(),scelta=asText(form,'immagini');
+  if(!legal.url||form.get('presa_visione')!=='on'||!['','si','no'].includes(scelta))go('/registrati','privacy');
   const { error } = await supabase.auth.signUp({
     email,
     password,
-    options: { emailRedirectTo: `${origin}/auth/callback?next=%2Frichiesta%2Fnuova` },
+    options: { data:{presa_visione:'si',versione_privacy:legal.versione,immagini:scelta,versione_immagini:legal.test?'TEST-COLLAUDO-1':versioneImmagini},emailRedirectTo: `${origin}/auth/callback?next=%2Frichiesta%2Fnuova` },
   });
   if (error) go('/registrati', 'registrazione');
   redirect('/registrati?ok=verifica');
@@ -91,25 +96,25 @@ export async function saveApplicationAction(form: FormData) {
   const cf=asText(form,'codice_fiscale').toUpperCase();
   const paese=asText(form,'stato_nascita'),provincia=asText(form,'provincia_nascita').toUpperCase(),sesso=asText(form,'sesso_cf');
   if(!paese||paese.length>100||(provincia&&!/^[A-Z]{2}$/.test(provincia))||(sesso&&!['M','F'].includes(sesso)))return {error:'Completa Stato, provincia e sesso anagrafico.'};
-  const check=await verificaAnagrafica(identityFromForm(form));
-  if(cf&&!['ok','omocodia'].includes(check.status))return {error:check.message};
-  if(!check.code&&['place','unavailable','incomplete'].includes(check.status)&&cf)return {error:check.message};
+  if(cf&&!validaCF(cf))return {error:'Controlla il formato e il carattere di controllo del codice fiscale.'};
+  if(cf){const check=await verificaAnagrafica(identityFromForm(form));if(check.status==='mismatch')return {error:check.message};}
+  const immagini=asText(form,'immagini');if(!['','si','no'].includes(immagini))return {error:'Scelta foto e video non valida.'};
   const payload = {
     p_nome: asText(form, 'nome'), p_cognome: asText(form, 'cognome'),
     p_data_nascita: birth, p_luogo_nascita: asText(form,'luogo_nascita'),
     p_codice_fiscale: cf, p_indirizzo: asText(form,'indirizzo'),
-    p_provincia_nascita:provincia||null,p_stato_nascita:paese,p_sesso_cf:sesso||null,p_codice_catastale_nascita:check.code,
+    p_provincia_nascita:provincia||null,p_stato_nascita:paese,p_sesso_cf:sesso||null,p_emergenza_nome:asText(form,'emergenza_nome'),p_emergenza_telefono:asText(form,'emergenza_telefono'),
     p_cap: asText(form,'cap'), p_comune: asText(form,'comune'), p_telefono: asText(form,'telefono'),
     p_nome_tutore: asText(form,'nome_tutore'), p_cognome_tutore: asText(form,'cognome_tutore'),
     p_parentela_tutore: asText(form,'parentela_tutore'),
-    p_flag_statuto:flagStatuto,p_flag_privacy:flagPrivacy,p_flag_immagini:!legal.testMode&&form.get('flag_immagini')==='on',
+    p_flag_statuto:flagStatuto,p_flag_privacy:flagPrivacy,p_flag_immagini:immagini===''?null:immagini==='si',p_versione_immagini:legal.testMode?'TEST-COLLAUDO-1':versioneImmagini,
     p_versione_statuto:legal.statutoVersion,
     p_versione_privacy:legal.privacyVersion,p_invia:send,
   };
-  const { error } = await supabase.rpc('salva_domanda_v13', payload);
+  const { error } = await supabase.rpc('salva_domanda_v19', payload);
   if (error) {
     // Non esporre all'utente dettagli SQL o anagrafiche potenzialmente duplicate.
-    console.error('salva_domanda_v13 non completata', {code:error.code});
+    console.error('salva_domanda_v19 non completata', {code:error.code});
     return {error:error.code==='PGRST202'?'Funzione di registrazione non disponibile: la segreteria deve verificare l’allineamento delle migrazioni.':error.code==='23505'?'Esiste già una pratica o un record con questi dati. Contatta la segreteria.':error.code==='23514'?'Uno o più dati non rispettano i requisiti della domanda.':error.code==='42501'?'La sessione non è autorizzata a salvare questa domanda.': 'Domanda non salvata. Verifica i dati e lo stato della pratica; se persiste, contatta la segreteria.'};
   }
   revalidatePath('/richiesta/stato');

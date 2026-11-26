@@ -1,4 +1,5 @@
 'use server';
+import {courseDuplicate} from '@/lib/course-errors';
 import {redirect} from 'next/navigation';
 import {revalidatePath} from 'next/cache';
 import {requireStaff} from '@/lib/security';
@@ -19,7 +20,7 @@ export async function createCatalogCourse(form:FormData){
   descrizione=valueOf(form,'descrizione',1000)||null;
  }catch{redirect(fail);}
  const {error}=await supabase.from('corsi').insert({tipo,nome,livello,descrizione});
- if(error)redirect(fail);
+ if(error)return await courseDuplicate(supabase,'corsi',{tipo,nome,livello},error)??{error:'Controlla disciplina, nome e livello.',field:'nome'};
  refresh();redirect('/gestionale/corsi/nuovo?msg=catalogo');
 }
 
@@ -29,14 +30,16 @@ export async function createEdition(form:FormData){
  try{
   corso_id=uuidValue(form,'corso_id');stagione_id=uuidValue(form,'stagione_id');
   nome=valueOf(form,'nome',160);if(!nome)throw Error();
-  inizio=dateValue(form,'inizio');fine=dateValue(form,'fine');if(fine<inizio)throw Error();
+  inizio=dateValue(form,'inizio');fine=dateValue(form,'fine');if(fine<inizio)return {field:'fine',error:'La fine deve essere successiva o uguale all’inizio.'};
   capienza=Number(valueOf(form,'massimo_partecipanti',4));if(!Number.isInteger(capienza)||capienza<1||capienza>500)throw Error();
-  note=valueOf(form,'note',2000)||null;const raw=valueOf(form,'costo_corso',20);costo_corso=raw?Number(raw.replace(',','.')):null;if(costo_corso!==null&&(!Number.isFinite(costo_corso)||costo_corso<0||Math.round(costo_corso*100)!==costo_corso*100))throw Error();
+  note=valueOf(form,'note',2000)||null;const raw=valueOf(form,'costo_corso',20);costo_corso=raw?Number(raw.replace(',','.')):null;if(costo_corso!==null&&(!Number.isFinite(costo_corso)||costo_corso<0||!/^\d+(?:[.,]\d{1,2})?$/.test(raw)))throw Error();
  }catch{redirect(fail);}
  const {data:season}=await supabase.from('stagioni').select('dal,al').eq('id',stagione_id).maybeSingle();
- if(!season||inizio<season.dal||fine>season.al)redirect('/gestionale/corsi/nuovo?msg=stagione');
- const {data,error}=await supabase.from('edizioni_corsi').insert({corso_id,stagione_id,nome,inizio,fine,massimo_partecipanti:capienza,costo_corso,stato:'programmato',note}).select('id').single();
- if(error||!data)redirect(fail);
+ if(!season||inizio<season.dal||fine>season.al)return {field:'inizio',error:'Le date devono rientrare nella stagione selezionata.'};
+ const direttore_id=String(form.get('direttore_id')??'');if(!UUID_RE.test(direttore_id))return {field:'direttore_id',error:'Seleziona un direttore.'};
+ const {data,error}=await supabase.from('edizioni_corsi').insert({direttore_id,corso_id,stagione_id,nome,inizio,fine,massimo_partecipanti:capienza,costo_corso,stato:'programmato',note}).select('id').single();
+ if(error)return await courseDuplicate(supabase,'edizioni_corsi',{corso_id,stagione_id,nome,inizio,fine},error)??{error:'Verifica le informazioni dell’edizione.',field:'nome'};
+ if(!data)return {error:'Creazione non riuscita.'};
  refresh(data.id);redirect(detailHref(data.id,'creato'));
 }
 
@@ -44,13 +47,13 @@ export async function updateEdition(form:FormData){
  const {supabase}=await requireStaff();
  let id='',nome='',capienza=0,stato='',costo_corso:number|null=null,note:string|null=null;
  try{
-  id=uuidValue(form,'edizione_id');nome=valueOf(form,'nome',160);if(!nome)throw Error();
-  capienza=Number(valueOf(form,'massimo_partecipanti',4));if(!Number.isInteger(capienza)||capienza<1||capienza>500)throw Error();
+  id=uuidValue(form,'edizione_id');nome=valueOf(form,'nome',160);if(!nome)return {field:'nome',error:'Inserisci il nome dell’edizione.'};
+  capienza=Number(valueOf(form,'massimo_partecipanti',4));if(!Number.isInteger(capienza)||capienza<1||capienza>500)return {field:'massimo_partecipanti',error:'Indica una capienza da 1 a 500.'};
   stato=valueOf(form,'stato',20);if(!COURSE_STATES.some(s=>s===stato))throw Error();
-  note=valueOf(form,'note',2000)||null;const raw=valueOf(form,'costo_corso',20);costo_corso=raw?Number(raw.replace(',','.')):null;if(costo_corso!==null&&(!Number.isFinite(costo_corso)||costo_corso<0||Math.round(costo_corso*100)!==costo_corso*100))throw Error();
- }catch{redirect('/gestionale/corsi?msg=dati');}
- const {error}=await supabase.from('edizioni_corsi').update({nome,massimo_partecipanti:capienza,costo_corso,stato,note}).eq('id',id).select('id').single();
- if(error)redirect(detailHref(id,'vincolo'));
+  note=valueOf(form,'note',2000)||null;const raw=valueOf(form,'costo_corso',20);costo_corso=raw?Number(raw.replace(',','.')):null;if(costo_corso!==null&&(!Number.isFinite(costo_corso)||costo_corso<0||!/^\d+(?:[.,]\d{1,2})?$/.test(raw)))return {field:'costo_corso',error:'Indica un importo positivo o zero con al massimo due decimali.'};
+ }catch{return {error:'Controlla i dati inseriti per questa edizione.'};}
+ const {error}=await supabase.from('edizioni_corsi').update({direttore_id:form.get('direttore_id')||null,nome,massimo_partecipanti:capienza,costo_corso,stato,note}).eq('id',id).select('id').single();
+ if(error){if(error.code==='P3419')return {field:'nome',error:'Questo corso esiste già',href:'/gestionale/corsi/'+error.details};return error.code==='P3421'?{field:'direttore_id',error:'La persona scelta è già allieva di questa edizione. Scegli un altro direttore.'}:{field:'massimo_partecipanti',error:'Verifica la capienza e i dati dell’edizione.'};}
  refresh(id);redirect(detailHref(id,'salvato'));
 }
 
@@ -109,8 +112,8 @@ export async function addEnrollment(form:FormData){
   const {data:member}=await supabase.from('gest_soci_iscrivibili').select('persona_id').eq('persona_id',person).eq('stagione_id',edition.stagione_id).limit(1);
   if(!member?.length)redirect(detailHref(id,'adesione'));
  }
- const {error}=await supabase.from('iscrizioni_corsi').insert({edizione_id:id,persona_id:person,stato});
- if(error)redirect(detailHref(id,error.code==='P3413'?'adesione':'iscrizione'));
+ const {error}=await supabase.rpc('iscrivi_con_contatto',{p_edizione:id,p_persona:person,p_nome:valueOf(form,'emergenza_nome',160),p_telefono:valueOf(form,'emergenza_telefono',32),p_richiesta:false});
+ if(error)redirect(detailHref(id,error.code==='P3421'?'direttore':error.code==='23505'?'gia_iscritto':error.code==='P3413'?'adesione':'iscrizione'));
  refresh(id);redirect(detailHref(id,'iscritto'));
 }
 
@@ -130,7 +133,7 @@ export async function updateEnrollment(form:FormData){
  }
  if(row.stato==='concluso'&&stato!=='concluso')redirect(detailHref(id,'stato'));
  const {error}=await supabase.from('iscrizioni_corsi').update({stato}).eq('id',iscrizione).eq('edizione_id',id).select('id').single();
- if(error)redirect(detailHref(id,error.code==='P3413'?'adesione':'iscrizione'));
+ if(error)redirect(detailHref(id,error.code==='P3421'?'direttore':error.code==='23505'?'gia_iscritto':error.code==='P3413'?'adesione':'iscrizione'));
  refresh(id);redirect(detailHref(id,'iscritto'));
 }
 

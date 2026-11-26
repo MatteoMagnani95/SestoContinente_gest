@@ -12,6 +12,7 @@ export function formatDate(value: string | null | undefined) {
 }
 export function queryMessage(search?: string) {
   const values: Record<string,string> = {
+    privacy:'Apri l’informativa e conferma la presa visione per registrarti.',
     credenziali:'Email o password non corrette.',
     registrazione:'Impossibile completare la registrazione. Verifica i dati o riprova.',
     password:'La password deve avere almeno 10 caratteri e corrispondere alla conferma.',

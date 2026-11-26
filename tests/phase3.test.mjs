@@ -18,7 +18,7 @@ test('schede protette da requireStaff e navigabili per UUID',()=>{
  const source=file('app/gestionale/soci/[id]/page.tsx');
  assert.match(source,/requireStaff\(\)/);
  assert.match(source,/uuid\.test\(id\)/);
- for(const table of ['adesioni','saldi_quote','pagamenti','iscrizioni_corsi','certificati_medici','brevetti_allievi','documenti','relazioni_tutori'])
+ for(const table of ['adesioni','saldi_quote','pagamenti','iscrizioni_corsi','stato_certificati','brevetti_allievi','documenti','relazioni_tutori'])
   assert.ok(source.includes(`.from('${table}')`),table);
 });
 test('la modifica del socio è limitata allo staff e ai campi autorizzati',()=>{

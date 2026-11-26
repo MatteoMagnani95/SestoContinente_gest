@@ -1,5 +1,10 @@
 import RemoveRecord from '@/components/RemoveRecord';
 import CancelEditButton from '@/components/CancelEditButton';
+import Cronologia from '@/components/Cronologia';
+import EditForm from '@/components/EditForm';
+import {statoSingolo} from '@/lib/certificati';
+import {applicationLegalConfig} from '@/lib/application-config';
+import {versioneImmagini,sceltaLabel,dataOra} from '@/lib/scelte';
 import Link from 'next/link';
 import {notFound} from 'next/navigation';
 import {requireStaff} from '@/lib/security';
@@ -17,8 +22,8 @@ type Balance={id:string;stagione_id:string;importo_dovuto:number;versato:number;
 type Enrollment={id:string;edizione_id:string;stato:string;iscritta_il:string};
 type Edition={id:string;nome:string;corso_id:string;inizio:string;fine:string};
 type Course={id:string;nome:string;tipo:string;livello:number|null};
-type Cert={id:string;rilasciato_il:string;scade_il:string;idoneita_verificata:boolean};
-type Patent={id:string;titolo:string;ente:string|null;numero_brevetto:string|null;ottenuto_il:string|null;scade_il:string|null};
+type Cert={id:string;documento_id:string|null;stato_certificato:string;rilasciato_il:string;scade_il:string;idoneita_verificata:boolean};
+type Patent={id:string;rilasciato_da_nome:string|null;titolo:string;ente:string|null;numero_brevetto:string|null;ottenuto_il:string|null;scade_il:string|null};
 type Qualification={id:string;titolo:string;ente:string|null;scade_il:string|null};
 type Equipment={id:string;attrezzatura_id:string;assegnata_il:string;restituita_il:string|null};
 type Document={id:string;nome:string;categoria:string;caricato_il:string};
@@ -42,7 +47,7 @@ function Section({id,title,href,children}:{id:string;title:string;href?:string;c
  return <section className="panel member-section" id={id}><div className="member-section-heading"><h2>{title}</h2>
  {href&&<Link href={href} className="member-mini-action">Apri gestione</Link>}</div>{children}</section>;
 }
-function None({children='Nessun elemento registrato.'}:{children?:string}){return <p className="muted tiny">{children}</p>;}
+function None({children='Nessun elemento registrato.'}:{children?:React.ReactNode}){return <p className="muted tiny">{children}</p>;}
 
 export default async function MemberDetail({params,searchParams}:{params:Promise<{id:string}>;searchParams:Promise<{msg?:string}>}){
  const {id}=await params;
@@ -63,8 +68,8 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
   supabase.from('saldi_quote').select('id,stagione_id,importo_dovuto,versato,residuo,stato').eq('persona_id',id).limit(100),
   supabase.from('pagamenti').select('id,quota_id,addebito_corso_id,importo,data_pagamento,metodo').eq('persona_id',id).order('data_pagamento',{ascending:false}).limit(50),
   supabase.from('iscrizioni_corsi').select('id,edizione_id,stato,iscritta_il').eq('persona_id',id).order('iscritta_il',{ascending:false}).limit(100),
-  supabase.from('certificati_medici').select('id,rilasciato_il,scade_il,idoneita_verificata').eq('persona_id',id).order('rilasciato_il',{ascending:false}).limit(50),
-  supabase.from('brevetti_allievi').select('id,titolo,ente,numero_brevetto,ottenuto_il,scade_il').eq('persona_id',id).order('ottenuto_il',{ascending:false}).limit(50),
+  supabase.from('stato_certificati').select('id,rilasciato_il,scade_il,idoneita_verificata,documento_id,stato_certificato').eq('persona_id',id).order('creato_il',{ascending:false}).limit(50),
+  supabase.from('brevetti_allievi').select('id,titolo,ente,numero_brevetto,ottenuto_il,scade_il,rilasciato_da_nome').eq('persona_id',id).order('ottenuto_il',{ascending:false}).limit(50),
   supabase.from('qualifiche_istruttori').select('id,titolo,ente,scade_il').eq('persona_id',id).limit(50),
   supabase.from('assegnazioni_istruttori').select('id,edizione_id,ruolo').eq('persona_id',id).limit(100),
   supabase.from('documenti').select('id,nome,categoria,caricato_il').eq('persona_id',id).order('caricato_il',{ascending:false}).limit(50),
@@ -113,6 +118,10 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
  const equipmentNames=(equipmentNamesData??[]) as unknown as {id:string;codice:string;categoria:string}[];
  const newSeasons=seasons.filter(s=>!memberships.some(m=>m.stagione_id===s.id));
  const active=memberships.find(m=>seasons.find(s=>s.id===m.stagione_id)?.attiva)??memberships[0];
+ const {data:emergenza}=await supabase.from('contatti_emergenza').select('nominativo,telefono').eq('persona_id',id).maybeSingle();
+ const {data:domanda}=await supabase.from('richieste').select('utente_id').eq('persona_id',id).order('modificato_il',{ascending:false}).limit(1).maybeSingle();
+ const titolare=domanda?.utente_id??accountLinks?.find(a=>a.relazione==='titolare')?.utente_id;
+ const {data:consenso}=titolare?await supabase.from('scelte_iscrizione').select('scelta,versione,registrata_il').eq('utente_id',titolare).eq('tipo','immagini').eq('versione',applicationLegalConfig(titolare).testMode?'TEST-COLLAUDO-1':versioneImmagini).order('id',{ascending:false}).limit(1).maybeSingle():{data:null};
  const newestCert=certs[0];
  const certState=dateState(newestCert?.scade_il);
  const debt=balances.reduce((sum,q)=>sum+Number(q.residuo),0);
@@ -130,13 +139,14 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
     <strong>{active?statusLabel(active.stato):'Da inserire'}</strong></div>
    <div className="panel member-summary"><span>Iscrizioni ai corsi</span><strong>{enrollments.length}</strong></div>
    <div className="panel member-summary"><span>Residuo quote associative</span><strong>{euro(debt)}</strong></div>
-   <div className="panel member-summary"><span>Certificato più recente</span><strong>{newestCert?certState.label:'Non presente'}</strong></div>
+   <div className="panel member-summary"><span>Certificato più recente</span><strong>{newestCert?statoSingolo(newestCert.stato_certificato):'Non presente'}</strong></div>
   </div>
   <nav className="member-jump" aria-label="Sezioni della scheda">
    {['Anagrafica','Adesioni','Corsi','Pagamenti','Certificati','Brevetti','Documenti','Istruttore','Attrezzature','Famiglia']
     .map(x=><a key={x} href={`#${x.toLowerCase()}`}>{x}</a>)}
   </nav>
   <div className="member-sections">
+   <Cronologia tipo="socio" id={id}/><section className="panel"><h2>Contatto di emergenza</h2><p>{emergenza?emergenza.nominativo+' · '+emergenza.telefono:'Non acquisito'}</p><h3>Foto e video · scelta attuale</h3><p>{sceltaLabel(consenso?.scelta)} {consenso?.versione} {dataOra(consenso?.registrata_il)}</p></section>
    <Section id="anagrafica" title="Anagrafica e recapiti">
     <div className="detail-grid">
      <div><span className="k">Data e luogo di nascita</span><strong>{formatValue(person.data_nascita)} · {person.luogo_nascita??'—'}</strong></div>
@@ -145,7 +155,7 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
      <div><span className="k">Recapiti</span><strong>{person.email??'—'} · {person.telefono??'—'}</strong></div>
     </div>
     <details className="member-edit"><summary>Modifica anagrafica e recapiti</summary>
-     <form action={updateMemberProfile} className="stack"><input type="hidden" name="id" value={person.id}/>
+     <EditForm action={updateMemberProfile} className="stack"><input type="hidden" name="id" value={person.id}/>
       <div className="form-grid">
        {(['nome','cognome','codice_fiscale','luogo_nascita','indirizzo','cap','comune','telefono','email'] as const).map(key=>
         <label key={key}>{({nome:'Nome',cognome:'Cognome',codice_fiscale:'Codice fiscale',luogo_nascita:'Comune di nascita (o città estera)',indirizzo:'Indirizzo di residenza',cap:'CAP',comune:'Comune di residenza',telefono:'Telefono',email:'Email di contatto'})[key]}
@@ -159,9 +169,9 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
        <label>Sesso per CF<select name="sesso_cf" defaultValue={person.sesso_cf??''}><option value="">Non indicato</option><option value="M">M</option><option value="F">F</option></select></label>
        <label className="check-label"><input type="checkbox" name="cf_omocodia_verificata" defaultChecked={person.cf_omocodia_verificata}/><span>Omocodia verificata con documentazione</span></label>
        <label>Motivazione verifica documentale CF<input name="cf_override_motivo" maxLength={500} defaultValue={person.cf_override_motivo??''} placeholder="Es. omocodia attestata da tessera sanitaria"/></label>
-      </div><CodiceFiscaleAssist/><div className="form-actions"><button type="submit" className="button">Salva anagrafica</button><CancelEditButton/></div>
+      </div><CodiceFiscaleAssist/><div className="form-actions"><button type="submit" className="button">Salva modifiche</button><CancelEditButton/></div>
       <p className="tiny muted">Le rettifiche vengono registrate nel registro operazioni, senza copiare i dati anagrafici nel log.</p>
-     </form><RemoveRecord moduleKey="anagrafiche" id={person.id} back="soci"/>{isAdmin===true&&Boolean(accountLinks?.length)&&<div className="stack"><p className="muted tiny">Per rimuovere l’account insieme ai dati esclusivi collegati, usa la cancellazione completa. I profili condivisi sono conservati.</p>{accountLinks?.map(a=><Link key={a.utente_id} href={`/gestionale/utenti/${a.utente_id}/elimina`} className="button danger">Elimina account e dati ({a.relazione})</Link>)}</div>}</details>
+     </EditForm><RemoveRecord moduleKey="anagrafiche" id={person.id} back="soci"/>{isAdmin===true&&Boolean(accountLinks?.length)&&<div className="stack"><p className="muted tiny">Per rimuovere l’account insieme ai dati esclusivi collegati, usa la cancellazione completa. I profili condivisi sono conservati.</p>{accountLinks?.map(a=><Link key={a.utente_id} href={`/gestionale/utenti/${a.utente_id}/elimina`} className="button danger">Elimina account e dati ({a.relazione})</Link>)}</div>}</details>
    </Section>
    <Section id="adesioni" title="Adesioni e tesseramenti" href="/gestionale/moduli/adesioni">
     {memberships.length?<div className="table-panel"><table><thead><tr><th>Stagione</th><th>Stato</th><th>Data</th><th>Delibera CdA</th><th>Tessere</th><th>Azioni</th></tr></thead><tbody>
@@ -197,15 +207,15 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
    </Section>
    <Section id="certificati" title="Certificati medici — verifica amministrativa" href="/gestionale/moduli/certificati">
     <p className="tiny muted">Sono mostrate solo data di rilascio, scadenza e verifica amministrativa. Non inserire diagnosi o dati clinici.</p>
-    {certs.length?<div className="table-panel"><table><thead><tr><th>Rilasciato</th><th>Scadenza</th><th>Validità temporale</th><th>Verifica</th><th>Azioni</th></tr></thead><tbody>
+    {certs.length?<div className="table-panel"><table><thead><tr><th>Rilasciato</th><th>Scadenza</th><th>Stato</th><th>Documento</th><th>Azioni</th></tr></thead><tbody>
      {certs.map(c=><tr key={c.id}><td>{formatValue(c.rilasciato_il)}</td><td>{formatValue(c.scade_il)}</td>
-      <td><span className={`member-state ${dateState(c.scade_il).kind}`}>{dateState(c.scade_il).label}</span></td>
-      <td>{c.idoneita_verificata?'Verificato dalla segreteria':'Da verificare'}</td><td><Link href={`/gestionale/moduli/${"certificati"}?edit=${c.id}`}>Modifica</Link></td></tr>)}
-    </tbody></table></div>:<None>Nessun certificato registrato.</None>}
+      <td><span className={`member-state ${dateState(c.scade_il).kind}`}>{statoSingolo(c.stato_certificato)}</span></td>
+      <td>{c.documento_id?<Link href={'/documenti/'+c.documento_id}>Apri certificato</Link>:<Link href={'/area-personale/certificato?persona='+id}>Carica certificato</Link>}</td><td><Link href={`/gestionale/moduli/${"certificati"}?edit=${c.id}`}>Modifica</Link></td></tr>)}
+    </tbody></table></div>:<None>Documento mancante · <Link href={'/area-personale/certificato?persona='+id}>Carica certificato</Link></None>}
    </Section>
    <Section id="brevetti" title="Brevetti conseguiti" href="/gestionale/moduli/brevetti">
-    {patents.length?<div className="table-panel"><table><thead><tr><th>Brevetto</th><th>Ente</th><th>Conseguito</th><th>Scadenza</th><th>Azioni</th></tr></thead><tbody>
-     {patents.map(p=><tr key={p.id}><td>{p.titolo}</td><td>{p.ente??'—'}</td><td>{formatValue(p.ottenuto_il)}</td><td>{formatValue(p.scade_il)}</td><td><Link href={`/gestionale/moduli/${"brevetti"}?edit=${p.id}`}>Modifica</Link></td></tr>)}
+    {patents.length?<div className="table-panel"><table><thead><tr><th>Brevetto</th><th>Rilasciato da</th><th>Ente</th><th>Conseguito</th><th>Scadenza</th><th>Azioni</th></tr></thead><tbody>
+     {patents.map(p=><tr key={p.id}><td>{p.titolo}</td><td>{p.rilasciato_da_nome??'Non acquisito'}</td><td>{p.ente??'—'}</td><td>{formatValue(p.ottenuto_il)}</td><td>{formatValue(p.scade_il)}</td><td><Link href={`/gestionale/moduli/${"brevetti"}?edit=${p.id}`}>Modifica</Link></td></tr>)}
     </tbody></table></div>:<None>Nessun brevetto registrato.</None>}
    </Section>
    <Section id="documenti" title="Documenti collegati" href="/documenti">

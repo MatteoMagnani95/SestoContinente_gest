@@ -253,3 +253,8 @@ td strong{color:#1c3441}
 
 .payment-form .payment-confirm{grid-column:1/-1;display:flex;align-items:flex-start;gap:8px;font-size:11px;line-height:1.35}
 .payment-form .payment-confirm input{width:auto;flex:none;align-self:flex-start;margin-top:1px}
+
+.edit-fields {border:0;margin:0;padding:0;min-width:0;display:grid;gap:1rem}
+.edit-fields .notice.error {display:block}
+@media(max-width:640px){.row-editor-pop{max-width:calc(100vw - 2rem);width:100%;position:static}.form-actions{display:flex;flex-wrap:wrap;gap:.5rem}.edit-fields .form-grid{grid-template-columns:1fr}}
+@media print {header,nav,.form-actions,form button,.back-link,.global-cancel {display:none!important}.panel,dl{break-inside:avoid}}

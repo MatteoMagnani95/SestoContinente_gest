@@ -1,4 +1,5 @@
 'use server';
+import {courseDuplicate} from '@/lib/course-errors';
 import {redirect} from 'next/navigation';
 import {revalidatePath} from 'next/cache';
 import {requireStaff} from '@/lib/security';
@@ -24,29 +25,30 @@ export async function saveModuleRecord(form:FormData) {
  const changes:Record<string,unknown>={};
  for(const field of module.fields) {
   const raw=text(form,field.name);
+  if(!id&&!raw&&((key==='edizioni'&&field.name==='direttore_id')||(key==='brevetti'&&field.name==='edizione_id')))return {field:field.name,error:'Seleziona '+field.label.toLowerCase()+'.'};
   if(field.type==='checkbox') {changes[field.name]=form.get(field.name)==='on';continue;}
-  if(field.required&&!raw) redirect(errorPath(key,'dati'));
+  if(field.required&&!raw) return {error:'Controlla il campo '+field.label+'.',field:field.name};
   if(!raw){changes[field.name]=null;continue;}
-  if(raw.length>8000) redirect(errorPath(key,'dati'));
-  if(field.options&&!field.options.includes(raw)) redirect(errorPath(key,'dati'));
-  if(field.type==='reference'&&!uuid.test(raw)) redirect(errorPath(key,'dati'));
-  if(field.type==='email'&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw)) redirect(errorPath(key,'dati'));
+  if(raw.length>8000) return {error:'Controlla il campo '+field.label+'.',field:field.name};
+  if(field.options&&!field.options.includes(raw)) return {error:'Controlla il campo '+field.label+'.',field:field.name};
+  if(field.type==='reference'&&!uuid.test(raw)) return {error:'Controlla il campo '+field.label+'.',field:field.name};
+  if(field.type==='email'&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw)) return {error:'Controlla il campo '+field.label+'.',field:field.name};
   if(field.type==='days'){
    const values=raw.split(',').map(x=>x.trim());
-   if(values.length<1||values.length>10||values.some(x=>!/^\d{1,3}$/.test(x)))redirect(errorPath(key,'dati'));
+   if(values.length<1||values.length>10||values.some(x=>!/^\d{1,3}$/.test(x)))return {error:'Controlla il campo '+field.label+'.',field:field.name};
    const days=[...new Set(values.map(Number))];
-   if(days.some(x=>x>365))redirect(errorPath(key,'dati'));
+   if(days.some(x=>x>365))return {error:'Controlla il campo '+field.label+'.',field:field.name};
    changes[field.name]=days.sort((a,b)=>b-a);continue;
   }
   if(field.type==='number'){
    const num=Number(raw.replace(',','.'));
    if(!Number.isFinite(num)||(field.min!==undefined&&num<field.min)||(field.step==='1'&&!Number.isInteger(num)))
-    redirect(errorPath(key,'dati'));
+    return {error:'Controlla il campo '+field.label+'.',field:field.name};
    changes[field.name]=num;continue;
   }
-  if(field.type==='date'&&!/^\d{4}-\d{2}-\d{2}$/.test(raw))redirect(errorPath(key,'dati'));
+  if(field.type==='date'&&!/^\d{4}-\d{2}-\d{2}$/.test(raw))return {error:'Controlla il campo '+field.label+'.',field:field.name};
   if(field.type==='datetime'){
-   try{changes[field.name]=italianLocalToISO(raw);}catch{redirect(errorPath(key,'dati'));}
+   try{changes[field.name]=italianLocalToISO(raw);}catch{return {error:'Controlla il campo '+field.label+'.',field:field.name};}
    continue;
   }
   changes[field.name]=raw;
@@ -69,7 +71,7 @@ export async function saveModuleRecord(form:FormData) {
    previous=data;
   }
   const check=await validaSalvataggioAnagrafica(identityFromForm(form),previous,form.get('cf_omocodia_verificata')==='on',text(form,'cf_override_motivo'));
-  if(check.error)redirect(errorPath(key,check.error));
+  if(check.error)return {error:'Controlla il codice fiscale e i dati anagrafici.',field:'codice_fiscale'};
   changes.codice_catastale_nascita=check.code;
   changes.cf_omocodia_verificata=check.omocodia;
   changes.cf_override_motivo=check.reason;
@@ -96,10 +98,22 @@ export async function saveModuleRecord(form:FormData) {
  }
  if(key==='comunicazioni'&&!id) changes.autore_id=user.id;
  let query;
- if(id) query=supabase.from(module.table).update(changes).eq('id',id).select('id').single();
+ if(id){
+  let update=supabase.from(module.table).update(changes).eq('id',id);
+  if(key==='certificati'){
+   const expected=text(form,'documento_atteso');
+   if(!expected&&changes.esito_verifica==='valido')return {error:'Carica il certificato prima di validarlo.',field:'esito_verifica'};
+   update=expected?update.eq('documento_id',expected):update.is('documento_id',null);
+  }
+  query=update.select('id').single();
+ }
  else query=supabase.from(module.table).insert(changes).select('id').single();
  const {error}=await query;
  if(error) {
+  if(key==='edizioni'||key==='corsi'){const dup=await courseDuplicate(supabase,module.table,changes,error);if(dup)return dup;}
+  if(error.code==='P3421')return {error:'Il direttore non può essere allievo della stessa edizione.',field:key==='edizioni'?'direttore_id':'persona_id'};
+  if(error.code==='P3422')return {error:'Seleziona un’edizione frequentata dall’allievo con direttore assegnato.',field:'edizione_id'};
+  if(key==='certificati')return {error:'Verifica documento, stato e date del certificato.',field:'esito_verifica'};
   // 23P01: violazione del vincolo PostgreSQL EXCLUDE sull'occupazione corsie.
   // Mostrare un'indicazione comprensibile senza esporre dettagli SQL.
   if(key==='prenotazioni'&&error.code==='23P01'){
@@ -115,11 +129,12 @@ export async function saveModuleRecord(form:FormData) {
   if(key==='iscrizioni'&&error.code==='P3413')redirect(errorPath(key,'socio_non_iscrivibile'));
   if(key==='addebiti'&&error.code==='P3412')redirect(errorPath(key,id?'iscrizione_vincolata':'iscrizione_non_attiva'));
   const constraint=['23505','23P01','23503','23514'].includes(error.code??'');
-  redirect(errorPath(key,constraint?'vincolo':'database'));
+  return {error:constraint?'Controlla duplicati, date e collegamenti.':'Impossibile salvare le modifiche.'};
  }
  revalidatePath(`/gestionale/moduli/${key}`);
  revalidatePath('/gestionale');
- redirect(errorPath(key,'salvato'));
+ if(key==='iscrizioni'&&id)redirect('/gestionale/corsi/'+changes.edizione_id+'?msg=iscritto#allievi');
+ redirect(id?errorPath(key,'salvato')+'&edit='+id:errorPath(key,'salvato'));
 }
 
 export async function deleteModuleRecord(form:FormData){
