@@ -29,3 +29,6 @@ AuthForm, PasswordField, homepage e applicant surfaces in app/public-ui.css; riu
 
 ## Fase 4B
 Dashboard metric link, quick actions, tab di navigazione e timeline in app/secretariat.css. Vedi [SECRETARIAT.md](SECRETARIAT.md).
+
+## Fase 4C
+Riutilizzati DataTable mobileCards, SearchableSelect, Drawer/ConfirmDialog, EditForm, MetricCard, StatusBadge e tab F4B. CourseStudentPicker e CourseLessonFields con input contestuali; LessonComposer con riordino da tastiera. Vedi [COURSES.md](COURSES.md).
