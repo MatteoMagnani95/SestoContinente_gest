@@ -112,7 +112,11 @@ async function sessions(){
     else{assert.equal(response.status(),200);assert.deepEqual(await response.body(),Buffer.from(bytes));assert.match(response.headers()['cache-control'],/no-store/);}
    }finally{await ctx.close();}
   }
-  console.log('OK Auth JWT, isolamento anagrafiche, Storage privato e download applicativo');
+  // Revocation must affect an already-issued access token, not just future login.
+  checked(await admin.auth.admin.updateUserById(accounts.memberB.id,{ban_duration:'1h'}),'disable synthetic account');
+  assert.equal(checked(await b.rpc('account_corrente_abilitato'),'disabled account'),false);
+  assert.equal(checked(await b.from('persone').select('id').eq('id',accounts.memberB.person),'disabled user RLS').length,0);
+  console.log('OK Auth JWT, isolamento anagrafiche, Storage privato, download e revoca account');
  }finally{await browser.close();}
 }
 if(process.argv[2]==='seed')await seed();else if(process.argv[2]==='sessions')await sessions();else throw Error('Usare seed o sessions');
