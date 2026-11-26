@@ -23,6 +23,7 @@ Ramo: feature/gestionale-2.0-redesign. PR #4 in bozza. Nessun merge, rilascio o 
 3. `20261126163000_coerenza_lezioni_presenze.sql`
 4. `20261126163410_dichiarazioni_verificate.sql`
 5. `20261126163420_coerenza_direzione.sql`
+6. `20261126171000_anteprima_importazione_atomica.sql` (F7)
 
 Applicare solo dopo verifica staging e backup, nell'ordine canonico e prima di distribuire il codice che usa le nuove RPC. Le vecchie RPC dichiarative sono mantenute per la compatibilità della versione 0019 e il rollback applicativo; le nuove pagine richiedono le nuove RPC e il campo origine. Non rieseguire copie SQL root. Nessuna migrazione di questa lista applicata sul database reale.
 
@@ -44,3 +45,6 @@ Applicare solo dopo verifica staging e backup, nell'ordine canonico e prima di d
 - CI 45859746348 (checkpoint 53c2f55): entrambi i job success, inclusi test documentali e database consolidato.
 - CI 45860457868 (checkpoint bfdb4af): entrambi i job success, inclusi confronto scelta, origine, revoca, retry e separazione modalità. Il precedente errore di fixture registrazione senza marcatori di versione era corretto in 5be5eeb.
 - Ultime modifiche direzione, audit storico, scadenze e prova positiva domanda: verificare CI dell'ultimo commit funzionale prima di chiudere il gate automatico. Aggiornare esito effettivo nel tracker. Nessuno screenshot autenticato disponibile.
+
+## Integrazione F7 — anteprima importazioni
+La nuova RPC `crea_anteprima_importazione` conserva RLS e inserisce lotto e righe in una sola transazione; nessuna modifica alle importazioni esistenti. I lotti legacy possono essere incompleti: verificare il file originale prima di confermarli, non bonificare automaticamente. La nuova anteprima segnala in quarantena i brevetti storici: 0019 richiede l'edizione e la firma del direttore; non si può dedurre l'effettivo firmatario storico dal direttore odierno. Occorre la verifica documentale e una procedura autorizzata. Rollback: ripristinare il client precedente lasciando la RPC disponibile; rimuoverla solo se inutilizzata. Il precedente flusso non offre atomicità tra batch e righe. Test CI aggiunti; non applicata al DB reale.
