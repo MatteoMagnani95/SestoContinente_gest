@@ -49,6 +49,11 @@ async function main() {
   await assert.rejects(a.query(saveV20.replace("'stat1'","'TEST-COLLAUDO-1'"),[false,revoked]),{code:'P3509'});
   await assert.rejects(a.query("select registra_scelta_verificata(true,'foto1',$1,'domanda')",[revoked]),{code:'42501'});
   assert.equal(await currentChoice(),revoked);
+  const draftV20=saveV20.replace("'Nome','Cognome'","'Altro','Collaudo'").replace("'priv1',true","'priv1',false");
+  const draft=await scalar(b,draftV20,[true,null]);
+  assert.equal(await scalar(b,"select origine from scelte_iscrizione where tipo='immagini' order by id desc limit 1"),'domanda');
+  assert.equal(await scalar(b,'select immagini_scelta from richieste where id=$1',[draft]),true);
+  assert.equal(await scalar(a,'select count(*)::int from richieste where id=$1',[draft]),0);
   console.log('OK dichiarazioni: origine, revoca protetta, retry e separazione modalità');
 
   const season=await scalar(root,"select id from stagioni where attiva limit 1");
