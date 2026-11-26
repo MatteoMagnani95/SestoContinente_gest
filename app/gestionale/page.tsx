@@ -16,7 +16,7 @@ export default async function Dashboard(){
   season?supabase.from('adesioni').select('id',{head:true,count:'exact'}).eq('stagione_id',season.id).eq('stato','attiva'):unavailable,
   supabase.from('edizioni_corsi').select('id',{head:true,count:'exact'}).eq('stato','attivo'),
   supabase.from('iscrizioni_corsi').select('id',{head:true,count:'exact'}).eq('stato','iscritto'),
-  supabase.from('attrezzature').select('id',{head:true,count:'exact'}).lte('prossima_revisione',cutoff),
+  supabase.from('attrezzature').select('id',{head:true,count:'exact'}).gte('prossima_revisione',today).lte('prossima_revisione',cutoff),
   supabase.from('stato_certificati').select('id',{head:true,count:'exact'}).eq('stato_certificato','valido').gte('scade_il',today).lte('scade_il',cutoff),
   season?supabase.from('saldi_quote').select('id',{head:true,count:'exact'}).eq('stagione_id',season.id).gt('residuo',0):unavailable,
   season?supabase.from('adesioni').select('id',{head:true,count:'exact'}).eq('stagione_id',season.id).eq('stato','da_perfezionare'):unavailable,
@@ -36,7 +36,7 @@ export default async function Dashboard(){
   {label:'Domande da gestire',icon:'clipboard',area:'secretariat',result:requests,href:'/gestionale/richieste?filtro=da_gestire'},
   {label:'Adesioni da perfezionare',icon:'users',area:'secretariat',result:pendingAdhesions,href:'/gestionale/soci?stato=da_perfezionare'+seasonQuery,note:season?.nome??'Stagione attiva non disponibile'},
   {label:'Quote da incassare',icon:'wallet',area:'finance',result:quotes,href:'/gestionale/incassi?tab=quota&stato=residuo'+seasonQuery,note:'Posizioni con residuo positivo'},
-  {label:'Revisioni da effettuare',icon:'equipment',area:'equipment',result:revisions,href:'/gestionale/report?categoria=Revisioni&periodo=scadute',note:'Scadute o entro 30 giorni'},
+  {label:'Revisioni da effettuare',icon:'equipment',area:'equipment',result:revisions,href:'/gestionale/report?categoria=Revisioni&periodo=30',note:'Entro 30 giorni (scadute nel report dedicato)'},
   {label:'Certificati in scadenza',icon:'certificate',area:'system',result:certificates,href:'/gestionale/moduli/certificati?stato=in_scadenza&dal='+today+'&al='+cutoff,note:'Validi, in scadenza entro 30 giorni'}
  ];
  function metric(m:Metric){if(!season&&['Adesioni attive','Adesioni da perfezionare','Quote da incassare'].includes(m.label))return <MetricCard key={m.label} label={m.label} icon={m.icon} area={m.area} value="—" note="Stagione attiva non disponibile"/>;return <Link key={m.label} href={m.href} className="sc-metric-link" aria-label={m.label+': '+exactCount(m.result)+'. Apri elenco'}><MetricCard label={m.label} icon={m.icon} area={m.area} value={exactCount(m.result)} note={exactCount(m.result)==='—'?'Dato non disponibile':m.note}/><span className="sc-metric-open">Apri elenco <Icon name="chevron-right"/></span></Link>;}
