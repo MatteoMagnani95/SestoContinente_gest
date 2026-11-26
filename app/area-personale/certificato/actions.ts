@@ -25,6 +25,7 @@ export async function caricaCertificato(form:FormData){
  if(!ctx)return {error:'Archivio non disponibile o persona non autorizzata.'};
  const {supabase,user,storage}=ctx;
  const dal=String(form.get('rilasciato_il')??''),al=String(form.get('scade_il')??'');
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(dal)||!/^\d{4}-\d{2}-\d{2}$/.test(al)||al<dal||dal>new Date().toISOString().slice(0,10))return {error:'Controlla data di rilascio e scadenza.'};
  let file=form.get('file');
  const staged=String(form.get('transito')??'');
  if(staged){
@@ -34,7 +35,6 @@ export async function caricaCertificato(form:FormData){
   file=new File([data],parts[2],{type:data.type});
   await storage.remove([staged]);
  }
- if(!/^\d{4}-\d{2}-\d{2}$/.test(dal)||!/^\d{4}-\d{2}-\d{2}$/.test(al)||al<dal||dal>new Date().toISOString().slice(0,10))return {error:'Controlla data di rilascio e scadenza.'};
  if(!(file instanceof File))return {error:'Seleziona il certificato.'};
  const ext=tipoCertificato(file.name,file.type,file.size);
  if(!ext)return {error:'Carica un JPG/JPEG o un PDF di massimo 10 MB.'};
