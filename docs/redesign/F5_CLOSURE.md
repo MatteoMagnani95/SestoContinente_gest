@@ -1,0 +1,46 @@
+# Fase 5 — Correzioni funzionali e gate di verifica
+Ramo: feature/gestionale-2.0-redesign. PR #4 in bozza. Nessun merge, rilascio o SQL di produzione.
+
+## Copertura della Fase 5 (MASTER_SPEC.md §40)
+| Requisito | Implementazione | Prova / limite |
+|---|---|---|
+| Duplicazioni | Identità di cataloghi/edizioni 0019; chiavi idempotenti incassi e revisioni, controllo similarità e prestiti; niente cancellazione storica | CI PostgreSQL con richieste concorrenti e retry; audit storico da eseguire su staging |
+| Salvataggi | Risposte verificabili, protezione doppio invio, stati precedenti per iscrizioni, notifiche confermate sotto RLS, caricamenti con esito incerto e protezione scelta obsoleta | Test applicativi e database; Storage/Auth reali ancora da provare |
+| Coerenza | Protezione delle date di revisione, prenotazioni parziali, annullamento/presenze, incarichi didattici allineati esplicitamente | CI PostgreSQL; allineamento e ultime modifiche da confermare al nuovo head |
+| Permessi | Guard esistenti, RLS e RPC, ruoli espliciti, route e download anonimi negati, isolamento anteprime | Test SQL per socio/staff/istruttore/consigliere e browser anonimi; matrice autenticata end-to-end su Supabase separato resta F7 |
+| Contabilità | Saldi autorevoli, pagamento idempotente, capienza del debito e rettifica; nessuna modifica storica implicita | PostgreSQL: concorrenza, eccedenza, saldo e movimento unico |
+| Scadenze | Report su fonti complete, conteggi errore distinti da zero, finestre temporali e promemoria condizionali | Test di report e nuova prova idempotenza promemoria/residui; consegna email reale esclusa |
+| Registrazione e dichiarazioni | Versioni esatte dei moduli, casella immagini facoltativa, provenienza nuove scelte, confronto atomico, separazione modalità | CI dichiarazioni; nuova domanda positiva da confermare; testi ufficiali e rappresentanza minori da verificare |
+| Direttori e allievi | Divieto bidirezionale 0019, nuovo vincolo direttore/responsabile, allineamento esplicito, firma brevetto storica immutata | Test SQL di concorrenza/permessi e azione server; CI nuovo head |
+| Calendario | EXCLUDE, rollback atomico, tutela parziali, lock presenze/annullamento | CI PostgreSQL con blocchi realmente rilevati e test adiacenza |
+| Inventario e revisioni | RPC idempotente, similarità e conferma distinta, cronologia e stato coerente | CI PostgreSQL, test UI statici; anomalie reali non corrette automaticamente |
+| Prestiti | Unicità prestito aperto, restituzione condizionale e stato disponibilità | CI PostgreSQL concorrente |
+| Notifiche | Segna letta solo se confermata, idempotenza, isolamento account, cron/email live bloccati nelle anteprime | CI SQL, test mock; nessuna email inviata |
+
+## Migrazioni nuove, in ordine (oltre alle 19 canoniche già presenti)
+1. `20261126160000_registra_revisione.sql`
+2. `20261126162500_proteggi_prenotazioni_parziali.sql`
+3. `20261126163000_coerenza_lezioni_presenze.sql`
+4. `20261126163410_dichiarazioni_verificate.sql`
+5. `20261126163420_coerenza_direzione.sql`
+
+Applicare solo dopo verifica staging e backup, nell'ordine canonico e prima di distribuire il codice che usa le nuove RPC. Le vecchie RPC dichiarative sono mantenute per la compatibilità della versione 0019 e il rollback applicativo; le nuove pagine richiedono le nuove RPC e il campo origine. Non rieseguire copie SQL root. Nessuna migrazione di questa lista applicata sul database reale.
+
+## Rollback e conservazione
+- Preferire rollback applicativo al commit precedente, lasciando intatte nuove righe, origini dichiarative e audit; verificare la compatibilità con i vincoli nuovi. Le vecchie RPC dichiarative restano disponibili. Non eliminare la colonna origine dopo l'acquisizione di nuove scelte.
+- Se occorre ripristinare il comportamento SQL delle nuove dichiarazioni, mantenere la colonna origine e le righe storiche, ripristinare il solo corpo trigger registrazione 0019 solo previa verifica; rimuovere le nuove RPC esclusivamente quando nessun client le usa.
+- Per la direzione, ripristino tecnico: rimuovere i trigger coerenza_direttore, coerenza_responsabile, blocca_incarico_responsabile e la RPC allinea_direttore_responsabile solo dopo rollback del client. Non annullare automaticamente gli incarichi confermati.
+- Per revisione, prenotazioni e presenze: riferimenti ai corpi originali e istruzioni nel tracker; il rollback riapre le anomalie individuate, va autorizzato e provato su copia. Non rieseguire migrazioni intere per ripristinare funzioni.
+- `F5_HISTORICAL_AUDIT.sql` esegue una transazione read-only con conteggi aggregati; non è una migrazione e non elimina nulla. Gli indicatori di revisione simile, prenotazione parziale, più persone collegate e origine sconosciuta richiedono interpretazione, non sono automaticamente errori.
+
+## Limiti non risolvibili dal repository
+- Il database PostgreSQL CI emula Auth/Storage, non prova le risposte del servizio Supabase reale o i JWT e la consegna email. Necessari staging isolato, credenziali/ruoli sintetici e collaudo F7.
+- I testi approvati e le regole sulla rappresentanza dei minori non sono forniti: le scelte rimangono a livello account, non rappresentano automaticamente un consenso per ciascuna persona. Le origini storiche ignote rimangono NULL. Non attivare raccolta reale senza documenti e decisioni approvate.
+- Dati storici reali non accessibili; eseguire audit su copia autorizzata prima di una riconciliazione manuale. Nessuna bonifica distruttiva.
+- Upload con esito incerto può lasciare file transitori; nessun processo di cancellazione non autorizzato. Procedura amministrativa da definire dopo verifica Storage.
+- Anteprime Vercel non equivalgono a staging isolato; non usare un ambiente collegato a dati reali per test mutanti. Nessuna pubblicazione automatica.
+
+## Evidenze
+- CI 45859746348 (checkpoint 53c2f55): entrambi i job success, inclusi test documentali e database consolidato.
+- CI 45860457868 (checkpoint bfdb4af): entrambi i job success, inclusi confronto scelta, origine, revoca, retry e separazione modalità. Il precedente errore di fixture registrazione senza marcatori di versione era corretto in 5be5eeb.
+- Ultime modifiche direzione, audit storico, scadenze e prova positiva domanda: verificare CI dell'ultimo commit funzionale prima di chiudere il gate automatico. Aggiornare esito effettivo nel tracker. Nessuno screenshot autenticato disponibile.
