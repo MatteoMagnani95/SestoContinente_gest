@@ -1,5 +1,5 @@
 # Piano di integrazione — Sesto Continente
-Snapshot 2026-11-26. Stato: NO-GO al rilascio, nessuna integrazione applicativa eseguita.
+Snapshot 2026-11-26. Stato attuale: consolidamento funzionale completato nel codice; NO-GO alla produzione, gate finale PR9 e verifica separata schema reale necessari. I checkpoint sottostanti sono storici.
 
 ## Baseline verificata
 - main: 5444519045f46eeece6f5c8030c6acb9f8fbda81; ramo release creato da questo SHA.
@@ -43,8 +43,9 @@ Snapshot 2026-11-26. Stato: NO-GO al rilascio, nessuna integrazione applicativa 
 - [x] Censiti nove rami preesistenti, otto PR (sei aperte, due già merged).
 - [x] Verificata baseline Vercel e CI ai commit indicati.
 - [x] Analizzate sovrapposizioni dei file e dipendenze.
-- [ ] Integrazione baseline e fix (fase successiva).
-- [ ] Collaudo complessivo e PR unica.
+- [x] Integrazione baseline e fix #3/#5/#7/#8/#10.
+- [x] PR unica #9 in bozza verso main; collaudo funzionale sorgente verde.
+- [ ] Gate finale sul nuovo SHA release, sincronizzazione 3.0 e verifica produzione separata.
 
 ## Checkpoint coordinamento anti-regressione — 26 novembre, aggiornamento successivo
 - PR #5, SHA 7493e8d11c4bf1466ef96ca73100950f7a0769fa: entrambe le CI 45898643203 e 45898643074 completate con successo.
@@ -64,3 +65,9 @@ Snapshot 2026-11-26. Stato: NO-GO al rilascio, nessuna integrazione applicativa 
 
 ## Integrazione della PR #7
 Origine f99564fc805aceec089b4bb855b6704b81526db6, CI ordinaria 45900175385 e QA 45900175348 superate, 36 logout effettivi su nove account, Chromium/WebKit, 1440/390 px. Integrazione a tre vie sulla base del candidato 58f627b. Conservati i trigger QA di release, recupero password e account e tutte le asserzioni dei test browser della PR #8. Nessuna migrazione SQL aggiunta. Ripetere i gate sul nuovo candidato nella PR #9 prima di approvarlo. Fase 4 sospesa.
+
+## Checkpoint finale integrazione funzionale — PR #10
+- PR #10 verso release: 257a89c4b7e50e337ea11f020183ed23f15d7531, tre commit sopra 3d934da, zero divergenze, 20 file. Fast-forward del ramo release con verifica expected_sha, nessun merge su main. Deroga motivata anche nella stessa disciplina confermata dall’utente; incompatibilità della stessa edizione inderogabile.
+- Run verify 45904800690 e QA 45904800627 entrambe success: 261 statici, 66 browser ordinari, 150 browser autenticati, 36 logout, deroga UI e audit persistente, migrazione e restore effimeri, RLS, auth e Storage. Nessuna modifica a Vercel o database reale.
+- Migrazione aggiuntiva 20261126213000_deroga_istruttori_corsi.sql. Non eseguire in produzione; verificare separatamente registro migrazioni/schema e piano differenziale/rollback prima del rilascio.
+- PR #9 resta l’unica PR finale verso main, in bozza. Ripetere i gate dopo aggiornamenti ai registri. La sincronizzazione 3.0 richiede analisi a tre vie dei 28 file sovrapposti (checkpoint PR10 e PR6), senza importare il redesign nel release. F4 resta bloccata fino a gate esteso del 3.0 sincronizzato.
