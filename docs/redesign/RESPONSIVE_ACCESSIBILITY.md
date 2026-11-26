@@ -25,3 +25,22 @@ Impostare NEXT_PUBLIC_SUPABASE_URL locale e, se disponibili, QA_STAFF_STATE (adm
 ## Gate residui
 - Ultimo head CI, collaudo autentico di tutte le route/ruoli e dettagli, controllo iPhone/iPad reali e Chrome reale con tastiera, VoiceOver/TalkBack, reflow a zoom 200/400%, contrasto effettivo di tutte le combinazioni, assenza di clipping in dati lunghi reali sintetici.
 - Nessun deploy produzione, main invariato, PR #4 bozza.
+
+
+## Chiusura implementativa e verifica finale
+- CI [45862415180](https://github.com/MatteoMagnani95/SestoContinente_gest/actions/runs/45862415180), commit 3891a0a, e [45862646270](https://github.com/MatteoMagnani95/SestoContinente_gest/actions/runs/45862646270), commit 28ba37c: entrambi job success; 218/218 statici e 56/56 browser, incluso il test viewport visibile ridotta, contrasto palette e semantica. Lint, TypeScript, build e database success. Configurazione dei progetti autenticati presente ma senza sessioni nella CI pubblica.
+- db1feb5: PasswordField distingue tramite nome accessibile la password e la conferma; il nome inizia con il testo visibile Mostra/Nascondi e rispecchia l'azione corrente. f72d86c: prova Playwright di etichette, attivazione da tastiera, conservazione spazi e reflow a 640 e 320 CSS px (equivalenti a 200% e 400% su viewport iniziale di 1280 px). Non è un test del pinch zoom o dello zoom browser nativo. Verificare esito CI di questo checkpoint.
+- Tutti i gruppi implementativi SC-36.1–36.4 e SC-37 sono trattati nel codice; SC-36.5 verificato sulle pagine pubbliche e componenti sintetici, con matrice autenticata predisposta. Il gate di rilascio G4 della F7 resta aperto per le prove fisiche e autenticate, non trasferite implicitamente allo stato superato. Nessuna dichiarazione di conformità WCAG completa.
+
+### Scheda di collaudo manuale da allegare al gate G4
+Registrare per ciascuna prova SHA, dispositivo/OS, browser e versione, ruolo sintetico, pagina, orientamento, zoom, esito e descrizione di eventuali difetti; evitare dati personali negli screenshot.
+| Scenario | Criterio di accettazione | Stato |
+|---|---|---|
+| Safari iPhone, verticale/orizzontale, barre dinamiche | Header compatto, safe area, nessun overflow globale, menu e dialoghi raggiungibili | Da eseguire su device |
+| Safari iPad, verticale/orizzontale e split view | Nessun controllo fuori schermo; drawer e tabelle leggibili | Da eseguire su device |
+| Tastiera virtuale su data/ora, select, ricerca, textarea | Focus e pulsante finale raggiungibili con tastiera aperta e chiusa; contenuto non coperto | Simulazione CI superata; device aperto |
+| Zoom browser 200% e 400%, pinch zoom | Contenuto disponibile senza perdita; scroll orizzontale solo per tabelle necessarie | Reflow automatico; zoom reale aperto |
+| VoiceOver iOS/macOS e TalkBack Chrome Android | Titoli, landmark, nomi, errori, stati, celle e azioni annunciati; focus coerente | Da eseguire con screen reader |
+| Contrasto, zoom testo e movimento ridotto | Testo 4,5:1 (3:1 se grande), componenti rilevanti 3:1, nessun significato solo colore | Token verificati; combinazioni reali da verificare |
+| Sei ruoli con fixture sintetiche e tutti i 28 moduli staff | Menu coerente con ruolo, nessun clipping, controlli raggiungibili, accessi vietati negati | Test predisposti; sessioni isolate necessarie |
+| Salvataggio/annullamento, errore server e dirty guard | Focus corretto e bozza conservata, nessuna perdita silenziosa | Test mirati; scenari autenticati aperti |
