@@ -46,7 +46,7 @@ async function seed(){
   accounts.guardian.represented=represented;
   const season=await value("update stagioni set dal=current_date-30,al=current_date+100 where attiva returning id");
   const quotas=[];
-  for(const key of ['member','memberB','instructor','board']){
+  for(const key of ['member','memberB','instructor','board','unassigned']){
    const person=accounts[key].person;
    const adhesion=await value("insert into adesioni(persona_id,stagione_id,stato) values($1,$2,'attiva') returning id",[person,season]);
    await db.query("insert into tesseramenti(adesione_id,ente,stato,scade_il) values($1,'Ente di prova','attiva',current_date+90)",[adhesion]);
@@ -56,10 +56,12 @@ async function seed(){
   await db.query('set local role authenticated');
   await db.query("select set_config('request.jwt.claim.sub',$1,true)",[accounts.staff.id]);
   let payment;
-  for(const [person,quota] of quotas)payment=await value("select registra_pagamento_guidato($1,$2,null,10,current_date,'contanti',null,null,$3)",[person,quota,randomUUID()]);
+  for(const [person,quota] of quotas)if(person!==accounts.unassigned.person)payment=await value("select registra_pagamento_guidato($1,$2,null,10,current_date,'contanti',null,null,$3)",[person,quota,randomUUID()]);
+  const openQuota=quotas.find(([person])=>person===accounts.unassigned.person)[1];
   const catalog=await value("insert into corsi(nome,tipo) values($1,'APNEA') returning id",['Collaudo '+randomUUID()]);
   const edition=await value("insert into edizioni_corsi(corso_id,stagione_id,nome,inizio,fine,direttore_id) values($1,$2,'Edizione di prova',current_date,current_date+10,$3) returning id",[catalog,season,accounts.instructor.person]);
   await db.query("insert into qualifiche_istruttori(persona_id,titolo) values($1,'Qualifica sintetica')",[accounts.instructor.person]);
+  const secondEdition=await value("insert into edizioni_corsi(corso_id,stagione_id,nome,inizio,fine,direttore_id) values($1,$2,'Seconda edizione sintetica',current_date+2,current_date+12,$3) returning id",[catalog,season,accounts.instructor.person]);
   await db.query("insert into assegnazioni_istruttori(edizione_id,persona_id,ruolo) values($1,$2,'responsabile')",[edition,accounts.instructor.person]);
   await db.query("insert into iscrizioni_corsi(edizione_id,persona_id,stato) values($1,$2,'iscritto')",[edition,accounts.member.person]);
   const pool=await value("insert into piscine(nome) values('Piscina di prova') returning id");
@@ -71,7 +73,7 @@ async function seed(){
   await db.query('commit');
   await db.query("insert into notifiche(utente_id,tipo,riferimento,titolo,messaggio) values($1,'collaudo',$2,'Notifica sintetica','Messaggio di prova')",[accounts.staff.id,randomUUID()]);
   const notification=await value("insert into notifiche(utente_id,tipo,riferimento,titolo,messaggio) values($1,'collaudo',$2,'Notifica socio sintetica','Messaggio di prova') returning id",[accounts.member.id,randomUUID()]);
-  const fixtures={person:accounts.member.person,edition,lesson,event,equipment,payment,account:accounts.member.id,notification};
+  const fixtures={person:accounts.member.person,edition,lesson,event,equipment,payment,account:accounts.member.id,notification,openQuota,secondEdition};
   await writeFile(accountFile,JSON.stringify(accounts),{mode:0o600});
   await writeFile(join(work,'fixtures.json'),JSON.stringify(fixtures),{mode:0o600});
   console.log('OK account sintetici e fixture locali');
