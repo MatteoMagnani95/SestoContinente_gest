@@ -33,3 +33,6 @@ Il delta originale toccava 28 file. I seguenti sono stati riconciliati senza sos
 - CI sorgente #4, #3, #5 e #8: success per gli SHA congelati.
 - CI consolidata: da verificare; PR7 e deroga non incluse. I test su dati sintetici non attestano schema o configurazione della produzione.
 - Il redesign 3.0 non deve ancora importare questo candidato. Aggiornare REG-001–015 su entrambi i registri quando il candidato è approvato.
+
+### Primo gate del candidato
+CI ordinaria 45900482031 su 0c1ec5a: database success, lint e TypeScript success; 4 test automatici falliti per mock obsoleti delle funzioni calendario in v38/v40. Correzione: caricare helper reali, clock fisso via todayRome, lasciare inalterate le asserzioni di compensazione e conservazione storage; aggiunto test di data impossibile/futura senza consumo transito. Nuovo gate necessario. QA 45900482052 del vecchio SHA non vale per il nuovo candidato.
