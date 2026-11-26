@@ -100,9 +100,11 @@ export async function replaceResponsible(form:FormData){
  if(!edition||!['programmato','attivo'].includes(edition.stato))return {error:'Il corso non è operativo.'};
  if(!qual?.length)return {error:'Qualifica non registrata.'};
  if(current?.persona_id===person)redirect(detailHref(id,'istruttore'));
+ const expected=String(form.get('responsabile_atteso')??'');
+ if(!UUID_RE.test(expected)||current?.persona_id!==expected)return {error:'Il responsabile è cambiato dopo l’apertura della scheda. Ricarica prima di modificare.'};
  if(!current)return {error:'Responsabile attuale non disponibile. Ricarica la scheda.'};
- const {error}=await supabase.from('assegnazioni_istruttori').update({persona_id:person}).eq('id',current.id).eq('edizione_id',id).select('id').single();
- if(error)return {error:'Sostituzione non riuscita.'};
+ const {error}=await supabase.from('assegnazioni_istruttori').update({persona_id:person}).eq('id',current.id).eq('edizione_id',id).eq('ruolo','responsabile').eq('persona_id',expected).select('id').single();
+ if(error)return {error:'Sostituzione non riuscita o incarico già modificato. Ricarica la scheda.'};
  refresh(id);redirect(detailHref(id,'istruttore'));
 }
 
@@ -135,14 +137,16 @@ export async function updateEnrollment(form:FormData){
   supabase.from('iscrizioni_corsi').select('persona_id,stato').eq('edizione_id',id).eq('id',iscrizione).maybeSingle()
  ]);
  if(!edition||!row)return {error:'Iscrizione non disponibile.'};
+ const expected=String(form.get('stato_atteso')??'');
+ if(!ENROLLMENT_STATES.some(s=>s===expected)||row.stato!==expected)return {error:'Lo stato dell’iscrizione è cambiato. Ricarica la scheda prima di salvare.'};
  if(['in_attesa','iscritto'].includes(stato)&&stato!==row.stato){
   if(!['programmato','attivo'].includes(edition.stato))return {error:'Lo stato attuale del corso o dell’iscrizione non consente questa modifica.'};
   const {data:member}=await supabase.from('gest_soci_iscrivibili').select('persona_id').eq('persona_id',row.persona_id).eq('stagione_id',edition.stagione_id).limit(1);
   if(!member?.length)return {error:'Requisiti associativi non soddisfatti.'};
  }
  if(row.stato==='concluso'&&stato!=='concluso')return {error:'L’iscrizione conclusa non può essere riaperta.'};
- const {error}=await supabase.from('iscrizioni_corsi').update({stato}).eq('id',iscrizione).eq('edizione_id',id).select('id').single();
- if(error)return {error:error.code==='P3421'?'Il direttore non può essere allievo.':error.code==='P3413'?'Requisiti associativi non soddisfatti.':'Stato non aggiornato: controlla capienza e vincoli.'};
+ const {error}=await supabase.from('iscrizioni_corsi').update({stato}).eq('id',iscrizione).eq('edizione_id',id).eq('stato',expected).select('id').single();
+ if(error)return {error:error.code==='P3421'?'Il direttore non può essere allievo.':error.code==='P3413'?'Requisiti associativi non soddisfatti.':'Stato non aggiornato: controlla capienza, vincoli e modifiche concorrenti.'};
  refresh(id);redirect(detailHref(id,'iscritto'));
 }
 
@@ -182,6 +186,7 @@ export async function recordClassAttendance(form:FormData){
   const value=String(form.get(`pres_${p.persona_id}`)??'');
   if(value==='si'||value==='no')rows.push({lezione_id:lesson_id,persona_id:p.persona_id,presente:value==='si'});
  }
+ if(!rows.length)return {error:'Seleziona almeno una presenza o assenza prima di salvare.'};
  if(rows.length>500)return {error:'Salva al massimo 500 presenze per operazione.'};
  if(rows.length){const {error}=await supabase.from('presenze').upsert(rows,{onConflict:'lezione_id,persona_id'});if(error)return {error:'Presenze non salvate. Verifica gli allievi e riprova.'};}
  refresh(id);redirect(courseViewHref(id,'presenze','presenze_salvate',lesson_id)+'&p='+Math.max(1,Math.min(100000,Number.parseInt(String(form.get('pagina')??'1'),10)||1)));
