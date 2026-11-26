@@ -138,7 +138,7 @@ export async function updateEnrollment(form:FormData){
   const {data:member}=await supabase.from('gest_soci_iscrivibili').select('persona_id').eq('persona_id',row.persona_id).eq('stagione_id',edition.stagione_id).limit(1);
   if(!member?.length)return {error:'Requisiti associativi non soddisfatti.'};
  }
- if(row.stato==='concluso'&&stato!=='concluso')redirect(detailHref(id,'stato'));
+ if(row.stato==='concluso'&&stato!=='concluso')return {error:'L’iscrizione conclusa non può essere riaperta.'};
  const {error}=await supabase.from('iscrizioni_corsi').update({stato}).eq('id',iscrizione).eq('edizione_id',id).select('id').single();
  if(error)return {error:error.code==='P3421'?'Il direttore non può essere allievo.':error.code==='P3413'?'Requisiti associativi non soddisfatti.':'Stato non aggiornato: controlla capienza e vincoli.'};
  refresh(id);redirect(detailHref(id,'iscritto'));
@@ -146,7 +146,7 @@ export async function updateEnrollment(form:FormData){
 
 export async function createLesson(form:FormData){
  const {supabase}=await requireStaff();let id='',titolo='',inizio='',fine='',piscina_id:string|null=null,corsie:string[]=[],esercizi:string|null=null,materiale:string|null=null;
- const rawId=String(form.get('edizione_id')??'');
+ 
  try{
   id=uuidValue(form,'edizione_id');titolo=valueOf(form,'titolo',160);if(!titolo)throw Error();
   inizio=asRomeISO(valueOf(form,'inizio',16));fine=asRomeISO(valueOf(form,'fine',16));if(fine<=inizio)throw Error();
@@ -158,12 +158,12 @@ export async function createLesson(form:FormData){
  const kind=String(form.get('tipo_lezione')??'');
  if(kind&&!['teoria','piscina'].includes(kind)||kind==='teoria'&&(piscina_id!==null||corsie.length>0)||kind==='piscina'&&!piscina_id)return {field:'piscina_id',error:'Seleziona una piscina solo per la lezione in piscina.'};
  // La funzione SQL inserisce lezione e corsie in un'unica transazione; qualsiasi conflitto annulla tutto.
- const {error}=await supabase.rpc('crea_lezione_guidata',{
+ const {data:lessonId,error}=await supabase.rpc('crea_lezione_guidata',{
   p_edizione:id,p_titolo:titolo,p_inizio:inizio,p_fine:fine,p_piscina:piscina_id,
   p_corsie:corsie,p_esercizi:esercizi,p_materiale:materiale
  });
  if(error)return {error:error.code==='23P01'?'Una corsia è già prenotata nell’intervallo richiesto. Nessuna lezione creata.':'Lezione non salvata. Controlla periodo del corso, orari, piscina e conflitti.'};
- refresh(id);revalidatePath('/gestionale/calendario-visivo');redirect(detailHref(id,'lezione_creata'));
+ refresh(id);revalidatePath('/gestionale/calendario-visivo');redirect(courseViewHref(id,'lezioni','lezione_creata',typeof lessonId==='string'&&UUID_RE.test(lessonId)?lessonId:undefined));
 }
 
 export async function recordClassAttendance(form:FormData){
@@ -173,7 +173,7 @@ export async function recordClassAttendance(form:FormData){
  if(!lesson)return {error:'Registro non disponibile o troppi allievi. Ricarica prima di modificare.'};
  const {data:learners,error:listError}=await supabase.from('iscrizioni_corsi').select('persona_id')
   .eq('edizione_id',id).in('stato',['iscritto','concluso']).limit(501);
- if(listError||!learners||learners.length>500)redirect(detailHref(id,'vincolo'));
+ if(listError||!learners||learners.length>500)return {error:'Elenco allievi non disponibile o superiore al limite del registro. Riprova.'};
  const rows:{lezione_id:string;persona_id:string;presente:boolean}[]=[];
  for(const p of learners){
   const value=String(form.get(`pres_${p.persona_id}`)??'');
@@ -210,7 +210,7 @@ export async function saveLessonModules(form:FormData){
  if(ids.length>50||ids.some(x=>!UUID_RE.test(x))||new Set(ids).size!==ids.length)return {error:'Composizione non salvata. Controlla i moduli.'};
  const {error}=await supabase.rpc('imposta_moduli_lezione',{p_lezione:lezione,p_moduli:ids});
  if(error)return {error:'Composizione non salvata. Controlla i moduli.'};
- revalidatePath(`/gestionale/corsi/${edizione}`);redirect(courseViewHref(edizione,'lezioni','moduli_salvati'));
+ revalidatePath(`/gestionale/corsi/${edizione}`);redirect(courseViewHref(edizione,'lezioni','moduli_salvati',lezione));
 }
 
 // Delete only the selected edition: database foreign keys prevent removing linked history.

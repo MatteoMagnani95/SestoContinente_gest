@@ -23,3 +23,8 @@ export async function readCourseChunks<T>(ids:string[],read:(ids:string[],from:n
  for(let start=0;start<distinct.length;start+=100){const group=distinct.slice(start,start+100);for(let from=0;;from+=500){const result=await read(group,from,from+499);if(result.error)return {data:null,error:result.error};data.push(...(result.data??[]));if((result.data??[]).length<500)break;}}
  return {data,error:null};
 }
+
+export function legacyCourseTab(hash:string):CourseTab|undefined{
+ const key=hash.replace(/^#/,'');if(key==='composizione')return 'lezioni';
+ return courseTabs.find(([tab])=>tab===key)?.[0];
+}
