@@ -1,3 +1,4 @@
+import {UUID_RE} from '@/lib/course-tools';
 import EditForm from '@/components/EditForm';
 import {DataTable,FilterBar,SearchBar,Pagination} from '@/components/ui/DataTable';
 import {cleanSearch,pageNumber,listHref} from '@/lib/module-ui';
@@ -6,14 +7,16 @@ import ActionForm from '@/components/ui/ActionForm';
 import Link from 'next/link';
 import {requireUser} from '@/lib/security';
 import {uploadDocument,deleteDocument,editDocumentMetadata} from './actions';
-export default async function Documenti({searchParams}:{searchParams:Promise<{msg?:string;pubblica?:string;q?:string;p?:string;ambito?:string}>}){
+export default async function Documenti({searchParams}:{searchParams:Promise<{msg?:string;pubblica?:string;q?:string;p?:string;ambito?:string;persona?:string}>}){
  const {supabase,user}=await requireUser();
  const {data:roles}=await supabase.from('ruoli_utente').select('ruolo').eq('utente_id',user.id);
  const isStaff=roles?.some(r=>r.ruolo==='amministratore'||r.ruolo==='segreteria')??false;
  const isAdmin=roles?.some(r=>r.ruolo==='amministratore')??false;
- const {msg,pubblica,q='',p,ambito=''}=await searchParams;
+ const {msg,pubblica,q='',p,ambito='',persona}=await searchParams;
+ const personId=persona&&UUID_RE.test(persona)?persona:'';
  const page=pageNumber(p),size=30,search=cleanSearch(q);
  let query=supabase.from('gest_elenco_documenti').select('id,nome,categoria,ambito,visibilita,caricato_il,dimensione_bytes,scadenza_conservazione,sort_cognome,sort_nome',{count:'exact'});
+ if(personId)query=query.eq('persona_id',personId);
  if(search)query=query.or('nome.ilike.%'+search+'%,categoria.ilike.%'+search+'%');
  if(['associazione','personale','didattica','amministrativo'].includes(ambito))query=query.eq('ambito',ambito);
  const [{data:docs,error,count},{data:people},{data:users},{data:editions},{data:versions}]=await Promise.all([
@@ -37,12 +40,12 @@ export default async function Documenti({searchParams}:{searchParams:Promise<{ms
  <label>Versione programma didattico<select name="programma_versione_id"><option value="">Nessuna</option>{versions?.map(v=><option key={v.id} value={v.id}>{v.programma_id.slice(0,8)} · Versione {v.versione}</option>)}</select></label></>}
  <label>Scadenza conservazione (facoltativa)<input type="date" name="scadenza_conservazione"/></label><label>File<input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png,.webp" required/></label></div>
  <button className="button" type="submit">Carica documento</button></EditForm></Drawer>
- <FilterBar><SearchBar query={q} placeholder="Cerca nome o categoria del documento" resetHref="/documenti"><label>Ambito<select name="ambito" defaultValue={ambito}><option value="">Tutti</option><option value="associazione">Associazione</option><option value="personale">Personale</option><option value="didattica">Didattica</option><option value="amministrativo">Amministrativo</option></select></label></SearchBar></FilterBar>
+ <FilterBar><SearchBar query={q} placeholder="Cerca nome o categoria del documento" resetHref="/documenti">{personId&&<input type="hidden" name="persona" value={personId}/>}<label>Ambito<select name="ambito" defaultValue={ambito}><option value="">Tutti</option><option value="associazione">Associazione</option><option value="personale">Personale</option><option value="didattica">Didattica</option><option value="amministrativo">Amministrativo</option></select></label></SearchBar></FilterBar>
  {error?<p className="notice error">Impossibile caricare l’archivio. Riprova o contatta la segreteria.</p>:
  <DataTable label="Documenti"><thead><tr><th>Documento</th><th>Categoria</th><th>Ambito</th><th>Caricato il</th><th>Dimensione</th><th>Da riesaminare</th><th>Azioni</th></tr></thead><tbody>
  {docs?.map(d=><tr key={d.id}><td>{d.nome}{d.sort_cognome&&<p className="tiny muted">{d.sort_cognome} {d.sort_nome}</p>}</td><td>{d.categoria}</td><td>{d.ambito}</td><td>{new Date(d.caricato_il).toLocaleDateString('it-IT')}</td><td>{Math.round(d.dimensione_bytes/1024)} KB</td><td>{d.scadenza_conservazione??"—"}</td><td><div className="sc-row-actions"><Link href={`/documenti/${d.id}`} prefetch={false}>Scarica</Link>{isAdmin&&<><Drawer title={'Modifica documento · '+d.nome} trigger="Modifica"><EditForm action={editDocumentMetadata} className="stack"><input type="hidden" name="id" value={d.id}/><label>Nome<input name="nome" defaultValue={d.nome} maxLength={150} required/></label><label>Categoria<input name="categoria" defaultValue={d.categoria} maxLength={80} required/></label><button className="button" type="submit">Salva modifiche</button></EditForm></Drawer><ConfirmDialog title={'Elimina documento · '+d.nome} trigger="Elimina"><p>Elimina il documento selezionato soltanto se consentito. Eventuali collegamenti protetti impediscono la rimozione.</p><ActionForm action={deleteDocument} style={{marginTop:8}}><input type="hidden" name="id" value={d.id}/><label><input type="checkbox" name="conferma" required/> Confermo la rimozione</label><button className="button danger" type="submit">Rimuovi</button></ActionForm></ConfirmDialog></>}</div></td></tr>)}
  {!docs?.length&&<tr><td className="empty-cell" colSpan={7}>Nessun documento visibile al tuo account.</td></tr>}</tbody></DataTable>}
- <Pagination page={page} size={size} count={error?null:count} href={page=>listHref({q,ambito,p:String(page)})}/>
+ <Pagination page={page} size={size} count={error?null:count} href={page=>listHref({q,ambito,persona:personId,p:String(page)})}/>
  <p className="muted tiny">Non inserire dati sanitari nel titolo dei file. Per i certificati si consiglia di conservare solo quanto necessario e definire un periodo di conservazione.</p>
  </div>;
 }

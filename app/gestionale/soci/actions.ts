@@ -23,7 +23,7 @@ export async function updateMemberProfile(form:FormData){
  const id=read(form,'id');
  if(!uuid.test(id))redirect('/gestionale/soci');
  const {data:previous,error:previousError}=await supabase.from('persone').select('nome,cognome,data_nascita,luogo_nascita,provincia_nascita,stato_nascita,sesso_cf,codice_fiscale,codice_catastale_nascita,cf_omocodia_verificata,cf_override_motivo').eq('id',id).single();
- if(previousError||!previous)redirect(memberUrl(id,'errore'));
+ if(previousError||!previous)return {error:'Anagrafica non disponibile. Ricarica prima di modificare.'};
  const check=await validaSalvataggioAnagrafica(identityFromForm(form),previous,read(form,'cf_omocodia_verificata')==='on',read(form,'cf_override_motivo'));
  if(check.error)return {error:'Verifica codice fiscale e dati anagrafici.',field:'codice_fiscale'};
  let changes:Record<string,string|boolean|null>;
@@ -59,7 +59,7 @@ export async function createMemberAdhesion(form:FormData){
  if(!uuid.test(id)||!uuid.test(stagione))redirect('/gestionale/soci');
  // Non attribuisce automaticamente lo stato attivo: pagamento e tesseramento sono separati.
  const {error}=await supabase.from('adesioni').insert({persona_id:id,stagione_id:stagione,stato:'da_perfezionare'});
- if(error)redirect(memberUrl(id,error.code==='23505'?'adesione_esistente':'errore'));
+ if(error)return {error:error.code==='23505'?'Per questa stagione esiste già un’adesione.':'Adesione non registrata. Controlla i dati e riprova.'};
  revalidatePath('/gestionale/soci');
  revalidatePath(`/gestionale/soci/${id}`);
  redirect(memberUrl(id,'adesione_creata'));
