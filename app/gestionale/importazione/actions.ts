@@ -3,7 +3,7 @@ import {redirect} from 'next/navigation';
 import {revalidatePath} from 'next/cache';
 import {parseHistoricalFile} from '@/lib/import-file';
 import {requireStaff} from '@/lib/security';
-import {headings,normalizzaRiga,erroriRiga,type TipoImportazione} from '@/lib/importazione';
+import {headings,normalizzaRiga,erroriRiga,IMPORT_EDITION_UUID,type TipoImportazione} from '@/lib/importazione';
 const where='/gestionale/importazione';
 function text(v:FormDataEntryValue|null){return typeof v==='string'?v.trim():'';}
 function q(msg:string):never{return redirect(`${where}?msg=${encodeURIComponent(msg)}`);}
@@ -21,9 +21,14 @@ export async function stageImport(form:FormData){
  const {data:existing,error:lookupError}=await supabase.rpc('cf_storici_esistenti',{p_cf:cfSet});
  if(lookupError)q('database');
  const have=new Set((existing??[]).map((x:{codice_fiscale:string})=>x.codice_fiscale));
- const editions=tipo==='corsi'?[...new Set(mapped.map(x=>x.edizione_id).filter(Boolean))]:[];
- const {data:editionData,error:edErr}=tipo==='corsi'?await supabase.from('edizioni_corsi').select('id').in('id',editions.filter(x=>/^[a-f0-9-]{36}$/i.test(x))):{data:[],error:null};
- if(edErr)q('database');const okEd=new Set((editionData??[]).map((x:{id:string})=>x.id));
+ const editions=tipo==='corsi'?[...new Set(mapped.map(x=>x.edizione_id).filter(x=>IMPORT_EDITION_UUID.test(x)))]:[];
+ const okEd=new Set<string>();
+ // Keep PostgREST GET URLs bounded even for files containing 1000 distinct editions.
+ for(let i=0;i<editions.length;i+=100){
+  const {data,error}=await supabase.from('edizioni_corsi').select('id').in('id',editions.slice(i,i+100));
+  if(error)q('database');
+  for(const row of data??[])okEd.add(row.id);
+ }
  const seen=new Set<string>();
  const rows=mapped.map(r=>{
   const errors=erroriRiga(r,tipo);
