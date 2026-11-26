@@ -110,7 +110,7 @@ export default function GlobalCancelButtons(){
   const onDiscard=(event:Event)=>{
    const request=(event as CustomEvent<DiscardRequest>).detail;
    if(!request)return;event.preventDefault();
-   if(bypass.current||!dirtyForms(request.form).length){request.proceed();scan();return;}
+   if(bypass.current||!dirtyForms(request.form).some(form=>!request.container||request.container.contains(form))){request.proceed();scan();return;}
    ask(request.proceed,request.trigger??(document.activeElement instanceof HTMLElement?document.activeElement:null));
   };
   const onSaved=(event:Event)=>{

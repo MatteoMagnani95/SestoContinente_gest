@@ -1,7 +1,7 @@
 /** Client-only helpers shared by the guard and editing components. No persistence or logging of form values. */
 type Control=HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement;
 export type Snapshot=Map<Control,string>;
-export type DiscardRequest={form?:HTMLFormElement;proceed:()=>void;trigger?:HTMLElement|null};
+export type DiscardRequest={form?:HTMLFormElement;container?:HTMLElement;proceed:()=>void;trigger?:HTMLElement|null};
 const excluded=new Set(['hidden','submit','button','reset','image']);
 export function trackedForm(form:HTMLFormElement){
  return !form.hasAttribute('data-dirty-ignore')&&(form.hasAttribute('data-dirty-form')||form.method.toLowerCase()==='post');
@@ -52,6 +52,8 @@ export function requestDiscard(request:DiscardRequest){
  if(document.dispatchEvent(event))request.proceed();
 }
 export function cancelForm(form:HTMLFormElement,trigger?:HTMLElement|null){
+ const dialog=form.closest('[data-sc-panel]');
+ if(dialog){dialog.dispatchEvent(new CustomEvent('sc:panel-close',{cancelable:true}));return;}
  requestDiscard({form,trigger,proceed:()=>{
   form.reset();
   const panel=form.closest('details');
