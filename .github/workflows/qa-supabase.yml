@@ -58,6 +58,7 @@ jobs:
           if [ ! -f supabase/config.toml ] && [ ! -f supabase/config.jsonc ]; then supabase init; fi
           if [ ! -f supabase/config.toml ]; then supabase config convert --to toml; fi
           test -f supabase/config.toml
+          python3 scripts/qa-local-status.py --self-test
           python3 scripts/qa-local-config.py
           supabase start > "$RUNNER_TEMP/sesto-supabase-start.log" 2>&1 || { echo "Avvio/migrazioni Supabase locale non riusciti; nessuna chiave nei log pubblici."; exit 1; }
           status=$(mktemp)
