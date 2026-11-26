@@ -152,6 +152,40 @@ async function main() {
     assert.equal(await value(staff,"select count(*)::int from prenotazioni_corsie where lezione_id=$1 and stato='confermata'",[adjacent]),0);
     console.log('OK calendario: conflitto concorrente, rollback atomico, adiacenza, tutela prenotazioni parziali e annullamento');
 
+    // Il ruolo istruttore non può modificare la lezione, ma può registrare
+    // presenze nella propria edizione. Il trigger deve serializzare il lock.
+    const teacherId=randomUUID();
+    await root.query('insert into auth.users(id,email,email_confirmed_at) values($1,$2,now())',[teacherId,teacherId+'@example.invalid']);
+    await root.query("insert into ruoli_utente(utente_id,ruolo) values($1,'istruttore')",[teacherId]);
+    await root.query("insert into collegamenti_persone values($1,$2,'titolare')",[teacherId,person]);
+    const teacher=await session(teacherId);
+    await staff.query("insert into assegnazioni_istruttori(edizione_id,persona_id,ruolo) values($1,$2,'aiuto')",[editions[0],person]);
+    const adhesion=await value(root,'select id from adesioni where persona_id=$1 and stagione_id=$2',[participants[0],season]);
+    await root.query("insert into tesseramenti(adesione_id,ente,stato,scade_il) values($1,'Ente','attiva',current_date+90)",[adhesion]);
+    await staff.query("insert into iscrizioni_corsi(edizione_id,persona_id,stato) values($1,$2,'iscritto')",[editions[0],participants[0]]);
+    const theory="select crea_lezione_guidata($1,$2,(current_date+2+time '10:00') at time zone 'Europe/Rome',(current_date+2+time '11:00') at time zone 'Europe/Rome',null,array[]::uuid[],null,null)";
+    const attendance="insert into presenze(lezione_id,persona_id,presente) values($1,$2,true)";
+    const theoryA=await value(staff,theory,[editions[0],'Presenza prima']);
+    const theoryB=await value(staff,theory,[editions[0],'Annullamento prima']);
+    await assert.rejects(member.query(attendance,[theoryA,participants[0]]),{code:'42501'});
+    await teacher.query('begin');
+    await teacher.query(attendance,[theoryA,participants[0]]);
+    const cancelAfter=otherStaff.query('select annulla_lezione_guidata($1)',[theoryA]).then(()=>null,e=>e);
+    await teacher.query('commit');
+    assert.equal((await cancelAfter)?.code,'P0001');
+    assert.equal(await value(staff,'select annullata_il is null from lezioni where id=$1',[theoryA]),true);
+    await assert.rejects(staff.query('update lezioni set annullata_il=now() where id=$1',[theoryA]),{code:'P3507'});
+    await assert.rejects(staff.query("update lezioni set fine=fine+interval '10 minutes' where id=$1",[theoryA]),{code:'P3507'});
+    await staff.query('begin');
+    await staff.query('select annulla_lezione_guidata($1)',[theoryB]);
+    const presenceAfter=teacher.query(attendance,[theoryB,participants[0]]).then(()=>null,e=>e);
+    await staff.query('commit');
+    assert.equal((await presenceAfter)?.code,'P3506');
+    assert.equal(await value(root,'select count(*)::int from presenze where lezione_id=$1',[theoryB]),0);
+    await assert.rejects(staff.query('update lezioni set annullata_il=now() where id=$1',[lesson]),{code:'P3507'});
+    console.log('OK presenze: istruttore assegnato, annullamento concorrente in entrambi gli ordini e scritture dirette protette');
+
+
 
   } finally {
     await Promise.all(clients.map(db=>db.end()));
