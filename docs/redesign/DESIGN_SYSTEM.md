@@ -41,3 +41,6 @@ Riutilizzati PageHeader, Drawer, ConfirmDialog, EditForm, DataTable, Pagination,
 
 ## Fase 4F
 MetricCard, DataTable mobileCards, Drawer, SearchableSelect, PaymentReview e grafico mensile in finance-ui.css. Vedi [FINANCE.md](FINANCE.md).
+
+## Fase 4G
+PageHeader, MetricCard, DataTable, Drawer e EditForm riutilizzati in inventario, revisioni e prestiti; vedi [EQUIPMENT.md](EQUIPMENT.md).
