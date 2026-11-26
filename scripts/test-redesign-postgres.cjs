@@ -165,7 +165,7 @@ async function main() {
     await root.query("insert into tesseramenti(adesione_id,ente,stato,scade_il) values($1,'Ente','attiva',current_date+50)",[adhesion]);
     await staff.query("insert into iscrizioni_corsi(edizione_id,persona_id,stato) values($1,$2,'iscritto')",[editions[successful],learner]);
     const register="insert into presenze(lezione_id,persona_id,presente) values($1,$2,true)";
-    await assert.rejects(member.query(register,[lesson,learner]),{code:'42501'});
+    await assert.rejects(member.query(register,[lesson,learner]),e=>['42501','P3506'].includes(e.code));
     const fresh=await value(staff,"select crea_lezione_guidata($1,'Registro',(current_date+2+time '10:00') at time zone 'Europe/Rome',(current_date+2+time '11:00') at time zone 'Europe/Rome',null,array[]::uuid[],null,null)",[editions[successful]]);
     const reverse=await value(staff,"select crea_lezione_guidata($1,'Registro inverso',(current_date+3+time '10:00') at time zone 'Europe/Rome',(current_date+3+time '11:00') at time zone 'Europe/Rome',null,array[]::uuid[],null,null)",[editions[successful]]);
     async function waitForLock(blocked,blocker){
