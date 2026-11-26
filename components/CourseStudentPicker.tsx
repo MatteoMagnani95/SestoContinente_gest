@@ -1,6 +1,6 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
-import {enrollmentEligibility} from '@/lib/course-ui';
+import {canListCourseStudent,enrollmentEligibility} from '@/lib/course-ui';
 type Candidate={id:string;name:string;membership:string|null;hasValidCard:boolean;eligible:boolean;alreadyEnrolled:boolean;isDirector:boolean;isInstructor?:boolean;assignedToEdition?:boolean;unavailable:boolean;emergencyLoaded:boolean;emergencyName?:string;emergencyPhone?:string};
 export default function CourseStudentPicker({people,full=false}:{people:Candidate[];full?:boolean}){
  const root=useRef<HTMLDivElement>(null),[search,setSearch]=useState(''),[id,setId]=useState('');
@@ -8,7 +8,7 @@ export default function CourseStudentPicker({people,full=false}:{people:Candidat
  const [name,setName]=useState(''),[phone,setPhone]=useState('');
  useEffect(()=>{const form=root.current?.closest('form');const reset=()=>{setSearch('');setId('');setName('');setPhone('');setDeroga(false);setMotivo('');};form?.addEventListener('reset',reset);return()=>form?.removeEventListener('reset',reset);},[]);
  const norm=(x:string)=>x.normalize('NFD').replace(/\p{Diacritic}/gu,'').toLocaleLowerCase('it');
- const visible=people.filter(p=>!p.isDirector&&!p.assignedToEdition&&(!p.isInstructor||deroga)&&(p.id===id||norm(search).split(/\s+/).every(t=>norm(p.name).includes(t))));
+ const visible=people.filter(p=>canListCourseStudent(p,deroga)&&(p.id===id||norm(search).split(/\s+/).every(t=>norm(p.name).includes(t))));
  const selected=visible.find(p=>p.id===id),reason=selected?enrollmentEligibility(selected):'';
  return <div ref={root} className="stack">
  <label className="check-label"><input type="checkbox" name="deroga_istruttore" checked={deroga} onChange={e=>{setDeroga(e.target.checked);setId('');setMotivo('');setName('');setPhone('');}}/>Consenti iscrizione di un istruttore in deroga</label>
