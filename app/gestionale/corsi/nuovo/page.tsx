@@ -1,3 +1,6 @@
+import {tutteLePagine} from '@/lib/pagine';
+import SearchableSelect from '@/components/ui/SearchableSelect';
+import {formatValue} from '@/lib/format';
 import EditForm from '@/components/EditForm';
 import Link from 'next/link';
 import {requireStaff} from '@/lib/security';
@@ -5,10 +8,10 @@ import {createCatalogCourse,createEdition} from '../actions';
 import {courseName} from '@/lib/course-tools';
 export default async function NewEdition({searchParams}:{searchParams:Promise<{msg?:string}>}){
  const {supabase}=await requireStaff();const {msg}=await searchParams;
- const {data:people}=await supabase.from('persone').select('id,cognome,nome').order('cognome').order('nome');
+ const {data:people}=await tutteLePagine((da,a)=>supabase.from('persone').select('id,cognome,nome').order('cognome').order('nome').order('id').range(da,a));
  const [{data:catalog},{data:seasons},{data:prices}]=await Promise.all([
-  supabase.from('corsi').select('id,nome,tipo,livello').order('tipo').order('livello').limit(500),
-  supabase.from('stagioni').select('id,nome,dal,al,attiva').order('dal',{ascending:false}).limit(100),
+  tutteLePagine((da,a)=>supabase.from('corsi').select('id,nome,tipo,livello').order('tipo').order('livello').order('id').range(da,a)),
+  tutteLePagine((da,a)=>supabase.from('stagioni').select('id,nome,dal,al,attiva').order('dal',{ascending:false}).order('id').range(da,a)),
   supabase.from('listino_corsi').select('importo').order('importo').limit(100)
  ]);
  return <><Link href="/gestionale/corsi" className="back-link">← Gestione corsi</Link>
@@ -19,8 +22,8 @@ export default async function NewEdition({searchParams}:{searchParams:Promise<{m
  <div className="course-wizard-grid"><section className="panel"><h2>1. Configura l'edizione</h2>
  <EditForm action={createEdition} className="stack">
  <label>Attività del catalogo<select name="corso_id" required defaultValue=""><option value="">Seleziona attività...</option>{(catalog??[]).map(c=><option key={c.id} value={c.id}>{courseName(c.tipo,c.livello)} · {c.nome}</option>)}</select></label>
- <label>Stagione<select name="stagione_id" required defaultValue={(seasons??[]).find(s=>s.attiva)?.id??''}><option value="">Seleziona...</option>{(seasons??[]).map(s=><option key={s.id} value={s.id}>{s.nome} ({s.dal} – {s.al})</option>)}</select></label>
- <label>Direttore del corso<select name="direttore_id" required defaultValue=""><option value="">Seleziona...</option>{people?.map(p=><option key={p.id} value={p.id}>{p.cognome} {p.nome}</option>)}</select></label>
+ <label>Stagione<select name="stagione_id" required defaultValue={(seasons??[]).find(s=>s.attiva)?.id??''}><option value="">Seleziona...</option>{(seasons??[]).map(s=><option key={s.id} value={s.id}>{s.nome} ({formatValue(s.dal)} – {formatValue(s.al)})</option>)}</select></label>
+ <div className="sc-field"><label htmlFor="nuovo-direttore">Direttore del corso</label><SearchableSelect id="nuovo-direttore" name="direttore_id" label="Direttore" required options={(people??[]).map(p=>({value:p.id,label:p.cognome+" "+p.nome}))}/></div>
  <label>Nome edizione<input name="nome" maxLength={160} required placeholder="Es. ARA 1 – Martedì sera"/></label>
  <div className="form-grid"><label>Dal<input type="date" name="inizio" required/></label><label>Al<input type="date" name="fine" required/></label></div>
  <label>Capienza massima<input type="number" name="massimo_partecipanti" min={1} max={500} step={1} required defaultValue={15}/></label>
@@ -28,7 +31,7 @@ export default async function NewEdition({searchParams}:{searchParams:Promise<{m
  <datalist id="listino-corso">{prices?.map(p=><option key={p.importo} value={p.importo}/>)}</datalist>
  <label>Note organizzative<textarea name="note" maxLength={2000} rows={3}/></label>
  <div className="notice">La nuova edizione viene creata in stato <strong>programmato</strong>. Nella scheda potrai aggiungere istruttori, partecipanti e lezioni.</div>
- <div className="form-actions"><button className="button" disabled={!catalog?.length||!seasons?.length}>Crea edizione</button><Link className="button ghost" href="/gestionale/corsi">Annulla / Torna indietro</Link></div>
+ <div className="form-actions"><button className="button" disabled={!catalog?.length||!seasons?.length||!people?.length}>Crea edizione</button><Link className="button ghost" href="/gestionale/corsi">Annulla / Torna indietro</Link></div>
  </EditForm></section>
  <aside className="panel"><h2>2. Nuova attività di catalogo</h2><p className="muted tiny">Da usare solo se ARA, apnea o nuoto libero non sono già presenti nel catalogo.</p>
  <EditForm action={createCatalogCourse} className="stack">

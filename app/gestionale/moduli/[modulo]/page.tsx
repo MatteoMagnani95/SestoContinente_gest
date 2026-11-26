@@ -93,7 +93,7 @@ function bookingConflictText(corsia?:string,inizio?:string,fine?:string):string{
  const fascia=dal&&al?` dalle ${dal} alle ${al}`:' nell’intervallo richiesto';
  return `Corsia${numero} già prenotata${fascia}. Scegli un’altra corsia o modifica l’orario.`;
 }
-export default async function ModulePage({params,searchParams}:{params:Promise<{modulo:string}>;searchParams:Promise<{q?:string;msg?:string;p?:string;corsia?:string;inizio?:string;fine?:string;edit?:string;stato?:string;f?:string;v?:string;ordine?:string;dir?:string;filtro_modulo?:string;dal?:string;al?:string;persona?:string;nuovo?:string;pm?:string;stagione?:string}>}){
+export default async function ModulePage({params,searchParams}:{params:Promise<{modulo:string}>;searchParams:Promise<{q?:string;msg?:string;p?:string;corsia?:string;inizio?:string;fine?:string;edit?:string;stato?:string;f?:string;v?:string;ordine?:string;dir?:string;filtro_modulo?:string;dal?:string;al?:string;persona?:string;nuovo?:string;pm?:string;stagione?:string;edizione?:string}>}){
  const {modulo}=await params;
  if(!isModuleKey(modulo))notFound();
  if(modulo==='pagamenti')redirect('/gestionale/incassi');
@@ -109,6 +109,8 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  const today=romeDay(new Date().toISOString()),dal=dateFilter(rawDal),al=dateFilter(rawAl);
  const personId=persona&&UUID_RE.test(persona)?persona:'';
  const personField=module.fields.some(f=>f.name==='persona_id');
+ const editionId=(await searchParams).edizione;
+ const scopedEdition=editionId&&UUID_RE.test(editionId)&&module.fields.some(f=>f.name==='edizione_id')?editionId:'';
  const dateColumn=modulo==='attrezzature'?'prossima_revisione':['certificati','tesseramenti','brevetti'].includes(modulo)?'scade_il':null;
  const ui=moduleUi[modulo];
  const feedback=msg==='corsia_occupata'&&modulo==='prenotazioni'?bookingConflictText(corsia,inizio,fine):status[msg];
@@ -139,6 +141,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  if(!editId&&dateColumn&&al)query=query.lte(dateColumn,al);
  if(!editId&&personId&&personField)query=query.eq('persona_id',personId);
  if(!editId&&seasonId)query=query.eq('stagione_id',seasonId);
+ if(!editId&&scopedEdition)query=query.eq('edizione_id',scopedEdition);
  let scopeError=false;
  if(!editId&&personId&&modulo==='tesseramenti'){const ids=await tutteLePagine((da,a)=>supabase.from('adesioni').select('id').eq('persona_id',personId).order('id').range(da,a));scopeError=Boolean(ids.error);const keys=(ids.data??[]).map(x=>x.id);query=keys.length?query.in('adesione_id',keys):query.eq('id','00000000-0000-0000-0000-000000000000');}
  const selectableFilters=module.fields.filter(field=>field.type==='select'&&field.options?.length&&(!medical||field.name!=='esito_verifica'));
@@ -221,7 +224,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
   const existing=references.edizioni_corsi??[];references.edizioni_corsi=[...available,...existing.filter(r=>!available.some(e=>e.id===r.id)&&!['programmato','attivo'].includes(String(r.stato)))];
  }
  const rows=(data??[]) as Row[];
- const href=(page:number)=>listHref({q,p:String(page),stato,dal,al,persona:personId,stagione:seasonId,vista:modulo==='iscrizioni'?'elenco':undefined,filtro_modulo:selectedFilter?selectedFilter.name+':'+filterValue:undefined,ordine,dir});
+ const href=(page:number)=>listHref({q,p:String(page),stato,dal,al,persona:personId,stagione:seasonId,edizione:scopedEdition,vista:modulo==='iscrizioni'?'elenco':undefined,filtro_modulo:selectedFilter?selectedFilter.name+':'+filterValue:undefined,ordine,dir});
  const numeric=(c:string)=>module.fields.some(field=>field.name===c&&field.type==='number');
  const display=(row:Row,c:string)=>{
   if(medical&&c==='documento_id')return row[c]?<Link href={'/documenti/'+row[c]}>Apri certificato</Link>:<Link href={'/area-personale/certificato?persona='+row.persona_id}>Carica certificato</Link>;
@@ -246,7 +249,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  {missingQuery&&<section className="panel"><h3>Allievi senza certificato registrato</h3>{senzaFile?.error?<p role="alert">Elenco non disponibile.</p>:<><p>{senzaFile?.count??0} allievi senza certificato con questi filtri</p><ul>{senzaFile?.data?.map(p=><li key={p.id}>{p.cognome} {p.nome} · Documento mancante · <Link href={'/area-personale/certificato?persona='+p.id}>Carica certificato</Link></li>)}</ul><Pagination page={missingPage} size={perPage} count={senzaFile?.count??null} label="allievi" href={pm=>listHref({q,stato,persona:personId,p:String(page),pm:String(pm),ordine,dir})}/></>}</section>}
  <FilterBar>
  <SearchBar query={q} placeholder={ui.search||'Filtri e ordinamento'} resetHref={'/gestionale/moduli/'+modulo} hideSearch={!ui.search}>
- {modulo==='iscrizioni'&&<input type="hidden" name="vista" value="elenco"/>}{medical&&stato&&<input type="hidden" name="stato" value={stato}/>} {personId&&memberTabForModule(modulo)&&<input type="hidden" name="persona" value={personId}/>} {module.fields.some(f=>f.name==='stagione_id')&&<label>Stagione<select name="stagione" defaultValue={seasonId}><option value="">Tutte</option>{(references.stagioni??[]).map(s=><option key={s.id} value={s.id}>{String(s.nome??'Stagione')}</option>)}</select></label>}{dateColumn&&<><label>Scadenza dal<input type="date" name="dal" defaultValue={dal}/></label><label>Scadenza al<input type="date" name="al" defaultValue={al}/></label></>}
+ {scopedEdition&&<input type="hidden" name="edizione" value={scopedEdition}/>} {modulo==='iscrizioni'&&<input type="hidden" name="vista" value="elenco"/>}{medical&&stato&&<input type="hidden" name="stato" value={stato}/>} {personId&&memberTabForModule(modulo)&&<input type="hidden" name="persona" value={personId}/>} {module.fields.some(f=>f.name==='stagione_id')&&<label>Stagione<select name="stagione" defaultValue={seasonId}><option value="">Tutte</option>{(references.stagioni??[]).map(s=><option key={s.id} value={s.id}>{String(s.nome??'Stagione')}</option>)}</select></label>}{dateColumn&&<><label>Scadenza dal<input type="date" name="dal" defaultValue={dal}/></label><label>Scadenza al<input type="date" name="al" defaultValue={al}/></label></>}
  {selectableFilters.length>0&&<label>Filtra per<select name="filtro_modulo" defaultValue={selectedFilter?selectedFilter.name+':'+filterValue:''}><option value="">Tutti</option>{selectableFilters.map(field=><optgroup key={field.name} label={field.label}>{field.options?.map(value=><option key={value} value={field.name+':'+value}>{value.replaceAll('_',' ')}</option>)}</optgroup>)}</select></label>}
  <label>Ordina per<select name="ordine" defaultValue={selectedSort??''}><option value="">Ordine predefinito</option>{sortable.map(field=><option key={field.name} value={field.name}>{field.label}</option>)}</select></label>
  <label>Direzione<select name="dir" defaultValue={dir==='desc'?'desc':'asc'}><option value="asc">Crescente</option><option value="desc">Decrescente</option></select></label>
