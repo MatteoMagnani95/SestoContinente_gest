@@ -117,3 +117,13 @@ body:has(dialog[open]){overflow:hidden}
  .sc-mobile-cards tbody tr{overflow:visible}
  .sc-mobile-cards td[data-label] :focus-visible{outline-offset:1px}
 }
+
+/* Legacy focus selectors were more specific than the initial :where rule. */
+:root{--sc-control-border:#718590}
+a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,summary:focus-visible,[tabindex]:focus-visible{
+ outline:3px solid var(--sc-focus);outline-offset:3px
+}
+.sc-site-header :is(a,button,summary):focus-visible{outline-color:var(--sc-aqua)}
+.sc-main:focus-visible,.sc-data-table:focus-visible,.sc-secretariat-tabs a:focus-visible{outline-offset:-3px}
+.eyebrow{color:var(--sc-teal-ink)}
+input[type=radio]{width:22px;min-height:22px;padding:0}
