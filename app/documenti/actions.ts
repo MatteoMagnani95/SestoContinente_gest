@@ -83,6 +83,10 @@ export async function editDocumentMetadata(form:FormData){
  if(!role)redirect('/documenti?msg=permessi');
  const id=String(form.get('id')??''),nome=String(form.get('nome')??'').trim(),categoria=String(form.get('categoria')??'').trim();
  if(!uuid.test(id)||!nome||nome.length>150||!categoria||categoria.length>80)return {error:'Controlla nome e categoria del documento.'};
+ if(categoria.toLocaleLowerCase('it-IT')==='certificato medico'){
+  const {data:medical,error:medicalError}=await supabase.rpc('documento_sanitario',{p_id:id});
+  if(medicalError||medical!==true)return {field:'categoria',error:'Per registrare un certificato medico usa il caricamento dedicato nell’area personale.'};
+ }
  const {data,error}=await supabase.from('documenti').update({nome,categoria}).eq('id',id).select('id').maybeSingle();
  if(error||!data)return {error:'Modifiche non salvate. Verifica i dati e le autorizzazioni.'};
  revalidatePath('/documenti');revalidatePath('/area-soci');redirect('/documenti?msg=modificato');
