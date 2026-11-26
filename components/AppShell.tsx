@@ -42,11 +42,11 @@ export default function AppShell({access,children}:{access:NavigationAccess;chil
   return()=>{document.removeEventListener('click',onClick,true);window.removeEventListener('popstate',capture);};
  },[path,access.enabled]);
  useEffect(()=>{
-  const read=()=>{const value=content.current?.querySelector('h1')?.textContent?.trim()??'';setTitle(old=>old.path===path&&old.value===value?old:{path,value});};
+  const read=()=>{const raw=content.current?.querySelector('h1')?.textContent?.trim()??'';const value=/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(raw)?'':raw;setTitle(old=>old.path===path&&old.value===value?old:{path,value});};
   read();const observer=new MutationObserver(read);if(content.current)observer.observe(content.current,{childList:true,subtree:true,characterData:true});return()=>observer.disconnect();
  },[path]);
  useEffect(()=>{
-  const desktop=window.matchMedia('(min-width: 1001px)');const update=()=>{if(desktop.matches)closeMenu();};
+  const desktop=window.matchMedia('(min-width: 1001px)');const update=()=>{if(desktop.matches&&menu.current?.open)closeMenu(false);};
   desktop.addEventListener('change',update);return()=>desktop.removeEventListener('change',update);
  },[]);
  const back=backTarget(path,access),target=back?restoredTarget(back,contexts):null;

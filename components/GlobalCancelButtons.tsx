@@ -1,7 +1,7 @@
 'use client';
 import {useEffect,useRef} from 'react';
 import {usePathname} from 'next/navigation';
-import {cancelForm,controlValue,isDirty,reconcile,snapshot,trackedForm,type Snapshot,type DiscardRequest} from '@/lib/dirty-navigation';
+import {cancelForm,isDirty,reconcile,snapshot,trackedForm,type Snapshot,type DiscardRequest} from '@/lib/dirty-navigation';
 
 const WARNING='Hai effettuato modifiche che non sono ancora state salvate. Vuoi uscire senza salvarle?';
 type Pending={proceed:()=>void;trigger:HTMLElement|null};
@@ -10,7 +10,7 @@ type TraverseEvent=Event&{navigationType?:string;destination?:{key:string;sameDo
 /** Transitional adapter: legacy forms keep a single Annulla button; actual navigation is separate. */
 export default function GlobalCancelButtons(){
  const path=usePathname();
- const dialog=useRef<HTMLDialogElement>(null),pending=useRef<Pending|null>(null),discardButton=useRef<HTMLButtonElement>(null);
+ const dialog=useRef<HTMLDialogElement>(null),pending=useRef<Pending|null>(null);
  const state=useRef(new Map<HTMLFormElement,Snapshot>());
  const bypass=useRef(false);
  const syncRef=useRef<()=>void>(()=>{});
@@ -28,6 +28,7 @@ export default function GlobalCancelButtons(){
   let unloadInstalled=false;
   let submitTimer:number|undefined;
   let submitting:HTMLFormElement|null=null;
+  let allowedUnloadUntil=0;
   const dirtyForms=(scope?:HTMLFormElement)=>{
    const result:HTMLFormElement[]=[];
    for(const [form,baseline] of baselines){
@@ -37,7 +38,7 @@ export default function GlobalCancelButtons(){
    return result;
   };
   const beforeUnload=(event:BeforeUnloadEvent)=>{
-   if(bypass.current||!dirtyForms().some(form=>form!==submitting))return;
+   if(bypass.current||Date.now()<allowedUnloadUntil||!dirtyForms().some(form=>form!==submitting))return;
    event.preventDefault();event.returnValue='';
   };
   const syncUnload=()=>{
@@ -83,7 +84,7 @@ export default function GlobalCancelButtons(){
     if(url.pathname===window.location.pathname&&url.search===window.location.search&&url.hash&&href.startsWith('#'))return;
     if(!dirtyForms().length)return;
     event.preventDefault();event.stopImmediatePropagation();
-    ask(()=>{if(anchor.isConnected)anchor.click();},anchor);return;
+    ask(()=>{if(anchor.isConnected){allowedUnloadUntil=Date.now()+1000;anchor.click();}},anchor);return;
    }
    const summary=target.closest('summary'),details=summary?.parentElement;
    if(summary&&details instanceof HTMLDetailsElement&&details.open){
@@ -99,7 +100,7 @@ export default function GlobalCancelButtons(){
    if(!bypass.current&&dirtyForms().some(other=>other!==form)){
     event.preventDefault();event.stopImmediatePropagation();
     const submitter=event.submitter as HTMLButtonElement|HTMLInputElement|null;
-    ask(()=>{if(form.isConnected)form.requestSubmit(submitter??undefined);},submitter);return;
+    ask(()=>{if(form.isConnected){allowedUnloadUntil=Date.now()+1000;form.requestSubmit(submitter??undefined);}},submitter);return;
    }
    // A valid native submit may unload the document. Do not clear the baseline on submit:
    // validation/server failures still need a warning. Release this short exemption automatically.
@@ -116,7 +117,13 @@ export default function GlobalCancelButtons(){
    const form=(event as CustomEvent<HTMLFormElement>).detail;
    if(form instanceof HTMLFormElement){baselines.set(form,snapshot(form));syncUnload();}
   };
-  const onInput=()=>scan();
+  const onInput=(event:Event)=>{
+   const el=event.target;
+   if(el instanceof HTMLInputElement||el instanceof HTMLSelectElement||el instanceof HTMLTextAreaElement){
+    const form=el.form;if(form&&trackedForm(form)&&!baselines.has(form))baselines.set(form,snapshot(form,true));
+   }
+   syncUnload();
+  };
   const onReset=()=>queueMicrotask(scan);
   // The Navigation API can cancel some same-document traversals. Older browsers/uncancellable
   // popstate cannot be reliably stopped without corrupting Next.js history. No history rewriting.
@@ -154,7 +161,7 @@ export default function GlobalCancelButtons(){
   <p id="sc-discard-description">{WARNING}</p>
   <div className="sc-form-actions">
    <button type="button" className="sc-button sc-button-secondary" autoFocus onClick={()=>resolve(false)}>Continua a modificare</button>
-   <button type="button" ref={discardButton} className="sc-button sc-button-danger" onClick={()=>resolve(true)}>Esci senza salvare</button>
+   <button type="button" className="sc-button sc-button-danger" onClick={()=>resolve(true)}>Esci senza salvare</button>
   </div>
  </dialog>;
 }

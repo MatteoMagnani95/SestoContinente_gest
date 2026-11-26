@@ -9,7 +9,7 @@ export function AreaLinks({access,onNavigate}:{access:NavigationAccess;onNavigat
  if(!access.signedIn)return <><Link href="/accedi" onClick={onNavigate}>Accedi</Link><Link href="/registrati" onClick={onNavigate}>Richiedi adesione</Link></>;
  if(!access.enabled)return <Link href="/accedi" onClick={onNavigate}>Accedi nuovamente</Link>;
  return <>
- <Link href={homeFor(access)} onClick={onNavigate}>La mia area iniziale</Link>
+ {homeFor(access)==='/smista'&&<Link href={homeFor(access)} onClick={onNavigate}>Continua la domanda</Link>}
  {access.staff&&<Link href="/gestionale" onClick={onNavigate}>Gestionale</Link>}
  {access.personal&&<Link href="/area-personale" onClick={onNavigate}>Area personale</Link>}
  {access.member&&<Link href="/area-soci" onClick={onNavigate}>Area soci</Link>}
