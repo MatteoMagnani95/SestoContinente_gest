@@ -24,19 +24,20 @@ export default function EditForm({action,children,className='stack',identifyRequ
    if(response){
     const field=response.field?form.elements.namedItem(response.field):null;
     setAnchor(field instanceof HTMLElement?field.closest<HTMLElement>('.sc-field')??field.closest('label'):null);
-    setFailure(response);if(field instanceof HTMLElement)field.focus();
+    setFailure(response);
    }else markFormSaved(form);
   }catch{setAnchor(null);setFailure({error:'Salvataggio non riuscito. Puoi riprovare conservando i dati inseriti.'});}
   finally{busy.current=false;setPending(false);}
  }
  useEffect(()=>{
   const field=failure?.field?formRef.current?.elements.namedItem(failure.field):null;
-  if(!(field instanceof HTMLElement))return;
+  if(!failure||pending)return;
+  if(!(field instanceof HTMLElement)){document.getElementById(errorId)?.focus();return;}
   const previous=field.getAttribute('aria-describedby');field.setAttribute('aria-invalid','true');field.setAttribute('aria-describedby',[previous,errorId].filter(Boolean).join(' '));
   if(!pending)field.focus();
   return()=>{field.removeAttribute('aria-invalid');if(previous)field.setAttribute('aria-describedby',previous);else field.removeAttribute('aria-describedby');};
  },[failure,pending,errorId]);
- const error=failure&&<span id={errorId} role="alert" className="notice error">{failure.error} {failure.href&&<Link href={failure.href}>Apri quello esistente</Link>}</span>;
+ const error=failure&&<span id={errorId} tabIndex={-1} role="alert" className="notice error">{failure.error} {failure.href&&<Link href={failure.href}>Apri quello esistente</Link>}</span>;
  return <form ref={formRef} data-dirty-form className={className+' edit-fields-form'} onSubmit={submit} onReset={()=>{setFailure(undefined);setAnchor(null);}} aria-busy={pending}>
  <fieldset className="edit-fields" disabled={pending}>{children}</fieldset>{anchor&&error?createPortal(error,anchor):error}
  {pending&&<p role="status">Salvataggio in corso…</p>}</form>;
