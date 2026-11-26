@@ -90,6 +90,69 @@ async function main() {
     assert.equal(await value(root,'select letta_il::text from notifiche where id=$1',[notification]),readAt);
     console.log('OK notifiche: isolamento tra account, lettura e idempotenza');
 
+    // Ultimo posto di un evento: due account realmente distinti e due transazioni.
+    // La stagione viene adattata al giorno di esecuzione esclusivamente nel DB effimero.
+    const season = await value(root,"update stagioni set dal=current_date-30,al=current_date+100 where attiva returning id");
+    const member2Id=randomUUID();
+    await root.query('insert into auth.users(id,email,email_confirmed_at) values($1,$2,now())',[member2Id,member2Id+'@example.invalid']);
+    await root.query("insert into ruoli_utente(utente_id,ruolo) values($1,'socio')",[member2Id]);
+    const member2=await session(member2Id);
+    const participants=[];
+    for(const account of [memberId,member2Id]){
+      const p=await value(root,"insert into persone(nome,cognome) values('Socio','Evento') returning id");
+      participants.push(p);
+      await root.query("insert into collegamenti_persone values($1,$2,'titolare')",[account,p]);
+      await root.query("insert into adesioni(persona_id,stagione_id,stato) values($1,$2,'attiva')",[p,season]);
+      await root.query("insert into quote_associative(persona_id,stagione_id,importo_dovuto) values($1,$2,10)",[p,season]);
+      const quota=await value(root,'select id from quote_associative where persona_id=$1 and stagione_id=$2',[p,season]);
+      await staff.query(pay,[p,quota,10,randomUUID()]);
+    }
+    const event=await value(staff,"select area_soci_salva_evento(null,'Evento di prova','Luogo','Descrizione',current_date+2,current_date+2,0,1,'aperto')");
+    const join='select area_soci_iscrivi($1,$2)';
+    await assert.rejects(member.query(join,[event,participants[1]]),{code:'42501'});
+    const booked=await Promise.allSettled([member,member2].map((db,i)=>value(db,join,[event,participants[i]])));
+    assert.equal(booked.filter(r=>r.status==='fulfilled').length,1);
+    assert.equal(booked.find(r=>r.status==='rejected').reason.code,'P3416');
+    const winner=booked.findIndex(r=>r.status==='fulfilled'), loser=1-winner;
+    const accounts=[member,member2], reservation=booked[winner].value;
+    assert.equal(await value(accounts[winner],join,[event,participants[winner]]),reservation);
+    assert.equal(await value(staff,'select area_soci_posti($1)',[event]),0);
+    assert.equal(await value(accounts[loser],'select count(*)::int from eventi_soci_iscrizioni where id=$1',[reservation]),0);
+    await assert.rejects(accounts[loser].query("select area_soci_decidi($1,$2,'ritirata')",[event,reservation]),{code:'42501'});
+    await staff.query("select area_soci_decidi($1,$2,'approvata')",[event,reservation]);
+    await accounts[winner].query("select area_soci_decidi($1,$2,'ritirata')",[event,reservation]);
+    assert.equal(await value(staff,'select area_soci_posti($1)',[event]),1);
+    const next=await value(accounts[loser],join,[event,participants[loser]]);
+    await staff.query("select area_soci_salva_evento($1,'Evento di prova','Luogo','Descrizione',current_date+2,current_date+2,0,1,'annullato')",[event]);
+    assert.equal(await value(staff,'select stato from eventi_soci_iscrizioni where id=$1',[next]),'annullata');
+    await assert.rejects(accounts[winner].query(join,[event,participants[winner]]),{code:'P3415'});
+    console.log('OK eventi: ultimo posto concorrente, retry, isolamento, ritiro e annullamento');
+
+    // Due corsi sulla stessa corsia: fallimento atomico e intervalli adiacenti.
+    const catalog=await value(staff,"insert into corsi(nome,tipo) values($1,'APNEA') returning id",['Collaudo '+randomUUID()]);
+    const editions=[];
+    for(const name of ['Primo','Secondo'])editions.push(await value(staff,"insert into edizioni_corsi(corso_id,stagione_id,nome,inizio,fine) values($1,$2,$3,current_date,current_date+10) returning id",[catalog,season,name]));
+    const pool=await value(staff,"insert into piscine(nome) values('Piscina di prova') returning id");
+    const lane=await value(staff,'insert into corsie(piscina_id,numero) values($1,1) returning id',[pool]);
+    const createLesson="select crea_lezione_guidata($1,$2,(current_date+1+time '10:00') at time zone 'Europe/Rome',(current_date+1+time '11:00') at time zone 'Europe/Rome',$3,array[$4]::uuid[],null,null)";
+    const collision=await Promise.allSettled([staff,otherStaff].map((db,i)=>value(db,createLesson,[editions[i],'Lezione '+i,pool,lane])));
+    assert.equal(collision.filter(r=>r.status==='fulfilled').length,1);
+    assert.equal(collision.find(r=>r.status==='rejected').reason.code,'23P01');
+    const successful=collision.findIndex(r=>r.status==='fulfilled'), lesson=collision[successful].value;
+    assert.equal(await value(staff,'select count(*)::int from lezioni where edizione_id=any($1::uuid[])',[editions]),1);
+    const adjacent=await value(staff,createLesson.replace("time '10:00'","time '11:00'").replace("time '11:00') at time zone 'Europe/Rome',$3","time '12:00') at time zone 'Europe/Rome',$3"),[editions[1-successful],'Adiacente',pool,lane]);
+    const modify="select modifica_lezione_e_corsie($1,'Modificata',(current_date+1+time '10:30') at time zone 'Europe/Rome',(current_date+1+time '11:30') at time zone 'Europe/Rome',$2,array[$3]::uuid[],null,null,null)";
+    await assert.rejects(staff.query(modify,[lesson,pool,lane]),{code:'23P01'});
+    assert.equal(await value(staff,"select titolo from lezioni where id=$1",[lesson]),'Lezione '+successful);
+    assert.equal(await value(staff,"select count(*)::int from prenotazioni_corsie where lezione_id=$1 and stato='confermata'",[lesson]),1);
+    await staff.query("update prenotazioni_corsie set fine=fine-interval '15 minutes' where lezione_id=$1",[lesson]);
+    await assert.rejects(staff.query(modify,[lesson,pool,lane]),{code:'P3505'});
+    assert.equal(await value(staff,"select extract(epoch from (fine-inizio))::int from prenotazioni_corsie where lezione_id=$1",[lesson]),2700);
+    await staff.query('select annulla_lezione_guidata($1)',[adjacent]);
+    assert.equal(await value(staff,"select count(*)::int from prenotazioni_corsie where lezione_id=$1 and stato='confermata'",[adjacent]),0);
+    console.log('OK calendario: conflitto concorrente, rollback atomico, adiacenza, tutela prenotazioni parziali e annullamento');
+
+
   } finally {
     await Promise.all(clients.map(db=>db.end()));
   }
