@@ -23,6 +23,7 @@ export function areaLabel(path:string,access:NavigationAccess){
  if(isWithin(path,'/area-personale'))return 'Area personale';
  if(isWithin(path,'/richiesta'))return 'Adesione';
  if(isWithin(path,'/documenti'))return 'Documenti';
+ if(isWithin(path,'/notifiche'))return 'Notifiche account';
  return 'Area pubblica';
 }
 export function homeFor(access:NavigationAccess){return access.staff?'/gestionale':access.board?'/organi-sociali':access.instructor?'/istruttore':access.personal?'/area-personale':access.enabled?'/smista':'/';}
