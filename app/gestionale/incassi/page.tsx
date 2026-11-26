@@ -37,7 +37,7 @@ export default async function Incassi({searchParams}:{searchParams:Promise<{tab?
  const {data:seasons,error:seasonError}=await supabase.from('stagioni').select('id,nome,attiva').order('dal',{ascending:false});
  const selectedSeason=(seasons??[]).find(s=>s.id===p.stagione)?.id??(seasons??[]).find(s=>s.attiva)?.id??(seasons??[])[0]?.id??'';
  const tab=p.tab==='corso'?'corso':'quota';
- const status=['non_pagata','parziale','pagata'].includes(p.stato??'')?p.stato!:'tutte';
+ const status=['non_pagata','parziale','pagata','residuo'].includes(p.stato??'')?p.stato!:'tutte';
  const personFilter=p.persona&&uuid.test(p.persona)?p.persona:'';
  const page=Math.max(1,Math.min(10000,Number.parseInt(p.p??'1',10)||1));
  const perPage=25;
@@ -46,7 +46,7 @@ export default async function Incassi({searchParams}:{searchParams:Promise<{tab?
  let errorMessage='';
  if(selectedSeason){
   let query=supabase.from(tab==='quota'?'gest_elenco_saldi_quote':'gest_elenco_saldi_corsi').select('*',{count:'exact'}).eq('stagione_id',selectedSeason);
-  if(status!=='tutte')query=query.eq('stato',status);
+  if(status==='residuo')query=query.gt('residuo',0);else if(status!=='tutte')query=query.eq('stato',status);
   if(personFilter)query=query.eq('persona_id',personFilter);
   const {data,error,count:total}=await query.order('sort_cognome').order('sort_nome').order('id',{ascending:true}).range((page-1)*perPage,page*perPage-1);
   if(error)errorMessage='Impossibile leggere i saldi. Verifica le migrazioni 0002 e 0006 e i permessi sul database.';
@@ -75,7 +75,7 @@ export default async function Incassi({searchParams}:{searchParams:Promise<{tab?
   <form className="panel payment-filters" action="/gestionale/incassi" method="get">
    <label>Tipologia<select name="tab" defaultValue={tab}><option value="quota">Quote associative</option><option value="corso">Quote corsi</option></select></label>
    <label>Stagione<select name="stagione" defaultValue={selectedSeason}>{(seasons??[]).map(s=><option key={s.id} value={s.id}>{s.nome}{s.attiva?' (attiva)':''}</option>)}</select></label>
-   <label>Stato<select name="stato" defaultValue={status}><option value="tutte">Tutti</option><option value="non_pagata">Non pagate</option><option value="parziale">Parziali</option><option value="pagata">Pagate</option></select></label>
+   <label>Stato<select name="stato" defaultValue={status}><option value="tutte">Tutti</option><option value="residuo">Con residuo da incassare</option><option value="non_pagata">Non pagate</option><option value="parziale">Parziali</option><option value="pagata">Pagate</option></select></label>
    {personFilter&&<input type="hidden" name="persona" value={personFilter}/>}
    <button className="button" type="submit">Applica</button>
    <Link className="button ghost" href="/gestionale/moduli/quote">Gestisci quote</Link>

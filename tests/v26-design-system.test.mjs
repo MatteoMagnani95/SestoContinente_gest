@@ -44,5 +44,5 @@ test('design system caricato dopo CSS storico e dashboard usa primitive senza pe
   assert.match(page,/await requireStaff\(\)/);
   assert.match(page,/<MetricCard/);
   assert.match(page,/lessonsError\?<ErrorState/);
-  assert.match(page,/counts\[6\]\.data&&/);
+  assert.match(page,/admin\.data&&/);
 });

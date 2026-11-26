@@ -3,6 +3,8 @@ import {DataTable,FilterBar,SearchBar,Pagination} from '@/components/ui/DataTabl
 import SearchableSelect from '@/components/ui/SearchableSelect';
 import {StatusBadge,PageHeader} from '@/components/ui/Primitives';
 import {moduleUi,cleanSearch,pageNumber,listHref,entityLabel} from '@/lib/module-ui';
+import {dateFilter,searchTerms} from '@/lib/secretariat';
+import {romeDay,shiftDay} from '@/lib/calendar-tools';
 import {statiCertificato,statoSingolo} from '@/lib/certificati';
 import Cronologia from '@/components/Cronologia';
 import EditForm from '@/components/EditForm';
@@ -90,7 +92,7 @@ function bookingConflictText(corsia?:string,inizio?:string,fine?:string):string{
  const fascia=dal&&al?` dalle ${dal} alle ${al}`:' nell’intervallo richiesto';
  return `Corsia${numero} già prenotata${fascia}. Scegli un’altra corsia o modifica l’orario.`;
 }
-export default async function ModulePage({params,searchParams}:{params:Promise<{modulo:string}>;searchParams:Promise<{q?:string;msg?:string;p?:string;corsia?:string;inizio?:string;fine?:string;edit?:string;stato?:string;f?:string;v?:string;ordine?:string;dir?:string;filtro_modulo?:string}>}){
+export default async function ModulePage({params,searchParams}:{params:Promise<{modulo:string}>;searchParams:Promise<{q?:string;msg?:string;p?:string;corsia?:string;inizio?:string;fine?:string;edit?:string;stato?:string;f?:string;v?:string;ordine?:string;dir?:string;filtro_modulo?:string;dal?:string;al?:string;persona?:string;nuovo?:string;pm?:string}>}){
  const {modulo}=await params;
  if(!isModuleKey(modulo))notFound();
  if(modulo==='pagamenti')redirect('/gestionale/incassi');
@@ -101,7 +103,11 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
   const {data}=await supabase.from('ruoli_utente').select('ruolo').eq('utente_id',user.id).eq('ruolo','amministratore').maybeSingle();
   if(!data)redirect('/gestionale?msg=permessi');
  }
- const {q='',msg='',p='1',corsia,inizio,fine,edit,stato,f,v,ordine,dir,filtro_modulo}=await searchParams;
+ const {q='',msg='',p='1',corsia,inizio,fine,edit,stato,f,v,ordine,dir,filtro_modulo,dal:rawDal,al:rawAl,persona,nuovo}=await searchParams;
+ const today=romeDay(new Date().toISOString()),dal=dateFilter(rawDal),al=dateFilter(rawAl);
+ const personId=persona&&UUID_RE.test(persona)?persona:'';
+ const personField=module.fields.some(f=>f.name==='persona_id');
+ const dateColumn=modulo==='attrezzature'?'prossima_revisione':['certificati','tesseramenti','brevetti'].includes(modulo)?'scade_il':null;
  const ui=moduleUi[modulo];
  const feedback=msg==='corsia_occupata'&&modulo==='prenotazioni'?bookingConflictText(corsia,inizio,fine):status[msg];
  const editId=edit&&UUID_RE.test(edit)?edit:null;
@@ -112,13 +118,19 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  const personSorted=personViews.has(module.table);
  const medical=modulo==='certificati';
  const missingQuery=medical&&!editId&&(!stato||stato==='mancante')?supabase.from('allievi_senza_certificato').select('id,nome,cognome',{count:'exact'}):null;
+ if(missingQuery&&personId)missingQuery.eq('id',personId);
  const medicalSearch=cleanSearch(q);
  const missingFiltered=missingQuery&&medicalSearch?missingQuery.or(`cognome.ilike.%${medicalSearch}%,nome.ilike.%${medicalSearch}%`):missingQuery;
- const senzaFile=missingFiltered?await missingFiltered.order('cognome').order('nome').order('id').range((page-1)*perPage,page*perPage-1):null;
+ const missingPage=pageNumber((await searchParams).pm);
+ const senzaFile=missingFiltered?await missingFiltered.order('cognome').order('nome').order('id').range((missingPage-1)*perPage,missingPage*perPage-1):null;
  const missingTotal=medical?await supabase.from('allievi_senza_certificato').select('id',{head:true,count:'exact'}):null;
- const filtri=medical?await Promise.all(Object.entries(statiCertificato).map(async ([k,label])=>{const {count,error}=await supabase.from('stato_certificati').select('id',{head:true,count:'exact'}).eq('stato_certificato',k);return {k,label,n:error||(k==='mancante'&&missingTotal?.error)?'—':(count??0)+(k==='mancante'?(missingTotal?.count??0):0)};})):[];
+ const filtri=medical?await Promise.all(Object.entries(statiCertificato).map(async ([k,label])=>{let filterQuery=supabase.from('stato_certificati').select('id',{head:true,count:'exact'}).eq('stato_certificato',k==='in_scadenza'?'valido':k);if(k==='in_scadenza')filterQuery=filterQuery.gte('scade_il',today).lte('scade_il',shiftDay(today,30));const {count,error}=await filterQuery;return {k,label,n:error||(k==='mancante'&&missingTotal?.error)?'—':(count??0)+(k==='mancante'?(missingTotal?.count??0):0)};})):[];
  let query=supabase.from(medical?'stato_certificati':personSorted?`gest_elenco_${module.table}`:module.table).select('*',{count:'exact'});
- if(!editId&&medical&&stato&&Object.hasOwn(statiCertificato,stato))query=query.eq('stato_certificato',stato);
+ if(!editId&&medical&&stato&&Object.hasOwn(statiCertificato,stato))query=query.eq('stato_certificato',stato==='in_scadenza'?'valido':stato);
+ if(!editId&&medical&&stato==='in_scadenza')query=query.gte('scade_il',dal||today).lte('scade_il',al||shiftDay(today,30));
+ if(!editId&&dateColumn&&dal)query=query.gte(dateColumn,dal);
+ if(!editId&&dateColumn&&al)query=query.lte(dateColumn,al);
+ if(!editId&&personId&&personField)query=query.eq('persona_id',personId);
  const selectableFilters=module.fields.filter(field=>field.type==='select'&&field.options?.length&&(!medical||field.name!=='esito_verifica'));
  const [filterName,filterValue]=filtro_modulo?.split(':',2)??[f??'',v??''];
  const selectedFilter=selectableFilters.find(field=>field.name===filterName&&field.options?.includes(filterValue));
@@ -199,29 +211,29 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
   const existing=references.edizioni_corsi??[];references.edizioni_corsi=[...available,...existing.filter(r=>!available.some(e=>e.id===r.id)&&!['programmato','attivo'].includes(String(r.stato)))];
  }
  const rows=(data??[]) as Row[];
- const href=(page:number)=>listHref({q,p:String(page),stato,filtro_modulo:selectedFilter?selectedFilter.name+':'+filterValue:undefined,ordine,dir});
+ const href=(page:number)=>listHref({q,p:String(page),stato,dal,al,persona:personId,filtro_modulo:selectedFilter?selectedFilter.name+':'+filterValue:undefined,ordine,dir});
  const numeric=(c:string)=>module.fields.some(field=>field.name===c&&field.type==='number');
  const display=(row:Row,c:string)=>{
   if(medical&&c==='documento_id')return row[c]?<Link href={'/documenti/'+row[c]}>Apri certificato</Link>:<Link href={'/area-personale/certificato?persona='+row.persona_id}>Carica certificato</Link>;
-  if(medical&&c==='stato_certificato')return <StatusBadge tone={tone(row[c])}>{statoSingolo(String(row[c]))}</StatusBadge>;
+  if(medical&&c==='stato_certificato'){const value=row[c]==='valido'&&String(row.scade_il)>=today&&String(row.scade_il)<=shiftDay(today,30)?'in_scadenza':String(row[c]);return <StatusBadge tone={tone(value)}>{statoSingolo(value)}</StatusBadge>;}
   const field=module.fields.find(field=>field.name===c);
   const reference=references[field?.ref?.table??'']?.find(x=>x.id===row[c]);
-  if(reference)return labelOf(reference,field?.ref?.labels??['id']);
-  if(c==='persona_id'&&row.sort_cognome)return String(row.sort_cognome)+' '+String(row.sort_nome??'');
+  if(reference)return c==='persona_id'?<Link href={'/gestionale/soci/'+reference.id}>{labelOf(reference,field?.ref?.labels??['id'])}</Link>:labelOf(reference,field?.ref?.labels??['id']);
+  if(c==='persona_id'&&row.sort_cognome)return <Link href={'/gestionale/soci/'+row[c]}>{String(row.sort_cognome)+' '+String(row.sort_nome??'')}</Link>;
   if(c.endsWith('_id'))return row[c]?'Informazione collegata non disponibile':'—';
   if(c==='stato')return <StatusBadge tone={tone(row[c])}>{String(row[c]??'Non disponibile').replaceAll('_',' ')}</StatusBadge>;
   return formatValue(row[c],c);
  };
  return <>
- <PageHeader eyebrow="Gestionale" title={module.label} description={module.description} actions={!editId&&<Drawer primary title={ui.create} trigger={ui.create}><Editor module={module} moduleKey={modulo} references={references}/></Drawer>}/>
+ <PageHeader eyebrow="Gestionale" title={module.label} description={module.description} actions={!editId&&<Drawer primary title={ui.create} trigger={ui.create} initialOpen={nuovo==='1'&&!msg}><Editor module={module} moduleKey={modulo} references={references}/></Drawer>}/>
  {feedback&&<p className={'notice '+(['salvato','eliminato'].includes(msg)?'success':'warning')} role="status">{feedback}</p>}
  {enrollmentLoadError&&<p className="notice error">Impossibile caricare tutte le iscrizioni dei corsi. Riprova o verifica i permessi.</p>}
  {referenceError&&<p className="notice warning" role="alert">Alcuni elenchi di scelta non sono completi. Ricarica la pagina prima di modificare i collegamenti.</p>}
  {medical&&<nav className="buttons" aria-label="Filtri certificati"><Link className="button ghost" href={listHref({q,ordine,dir})}>Tutti</Link>{filtri.map(item=><Link key={item.k} aria-current={stato===item.k?'page':undefined} className={stato===item.k?'button':'button ghost'} href={listHref({q,stato:item.k,ordine,dir})}>{item.label} ({item.n})</Link>)}</nav>}
- {medical&&!editId&&(!stato||stato==='mancante')&&<section className="panel"><h3>Allievi senza certificato registrato</h3>{senzaFile?.error?<p role="alert">Elenco non disponibile.</p>:<><p>{senzaFile?.count??0} allievi senza certificato con questi filtri</p><ul>{senzaFile?.data?.map(p=><li key={p.id}>{p.cognome} {p.nome} · Documento mancante · <Link href={'/area-personale/certificato?persona='+p.id}>Carica certificato</Link></li>)}</ul></>}</section>}
+ {medical&&!editId&&(!stato||stato==='mancante')&&<section className="panel"><h3>Allievi senza certificato registrato</h3>{senzaFile?.error?<p role="alert">Elenco non disponibile.</p>:<><p>{senzaFile?.count??0} allievi senza certificato con questi filtri</p><ul>{senzaFile?.data?.map(p=><li key={p.id}>{p.cognome} {p.nome} · Documento mancante · <Link href={'/area-personale/certificato?persona='+p.id}>Carica certificato</Link></li>)}</ul><Pagination page={missingPage} size={perPage} count={senzaFile?.count??null} label="allievi" href={pm=>listHref({q,stato,persona:personId,p:String(page),pm:String(pm)})}/></>}</section>}
  <FilterBar>
  <SearchBar query={q} placeholder={ui.search||'Filtri e ordinamento'} resetHref={'/gestionale/moduli/'+modulo} hideSearch={!ui.search}>
- {medical&&stato&&<input type="hidden" name="stato" value={stato}/>}
+ {medical&&stato&&<input type="hidden" name="stato" value={stato}/>} {personId&&personField&&<input type="hidden" name="persona" value={personId}/>}{dateColumn&&<><label>Scadenza dal<input type="date" name="dal" defaultValue={dal}/></label><label>Scadenza al<input type="date" name="al" defaultValue={al}/></label></>}
  {selectableFilters.length>0&&<label>Filtra per<select name="filtro_modulo" defaultValue={selectedFilter?selectedFilter.name+':'+filterValue:''}><option value="">Tutti</option>{selectableFilters.map(field=><optgroup key={field.name} label={field.label}>{field.options?.map(value=><option key={value} value={field.name+':'+value}>{value.replaceAll('_',' ')}</option>)}</optgroup>)}</select></label>}
  <label>Ordina per<select name="ordine" defaultValue={selectedSort??''}><option value="">Ordine predefinito</option>{sortable.map(field=><option key={field.name} value={field.name}>{field.label}</option>)}</select></label>
  <label>Direzione<select name="dir" defaultValue={dir==='desc'?'desc':'asc'}><option value="asc">Crescente</option><option value="desc">Decrescente</option></select></label>
@@ -234,10 +246,10 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  {!module.appendOnly&&<th role="columnheader" scope="col">Azioni</th>}
  </tr></thead><tbody role="rowgroup">{rows.map(row=><tr key={row.id} role="row">
  {module.columns.map(c=><td key={c} role="cell" data-label={columnLabel(c,module)} className={numeric(c)?'sc-number':undefined}>{display(row,c)}</td>)}
- {!module.appendOnly&&<td role="cell" data-label="Azioni"><div className="sc-row-actions">{modulo==='calendario'?<Link href={'/gestionale/calendario-visivo/'+row.id}>Modifica lezione e corsie</Link>:<Drawer key={row.id+'-'+msg} title={'Modifica '+entityLabel(modulo)+' · '+rowLabel(row,references,module)} trigger="Modifica" initialOpen={msg!=='salvato'&&editId===row.id}><Editor module={module} moduleKey={modulo} record={row} references={references} admin={isAdministrator===true}/></Drawer>}</div></td>}
+ {!module.appendOnly&&<td role="cell" data-label="Azioni"><div className="sc-row-actions">{modulo==='anagrafiche'&&<Link href={'/gestionale/soci/'+row.id}>Apri scheda</Link>}{modulo==='calendario'?<Link href={'/gestionale/calendario-visivo/'+row.id}>Modifica lezione e corsie</Link>:<Drawer key={row.id+'-'+msg} title={'Modifica '+entityLabel(modulo)+' · '+rowLabel(row,references,module)} trigger="Modifica" initialOpen={msg!=='salvato'&&editId===row.id}><Editor module={module} moduleKey={modulo} record={row} references={references} admin={isAdministrator===true}/></Drawer>}</div></td>}
  </tr>)}
  {!rows.length&&<tr><td colSpan={module.columns.length+(module.appendOnly?0:1)} className="empty-cell">Nessun risultato con questi filtri.</td></tr>}
  </tbody></DataTable>}
- {!editId&&<Pagination page={page} size={perPage} count={error?null:count} href={href} additionalCount={medical&&(!stato||stato==='mancante')?senzaFile?.count??0:0}/>}
+ {!editId&&<Pagination page={page} size={perPage} count={error?null:count} href={href} label={medical?'certificati registrati':'risultati'}/>}
  </>;
 }
