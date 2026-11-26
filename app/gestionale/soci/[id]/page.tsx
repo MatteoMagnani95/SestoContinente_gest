@@ -2,7 +2,7 @@ import {Drawer} from '@/components/ui/Drawer';
 import {PageHeader,StatusBadge,Alert,ButtonLink,MetricCard} from '@/components/ui/Primitives';
 import {Pagination} from '@/components/ui/DataTable';
 import {memberTab,memberTabs,statusTone,exactCount} from '@/lib/secretariat';
-import {pageNumber,listHref} from '@/lib/module-ui';
+import {pageNumber,listHref,singleSearchParams} from '@/lib/module-ui';
 import {tutteLePagine} from '@/lib/pagine';
 import {romeDay,shiftDay} from '@/lib/calendar-tools';
 import RemoveRecord from '@/components/RemoveRecord';
@@ -59,7 +59,7 @@ function None({children='Nessun elemento registrato.'}:{children?:React.ReactNod
 
 export default async function MemberDetail({params,searchParams}:{params:Promise<{id:string}>;searchParams:Promise<{msg?:string;tab?:string;p?:string;p2?:string}>}){
  const {id}=await params;
- const {msg,tab:rawTab,p,p2}=await searchParams;
+ const {msg,tab:rawTab,p,p2}=singleSearchParams(await searchParams);
  const tab=memberTab(rawTab??(msg==='salvato'?'anagrafica':msg==='adesione_creata'?'adesioni':undefined));
  const page=pageNumber(p),secondPage=pageNumber(p2),size=30;
  const range=(key:string,secondary=false)=>{const current=tab===key?(secondary?secondPage:page):1;return [(current-1)*size,current*size-1] as const;};
@@ -149,7 +149,7 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
  const sectionError=(error:unknown)=>error?<Alert tone="danger" announce>Informazioni non disponibili. Riprova prima di eseguire operazioni.</Alert>:null;
  return <>
  <PageHeader eyebrow="Segreteria · Scheda unificata" title={person.cognome+' '+person.nome} description={(currentSeason?.nome??'Stagione attiva non disponibile')+' · '+(person.email??person.telefono??'Recapiti non acquisiti')} actions={<><StatusBadge tone={statusTone(active?.stato??'')}>{memberError?'Stato non disponibile':active?statusLabel(active.stato):'Nessuna adesione nella stagione attiva'}</StatusBadge><ButtonLink href={`/comunicazioni/soci/${id}`} variant="secondary">Scrivi al socio</ButtonLink></>}/>
- {msg&&statusMessage[msg]&&<p role="status" className={`notice ${['salvato','adesione_creata','elemento_salvato'].includes(msg)?'success':'warning'}`}>{statusMessage[msg]}</p>}
+ {msg&&Object.hasOwn(statusMessage,msg)&&<p role="status" className={`notice ${['salvato','adesione_creata','elemento_salvato'].includes(msg)?'success':'warning'}`}>{statusMessage[msg]}</p>}
  {partialErrors&&<Alert tone="warning">Una o più sezioni non sono disponibili. Non interpretare dati mancanti come assenza di registrazioni.</Alert>}
  <nav className="sc-secretariat-tabs" aria-label="Sezioni della scheda socio">{memberTabs.map(([key,label])=><Link key={key} href={listHref({tab:key})} aria-current={tab===key?'page':undefined}>{label}</Link>)}</nav>
  {tab==='panoramica'&&<section className="sc-secretariat-section"><div className="sc-metrics">

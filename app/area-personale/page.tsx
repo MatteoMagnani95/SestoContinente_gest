@@ -3,7 +3,7 @@ import {Pagination} from '@/components/ui/DataTable';
 import {readCourseChunks} from '@/lib/course-ui';
 import {tutteLePagine} from '@/lib/pagine';
 import {personalTabs,selectedTab} from '@/lib/personal-ui';
-import {pageNumber} from '@/lib/module-ui';
+import {pageNumber,singleSearchParams} from '@/lib/module-ui';
 import {statusTone} from '@/lib/secretariat';
 import ActionForm from '@/components/ui/ActionForm';
 import {redirect} from 'next/navigation';
@@ -13,7 +13,7 @@ import {requireUser} from '@/lib/security';
 import {markNotification} from './actions';
 import {formatValue} from '@/lib/format';
 export default async function PersonalArea({searchParams}:{searchParams:Promise<{tab?:string;p?:string;msg?:string}>}) {
- const params=await searchParams,tab=selectedTab(personalTabs,params.tab),page=pageNumber(params.p),size=20;
+ const params=singleSearchParams(await searchParams),tab=selectedTab(personalTabs,params.tab),page=pageNumber(params.p),size=20;
  const {supabase,user}=await requireUser();
  const {data:request,error:requestError}=await supabase.from('richieste').select('id,stato').eq('utente_id',user.id).maybeSingle();
  const {data:links,error:linksError}=await tutteLePagine((da,a)=>supabase.from('collegamenti_persone').select('persona_id,relazione').eq('utente_id',user.id).order('persona_id').range(da,a));

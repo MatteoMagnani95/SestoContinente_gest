@@ -7,7 +7,7 @@ import CourseLessonFields from '@/components/CourseLessonFields';
 import {courseTab,courseTabs,courseViewHref,readCourseChunks} from '@/lib/course-ui';
 import {statusTone} from '@/lib/secretariat';
 import {romeDay,shiftDay} from '@/lib/calendar-tools';
-import {pageNumber} from '@/lib/module-ui';
+import {pageNumber,singleSearchParams} from '@/lib/module-ui';
 import {Drawer,ConfirmDialog} from '@/components/ui/Drawer';
 import ActionForm from '@/components/ui/ActionForm';
 import {statoSingolo} from '@/lib/certificati';
@@ -49,7 +49,7 @@ function Section({id,title,children}:{id:string;title:string;children:React.Reac
 
 export default async function EditionDetail({params,searchParams}:{params:Promise<{id:string}>;searchParams:Promise<{msg?:string;lezione?:string;tab?:string;p?:string}>}){
  const {id}=await params;if(!UUID_RE.test(id))notFound();
- const {supabase}=await requireStaff();const p=await searchParams;
+ const {supabase}=await requireStaff();const p=singleSearchParams(await searchParams);
  const tab=courseTab(p.tab,p.msg,p.lezione),page=pageNumber(p.p),size=30;
  const today=romeDay(new Date().toISOString());
  const {data:ed,error:editionError}=await supabase.from('edizioni_corsi').select('id,corso_id,stagione_id,nome,inizio,fine,massimo_partecipanti,costo_corso,stato,note,programma_versione_id,direttore_id,duplicato_storico').eq('id',id).maybeSingle();
@@ -126,7 +126,7 @@ export default async function EditionDetail({params,searchParams}:{params:Promis
  <CourseLegacyAnchor/>
  <PageHeader eyebrow={'Scheda corso · '+(cat?courseName(cat.tipo,cat.livello):'Disciplina non disponibile')} title={ed.nome} description={(season?.nome??'Stagione non disponibile')+' · '+formatValue(ed.inizio)+' – '+formatValue(ed.fine)} actions={<><StatusBadge tone={ed.stato==='annullato'?'danger':statusTone(ed.stato)}>{ed.stato}</StatusBadge><ButtonLink href={`/comunicazioni/corsi/${id}`} variant="secondary">Scrivi ai corsisti</ButtonLink></>}/>
  <p><strong>Direttore:</strong> {ed.direttore_id?displayPerson(ed.direttore_id,people):'Da assegnare'}</p>
- {msg&&message[msg]&&<p role="status" className={`notice ${['eliminato','creato','salvato','iscritto','istruttore','lezione_creata','presenze_salvate','programma_salvato','moduli_salvati'].includes(msg)?'success':'warning'}`}>{message[msg]}</p>}
+ {msg&&Object.hasOwn(message,msg)&&<p role="status" className={`notice ${['eliminato','creato','salvato','iscritto','istruttore','lezione_creata','presenze_salvate','programma_salvato','moduli_salvati'].includes(msg)?'success':'warning'}`}>{message[msg]}</p>}
  {(catError||seasonError||enrollError||teacherError||lessonError||peopleError||qualError||poolError||laneError||requirementError||certResult.error||emergencyResult.error||moduleError||linkError||versionError||programResult.error||versionDetail.error||programDocuments.error||duplicate.error||attendanceResult.error||patentResult.error||documentResult.error)&&<Alert tone="warning">Alcuni dati non sono disponibili. Non interpretare un dato mancante come assenza di registrazioni.</Alert>}
  {ed.duplicato_storico&&<Alert tone="warning" title="Duplicato storico da verificare">Confronta l’edizione con gli altri corsi prima di modificare. Nessuna eliminazione automatica. {typeof duplicate.data==='string'&&UUID_RE.test(duplicate.data)&&duplicate.data!==id&&<Link href={courseViewHref(duplicate.data,'configurazione')}>Confronta l’edizione di riferimento</Link>}</Alert>}
  {!ed.direttore_id&&<Alert tone="warning" title="Direttore mancante">Assegna il direttore nella configurazione.</Alert>}

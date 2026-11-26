@@ -9,14 +9,14 @@ import {instructorTabs,selectedTab,authorizedSelection} from '@/lib/personal-ui'
 import {PageHeader,ButtonLink,StatusBadge,Alert,MetricCard,EmptyState} from '@/components/ui/Primitives';
 import {Pagination} from '@/components/ui/DataTable';
 import EditForm from '@/components/EditForm';
-import {pageNumber} from '@/lib/module-ui';
+import {pageNumber,singleSearchParams} from '@/lib/module-ui';
 import {recordAttendance} from './actions';
 type Learner={edizione_id:string;persona_id:string;nome:string;cognome:string;certificato_valido:boolean};
 export default async function Instructor({searchParams}:{searchParams:Promise<{msg?:string;tab?:string;edizione?:string;lezione?:string;p?:string}>}){
  const {supabase,user}=await requireUser();
  const {data:role,error:roleError}=await supabase.from('ruoli_utente').select('ruolo').eq('utente_id',user.id).eq('ruolo','istruttore').maybeSingle();
  if(roleError||!role)redirect('/?msg=permessi');
- const params=await searchParams,tab=selectedTab(instructorTabs,params.tab??(params.msg?'presenze':undefined)),page=pageNumber(params.p),size=20;
+ const params=singleSearchParams(await searchParams),tab=selectedTab(instructorTabs,params.tab??(params.msg?'presenze':undefined)),page=pageNumber(params.p),size=20;
  const {data:links,error:linkError}=await tutteLePagine((da,a)=>supabase.from('collegamenti_persone').select('persona_id').eq('utente_id',user.id).order('persona_id').range(da,a));
  const ids=links?.map(l=>l.persona_id)??[];
  const {data:assignments,error:assignmentError}=await readCourseChunks(ids,(group,da,a)=>supabase.from('assegnazioni_istruttori').select('edizione_id,persona_id,ruolo').in('persona_id',group).order('id').range(da,a));

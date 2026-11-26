@@ -1,3 +1,4 @@
+import {singleSearchParams} from '@/lib/module-ui';
 import {PageHeader,SectionHeader,ButtonLink,StatusBadge,Alert} from '@/components/ui/Primitives';
 import {Drawer,ConfirmDialog} from '@/components/ui/Drawer';
 import EditForm from '@/components/EditForm';
@@ -23,7 +24,7 @@ const messages:Record<string,string>={
  annullata:'Lezione annullata. Le sue prenotazioni sono state liberate; i dati restano nello storico.'
 };
 export default async function EditLesson({params,searchParams}:{params:Promise<{id:string}>;searchParams:Promise<{msg?:string;giorno?:string;vista?:string;piscina?:string;edizione?:string;annullate?:string}>}){
- const {id}=await params;const query=await searchParams;const {msg}=query;const context=calendarContext(query);
+ const {id}=await params;const query=singleSearchParams(await searchParams);const {msg}=query;const context=calendarContext(query);
  if(!UUID_RE.test(id))notFound();
  const {supabase}=await requireStaff();
  const {data:admin}=await supabase.rpc('is_admin');

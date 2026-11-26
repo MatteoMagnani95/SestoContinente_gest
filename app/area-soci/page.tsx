@@ -4,13 +4,13 @@ import {Pagination} from '@/components/ui/DataTable';
 import EditForm from '@/components/EditForm';
 import {tutteLePagine} from '@/lib/pagine';
 import {readCourseChunks} from '@/lib/course-ui';
-import {pageNumber} from '@/lib/module-ui';
+import {pageNumber,singleSearchParams} from '@/lib/module-ui';
 import Link from 'next/link';
 import {requireUser,formatDate} from '@/lib/security';
 import {type SocioEvento,type SocioProfilo,type SocioIscrizione,messaggiEventi,euroEvento,todayRome} from '@/lib/area-soci';
 import {joinEvent,withdrawEvent} from './actions';
 export default async function AreaSoci({searchParams}:{searchParams:Promise<{msg?:string;tab?:string;p?:string}>}){
- const {supabase,user}=await requireUser();const {msg,tab:rawTab,p}=await searchParams;const tab=rawTab==='documenti'||rawTab==='storico'?rawTab:'eventi',page=pageNumber(p),size=15;const href=(n:number)=>'?tab='+tab+'&p='+n;
+ const {supabase,user}=await requireUser();const {msg,tab:rawTab,p}=singleSearchParams(await searchParams);const tab=rawTab==='documenti'||rawTab==='storico'?rawTab:'eventi',page=pageNumber(p),size=15;const href=(n:number)=>'?tab='+tab+'&p='+n;
  const {data:profiles,error:accessError}=await supabase.rpc('area_soci_miei_profili');
  const people=(profiles??[]) as SocioProfilo[];
  if(accessError)return <div className="container narrow"><h1>Area soci non disponibile</h1><p className="notice error">Impossibile verificare l’abilitazione. Contatta la segreteria.</p><Link href="/smista">Torna alla panoramica</Link></div>;
@@ -27,7 +27,7 @@ export default async function AreaSoci({searchParams}:{searchParams:Promise<{msg
  const visible=(tab==='storico'?[...rows,...((history.data??[]) as SocioEvento[])].filter(e=>mine.some(i=>i.evento_id===e.id)):rows);const visiblePage=visible.slice((page-1)*size,page*size);
  const slots=await Promise.all(visiblePage.map(async e=>{const {data,error}=await supabase.rpc('area_soci_posti',{p_evento:e.id});return [e.id,error||data===null?null:Number(data)] as const;}));const availability=new Map(slots);
  return <div className="container"><div className="page-intro"><p className="eyebrow">Sesto Continente · Area riservata</p><h1>Area soci</h1><p>Benvenuto, {people.map(p=>`${p.nome} ${p.cognome}`).join(' / ')}. Consulta gli eventi e i documenti associativi.</p><div className="buttons"><Link href="/area-personale" className="button ghost">Area personale</Link><Link href="?tab=documenti" className="button ghost">Documenti associativi</Link></div></div>
- {msg&&<p role="status" className={`notice ${msg==='ok'?'success':'error'}`}>{messaggiEventi[msg]??messaggiEventi.errore}</p>}
+ {msg&&<p role="status" className={`notice ${msg==='ok'?'success':'error'}`}>{Object.hasOwn(messaggiEventi,msg)?messaggiEventi[msg]:messaggiEventi.errore}</p>}
  <nav className="sc-secretariat-tabs" aria-label="Area soci">{[['eventi','Eventi in programma'],['storico','Le mie iscrizioni'],['documenti','Documenti associativi']].map(([key,label])=><Link key={key} href={'?tab='+key} aria-current={tab===key?'page':undefined}>{label}</Link>)}</nav>{tab!=='documenti'&&<section className="sc-card"><h2>{tab==='storico'?'Le mie iscrizioni':'Eventi associativi'}</h2><p>Le richieste in attesa riservano un posto in ordine di arrivo. L'iscrizione diventa definitiva dopo l’approvazione del responsabile. Un ritiro o un rifiuto libera il posto.</p>
  {(eventsError||registrationError||history.error)&&<p className="notice error">Impossibile leggere eventi o iscrizioni: riprova.</p>}
  {!visible.length&&!eventsError&&<p>Nessun evento disponibile.</p>}

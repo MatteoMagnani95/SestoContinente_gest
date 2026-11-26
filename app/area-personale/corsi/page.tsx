@@ -2,7 +2,7 @@ import {PageHeader,ButtonLink,StatusBadge,Alert,EmptyState} from '@/components/u
 import {Drawer} from '@/components/ui/Drawer';
 import {Pagination,DataTable} from '@/components/ui/DataTable';
 import EditForm from '@/components/EditForm';
-import {pageNumber} from '@/lib/module-ui';
+import {pageNumber,singleSearchParams} from '@/lib/module-ui';
 import {statusTone} from '@/lib/secretariat';
 import {readCourseChunks} from '@/lib/course-ui';
 import Emergenza from '@/components/Emergenza';
@@ -13,7 +13,7 @@ import {tutteLePagine} from '@/lib/pagine';
 import {askForCourse} from '../actions';
 export default async function MyCourses({searchParams}:{searchParams:Promise<{msg?:string;tab?:string;p?:string}>}){
  const {supabase,user}=await requireUser();
- const {msg,tab:rawTab,p}=await searchParams;const tabs=['iscrizioni','catalogo','lezioni','materiali','presenze'] as const;const tab=tabs.find(t=>t===rawTab)??(msg==='inviata'?'iscrizioni':'iscrizioni'),page=pageNumber(p),size=20;const href=(n:number)=>'?tab='+tab+'&p='+n;
+ const {msg,tab:rawTab,p}=singleSearchParams(await searchParams);const tabs=['iscrizioni','catalogo','lezioni','materiali','presenze'] as const;const tab=tabs.find(t=>t===rawTab)??(msg==='inviata'?'iscrizioni':'iscrizioni'),page=pageNumber(p),size=20;const href=(n:number)=>'?tab='+tab+'&p='+n;
  const [{data:links,error:linkError},{data:editions,error:editionError},{data:courses}]=await Promise.all([
  tutteLePagine((da,a)=>supabase.from('collegamenti_persone').select('persona_id').eq('utente_id',user.id).order('persona_id').range(da,a)),
  tutteLePagine((da,a)=>supabase.from('edizioni_corsi').select('id,nome,inizio,fine,stato,corso_id,stagione_id,massimo_partecipanti,direttore_id').order('inizio',{ascending:false}).order('id').range(da,a)),

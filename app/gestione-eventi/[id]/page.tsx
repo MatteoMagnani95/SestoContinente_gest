@@ -5,7 +5,7 @@ import {formatDate} from '@/lib/security';
 import {UUID_RE,formatRome} from '@/lib/course-tools';
 import {type SocioEvento,type SocioPartecipante,messaggiEventi,euroEvento,todayRome} from '@/lib/area-soci';
 import {eventTab,eventTabs,eventHref,occupancy} from '@/lib/event-ui';
-import {pageNumber} from '@/lib/module-ui';
+import {pageNumber,singleSearchParams} from '@/lib/module-ui';
 import {tutteLePagine} from '@/lib/pagine';
 import {PageHeader,ButtonLink,StatusBadge,Alert,EmptyState} from '@/components/ui/Primitives';
 import {DataTable,Pagination} from '@/components/ui/DataTable';
@@ -16,7 +16,7 @@ import {decideEvent,removeEventRecord} from '@/app/area-soci/actions';
 export default async function EventDetail({params,searchParams}:{params:Promise<{id:string}>;searchParams:Promise<{tab?:string;msg?:string;p?:string}>}){
  const {id}=await params;if(!UUID_RE.test(id))notFound();
  const {supabase,user,staff,admin}=await requireEventManager();
- const s=await searchParams,tab=eventTab(s.tab),page=pageNumber(s.p),size=30;
+ const s=singleSearchParams(await searchParams),tab=eventTab(s.tab),page=pageNumber(s.p),size=30;
  let query=supabase.from('eventi_soci').select('*').eq('id',id);if(!staff)query=query.eq('responsabile_id',user.id);
  const {data,error}=await query.maybeSingle();if(error)return <Alert tone="danger">Evento non disponibile.</Alert>;if(!data)notFound();const e=data as SocioEvento;
  const [slots,participants,pending]=await Promise.all([supabase.rpc('area_soci_posti',{p_evento:id}),['iscrizioni','approvazioni'].includes(tab)?tutteLePagine((da,a)=>supabase.rpc('area_soci_partecipanti',{p_evento:id}).order('richiesta_il').order('id').range(da,a)):{data:[],error:null},supabase.from('eventi_soci_iscrizioni').select('id',{head:true,count:'exact'}).eq('evento_id',id).eq('stato','in_attesa')]);
