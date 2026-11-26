@@ -1,0 +1,99 @@
+name: QA Supabase locale (isolato)
+on:
+  workflow_dispatch:
+  push:
+    branches: ['feature/gestionale-2.0-redesign']
+    paths:
+      - '.github/workflows/qa-supabase.yml'
+      - 'scripts/qa-local-supabase.mjs'
+      - 'supabase/migrations/**'
+      - 'app/**'
+      - 'components/**'
+      - 'lib/**'
+      - 'tests/browser/**'
+      - 'playwright.config.mjs'
+      - 'next.config.ts'
+      - 'package.json'
+concurrency:
+  group: qa-supabase-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  local-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      QA_ISOLATED_ENV: 'true'
+      SESTO_TEST_MODE: 'true'
+      SESTO_EMAIL_MODE: simulate
+      QA_BASE_URL: http://127.0.0.1:3314
+      NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3314
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Dipendenze e browser
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium webkit
+      - name: Avvia solo Supabase locale, mai link a un progetto remoto
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase --version
+          test -f supabase/config.toml || supabase init
+          supabase start > "$RUNNER_TEMP/sesto-supabase-start.log" 2>&1 || { echo "Avvio/migrazioni Supabase locale non riusciti; nessuna chiave nei log pubblici."; exit 1; }
+          status=$(mktemp)
+          chmod 600 "$status"
+          supabase status -o env > "$status"
+          source "$status"
+          rm -f "$status"
+          test -n "$API_URL" && test -n "$DB_URL" && test -n "$ANON_KEY" && test -n "$SERVICE_ROLE_KEY"
+          echo "::add-mask::$ANON_KEY"
+          echo "::add-mask::$SERVICE_ROLE_KEY"
+          echo "::add-mask::$DB_URL"
+          work=$(mktemp -d "$RUNNER_TEMP/sesto-qa.XXXXXX")
+          chmod 700 "$work"
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+            echo "QA_DB_URL=$DB_URL"
+            echo "QA_WORK_DIR=$work"
+          } >> "$GITHUB_ENV"
+      - name: Fixture sintetiche
+        run: node scripts/qa-local-supabase.mjs seed
+      - name: Build e server Next locale
+        run: |
+          npm run build
+          npm run start -- --hostname 127.0.0.1 --port 3314 > "$RUNNER_TEMP/sesto-qa-next.log" 2>&1 &
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:3314/ >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          exit 1
+      - name: Login reali, JWT e Storage privato
+        run: node scripts/qa-local-supabase.mjs sessions
+      - name: Matrice autenticata Chromium e WebKit
+        shell: bash
+        run: |
+          set -euo pipefail
+          export QA_STAFF_STATE="$QA_WORK_DIR/staff.json"
+          export QA_SECRETARY_STATE="$QA_WORK_DIR/secretary.json"
+          export QA_MEMBER_STATE="$QA_WORK_DIR/member.json"
+          export QA_INSTRUCTOR_STATE="$QA_WORK_DIR/instructor.json"
+          export QA_BOARD_STATE="$QA_WORK_DIR/board.json"
+          export QA_APPLICANT_STATE="$QA_WORK_DIR/applicant.json"
+          export QA_FIXTURE_IDS=$(cat "$QA_WORK_DIR/fixtures.json")
+          npm run test:browser -- --project='*-staff' --project='*-secretary' --project='*-member' --project='*-instructor' --project='*-board' --project='*-applicant'
+      - name: Rimuovi sessioni sintetiche e arresta servizi locali
+        if: always()
+        shell: bash
+        run: |
+          if [ -n "${QA_WORK_DIR:-}" ] && [[ "$QA_WORK_DIR" == "$RUNNER_TEMP"/sesto-qa.* ]]; then rm -rf "$QA_WORK_DIR"; fi
+          supabase stop --no-backup >/dev/null 2>&1 || true
