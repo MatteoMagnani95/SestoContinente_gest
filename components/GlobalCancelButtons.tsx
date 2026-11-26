@@ -135,7 +135,7 @@ export default function GlobalCancelButtons(){
   };
   scan();
   const observer=new MutationObserver(scan);
-  observer.observe(document.body,{childList:true,subtree:true});
+  observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['value','checked','selected']});
   document.addEventListener('click',onClick,true);
   document.addEventListener('submit',onSubmit,true);
   document.addEventListener('input',onInput,true);

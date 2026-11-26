@@ -51,6 +51,7 @@ const detailParents:[string,string,string][]=[
 export function backTarget(path:string,access:NavigationAccess):BackTarget|null{
  if(path==='/'||path==='/smista')return null;
  if(simpleBack[path])return simpleBack[path];
+ if(path==='/area-personale/profilo'&&!access.personal)return {href:'/richiesta/stato',label:'Torna alla domanda'};
  const account=path.match(/^\/gestionale\/utenti\/([^/]+)\/elimina$/);
  if(account)return {href:'/gestionale/utenti/'+account[1],label:'Torna alla scheda account'};
  const mail=path.match(/^\/comunicazioni\/(corsi|soci)\/([^/]+)$/);

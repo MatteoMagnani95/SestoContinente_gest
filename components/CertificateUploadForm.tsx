@@ -1,6 +1,7 @@
 'use client';
 import {useRef,useState,type ReactNode,type FormEvent} from 'react';
 import {useRouter} from 'next/navigation';
+import {markFormSaved} from '@/lib/dirty-navigation';
 import {createBrowserClient} from '@supabase/ssr';
 import {caricaCertificato,preparaCaricamento} from '@/app/area-personale/certificato/actions';
 export default function CertificateUploadForm({children}:{children:ReactNode}){
@@ -23,9 +24,9 @@ export default function CertificateUploadForm({children}:{children:ReactNode}){
    }
    const result=await caricaCertificato(values);
    if(result.error){setError(result.error);return;}
-   form.reset();router.replace('/area-personale/certificato?msg=ok&persona='+values.get('persona_id'));router.refresh();
+   form.reset();markFormSaved(form);router.replace('/area-personale/certificato?msg=ok&persona='+values.get('persona_id'));router.refresh();
   }catch{setError('Invio non riuscito. Riprova.');}
   finally{lock.current=false;setPending(false);}
  }
- return <form id="carica" className="panel stack" onSubmit={submit}><fieldset className="edit-fields" disabled={pending}>{children}</fieldset>{error&&<p role="alert">{error}</p>}{pending&&<p role="status">Caricamento in corso…</p>}</form>;
+ return <form data-dirty-form id="carica" className="panel stack" onSubmit={submit}><fieldset className="edit-fields" disabled={pending}>{children}</fieldset>{error&&<p role="alert">{error}</p>}{pending&&<p role="status">Caricamento in corso…</p>}</form>;
 }

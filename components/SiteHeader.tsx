@@ -17,7 +17,7 @@ export function AreaLinks({access,onNavigate}:{access:NavigationAccess;onNavigat
  {access.board&&<Link href="/organi-sociali" onClick={onNavigate}>Organi sociali</Link>}
  <Link href="/richiesta/stato" onClick={onNavigate}>La mia domanda</Link>
  <Link href="/documenti" onClick={onNavigate}>Documenti</Link>
- {access.personal&&<Link href="/area-personale/profilo" onClick={onNavigate}>Il mio profilo</Link>}
+ <Link href="/area-personale/profilo" onClick={onNavigate}>Il mio profilo e consensi</Link>
  </>;
 }
 export function LogoutButton(){return <form action={logoutAction} data-dirty-ignore><button type="submit" className="sc-header-logout"><Icon name="logout"/> Esci</button></form>;}

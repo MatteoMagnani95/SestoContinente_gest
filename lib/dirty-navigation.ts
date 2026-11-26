@@ -9,7 +9,7 @@ export function trackedForm(form:HTMLFormElement){
 export function controls(form:HTMLFormElement):Control[]{
  return Array.from(form.elements).filter((el):el is Control=>
   (el instanceof HTMLInputElement||el instanceof HTMLSelectElement||el instanceof HTMLTextAreaElement)&&
-  !!el.name&&!(el instanceof HTMLInputElement&&excluded.has(el.type))&&!el.hasAttribute('data-dirty-ignore'));
+  (!!el.name||el.hasAttribute('data-dirty-track'))&&(!(el instanceof HTMLInputElement&&excluded.has(el.type))||el.hasAttribute('data-dirty-track'))&&!el.hasAttribute('data-dirty-ignore'));
 }
 export function controlValue(control:Control):string{
  if(control instanceof HTMLInputElement){
@@ -20,6 +20,7 @@ export function controlValue(control:Control):string{
  return control.value;
 }
 export function initialValue(control:Control):string{
+ const explicit=control.getAttribute('data-dirty-initial');if(explicit!==null)return explicit;
  if(control instanceof HTMLInputElement){
   if(control.type==='checkbox'||control.type==='radio')return control.defaultChecked?'checked':'unchecked';
   if(control.type==='file')return '[]';

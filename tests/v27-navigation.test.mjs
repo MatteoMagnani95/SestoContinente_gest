@@ -46,9 +46,9 @@ test('Ogni pagina interna censita ha ritorno locale non autoreferenziale',()=>{
  const pages=walk('app');assert.ok(pages.length>=48);
  for(const file of pages){const p=file.replace(/^app/,'').replace(/\[[^\]]+\]/g,'sample')||'/';if(p==='/'||p==='/smista')continue;const b=nav.backTarget(p,admin);assert.ok(b?.href.startsWith('/')&&!b.href.startsWith('//')&&b.href!==p,p);}
 });
-class Input{constructor(name,value='',type='text'){Object.assign(this,{name,value,defaultValue:value,type,checked:false,defaultChecked:false,files:[],attrs:new Set()});}hasAttribute(n){return this.attrs.has(n);}}
-class Select{constructor(name,value,options,multiple=false){Object.assign(this,{name,value,options,multiple,attrs:new Set()});}get selectedOptions(){return this.options.filter(o=>o.selected);}hasAttribute(n){return this.attrs.has(n);}}
-class Textarea{constructor(name,value){Object.assign(this,{name,value,defaultValue:value,attrs:new Set()});}hasAttribute(n){return this.attrs.has(n);}}
+class Input{constructor(name,value='',type='text'){Object.assign(this,{name,value,defaultValue:value,type,checked:false,defaultChecked:false,files:[],attrs:new Map()});}hasAttribute(n){return this.attrs.has(n);}getAttribute(n){return this.attrs.get(n)??null;}}
+class Select{constructor(name,value,options,multiple=false){Object.assign(this,{name,value,options,multiple,attrs:new Map()});}get selectedOptions(){return this.options.filter(o=>o.selected);}hasAttribute(n){return this.attrs.has(n);}getAttribute(n){return this.attrs.get(n)??null;}}
+class Textarea{constructor(name,value){Object.assign(this,{name,value,defaultValue:value,attrs:new Map()});}hasAttribute(n){return this.attrs.has(n);}getAttribute(n){return this.attrs.get(n)??null;}}
 globalThis.HTMLInputElement=Input;globalThis.HTMLSelectElement=Select;globalThis.HTMLTextAreaElement=Textarea;
 const dirty=load('lib/dirty-navigation.ts'),form=(elements,method='post',attrs=[])=>({elements,method,hasAttribute:n=>attrs.includes(n)});
 test('Snapshot dirty: modifiche reali e ripristino a valori originali',()=>{
@@ -73,4 +73,15 @@ test('Menu mobile inizialmente chiuso, dialog e confine server conservato',()=>{
  const shell=read('components/AppShell.tsx'),style=read('app/navigation.css'),header=read('components/SiteHeader.tsx'),access=read('lib/navigation-access.ts');
  assert.match(shell,/useState\(false\)/);assert.match(shell,/\.showModal\(\)/);assert.match(shell,/onCancel=/);assert.match(shell,/aria-labelledby="sc-menu-title"/);assert.match(shell,/staffArea\(path,access\)/);
  assert.match(style,/\.sc-staff-sidebar\{display:none;\}/);assert.match(header,/aria-expanded=\{menuOpen\}/);assert.match(header,/access\.instructor&&/);assert.match(header,/access\.board&&/);assert.match(header,/access\.staff&&/);assert.match(access,/account_corrente_abilitato/);assert.match(read('app/gestionale/layout.tsx'),/await requireStaff\(\)/);
+});
+test('Composizione didattica e selettori controllati: valore serializzato tracciato senza inviare nuovi dati al server',()=>{
+ const marker=new Input('','["a","b"]','hidden');
+ marker.attrs.set('data-dirty-track','');marker.attrs.set('data-dirty-initial','["a","b"]');
+ const f=form([marker]),base=dirty.snapshot(f,true);
+ assert.equal(dirty.isDirty(f,base),false);
+ marker.value='["b","a"]';assert.equal(dirty.isDirty(f,base),true);
+ marker.value='["a","b"]';assert.equal(dirty.isDirty(f,base),false);
+ for(const p of ['components/LessonComposer.tsx','components/CourseLanePicker.tsx'])assert.match(read(p),/data-dirty-track data-dirty-initial/);
+ assert.match(read('components/CertificateUploadForm.tsx'),/markFormSaved\(form\)/);
+ assert.match(read('components/CertificateUploadForm.tsx'),/<form data-dirty-form/);
 });
