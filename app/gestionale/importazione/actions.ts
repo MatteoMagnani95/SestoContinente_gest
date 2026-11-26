@@ -8,7 +8,7 @@ const where='/gestionale/importazione';
 function text(v:FormDataEntryValue|null){return typeof v==='string'?v.trim():'';}
 function q(msg:string):never{return redirect(`${where}?msg=${encodeURIComponent(msg)}`);}
 export async function stageImport(form:FormData){
- const {supabase,user}=await requireStaff();
+ const {supabase}=await requireStaff();
  const tipo=text(form.get('tipo')) as TipoImportazione;
  if(!['soci','corsi'].includes(tipo))q('tipo');
  const file=form.get('file');if(!(file instanceof File)||file.size<2||file.size>2_000_000)q('file');
@@ -24,26 +24,21 @@ export async function stageImport(form:FormData){
  const editions=tipo==='corsi'?[...new Set(mapped.map(x=>x.edizione_id).filter(Boolean))]:[];
  const {data:editionData,error:edErr}=tipo==='corsi'?await supabase.from('edizioni_corsi').select('id').in('id',editions.filter(x=>/^[a-f0-9-]{36}$/i.test(x))):{data:[],error:null};
  if(edErr)q('database');const okEd=new Set((editionData??[]).map((x:{id:string})=>x.id));
- const {data:batch,error}=await supabase.from('importazioni_batch').insert({tipo,creato_da:user.id,base_documentale_verificata:tipo==='soci'&&form.get('base_documentale')==='on'}).select('id').single();
- if(error||!batch)q('database');
  const seen=new Set<string>();
- const rows=mapped.map((r,i)=>{
+ const rows=mapped.map(r=>{
   const errors=erroriRiga(r,tipo);
   if(seen.has(r.codice_fiscale+(tipo==='corsi'?`/${r.edizione_id}`:'')))errors.push('Duplicato all’interno del file');
   seen.add(r.codice_fiscale+(tipo==='corsi'?`/${r.edizione_id}`:''));
   if(tipo==='soci'&&have.has(r.codice_fiscale))errors.push('CF già presente in anagrafica');
   if(tipo==='corsi'&&!have.has(r.codice_fiscale))errors.push('CF allievo non presente in anagrafica');
   if(tipo==='corsi'&&!okEd.has(r.edizione_id))errors.push('Edizione corso non trovata');
-  return {batch_id:batch.id,numero:i+2,dati:r,errori:errors};
+  if(tipo==='corsi'&&r.brevetto)errors.push('Brevetto storico: verificare il rilascio originale con la segreteria prima della registrazione.');
+  return {dati:r,errori:errors};
  });
- // A single PostgREST INSERT is one database transaction. A failed
- // request cannot leave a confirmable prefix of the imported file.
- const {error:rowsError}=await supabase.from('importazioni_righe').insert(rows);
- if(rowsError){
-  const {count,error:checkError}=await supabase.from('importazioni_righe').select('id',{head:true,count:'exact'}).eq('batch_id',batch.id);
-  if(checkError||count!==rows.length)q('database');
- }
- revalidatePath(where);redirect(`${where}?batch=${batch.id}`);
+ // The batch and all rows are created in the same database transaction.
+ const {data:batch,error}=await supabase.rpc('crea_anteprima_importazione',{p_tipo:tipo,p_base_documentale:tipo==='soci'&&form.get('base_documentale')==='on',p_righe:rows});
+ if(error||typeof batch!=='string')q('database');
+ revalidatePath(where);redirect(`${where}?batch=${batch}`);
 }
 export async function commitImport(form:FormData){
  const {supabase}=await requireStaff();const batch=text(form.get('batch'));
