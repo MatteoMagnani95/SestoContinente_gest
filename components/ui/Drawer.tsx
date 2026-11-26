@@ -32,8 +32,10 @@ export function Drawer({title,trigger,children,initialOpen=false,variant='drawer
   if(!panel.open)panel.showModal();
   closeButton.current?.focus();
   const onCloseRequest=(event:Event)=>{event.preventDefault();close();};
+  const saved=(event:Event)=>{const form=(event as CustomEvent<HTMLFormElement>).detail;if(form instanceof HTMLFormElement&&panel.contains(form))finish();};
+  document.addEventListener('sc:form-saved',saved);
   panel.addEventListener('sc:panel-close',onCloseRequest);
-  return()=>{panel.removeEventListener('sc:panel-close',onCloseRequest);if(panel.open)panel.close();};
+  return()=>{document.removeEventListener('sc:form-saved',saved);panel.removeEventListener('sc:panel-close',onCloseRequest);if(panel.open)panel.close();};
  },[open,mounted]);
  useEffect(()=>{
   if(!open||!mounted)return;

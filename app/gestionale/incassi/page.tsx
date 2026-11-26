@@ -68,7 +68,7 @@ export default async function Incassi({searchParams}:{searchParams:Promise<{tab?
  const filter={tab,stagione:selectedSeason,stato:status,persona:personFilter};
  const maxPage=Math.max(1,Math.ceil(count/perPage));
  return <>
-  <div className="page-intro"><p className="eyebrow">Segreteria · Fase 3.4</p><h1>Incassi e saldi</h1>
+  <div className="page-intro"><p className="eyebrow">Segreteria · Contabilità</p><h1>Incassi e saldi</h1>
    <p>Versamenti associativi e corsi, saldi aggiornati dal database e contabilizzazione automatica.</p></div>
   <div className="notice warning">Le registrazioni sono definitive e producono un movimento contabile. Usa importi reali soltanto dopo il collaudo su un progetto Supabase separato.</div>
   {p.msg&&feedback[p.msg]&&<p role="status" className={`notice ${p.msg==='salvato'?'success':'warning'}`}>{feedback[p.msg]}</p>}

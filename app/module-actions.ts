@@ -4,6 +4,7 @@ import {redirect} from 'next/navigation';
 import {revalidatePath} from 'next/cache';
 import {requireStaff} from '@/lib/security';
 import {modules,isModuleKey,type Field,type Module} from '@/lib/modules';
+import {formatRome} from '@/lib/course-tools';
 import {italianLocalToISO} from '@/lib/format';
 import {identityFromForm,validaSalvataggioAnagrafica} from '@/lib/verifica-anagrafica';
 
@@ -125,7 +126,7 @@ export async function saveModuleRecord(form:FormData) {
    if(corsia?.numero!==undefined&&corsia.numero!==null)params.set('corsia',String(corsia.numero));
    if(typeof changes.inizio==='string')params.set('inizio',changes.inizio);
    if(typeof changes.fine==='string')params.set('fine',changes.fine);
-   return {error:`Corsia${params.get('corsia')?' '+params.get('corsia'):''} già prenotata nell’intervallo richiesto. Scegli un’altra corsia o modifica l’orario.`,field:'corsia_id'};
+   return {error:`Corsia${params.get('corsia')?' '+params.get('corsia'):''} già prenotata${params.get('inizio')&&params.get('fine')?' dalle '+formatRome(params.get('inizio')!)+' alle '+formatRome(params.get('fine')!):' nell’intervallo richiesto'}. Scegli un’altra corsia o modifica l’orario.`,field:'corsia_id'};
   }
   if(key==='prenotazioni'&&error.code==='23505')return {error:"Questa corsia è già associata alla lezione."};
   if(key==='iscrizioni'&&error.code==='P3413')return {error:"Il socio non soddisfa i requisiti di iscrizione."};
