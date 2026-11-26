@@ -29,10 +29,6 @@ export default defineConfig({
       name:browserName+'-staff',testMatch:'staff.spec.mjs',
       use:{...use,storageState:process.env.QA_STAFF_STATE,viewport:{width:390,height:844}},
     });
-    for(const role of roles){
-      const storageState=process.env['QA_'+role+'_STATE'];
-      if(storageState)projects.push({name:browserName+'-role-'+role.toLowerCase(),testMatch:'roles.spec.mjs',use:{...use,storageState,viewport:{width:390,height:844}},metadata:{qaRole:role}});
-    }
     for(const role of ['secretary','member','instructor','board','applicant']){
       const storageState=process.env['QA_'+role.toUpperCase()+'_STATE'];
       if(storageState)projects.push({name:browserName+'-'+role,testMatch:'roles.spec.mjs',metadata:{role},use:{...use,storageState,viewport:{width:390,height:844}}});
