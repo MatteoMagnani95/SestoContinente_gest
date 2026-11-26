@@ -33,3 +33,14 @@ test('Ruolo limitato: accesso diretto amministrativo negato',async({page},info)=
  await page.goto('/gestionale/utenti');
  await expect(page).toHaveURL(info.project.metadata.role==='secretary'?/\/gestionale\?msg=permessi/:/\/\?msg=permessi/);
 });
+
+test('Ruolo limitato: accessi incrociati e risorse amministrative negati',async({page},info)=>{
+ const role=info.project.metadata.role;
+ const paths=role==='secretary'?['/gestionale/moduli/contabilita']:
+  ['/gestionale','/gestionale/incassi','/gestionale/moduli/contabilita',...(role==='board'?[]:['/organi-sociali']),...(role==='instructor'?[]:['/istruttore'])];
+ for(const path of paths){
+  await page.goto(path);
+  // Un login scaduto non è un successo del controllo di ruolo.
+  await expect(page).toHaveURL(url=>url.pathname!==path&&url.pathname!=='/accedi'&&url.searchParams.get('msg')==='permessi');
+ }
+});
