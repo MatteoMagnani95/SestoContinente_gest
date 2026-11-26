@@ -6,6 +6,8 @@ import BoardAdmissions from '@/components/BoardAdmissions';
 import {pageNumber} from '@/lib/module-ui';
 import {todayRome} from '@/lib/area-soci';
 import {formatDate} from '@/lib/security';
+import BoardDraftFields from '@/components/BoardDraftFields';
+import BoardFile from '@/components/BoardFile';
 import {dataOra} from '@/lib/scelte';
 import Cronologia from '@/components/Cronologia';
 import EditForm from '@/components/EditForm';
@@ -63,10 +65,7 @@ export default async function OrganiSociali({searchParams}:{searchParams:Promise
  <div className="form-actions"><button className="button">Registra</button><CancelEditButton/></div></EditForm></Drawer>}
  </section>}
  {tab==='sedute'&&<section className="sc-card"><h2>Sedute</h2><p>Le sedute sono registrate tramite i verbali: non esiste un registro separato delle riunioni.</p>{isStaff&&<Drawer title="Nuova seduta e verbale" trigger="Nuova seduta e verbale" primary><EditForm className="stack" action={caricaBozza}>
- <div className="form-grid"><label>Data CdA<input type="date" name="data_consiglio" required/></label><label>Oggetto<input name="oggetto" required maxLength={500}/></label>
- <label>Tipologia<select name="tipo" required defaultValue=""><option value="">Seleziona tipologia…</option><option>Approvazione Adesioni Soci</option><option>Gestione Ordinaria / Altro</option><option>Misto</option></select></label>
- <label>Bozza DOCX (max 3 MB)<input type="file" name="documento" accept=".docx" required/></label></div>
- <p className="tiny muted">Al caricamento viene creata un’anteprima PDF di bozza, disponibile nell’archivio. Il PDF definitivo è reso disponibile dopo il voto unanime. La conversione genera una trascrizione del testo Word; conserva sempre l'originale per l'impaginazione, tabelle e allegati.</p>
+ <BoardDraftFields/>
  <div className="form-actions"><p>Le eventuali adesioni saranno selezionate e confermate prima di aprire la votazione.</p><button className="button">Carica bozza</button><CancelEditButton/></div></EditForm></Drawer>}{verbaliError?<Alert tone="warning">Sedute non disponibili.</Alert>:<ul>{verbaliCda.slice((page-1)*size,page*size).map(v=><li key={v.id}>{formatDate(v.data_consiglio)} · <Link href={'/organi-sociali/archivio?edit='+v.id}>{v.oggetto}</Link></li>)}</ul>}<Pagination page={page} size={size} count={verbaliError?null:verbaliCda.length} href={p=>'?tab=sedute&p='+p}/></section>}
  {([['in_approvazione','Verbali in approvazione'],['approvato','Verbali approvati'],['bozza','Bozze'],['sostituito','Versioni sostituite']] as const).map(([stato,titolo])=>{
  if(tab!==({in_approvazione:'votazioni',approvato:'approvati',bozza:'bozze',sostituito:'sostituiti'} as const)[stato])return null;
@@ -84,12 +83,12 @@ export default async function OrganiSociali({searchParams}:{searchParams:Promise
  <button className="button">Conferma apertura votazione</button><CancelEditButton/></EditForm></Drawer>}
  {v.stato==='in_approvazione'&&!precedenti.has(v.id)&&isStaff&&p&&Number(p.totali)>0&&Number(p.approvati)===Number(p.totali)&&<form action={riprovaFinalizzazione}><input type="hidden" name="verbale_id" value={v.id}/><button className="button">Completa generazione PDF definitivo</button></form>}
  {v.stato==='in_approvazione'&&!precedenti.has(v.id)&&eligible.has(v.id)&&<form action={approvaVerbale}><input type="hidden" name="verbale_id" value={v.id}/><input type="hidden" name="versione" value={v.percorso_docx??''}/><button className="button">Approva verbale</button></form>}
- {isStaff&&!precedenti.has(v.id)&&['approvato','in_approvazione'].includes(v.stato)&&<Drawer title="Sostituisci documento" trigger="Sostituisci documento"><EditForm action={sostituisciVerbale}><h4>Nuova versione · {v.oggetto}</h4><input type="hidden" name="verbale_id" value={v.id}/><input type="hidden" name="versione" value={v.percorso_docx??''}/><label>Nuovo documento Word<input type="file" name="documento" accept=".docx" required/></label><div className="form-actions"><CancelEditButton/><button className="button">Sottoponi la nuova versione</button></div></EditForm></Drawer>}
+ {isStaff&&!precedenti.has(v.id)&&['approvato','in_approvazione'].includes(v.stato)&&<Drawer title="Sostituisci documento" trigger="Sostituisci documento"><EditForm action={sostituisciVerbale}><h4>Nuova versione · {v.oggetto}</h4><input type="hidden" name="verbale_id" value={v.id}/><input type="hidden" name="versione" value={v.percorso_docx??''}/><BoardFile required label="Nuovo documento Word"/><div className="form-actions"><CancelEditButton/><button className="button">Sottoponi la nuova versione</button></div></EditForm></Drawer>}
  </article>;})}<Pagination page={page} size={size} count={verbaliError?null:gruppo.length} href={p=>'?tab='+tab+'&p='+p}/></section>;})}</>;
 }
 async function Firme({id}:{id:string}){
  const {supabase}=await requireBoard();
  const {data,error}=await tutteLePagine((da,a)=>supabase.rpc('firme_verbale',{p_verbale:id}).order('utente_id').range(da,a));
  if(error)return <p>Elenco delle approvazioni non disponibile.</p>;
- return <ul>{(data??[]).map((f:{utente_id:string;nominativo:string;votato_il:string|null})=><li key={f.utente_id}>{f.nominativo} · {f.votato_il?'Approvato il '+dataOra(f.votato_il):'In attesa di approvazione'}</li>)}</ul>;
+ return <ul>{((data??[]) as {utente_id:string;nominativo:string;votato_il:string|null}[]).map(f=><li key={f.utente_id}>{f.nominativo} · {f.votato_il?'Approvato il '+dataOra(f.votato_il):'In attesa di approvazione'}</li>)}</ul>;
 }
