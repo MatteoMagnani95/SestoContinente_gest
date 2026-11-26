@@ -206,6 +206,56 @@ export async function runMutations({app,admin,accounts,fixtures,work}){
   await staff.getByRole('button',{name:'Conferma importazione definitiva'}).click();
   await expect(staff.getByRole('dialog',{name:'Conferma importazione'}).getByRole('button',{name:'Importa definitivamente'})).toBeDisabled();
   console.log('OK UI CSV in quarantena, conferma bloccata e nessuna importazione parziale');
+
+  // A quarantine outside the visible first page must still block confirmation.
+  // Generate synthetic checksum-valid codes with the same algorithm used by the app.
+  const {createRequire}=await import('node:module');
+  const {readFileSync}=await import('node:fs');
+  const require=createRequire(import.meta.url),ts=require('typescript');
+  const source=readFileSync(new URL('../lib/codice-fiscale.ts',import.meta.url),'utf8');
+  const cfLib={};new Function('exports',ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText)(cfLib);
+  const names=Array.from({length:51},(_,i)=>'Collaudo'+String.fromCharCode(65+Math.floor(i/26))+String.fromCharCode(65+i%26));
+  // Distinct birth dates ensure distinct codes even where name encoding collides.
+  const validRows=names.map((name,i)=>{
+   const birth=new Date(Date.UTC(1980,0,i+1)).toISOString().slice(0,10);
+   const cf=cfLib.generaCF({nome:name,cognome:'Sintetico',data_nascita:birth,sesso_cf:'M',codice_catastale_nascita:'H501'});
+   assert.ok(cfLib.validaCF(cf));
+   return [cf,name,'Sintetico',birth,'Roma','RM','Italia','','','',''].join(',');
+  });
+  const header=csv.split('\n')[0];
+  const prepare=async rows=>{
+   await staff.goto('/gestionale/importazione');
+   await staff.locator('input[name=base_documentale]').check();
+   await staff.locator('input[name=file]').setInputFiles({name:'lotto-sintetico.csv',mimeType:'text/csv',buffer:Buffer.from([header,...rows].join('\n'))});
+   await staff.getByRole('button',{name:'Carica e visualizza anteprima'}).click();
+   await expect(staff).toHaveURL(/batch=/);
+   return new URL(staff.url()).searchParams.get('batch');
+  };
+  const paged=await prepare([...validRows.slice(0,50),'INVALIDO,Test,Quarantena,,,,,,,,']);
+  const table=staff.getByRole('table',{name:'Anteprima importazione'});
+  await expect(table.locator('tbody tr')).toHaveCount(50);
+  await expect(staff.getByRole('navigation',{name:'Paginazione'})).toContainText('51 righe');
+  await staff.getByRole('button',{name:'Conferma importazione definitiva'}).click();
+  await expect(staff.getByRole('dialog',{name:'Conferma importazione'}).getByRole('button',{name:'Importa definitivamente'})).toBeDisabled();
+  await staff.goto('/gestionale/importazione?batch='+paged+'&msg=importato&n=51');
+  await expect(staff.getByRole('status')).toContainText('Esito non confermato');
+  await staff.getByRole('link',{name:'Solo anomalie (1)'}).click();
+  await expect(table.locator('tbody tr')).toHaveCount(1);
+  assert.equal(await count('importazioni_righe',{batch_id:paged}),51);
+  const positive=await prepare(validRows.slice(50));
+  await staff.getByRole('button',{name:'Conferma importazione definitiva'}).click();
+  const confirm=staff.getByRole('dialog',{name:'Conferma importazione'});
+  await confirm.locator('input[name=conferma]').check();
+  await confirm.getByRole('button',{name:'Importa definitivamente'}).click();
+  await expect(staff).toHaveURL(/msg=importato/);
+  await expect(staff.getByRole('status')).toContainText('Importazione conclusa correttamente (1 righe)');
+  assert.equal((await one('importazioni_batch','stato',{id:positive})).stato,'importato');
+  const newPerson=(await one('importazioni_righe','importato_id',{batch_id:positive})).importato_id;
+  assert.ok(newPerson);
+  const provenance=await one('provenienza_accettazioni_storiche','verifica_documentale',{persona_id:newPerson});
+  assert.equal(provenance.verifica_documentale,true);
+  console.log('OK UI importazione: anomalie fuori pagina, falso successo respinto, conferma positiva e provenienza sintetica');
+
  }finally{
   await Promise.all(contexts.map(c=>c.close()));await browser.close();
  }
