@@ -236,9 +236,16 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  if(modulo==='iscrizioni'){
   const eligible:Row[]=[];
   for(let offset=0;;offset+=500){const {data:batch,error:loadError}=await supabase.from('gest_soci_iscrivibili').select('persona_id,stagione_id,nome,cognome').order('cognome').order('nome').order('persona_id').order('stagione_id').range(offset,offset+499);if(loadError){eligible.length=0;enrollmentLoadError=true;break;}eligible.push(...(batch??[]).map(r=>({...r,id:r.persona_id})));if((batch??[]).length<500)break;}
-  references.gest_soci_iscrivibili=eligible;
+  const qualificati=new Set<string>();
+  for(let offset=0;;offset+=500){const {data:batch,error:loadError}=await supabase.from('qualifiche_istruttori').select('persona_id').order('id').range(offset,offset+499);if(loadError){enrollmentLoadError=true;break;}for(const row of batch??[])qualificati.add(row.persona_id);if((batch??[]).length<500)break;}
+  references.gest_soci_iscrivibili=eligible.map(row=>({...row,isInstructor:qualificati.has(String(row.persona_id))}));
   const available:Row[]=[];for(let offset=0;;offset+=500){const {data:batch,error:loadError}=await supabase.from('edizioni_corsi').select('id,nome,stagione_id,stato,direttore_id').in('stato',['programmato','attivo']).order('nome').order('id').range(offset,offset+499);if(loadError){available.length=0;enrollmentLoadError=true;break;}available.push(...((batch??[]) as Row[]));if((batch??[]).length<500)break;}
-  const existing=references.edizioni_corsi??[];references.edizioni_corsi=[...available,...existing.filter(r=>!available.some(e=>e.id===r.id)&&!['programmato','attivo'].includes(String(r.stato)))];
+  const courseAssignments=new Map<string,string[]>(),courseEnrollments=new Map<string,string[]>();
+  for(const [table,map] of [['assegnazioni_istruttori',courseAssignments],['iscrizioni_corsi',courseEnrollments]] as const){
+   for(let offset=0;;offset+=500){const {data:batch,error:loadError}=await supabase.from(table).select('edizione_id,persona_id').order('id').range(offset,offset+499);if(loadError){enrollmentLoadError=true;break;}for(const row of batch??[]){const values=map.get(row.edizione_id)??[];values.push(row.persona_id);map.set(row.edizione_id,values);}if((batch??[]).length<500)break;}
+  }
+  if(enrollmentLoadError)references.gest_soci_iscrivibili=[];
+  const existing=references.edizioni_corsi??[];references.edizioni_corsi=[...available.map(row=>({...row,assignedIds:courseAssignments.get(row.id)??[],enrolledIds:courseEnrollments.get(row.id)??[]})),...existing.filter(r=>!available.some(e=>e.id===r.id)&&!['programmato','attivo'].includes(String(r.stato)))];
  }
  if(modulo==='prenotazioni'){
   const pools=references.piscine??[];
