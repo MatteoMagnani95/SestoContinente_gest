@@ -12,7 +12,7 @@ export async function askForCourse(form:FormData){
  const p_nome=String(form.get('emergenza_nome')??'').trim(),p_telefono=String(form.get('emergenza_telefono')??'').trim();
  if(!emergencyPair(p_nome,p_telefono)||p_nome.length>160||p_telefono.length>32)return {error:'Inserisci entrambi i dati del contatto di emergenza, oppure lasciali entrambi vuoti.'};
  const {error}=await supabase.rpc('iscrivi_con_contatto',{p_persona,p_edizione,p_nome,p_telefono,p_richiesta:true});
- if(error)return {error:error.code==='P3421'?'Il direttore non può essere allievo.':error.code==='23505'?'Iscrizione già presente.':'Richiesta non inviata. Verifica requisiti associativi e capienza.'};
+ if(error)return {error:error.code==='P3521'?'Gli istruttori possono iscriversi come allievi solo con una deroga autorizzata dalla segreteria.':error.code==='P3520'?'Non puoi essere allievo e istruttore nella stessa edizione.':error.code==='P3421'?'Il direttore non può essere allievo.':error.code==='23505'?'Iscrizione già presente.':'Richiesta non inviata. Verifica requisiti associativi e capienza.'};
  revalidatePath('/area-personale/corsi');redirect('/area-personale/corsi?tab=iscrizioni&msg=inviata');
 }
 export async function markNotification(form:FormData){
