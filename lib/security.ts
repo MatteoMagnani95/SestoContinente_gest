@@ -8,11 +8,13 @@ export const statoLabel: Record<Stato,string> = {
 };
 export function formatDate(value: string | null | undefined) {
   if (!value) return '—';
-  return new Date(value.length === 10 ? `${value}T12:00:00` : value).toLocaleDateString('it-IT');
+  const date=new Date(value.length === 10 ? `${value}T12:00:00Z` : value);
+  return Number.isFinite(date.getTime()) ? date.toLocaleDateString('it-IT',{timeZone:'Europe/Rome'}) : '—';
 }
 export function queryMessage(search?: string) {
   const values: Record<string,string> = {
     privacy:'Apri l’informativa e conferma la presa visione per registrarti.',
+    instradamento:'Accesso effettuato, ma non è stato possibile aprire la tua area. Riprova o contatta la segreteria.',
     credenziali:'Email o password non corrette.',
     registrazione:'Impossibile completare la registrazione. Verifica i dati o riprova.',
     password:'La password deve avere almeno 10 caratteri e corrispondere alla conferma.',
@@ -35,7 +37,7 @@ export function queryMessage(search?: string) {
     respinta:'Domanda respinta.',
     recupero:'Se l’account esiste, riceverai un messaggio per recuperare la password.',
   };
-  return search ? (values[search] ?? '') : '';
+  return typeof search==='string' && Object.hasOwn(values,search) ? values[search] : '';
 }
 export async function requireUser() {
   const supabase = await createClient();
