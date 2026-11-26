@@ -4,7 +4,7 @@ import {tutteLePagine} from '@/lib/pagine';
 import {readCourseChunks} from '@/lib/course-ui';
 import {calendarContext,calendarHref,calendarLessonHref,calendarViews,changePeriod,dateUTC,dateWindow,dayBounds,intervalOnDay,overlaps,romeDay,validDay,type CalendarContext} from '@/lib/calendar-tools';
 import {formatRome,UUID_RE} from '@/lib/course-tools';
-import {PageHeader,SectionHeader,ButtonLink,StatusBadge,Alert,EmptyState} from '@/components/ui/Primitives';
+import {PageHeader,SectionHeader,ButtonLink,Alert,EmptyState} from '@/components/ui/Primitives';
 import {Drawer} from '@/components/ui/Drawer';
 import EditForm from '@/components/EditForm';
 import CalendarContextFields from '@/components/CalendarContextFields';

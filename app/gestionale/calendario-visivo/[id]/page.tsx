@@ -37,7 +37,7 @@ export default async function EditLesson({params,searchParams}:{params:Promise<{
  const {data:edition,error:editionError}=await supabase.from('edizioni_corsi').select('id,nome,stato').eq('id',lesson.edizione_id).maybeSingle();
  const {count:attendances,error:attendanceError}=await supabase.from('presenze').select('id',{head:true,count:'exact'}).eq('lezione_id',id);
  const failed=Boolean(bookingError||poolError||laneError||editionError||attendanceError);
- const readOnly=failed||Boolean(lesson.annullata_il)||Boolean(attendances)||!['programmato','attivo'].includes(edition?.stato??'');
+ const readOnly=failed||attendances===null||Boolean(lesson.annullata_il)||Boolean(attendances)||!['programmato','attivo'].includes(edition?.stato??'');
  const [moduleCatalog,moduleLinks]=await Promise.all([
  tutteLePagine((da,a)=>supabase.from('moduli_didattici').select('id,tipo,codice,titolo').order('pre_id').order('id').range(da,a)),
  tutteLePagine((da,a)=>supabase.from('lezione_moduli').select('modulo_id,ordine').eq('lezione_id',id).order('ordine').order('modulo_id').range(da,a))]);

@@ -1,12 +1,12 @@
 import {Drawer} from '@/components/ui/Drawer';
 import {DataTable,FilterBar,SearchBar,Pagination} from '@/components/ui/DataTable';
 import SearchableSelect from '@/components/ui/SearchableSelect';
-import {StatusBadge,PageHeader} from '@/components/ui/Primitives';
+import {StatusBadge,PageHeader,ButtonLink,Alert} from '@/components/ui/Primitives';
 import {moduleUi,cleanSearch,pageNumber,listHref,entityLabel} from '@/lib/module-ui';
 import {tutteLePagine} from '@/lib/pagine';
 import {validLevel} from '@/lib/course-ui';
 import {dateFilter,searchTerms,memberTabForModule} from '@/lib/secretariat';
-import {romeDay,shiftDay} from '@/lib/calendar-tools';
+import {romeDay,shiftDay,dayBounds} from '@/lib/calendar-tools';
 import {statiCertificato,statoSingolo} from '@/lib/certificati';
 import Cronologia from '@/components/Cronologia';
 import EditForm from '@/components/EditForm';
@@ -28,7 +28,7 @@ const status:Record<string,string>={socio_non_iscrivibile:'Solo soci con adesion
  cf:'Codice fiscale non coerente, oppure luogo di nascita non identificato. Verifica i dati e il CF ufficiale.',omocodia:'Omocodia: conferma la verifica documentale e indica la motivazione.', dati:'Controlla i campi obbligatori e i formati.',database:'Impossibile salvare. Controlla i dati o contatta l’amministratore.',permessi:'Operazione non consentita.',
  corsia_duplicata:'Questa corsia è già associata alla stessa lezione. Controlla le prenotazioni esistenti.'};
 function labelOf(record:Row,labels:readonly string[]){
- return labels.map(k=>String(record[k]??'')).join(' ').trim().slice(0,100);
+ return (typeof record.calendar_label==='string'?record.calendar_label:labels.map(k=>String(record[k]??'')).join(' ')).trim().slice(0,160);
 }
 function EnrollmentInput({field,value,references,editing}:{field:Field;value?:unknown;references:Record<string,Row[]>;editing:boolean}){
  const rows=references.iscrizioni_corsi??[];
@@ -71,7 +71,7 @@ const sezioniEditor:Record<string,Record<string,string[]>>={
  brevetti:{'Allievo e corso':['persona_id','edizione_id'],'Dati del brevetto':['titolo','ente','numero_brevetto','ottenuto_il','scade_il','note']},
  certificati:{'Intestatario e periodo':['persona_id','rilasciato_il','scade_il'],'Verifica amministrativa':['esito_verifica','note_amministrative']},
 };
-function Editor({module,moduleKey,record,references,admin=false,personId='',editionId=''}:{module:Module;moduleKey:string;record?:Row;references:Record<string,Row[]>;admin?:boolean;personId?:string;editionId?:string}){
+function Editor({module,moduleKey,record,references,admin=false,personId='',editionId='',poolId='',laneId='',lessonId=''}:{module:Module;moduleKey:string;record?:Row;references:Record<string,Row[]>;admin?:boolean;personId?:string;editionId?:string;poolId?:string;laneId?:string;lessonId?:string}){
  const lockedVersion=moduleKey==='versioni'&&record&&['approvato','archiviato'].includes(String(record.stato));
  const sezioni=sezioniEditor[moduleKey];
  const gruppi=sezioni?Object.entries(sezioni).map(([titolo,nomi])=>({titolo,fields:module.fields.filter(f=>nomi.includes(f.name))})):[{titolo:'Dati della scheda',fields:module.fields}];
@@ -79,8 +79,8 @@ function Editor({module,moduleKey,record,references,admin=false,personId='',edit
  return <>{lockedVersion&&<div className="notice">Versione storica protetta: i contenuti non sono modificabili. {record?.stato==='approvato'?'Puoi archiviare la versione oppure crearne una nuova.':'La versione archiviata non può essere riattivata.'}</div>}<EditForm action={saveModuleRecord} className="module-form stack">
 
  <input type="hidden" name="modulo" value={moduleKey}/>
- {record&&<input type="hidden" name="id" value={record.id}/>}{personId&&<input type="hidden" name="return_persona" value={personId}/>}{record&&moduleKey==='certificati'&&<input type="hidden" name="documento_atteso" value={String(record.documento_id??'')}/>}
- {gruppi.map(({titolo,fields})=><fieldset key={titolo}><legend>{titolo}</legend><div className="form-grid">{moduleKey==='iscrizioni'&&!record&&<EligibleEnrollmentSelect editions={(references.edizioni_corsi??[]) as unknown as {id:string;nome:string;stagione_id:string;stato:string;direttore_id?:string|null}[]} initialPerson={personId} eligible={(references.gest_soci_iscrivibili??[]) as unknown as {persona_id:string;stagione_id:string;nome:string;cognome:string}[]}/>} {fields.filter(f=>!(moduleKey==='iscrizioni'&&!record&&['edizione_id','persona_id','stato'].includes(f.name))).map(f=>lockedVersion&&f.name!=='stato'?<div key={f.name} className="sc-field"><strong>{f.label}</strong><p className="sc-prewrap">{f.ref?labelOf(references[f.ref.table]?.find(r=>r.id===record?.[f.name])??({id:''} as Row),f.ref.labels)||'Non disponibile':formatValue(record?.[f.name])}</p><input type="hidden" name={f.name} value={String(record?.[f.name]??'')}/></div>:moduleKey==='addebiti'&&f.name==='iscrizione_id'?<EnrollmentInput key={f.name} field={f} value={record?.[f.name]} references={references} editing={!!record}/>:(moduleKey==='iscrizioni'||moduleKey==='brevetti')&&record&&['persona_id','edizione_id'].includes(f.name)?<label key={f.name}>{f.label}<input type="hidden" name={f.name} value={String(record[f.name]??'')}/><input readOnly value={labelOf(references[f.ref?.table??'']?.find(r=>r.id===record[f.name])??({id:''} as Row),f.ref?.labels??['id'])||'Non acquisito'}/></label>:<FieldInput scope={moduleKey+'-'+(record?.id??'new')} key={`${record?.id??'new'}-${f.name}`} field={moduleKey==='iscrizioni'&&record&&f.name==='stato'?{...f,options:f.options?.filter(o=>o===record.stato||!['in_attesa','iscritto'].includes(o)||((references.edizioni_corsi??[]).some(e=>e.id===record.edizione_id&&['programmato','attivo'].includes(String(e.stato)))&&(references.gest_soci_iscrivibili??[]).some(e=>e.persona_id===record.persona_id&&e.stagione_id===(references.edizioni_corsi??[]).find(x=>x.id===record.edizione_id)?.stagione_id)))}:lockedVersion&&f.name==='stato'?{...f,options:record?.stato==='archiviato'?['archiviato']:['approvato','archiviato']}:f} value={record?.[f.name]??(moduleKey==='certificati'&&f.name==='esito_verifica'&&record?(record.idoneita_verificata?'valido':record.documento_id?'in_attesa':'non_valido'):undefined)??(!record&&f.name==='edizione_id'&&references[f.ref?.table??'']?.some(r=>r.id===editionId)?editionId:undefined)??(!record&&f.name==='persona_id'&&references[f.ref?.table??'']?.some(r=>r.id===personId)?personId:undefined)??(!record&&moduleKey==='anagrafiche'&&['stato_nascita','stato_residenza'].includes(f.name)?'Italia':undefined)} references={references}/>)}</div></fieldset>)}
+ {record&&<input type="hidden" name="id" value={record.id}/>} {poolId&&<input type="hidden" name="return_piscina" value={poolId}/>} {laneId&&<input type="hidden" name="return_corsia_id" value={laneId}/>} {lessonId&&<input type="hidden" name="return_lezione" value={lessonId}/>}{personId&&<input type="hidden" name="return_persona" value={personId}/>}{record&&moduleKey==='certificati'&&<input type="hidden" name="documento_atteso" value={String(record.documento_id??'')}/>}
+ {gruppi.map(({titolo,fields})=><fieldset key={titolo}><legend>{titolo}</legend><div className="form-grid">{moduleKey==='iscrizioni'&&!record&&<EligibleEnrollmentSelect editions={(references.edizioni_corsi??[]) as unknown as {id:string;nome:string;stagione_id:string;stato:string;direttore_id?:string|null}[]} initialPerson={personId} eligible={(references.gest_soci_iscrivibili??[]) as unknown as {persona_id:string;stagione_id:string;nome:string;cognome:string}[]}/>} {fields.filter(f=>!(moduleKey==='iscrizioni'&&!record&&['edizione_id','persona_id','stato'].includes(f.name))).map(f=>lockedVersion&&f.name!=='stato'?<div key={f.name} className="sc-field"><strong>{f.label}</strong><p className="sc-prewrap">{f.ref?labelOf(references[f.ref.table]?.find(r=>r.id===record?.[f.name])??({id:''} as Row),f.ref.labels)||'Non disponibile':formatValue(record?.[f.name])}</p><input type="hidden" name={f.name} value={String(record?.[f.name]??'')}/></div>:moduleKey==='addebiti'&&f.name==='iscrizione_id'?<EnrollmentInput key={f.name} field={f} value={record?.[f.name]} references={references} editing={!!record}/>:(moduleKey==='iscrizioni'||moduleKey==='brevetti')&&record&&['persona_id','edizione_id'].includes(f.name)?<label key={f.name}>{f.label}<input type="hidden" name={f.name} value={String(record[f.name]??'')}/><input readOnly value={labelOf(references[f.ref?.table??'']?.find(r=>r.id===record[f.name])??({id:''} as Row),f.ref?.labels??['id'])||'Non acquisito'}/></label>:<FieldInput scope={moduleKey+'-'+(record?.id??'new')} key={`${record?.id??'new'}-${f.name}`} field={moduleKey==='iscrizioni'&&record&&f.name==='stato'?{...f,options:f.options?.filter(o=>o===record.stato||!['in_attesa','iscritto'].includes(o)||((references.edizioni_corsi??[]).some(e=>e.id===record.edizione_id&&['programmato','attivo'].includes(String(e.stato)))&&(references.gest_soci_iscrivibili??[]).some(e=>e.persona_id===record.persona_id&&e.stagione_id===(references.edizioni_corsi??[]).find(x=>x.id===record.edizione_id)?.stagione_id)))}:lockedVersion&&f.name==='stato'?{...f,options:record?.stato==='archiviato'?['archiviato']:['approvato','archiviato']}:f} value={record?.[f.name]??(moduleKey==='certificati'&&f.name==='esito_verifica'&&record?(record.idoneita_verificata?'valido':record.documento_id?'in_attesa':'non_valido'):undefined)??(!record&&f.name==='piscina_id'&&references.piscine?.some(r=>r.id===poolId)?poolId:undefined)??(!record&&f.name==='corsia_id'&&references.corsie?.some(r=>r.id===laneId)?laneId:undefined)??(!record&&f.name==='lezione_id'&&references.lezioni?.some(r=>r.id===lessonId)?lessonId:undefined)??(!record&&f.name==='edizione_id'&&references[f.ref?.table??'']?.some(r=>r.id===editionId)?editionId:undefined)??(!record&&f.name==='persona_id'&&references[f.ref?.table??'']?.some(r=>r.id===personId)?personId:undefined)??(!record&&moduleKey==='anagrafiche'&&['stato_nascita','stato_residenza'].includes(f.name)?'Italia':undefined)} references={references}/>)}</div></fieldset>)}
  {moduleKey==='anagrafiche'&&<CodiceFiscaleAssist/>}<div className="form-actions"><button type="submit" className="button">{record?'Salva modifiche':'Salva '+entityLabel(moduleKey)}</button><CancelEditButton/></div>
  </EditForm>
  {record&&!module.appendOnly&&!lockedVersion&&<RemoveRecord moduleKey={moduleKey} id={record.id} label={rowLabel(record,references,module)}/>}
@@ -95,7 +95,7 @@ function bookingConflictText(corsia?:string,inizio?:string,fine?:string):string{
  const fascia=dal&&al?` dalle ${dal} alle ${al}`:' nell’intervallo richiesto';
  return `Corsia${numero} già prenotata${fascia}. Scegli un’altra corsia o modifica l’orario.`;
 }
-export default async function ModulePage({params,searchParams}:{params:Promise<{modulo:string}>;searchParams:Promise<{q?:string;msg?:string;p?:string;corsia?:string;inizio?:string;fine?:string;edit?:string;stato?:string;f?:string;v?:string;ordine?:string;dir?:string;filtro_modulo?:string;dal?:string;al?:string;persona?:string;nuovo?:string;pm?:string;stagione?:string;edizione?:string;livello?:string}>}){
+export default async function ModulePage({params,searchParams}:{params:Promise<{modulo:string}>;searchParams:Promise<{q?:string;msg?:string;p?:string;corsia?:string;inizio?:string;fine?:string;edit?:string;stato?:string;f?:string;v?:string;ordine?:string;dir?:string;filtro_modulo?:string;dal?:string;al?:string;persona?:string;nuovo?:string;pm?:string;stagione?:string;edizione?:string;livello?:string;piscina?:string;corsia_id?:string;lezione?:string}>}){
  const {modulo}=await params;
  if(!isModuleKey(modulo))notFound();
  if(modulo==='pagamenti')redirect('/gestionale/incassi');
@@ -113,12 +113,18 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  const personField=module.fields.some(f=>f.name==='persona_id');
  const editionId=(await searchParams).edizione;
  const catalogLevel=modulo==='corsi'?validLevel((await searchParams).livello):null;
+ const scope=await searchParams;
+ const calendarModule=['corsie','prenotazioni','calendario'].includes(modulo);
+ const scopedPool=calendarModule&&scope.piscina&&UUID_RE.test(scope.piscina)?scope.piscina:'';
+ const scopedLane=modulo==='prenotazioni'&&scope.corsia_id&&UUID_RE.test(scope.corsia_id)?scope.corsia_id:'';
+ const scopedLesson=modulo==='prenotazioni'&&scope.lezione&&UUID_RE.test(scope.lezione)?scope.lezione:'';
  const scopedEdition=editionId&&UUID_RE.test(editionId)&&module.fields.some(f=>f.name==='edizione_id')?editionId:'';
  const dateColumn=modulo==='attrezzature'?'prossima_revisione':['certificati','tesseramenti','brevetti'].includes(modulo)?'scade_il':null;
  const ui=moduleUi[modulo];
  const feedback=msg==='corsia_occupata'&&modulo==='prenotazioni'?bookingConflictText(corsia,inizio,fine):status[msg];
  const editId=edit&&UUID_RE.test(edit)?edit:null;
  if(modulo==='calendario'&&editId)redirect(`/gestionale/calendario-visivo/${editId}`);
+ if(modulo==='calendario'&&nuovo==='1')redirect('/gestionale/calendario-visivo?nuovo=1'+(scopedPool?'&piscina='+scopedPool:'')+(scopedEdition?'&edizione='+scopedEdition:''));
  const page=editId?1:pageNumber(p);
  const perPage=30;
  const personViews=new Set(['adesioni', 'iscrizioni_corsi', 'assegnazioni_istruttori', 'qualifiche_istruttori', 'brevetti_allievi', 'certificati_medici', 'presenze', 'assegnazioni_attrezzature', 'quote_associative', 'saldi_quote', 'saldi_corsi', 'tesseramenti', 'addebiti_corsi']);
@@ -136,7 +142,12 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  if(missingCountQuery)for(const term of searchTerms(q))missingCountQuery.or('cognome.ilike.%'+term+'%,nome.ilike.%'+term+'%');
  const missingTotal=missingCountQuery?await missingCountQuery:null;
  const filtri=medical?await Promise.all(Object.entries(statiCertificato).map(async ([k,label])=>{let filterQuery=supabase.from('stato_certificati').select('id',{head:true,count:'exact'}).eq('stato_certificato',k==='in_scadenza'?'valido':k);if(k==='in_scadenza')filterQuery=filterQuery.gte('scade_il',today).lte('scade_il',shiftDay(today,30));if(k==='valido')filterQuery=filterQuery.gt('scade_il',shiftDay(today,30));if(personId)filterQuery=filterQuery.eq('persona_id',personId);if(dal)filterQuery=filterQuery.gte('scade_il',dal);if(al)filterQuery=filterQuery.lte('scade_il',al);for(const term of searchTerms(q))filterQuery=filterQuery.or('sort_cognome.ilike.%'+term+'%,sort_nome.ilike.%'+term+'%');const {count,error}=await filterQuery;return {k,label,n:error||(k==='mancante'&&missingTotal?.error)?'—':(count??0)+(k==='mancante'?(missingTotal?.count??0):0)};})):[];
- let query=supabase.from(medical?'stato_certificati':personSorted?`gest_elenco_${module.table}`:module.table).select('*',{count:'exact'});
+ let query=supabase.from(medical?'stato_certificati':personSorted?`gest_elenco_${module.table}`:module.table).select(modulo==='prenotazioni'?'*,corsie!inner(piscina_id)':'*',{count:'exact'});
+ if(!editId&&scopedPool)query=query.eq(modulo==='prenotazioni'?'corsie.piscina_id':'piscina_id',scopedPool);
+ if(!editId&&scopedLane)query=query.eq('corsia_id',scopedLane);
+ if(!editId&&scopedLesson)query=query.eq('lezione_id',scopedLesson);
+ if(!editId&&modulo==='prenotazioni'&&dal)query=query.gt('fine',dayBounds(dal).from);
+ if(!editId&&modulo==='prenotazioni'&&al)query=query.lt('inizio',dayBounds(al).to);
  if(!editId&&medical&&stato&&Object.hasOwn(statiCertificato,stato))query=query.eq('stato_certificato',stato==='in_scadenza'?'valido':stato);
  if(!editId&&medical&&stato==='in_scadenza')query=query.gte('scade_il',today).lte('scade_il',shiftDay(today,30));
  if(!editId&&medical&&stato==='valido')query=query.gt('scade_il',shiftDay(today,30));
@@ -146,7 +157,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  if(!editId&&seasonId)query=query.eq('stagione_id',seasonId);
  if(!editId&&scopedEdition)query=query.eq('edizione_id',scopedEdition);
  if(!editId&&catalogLevel!==null)query=query.eq('livello',catalogLevel);
- let scopeError=false;
+ let scopeError=modulo==='prenotazioni'&&Boolean(dal&&al&&dal>al);
  if(!editId&&personId&&modulo==='tesseramenti'){const ids=await tutteLePagine((da,a)=>supabase.from('adesioni').select('id').eq('persona_id',personId).order('id').range(da,a));scopeError=Boolean(ids.error);const keys=(ids.data??[]).map(x=>x.id);query=keys.length?query.in('adesione_id',keys):query.eq('id','00000000-0000-0000-0000-000000000000');}
  const selectableFilters=module.fields.filter(field=>field.type==='select'&&field.options?.length&&(!medical||field.name!=='esito_verifica'));
  const [filterName,filterValue]=filtro_modulo?.split(':',2)??[f??'',v??''];
@@ -162,7 +173,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  query=query.order(selectedSort??primary,{ascending:dir!=='desc',nullsFirst:false});
  if((personSorted||medical||module.table==='persone')&&!selectedSort)query=query.order(personSorted||medical?'sort_nome':'nome',{ascending:dir!=='desc'});
  const {data,error,count}=await query.order('id',{ascending:true}).range((page-1)*perPage,page*perPage-1);
- const refs=[...new Set(module.fields.map(f=>f.ref?.table).filter((v):v is string=>Boolean(v)))];
+ const refs=[...new Set([...module.fields.map(f=>f.ref?.table).filter((v):v is string=>Boolean(v)),...(modulo==='prenotazioni'?['piscine']:[])])];
  const references:Record<string,Row[]>={};
  let referenceError=false;
  let enrollmentLoadError=false;
@@ -201,7 +212,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
    references[table]=rows.sort((a,b)=>String(a.etichetta).localeCompare(String(b.etichetta),'it'));return;
   }
   const ref=module.fields.find(f=>f.ref?.table===table)?.ref;
-  const cols=[...new Set(['id',...(ref?.labels??[]),...(modulo==='iscrizioni'&&table==='edizioni_corsi'?['stagione_id','stato','direttore_id']:[])])].join(',');
+  const cols=[...new Set(['id',...(ref?.labels??[]),...(modulo==='prenotazioni'&&table==='corsie'?['numero','piscina_id','note']:[]),...(modulo==='prenotazioni'&&table==='lezioni'?['titolo','edizione_id','inizio','fine','piscina_id','annullata_il']:[]),...(modulo==='prenotazioni'&&table==='piscine'?['nome','orari_disponibili','limitazioni']:[]),...(modulo==='iscrizioni'&&table==='edizioni_corsi'?['stagione_id','stato','direttore_id']:[])])].join(',');
   const refOrder=ref?.labels?.[0]??'id';
   let refQuery=supabase.from(table).select(cols).order(refOrder,{ascending:true});
   if(table==='persone')refQuery=refQuery.order('nome',{ascending:true});
@@ -227,14 +238,22 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
   const available:Row[]=[];for(let offset=0;;offset+=500){const {data:batch,error:loadError}=await supabase.from('edizioni_corsi').select('id,nome,stagione_id,stato,direttore_id').in('stato',['programmato','attivo']).order('nome').order('id').range(offset,offset+499);if(loadError){available.length=0;enrollmentLoadError=true;break;}available.push(...((batch??[]) as Row[]));if((batch??[]).length<500)break;}
   const existing=references.edizioni_corsi??[];references.edizioni_corsi=[...available,...existing.filter(r=>!available.some(e=>e.id===r.id)&&!['programmato','attivo'].includes(String(r.stato)))];
  }
- const rows=(data??[]) as Row[];
- const href=(page:number)=>listHref({q,p:String(page),stato,dal,al,persona:personId,stagione:seasonId,edizione:scopedEdition,livello:catalogLevel===null?undefined:String(catalogLevel),vista:modulo==='iscrizioni'?'elenco':undefined,filtro_modulo:selectedFilter?selectedFilter.name+':'+filterValue:undefined,ordine,dir});
+ if(modulo==='prenotazioni'){
+  const pools=references.piscine??[];
+  for(const lane of references.corsie??[])lane.calendar_label=(pools.find(p=>p.id===lane.piscina_id)?.nome??'Piscina non disponibile')+' · Corsia '+lane.numero;
+  for(const lesson of references.lezioni??[])lesson.calendar_label=String(lesson.titolo)+' · '+formatRome(String(lesson.inizio))+(lesson.annullata_il?' · Annullata':'');
+ }
+ const rows=(data??[]) as unknown as Row[];
+ const href=(page:number)=>listHref({q,p:String(page),stato,dal,al,persona:personId,stagione:seasonId,edizione:scopedEdition,piscina:scopedPool,corsia_id:scopedLane,lezione:scopedLesson,livello:catalogLevel===null?undefined:String(catalogLevel),vista:modulo==='iscrizioni'?'elenco':undefined,filtro_modulo:selectedFilter?selectedFilter.name+':'+filterValue:undefined,ordine,dir});
  const numeric=(c:string)=>module.fields.some(field=>field.name===c&&field.type==='number');
  const display=(row:Row,c:string)=>{
   if(medical&&c==='documento_id')return row[c]?<Link href={'/documenti/'+row[c]}>Apri certificato</Link>:<Link href={'/area-personale/certificato?persona='+row.persona_id}>Carica certificato</Link>;
   if(medical&&c==='stato_certificato'){const value=row[c]==='valido'&&String(row.scade_il)>=today&&String(row.scade_il)<=shiftDay(today,30)?'in_scadenza':String(row[c]);return <StatusBadge tone={tone(value)}>{statoSingolo(value)}</StatusBadge>;}
   const field=module.fields.find(field=>field.name===c);
   const reference=references[field?.ref?.table??'']?.find(x=>x.id===row[c]);
+  if(reference&&modulo==='prenotazioni'&&c==='lezione_id')return <Link href={'/gestionale/calendario-visivo/'+reference.id}>{labelOf(reference,field?.ref?.labels??['id'])}</Link>;
+  if(reference&&modulo==='prenotazioni'&&c==='corsia_id')return <Link href={'/gestionale/moduli/corsie?edit='+reference.id}>{labelOf(reference,field?.ref?.labels??['id'])}</Link>;
+  if(reference&&modulo==='corsie'&&c==='piscina_id')return <Link href={'/gestionale/moduli/piscine?edit='+reference.id}>{labelOf(reference,field?.ref?.labels??['id'])}</Link>;
   if(reference)return c==='persona_id'?<Link href={'/gestionale/soci/'+reference.id}>{labelOf(reference,field?.ref?.labels??['id'])}</Link>:labelOf(reference,field?.ref?.labels??['id']);
   if(c==='persona_id'&&row.sort_cognome)return <Link href={'/gestionale/soci/'+row[c]}>{String(row.sort_cognome)+' '+String(row.sort_nome??'')}</Link>;
   if(c.endsWith('_id'))return row[c]?'Informazione collegata non disponibile':'—';
@@ -243,10 +262,12 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
   return formatValue(row[c],c);
  };
  return <>
- <PageHeader eyebrow="Gestionale" title={module.label} description={module.description} actions={!editId&&<Drawer primary title={ui.create} trigger={ui.create} initialOpen={nuovo==='1'&&!msg}><Editor module={module} moduleKey={modulo} references={references} personId={personId} editionId={scopedEdition}/></Drawer>}/>
+ <PageHeader eyebrow="Gestionale" title={module.label} description={module.description} actions={!editId&&(modulo==='calendario'?<ButtonLink href={'/gestionale/calendario-visivo?nuovo=1'+(scopedPool?'&piscina='+scopedPool:'')+(scopedEdition?'&edizione='+scopedEdition:'')}>Nuova lezione</ButtonLink>:<Drawer primary title={ui.create} trigger={ui.create} initialOpen={nuovo==='1'&&!msg}><Editor module={module} moduleKey={modulo} references={references} personId={personId} editionId={scopedEdition} poolId={scopedPool} laneId={scopedLane} lessonId={scopedLesson}/></Drawer>)}/>
  {personId&&memberTabForModule(modulo)&&<div className="sc-row-actions"><Link className="sc-button sc-button-secondary" href={'/gestionale/soci/'+personId+'?tab='+memberTabForModule(modulo)}>Torna alla scheda socio</Link><span className="muted">Elenco contestuale alla scheda selezionata</span></div>}
  {scopedEdition&&<p><Link href={'/gestionale/corsi/'+scopedEdition+'?tab='+(modulo==='brevetti'?'brevetti':'panoramica')}>Torna alla scheda del corso</Link> · Elenco per edizione selezionata</p>}
- {scopeError&&<p role="alert" className="notice error">Non è stato possibile leggere le adesioni collegate. Elenco non disponibile.</p>}
+ {calendarModule&&<div className="sc-row-actions"><Link href={'/gestionale/calendario-visivo'+(scopedPool?'?piscina='+scopedPool:'')}>Torna al calendario</Link>{scopedPool&&<Link href={'/gestionale/moduli/piscine?edit='+scopedPool}>Scheda piscina</Link>}{scopedLesson&&<Link href={'/gestionale/calendario-visivo/'+scopedLesson}>Scheda lezione</Link>}</div>}
+ {modulo==='prenotazioni'&&<Alert tone="info">Gli orari sono italiani. L’assenza di prenotazioni non certifica la disponibilità contrattuale; il database verifica piscina, intervallo, stato della lezione e sovrapposizioni.</Alert>}
+ {scopeError&&<p role="alert" className="notice error">{modulo==='prenotazioni'?'Intervallo date non valido.':'Non è stato possibile leggere le adesioni collegate. Elenco non disponibile.'}</p>}
  {feedback&&<p className={'notice '+(['salvato','eliminato'].includes(msg)?'success':'warning')} role="status">{feedback}</p>}
  {enrollmentLoadError&&<p className="notice error">Impossibile caricare tutte le iscrizioni dei corsi. Riprova o verifica i permessi.</p>}
  {referenceError&&<p className="notice warning" role="alert">Alcuni elenchi di scelta non sono completi. Ricarica la pagina prima di modificare i collegamenti.</p>}
@@ -255,6 +276,8 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  <FilterBar>
  <SearchBar query={q} placeholder={ui.search||'Filtri e ordinamento'} resetHref={'/gestionale/moduli/'+modulo} hideSearch={!ui.search}>
  {scopedEdition&&<input type="hidden" name="edizione" value={scopedEdition}/>} {modulo==='corsi'&&<label>Livello ARA<select name="livello" defaultValue={catalogLevel??''}><option value="">Tutti</option>{[1,2,3,4,5].map(x=><option key={x} value={x}>{x}</option>)}</select></label>} {modulo==='iscrizioni'&&<input type="hidden" name="vista" value="elenco"/>}{medical&&stato&&<input type="hidden" name="stato" value={stato}/>} {personId&&memberTabForModule(modulo)&&<input type="hidden" name="persona" value={personId}/>} {module.fields.some(f=>f.name==='stagione_id')&&<label>Stagione<select name="stagione" defaultValue={seasonId}><option value="">Tutte</option>{(references.stagioni??[]).map(s=><option key={s.id} value={s.id}>{String(s.nome??'Stagione')}</option>)}</select></label>}{dateColumn&&<><label>Scadenza dal<input type="date" name="dal" defaultValue={dal}/></label><label>Scadenza al<input type="date" name="al" defaultValue={al}/></label></>}
+ {calendarModule&&<label>Piscina<select name="piscina" defaultValue={scopedPool}><option value="">Tutte</option>{(references.piscine??[]).map(r=><option key={r.id} value={r.id}>{String(r.nome)}</option>)}{scopedPool&&!references.piscine?.some(r=>r.id===scopedPool)&&<option value={scopedPool}>Piscina non disponibile</option>}</select></label>}
+ {modulo==='prenotazioni'&&<><label>Corsia<select name="corsia_id" defaultValue={scopedLane}><option value="">Tutte</option>{(references.corsie??[]).map(r=><option key={r.id} value={r.id}>{String(r.calendar_label)}</option>)}</select></label><label>Lezione<select name="lezione" defaultValue={scopedLesson}><option value="">Tutte</option>{(references.lezioni??[]).map(r=><option key={r.id} value={r.id}>{String(r.calendar_label)}</option>)}</select></label><label>Dal<input name="dal" type="date" defaultValue={dal}/></label><label>Al<input name="al" type="date" defaultValue={al}/></label></>}
  {selectableFilters.length>0&&<label>Filtra per<select name="filtro_modulo" defaultValue={selectedFilter?selectedFilter.name+':'+filterValue:''}><option value="">Tutti</option>{selectableFilters.map(field=><optgroup key={field.name} label={field.label}>{field.options?.map(value=><option key={value} value={field.name+':'+value}>{value.replaceAll('_',' ')}</option>)}</optgroup>)}</select></label>}
  <label>Ordina per<select name="ordine" defaultValue={selectedSort??''}><option value="">Ordine predefinito</option>{sortable.map(field=><option key={field.name} value={field.name}>{field.label}</option>)}</select></label>
  <label>Direzione<select name="dir" defaultValue={dir==='desc'?'desc':'asc'}><option value="asc">Crescente</option><option value="desc">Decrescente</option></select></label>
@@ -267,7 +290,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  {!module.appendOnly&&<th role="columnheader" scope="col">Azioni</th>}
  </tr></thead><tbody role="rowgroup">{rows.map(row=><tr key={row.id} role="row">
  {module.columns.map(c=><td key={c} role="cell" data-label={columnLabel(c,module)} className={numeric(c)?'sc-number':undefined}>{display(row,c)}</td>)}
- {!module.appendOnly&&<td role="cell" data-label="Azioni"><div className="sc-row-actions">{modulo==='anagrafiche'&&<Link href={'/gestionale/soci/'+row.id}>Apri scheda</Link>}{modulo==='calendario'?<Link href={'/gestionale/calendario-visivo/'+row.id}>Modifica lezione e corsie</Link>:<Drawer key={row.id+'-'+msg} title={'Modifica '+entityLabel(modulo)+' · '+rowLabel(row,references,module)} trigger={modulo==='versioni'&&['approvato','archiviato'].includes(String(row.stato))?'Consulta versione':'Modifica'} initialOpen={msg!=='salvato'&&editId===row.id}><Editor module={module} moduleKey={modulo} record={row} references={references} admin={isAdministrator===true} personId={personId}/></Drawer>}</div></td>}
+ {!module.appendOnly&&<td role="cell" data-label="Azioni"><div className="sc-row-actions">{modulo==='anagrafiche'&&<Link href={'/gestionale/soci/'+row.id}>Apri scheda</Link>}{modulo==='corsie'&&<Link href={'/gestionale/moduli/prenotazioni?corsia_id='+row.id+'&piscina='+row.piscina_id}>Prenotazioni corsia</Link>}{modulo==='calendario'?<Link href={'/gestionale/calendario-visivo/'+row.id}>Modifica lezione e corsie</Link>:<Drawer key={row.id+'-'+msg} title={'Modifica '+entityLabel(modulo)+' · '+rowLabel(row,references,module)} trigger={modulo==='versioni'&&['approvato','archiviato'].includes(String(row.stato))?'Consulta versione':'Modifica'} initialOpen={msg!=='salvato'&&editId===row.id}><Editor module={module} moduleKey={modulo} record={row} references={references} admin={isAdministrator===true} personId={personId} poolId={scopedPool} laneId={scopedLane} lessonId={scopedLesson}/></Drawer>}</div></td>}
  </tr>)}
  {!rows.length&&<tr><td colSpan={module.columns.length+(module.appendOnly?0:1)} className="empty-cell">Nessun risultato con questi filtri.</td></tr>}
  </tbody></DataTable>}

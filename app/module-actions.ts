@@ -26,6 +26,7 @@ export async function saveModuleRecord(form:FormData) {
  if(id && (!uuid.test(id)||module.appendOnly)) redirect(errorPath(key,'permessi'));
  // Le modifiche a lezioni esistenti passano dall'editor atomico di orario e corsie.
  if(key==='calendario'&&id)redirect(`/gestionale/calendario-visivo/${id}`);
+ if(key==='calendario'&&!id)return {error:'Usa il modulo guidato Nuova lezione dal calendario.',href:'/gestionale/calendario-visivo?nuovo=1'};
  const changes:Record<string,unknown>={};
  for(const field of module.fields) {
   const raw=text(form,field.name);
@@ -101,6 +102,27 @@ export async function saveModuleRecord(form:FormData) {
   if(error||!eligible)return {error:"Seleziona un allievo iscritto a un corso attivo della stagione attiva."};
  }
  if(key==='comunicazioni'&&!id) changes.autore_id=user.id;
+ if(key==='corsie'&&id){
+  const {data:previous,error:readError}=await supabase.from('corsie').select('piscina_id').eq('id',id).maybeSingle();
+  if(readError||!previous)return {error:'Corsia non disponibile.'};
+  if(previous.piscina_id!==changes.piscina_id){
+   const {count,error}=await supabase.from('prenotazioni_corsie').select('id',{count:'exact',head:true}).eq('corsia_id',id);
+   if(error||count===null||count>0)return {field:'piscina_id',error:'Non puoi spostare una corsia con prenotazioni storiche o non verificabili. Configura una nuova corsia nell’altra piscina.'};
+  }
+ }
+ if(key==='prenotazioni'){
+  const start=Date.parse(String(changes.inizio)),end=Date.parse(String(changes.fine));
+  if(!Number.isFinite(start)||!Number.isFinite(end)||end<=start)return {field:'fine',error:'La fine deve essere successiva all’inizio.'};
+  if(id){
+   const {data:previous,error}=await supabase.from('prenotazioni_corsie').select('lezione_id,corsia_id,inizio,fine,stato').eq('id',id).maybeSingle();
+   if(error||!previous)return {error:'Prenotazione non disponibile.'};
+   if(previous.lezione_id!==changes.lezione_id||previous.corsia_id!==changes.corsia_id)return {error:'La prenotazione resta collegata alla lezione e alla corsia originali. Annullala e crea una nuova prenotazione se necessario.'};
+  }
+  const [lesson,lane]=await Promise.all([supabase.from('lezioni').select('piscina_id,inizio,fine,annullata_il').eq('id',String(changes.lezione_id)).maybeSingle(),supabase.from('corsie').select('piscina_id').eq('id',String(changes.corsia_id)).maybeSingle()]);
+  if(lesson.error||lane.error||!lesson.data||!lane.data)return {error:'Lezione o corsia non disponibili.'};
+  if(lesson.data.piscina_id!==lane.data.piscina_id||start<Date.parse(lesson.data.inizio)||end>Date.parse(lesson.data.fine))return {field:'corsia_id',error:'La corsia deve appartenere alla piscina della lezione e la prenotazione deve rientrare nel suo orario.'};
+  if(changes.stato==='confermata'&&lesson.data.annullata_il)return {error:'Non puoi prenotare una lezione annullata.'};
+ }
  let query;
  if(id){
   let update=supabase.from(module.table).update(changes).eq('id',id);
@@ -137,6 +159,12 @@ export async function saveModuleRecord(form:FormData) {
  }
  revalidatePath(`/gestionale/moduli/${key}`);
  revalidatePath('/gestionale');
+ if(['piscine','corsie','prenotazioni'].includes(key)){
+  revalidatePath('/gestionale/calendario-visivo','layout');
+  const q=new URLSearchParams({msg:'salvato'});if(id)q.set('edit',id);
+  for(const k of ['piscina','corsia_id','lezione']){const value=text(form,'return_'+k);if(uuid.test(value))q.set(k,value);}
+  redirect('/gestionale/moduli/'+key+'?'+q.toString());
+ }
  const returnPerson=text(form,'return_persona'),tab=memberTabForModule(key);
  if(tab&&uuid.test(returnPerson)&&changes.persona_id===returnPerson){revalidatePath('/gestionale/soci/'+returnPerson);redirect('/gestionale/soci/'+returnPerson+'?tab='+tab+'&msg=elemento_salvato');}
  if(key==='iscrizioni'&&id)redirect('/gestionale/corsi/'+changes.edizione_id+'?tab=allievi&msg=iscritto');

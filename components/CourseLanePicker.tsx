@@ -5,7 +5,7 @@ import {lessonInterval,formatRome} from '@/lib/course-tools';
 import type {LanePreview} from '@/lib/calendar-tools';
 export type PoolOption={id:string;nome:string;orari_disponibili?:string|null;limitazioni?:string|null};
 export type LaneOption={id:string;piscina_id:string;numero:number;note?:string|null};
-type Preview=LanePreview|{status:'idle'|'pending'};
+type Preview=LanePreview|{status:'idle'}|{status:'pending'};
 export default function CourseLanePicker({pools,lanes,initialPool="",initialLanes=[],requirePool=false}:{requirePool?:boolean;pools:PoolOption[];lanes:LaneOption[];initialPool?:string;initialLanes?:string[]}){
  const [pool,setPool]=useState(initialPool),[chosen,setChosen]=useState<string[]>(initialLanes),[preview,setPreview]=useState<Preview>({status:'idle'}),[revision,setRevision]=useState(0);
  const root=useRef<HTMLDivElement>(null);
