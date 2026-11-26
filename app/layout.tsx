@@ -12,6 +12,7 @@ import './calendar-ui.css';
 import './association-ui.css';
 import './finance-ui.css';
 import './personal-ui.css';
+import './responsive-accessibility.css';
 export const viewport: Viewport = {width:'device-width', initialScale:1, viewportFit:'cover'};
 export const metadata: Metadata = {
   title: { default: 'Sesto Continente | Gestionale', template: '%s | Sesto Continente' },
