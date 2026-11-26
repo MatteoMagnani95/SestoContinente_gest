@@ -49,7 +49,7 @@ test('Form richiesta: avviso di collaudo solo in modalità di prova',()=>{
 });
 test('Certificato: date verificate prima della lettura e rimozione del transito',()=>{
   const action=read('app/area-personale/certificato/actions.ts');
-  const validated=action.indexOf("if(!validPaymentDate(dal)||!validPaymentDate(al)");
+  const validated=action.indexOf("if(!isCalendarDate(dal)||!isCalendarDate(al)");
   const loaded=action.indexOf("if(staged){");
   const removed=action.indexOf("await storage.remove([staged])");
   assert.ok(validated>=0&&loaded>validated&&removed>loaded);

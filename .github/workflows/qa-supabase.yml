@@ -1,6 +1,8 @@
 name: QA Supabase locale (isolato)
 on:
   workflow_dispatch:
+  push:
+    branches: ['release/gestionale-consolidato']
   pull_request:
     branches: ['main', 'feature/gestionale-2.0-redesign']
     paths:
@@ -27,7 +29,7 @@ permissions:
   contents: read
 jobs:
   local-qa:
-    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'feature/gestionale-2.0-redesign' || github.head_ref == 'fix/password-recovery-login'
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/release/gestionale-consolidato' || github.head_ref == 'release/gestionale-consolidato' || github.head_ref == 'feature/gestionale-2.0-redesign' || github.head_ref == 'fix/password-recovery-login'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:

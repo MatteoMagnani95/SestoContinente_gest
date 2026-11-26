@@ -6,6 +6,7 @@ on:
     branches:
       - 'fix/**'
       - 'feature/gestionale-2.0-redesign'
+      - 'release/gestionale-consolidato'
   workflow_dispatch:
 
 permissions:
