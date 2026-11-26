@@ -79,3 +79,7 @@ jobs:
       - run: npm run test:integration
       - name: Audit storico in sola lettura (dati sintetici)
         run: psql "$TEST_0019_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f docs/redesign/F5_HISTORICAL_AUDIT.sql
+      - name: Benchmark sintetico, paginazione e isolamento RLS
+        run: node scripts/test-performance-ci.cjs
+      - name: Prova ripristino su secondo database effimero
+        run: bash scripts/test-restore-ci.sh
