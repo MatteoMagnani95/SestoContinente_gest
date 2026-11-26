@@ -18,7 +18,7 @@ export default async function MyCourses({searchParams}:{searchParams:Promise<{ms
  const [{data:people},{data:enrollments},{data:lessons}]=await Promise.all([
  ids.length?supabase.from('persone').select('id,nome,cognome').in('id',ids).order('cognome').order('nome'):Promise.resolve({data:[]}),
  ids.length?supabase.from('iscrizioni_corsi').select('id,persona_id,edizione_id,stato').in('persona_id',ids).limit(250):Promise.resolve({data:[]}),
- supabase.from('lezioni').select('id,edizione_id,titolo,inizio,fine').is('annullata_il',null).gte('inizio',new Date().toISOString()).order('inizio').limit(50),
+ myCourseIds.length?supabase.from('lezioni').select('id,edizione_id,titolo,inizio,fine').in('edizione_id',myCourseIds).is('annullata_il',null).gte('inizio',new Date().toISOString()).order('inizio').limit(50):Promise.resolve({data:[]}),
  ]);
  const {data:eligible}=ids.length?await supabase.from('gest_soci_iscrivibili').select('persona_id,stagione_id').in('persona_id',ids):{data:[]};
  const fullName=(id:string)=>{const p=people?.find(x=>x.id===id);return `${p?.cognome??''} ${p?.nome??''}`;};
@@ -36,6 +36,6 @@ export default async function MyCourses({searchParams}:{searchParams:Promise<{ms
  <form action={askForCourse} className="stack"><input type="hidden" name="edizione_id" value={e.id}/><label>Iscrivi persona<select name="persona_id" required><option value="">Seleziona</option>{eligibleFor(e.stagione_id,e.id).map(p=><option key={p.id} value={p.id}>{p.cognome} {p.nome}</option>)}</select></label><Emergenza/><button className="button" disabled={!eligibleFor(e.stagione_id,e.id).length}>Richiedi iscrizione</button></form></article>)}
  </div></section>
  <section className="panel"><h2>Materiali didattici scaricabili</h2>{(didacticFiles??[]).map(doc=><p key={doc.id}><Link href={`/documenti/${doc.id}`} prefetch={false}>{doc.nome}</Link> · {editions?.find(e=>e.id===doc.edizione_id)?.nome??'Corso iscritto'}</p>)}{!didacticFiles?.length&&<p className="muted">Nessun materiale didattico pubblicato per i tuoi corsi.</p>}</section>
- <section className="panel"><h2>Prossime lezioni</h2>{lessons?.map(l=><p key={l.id}>{formatValue(l.inizio)} · {l.titolo}</p>)}{!lessons?.length&&<p className="muted">Nessuna lezione visibile.</p>}</section>
+ <section className="panel"><h2>Prossime lezioni</h2>{lessons?.map(l=><p key={l.id}><strong>{editions?.find(e=>e.id===l.edizione_id)?.nome??'Corso'}</strong> · {formatValue(l.inizio)} · {l.titolo}</p>)}{!lessons?.length&&<p className="muted">Nessuna lezione visibile.</p>}</section>
  </div>;
 }
