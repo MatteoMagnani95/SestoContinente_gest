@@ -62,3 +62,19 @@ Finché anche un gate obbligatorio è aperto, PR #4 rimane in bozza. La chiusura
 - DB 45866966676: rilevato un deadlock intermittente 40P01 nelle prenotazioni simultanee, transazione perdente annullata. Migrazione 20261126172500_serializza_prenotazioni_guidate.sql serializza le chiavi advisory per corsia in ordine deterministico, conserva EXCLUDE, RLS, firme RPC e dati storici. Messaggi UI espliciti in caso di conflitti transitori. Test su cinque gare multicorsia inverse; DB [45867587760](https://github.com/MatteoMagnani95/SestoContinente_gest/actions/runs/45867587760) e [45867611269](https://github.com/MatteoMagnani95/SestoContinente_gest/actions/runs/45867611269) success, incluse 26 migrazioni canoniche e regressioni calendario. Non implica assenza di deadlock per qualsiasi DML arbitrario; EXCLUDE e rollback proteggono integrità.
 - QA email locale esteso a signup, conferma, domanda sintetica, logout e recovery con password contenenti spazi; 45867115106 e 45867543118 falliti per config.toml assente dopo init. 86c037b materializza configurazione isolata quando assente; esito del nuovo QA da confermare, inclusa importazione positiva e anomalia oltre prima pagina. Nessuna email reale.
 - Gate esterni: preview Vercel bloccata dal build-rate-limit; device/screen reader fisici, audit storico su copia autorizzata, testi ufficiali e regole associative, staging provider e prova rollback/autorizzazione al rilascio ancora richiesti. PR #4 resta bozza, main immutato; nessun deploy o SQL di produzione.
+
+
+## Quadro di accettazione aggiornato
+| Gate | Stato verificato | Residuo obbligatorio |
+|---|---|---|
+| G1 CI | b14dfa75: 230/230 automatici, 62/62 browser pubblici, lint, TS, build e DB; [45867611269](https://github.com/MatteoMagnani95/SestoContinente_gest/actions/runs/45867611269) success | Conferma sul candidato definitivo, incluse eventuali modifiche successive |
+| G2 Migrazioni | 26 migrazioni canoniche, test PostgreSQL e ripristino su DB effimero | Inventario versioni reali, audit autorizzato in sola lettura, staging e backup provider |
+| G3 Auth/RLS/Storage | faac486: 9 account, 142/142 browser, JWT/Storage e revoca, tutore e istruttore non assegnato verificati | Nuovo flusso signup/recovery con sink locale e conferma sul candidato definitivo; provider staging |
+| G4 Accessibilità | Chromium/WebKit e viewport campionati, route censite, reflow e tastiera automatizzata | Verifica fisica Safari/iOS, Android e screen reader, senza attribuire esito ai soli test Playwright |
+| G5 Integrità | Mutazioni UI e scenari SQL concorrenti verificati; incassi, prestiti, presenze, certificati, eventi e revoca | Importazione positiva e quarantena fuori pagina nel QA esteso; regressioni residue elencate nel TEST_PLAN |
+| G6 Testi/configurazione | Modalità test isolata e protezione cron/email | Testi ufficiali versionati, rappresentanza minori e configurazione effettiva da approvare |
+| G7 Performance | E2E sintetico 193–382 ms (6 misure locali), query SQL su 20.000 notifiche, conteggi e pagine verificate | Soglie concordate e tempi ambiente staging/reale; nessuna SLA dedotta |
+| G8 Preview e rollback | Backup/ripristino sintetico con impronte e policy | Preview Vercel sullo SHA (build-rate-limit), rollback applicativo/provider su staging separato |
+| G9 Autorizzazione | NO-GO | Approvazione esplicita, distinta dalla richiesta di completare lo sviluppo |
+
+**Conclusione:** candidato di sviluppo con ampia evidenza positiva, non versione pubblicabile automaticamente. I risultati si riferiscono agli SHA indicati, non a ogni commit successivo. Nessuna prova fisica, attestazione legale o modifica al database reale viene dichiarata eseguita.
