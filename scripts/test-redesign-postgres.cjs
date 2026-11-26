@@ -131,7 +131,7 @@ async function main() {
     // Due corsi sulla stessa corsia: fallimento atomico e intervalli adiacenti.
     const catalog=await value(staff,"insert into corsi(nome,tipo) values($1,'APNEA') returning id",['Collaudo '+randomUUID()]);
     const editions=[];
-    for(const name of ['Primo','Secondo'])editions.push(await value(staff,"insert into edizioni_corsi(corso_id,stagione_id,nome,inizio,fine) values($1,$2,$3,current_date,current_date+10) returning id",[catalog,season,name]));
+    for(const name of ['Primo','Secondo'])editions.push(await value(staff,"insert into edizioni_corsi(corso_id,stagione_id,nome,inizio,fine,direttore_id) values($1,$2,$3,current_date,current_date+10,$4) returning id",[catalog,season,name,person]));
     const pool=await value(staff,"insert into piscine(nome) values('Piscina di prova') returning id");
     const lane=await value(staff,'insert into corsie(piscina_id,numero) values($1,1) returning id',[pool]);
     const createLesson="select crea_lezione_guidata($1,$2,(current_date+1+time '10:00') at time zone 'Europe/Rome',(current_date+1+time '11:00') at time zone 'Europe/Rome',$3,array[$4]::uuid[],null,null)";
