@@ -43,7 +43,7 @@ body:has(dialog[open]){overflow:hidden}
  .sc-calendar-controls .sc-calendar-filter{grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr))}
 }
 @media(max-width:768px){
- .sc-editor-dialog.sc-editor-drawer,.sc-editor-dialog.sc-editor-modal{
+ .sc-editor-dialog.sc-editor-drawer,.sc-editor-dialog.sc-editor-modal,.sc-editor-dialog.sc-editor-modal.sc-editor-confirm{
   inset:0;margin:0;width:100%;max-width:100%;height:100vh;height:100dvh;
   max-height:100vh;max-height:100dvh;border-radius:0;scrollbar-gutter:auto
  }
@@ -96,19 +96,19 @@ body:has(dialog[open]){overflow:hidden}
 
 /* VisualViewport is progressively enhanced by AppShell. Native zoom remains enabled. */
 @media(max-width:1000px){
- .sc-mobile-menu,.sc-editor-drawer{
+  .sc-mobile-menu{
   inset-block-start:var(--sc-visual-top,0px);inset-block-end:auto;
   height:min(100dvh,var(--sc-visual-height,100dvh));max-height:min(100dvh,var(--sc-visual-height,100dvh));
  }
- html[data-sc-keyboard] .sc-editor-modal,html[data-sc-keyboard] .sc-discard-dialog{
-  inset:var(--sc-visual-top,0px) 0 auto;margin:0 auto;width:min(640px,100%);max-width:100%;
+ html[data-sc-keyboard] .sc-editor-dialog,html[data-sc-keyboard] .sc-discard-dialog{
+  inset:var(--sc-visual-top,0px) 0 auto;margin:0 auto;
   max-height:min(100dvh,var(--sc-visual-height,100dvh));overflow:auto;
  }
  html[data-sc-keyboard] .sc-editor-header{position:static}
  html[data-sc-keyboard] .sc-editor-dialog{scroll-padding-block:12px 24px}
 }
 @media(max-width:768px){
- .sc-editor-dialog.sc-editor-drawer,.sc-editor-dialog.sc-editor-modal{
+ .sc-editor-dialog.sc-editor-drawer,.sc-editor-dialog.sc-editor-modal,.sc-editor-dialog.sc-editor-modal.sc-editor-confirm{
   inset-block-start:var(--sc-visual-top,0px);inset-block-end:auto;
   height:min(100dvh,var(--sc-visual-height,100dvh));max-height:min(100dvh,var(--sc-visual-height,100dvh));
  }

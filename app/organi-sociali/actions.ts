@@ -11,11 +11,25 @@ const val=(f:FormData,k:string)=>String(f.get(k)??'').trim();
 function fail(reason:string):never{return redirect(`${root}?msg=${reason}`);}
 export async function salvaComponente(form:FormData){
  const {supabase}=await requireStaff();const persona_id=val(form,'persona_id'),carica=val(form,'carica'),dal=val(form,'dal');
- if(!uuid.test(persona_id)||!['Presidente','Vice Presidente','Segretaria','Tesoriere','Consigliere'].includes(carica)||!/^\d{4}-\d{2}-\d{2}$/.test(dal))return {error:'Controlla componente, carica e data.'};
- const start=new Date(`${dal}T12:00:00Z`);if(Number.isNaN(start.getTime())||start.toISOString().slice(0,10)!==dal)return {error:'Data di inizio mandato non valida.'};
- start.setUTCFullYear(start.getUTCFullYear()+4);const al=start.toISOString().slice(0,10);
+ if(!uuid.test(persona_id))return {field:'persona_id',error:'Seleziona un socio dall’elenco.'};
+ if(!['Presidente','Vice Presidente','Segretaria','Tesoriere','Consigliere'].includes(carica))return {field:'carica',error:'Seleziona una carica valida.'};
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(dal))return {field:'dal',error:'Inserisci la data di inizio mandato.'};
+ const start=new Date(`${dal}T12:00:00Z`);if(Number.isNaN(start.getTime())||start.toISOString().slice(0,10)!==dal)return {field:'dal',error:'Data di inizio mandato non valida.'};
+ const month=start.getUTCMonth();start.setUTCFullYear(start.getUTCFullYear()+4);
+ // PostgreSQL aggiunge quattro anni civili, limitando il giorno all’ultimo del mese.
+ if(start.getUTCMonth()!==month)start.setUTCDate(0);
+ const al=start.toISOString().slice(0,10);if(!/^\d{4}-\d{2}-\d{2}$/.test(al))return {field:'dal',error:'Data fuori intervallo.'};
  const {error}=await supabase.from('cda_componenti').insert({persona_id,carica,dal,al});
- if(error)return {error:'Componente non registrato: controlla mandato e duplicati.'};revalidatePath(root);redirect(`${root}?msg=componente_ok`);
+ if(error){
+  if(error.code==='23503')return {field:'persona_id',error:'Il socio selezionato non è più disponibile. Riapri l’elenco.'};
+  if(error.code==='23505'||error.code==='23P01')return {error:'Il mandato è già presente o si sovrappone a un mandato esistente.'};
+  if(error.code==='23514')return {error:'Carica o durata del mandato non compatibili con le regole del Consiglio.'};
+  if(error.code==='42501')return {error:'Non hai le autorizzazioni per registrare il componente.'};
+  return {error:'Componente non registrato. Riprova o contatta la segreteria se il problema persiste.'};
+ }
+ revalidatePath(root);
+ // EditForm gestisce la navigazione solo dopo la conferma del salvataggio.
+
 }
 function metadati(form:FormData){
  const data=val(form,'data_consiglio'),oggetto=val(form,'oggetto'),tipo=val(form,'tipo');
