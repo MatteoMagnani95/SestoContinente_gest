@@ -183,7 +183,11 @@ test('F4A: schede corsi, tabella e filtri preservati su desktop e mobile',async(
  await page.getByRole('button',{name:'Cerca',exact:true}).click();
  await expect(page).toHaveURL(url=>url.searchParams.get('vista_corsi')==='tabella');
  await views.getByRole('link',{name:'Schede'}).click();
+ await expect(page).toHaveURL(url=>url.pathname==='/gestionale/corsi'&&url.searchParams.get('vista_corsi')==='schede');
+ await expect(views.getByRole('link',{name:'Schede'})).toHaveAttribute('aria-current','page');
+ await expect(page.getByRole('table',{name:'Edizioni dei corsi'})).toHaveCount(0);
+ if(fixtures.edition){await expect(page.locator('.sc-course-card').filter({has:page.locator('a[href="/gestionale/corsi/'+fixtures.edition+'"]')})).toBeVisible();}
  await page.setViewportSize({width:390,height:844});
- expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(391);
+ await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(391);
  if(fixtures.edition){await page.goto('/gestionale/corsi/'+fixtures.edition+'?tab=panoramica');await expect(page.getByRole('heading',{name:'Prossime lezioni'})).toBeVisible();await expect(page.getByRole('navigation',{name:'Sezioni del corso'}).getByRole('link')).toHaveCount(10);}
 });

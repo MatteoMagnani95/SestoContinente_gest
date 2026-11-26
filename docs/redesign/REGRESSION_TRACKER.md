@@ -91,3 +91,6 @@ Commit ff356d1: verifica gestionale 45906661406 success (280/280 test automatici
 
 ## F4A — correzione paginazione e riallineamento ai riferimenti
 Run 45908246525 su 0a5c9e6: un test statico storico fallito per firma pageHref modificata; mantenuta firma monodimensionale e separato viewHref, test storico immutato. Recuperato pacchetto definitivo ZIP, verificati riferimenti 05/06; icone funzionali distinte, azioni separate, scorciatoie, capienza e accesso calendario riallineati senza modificare regole. Gate nuovo SHA da eseguire. Nessuna immagine di riferimento o dato dimostrativo copiato nel repository.
+
+## F4A — sincronizzazione del test browser
+QA 45908246524 sul precedente 0a5c9e6: la prova F4A WebKit ha fallito per navigazione concorrente alla scheda prima del completamento del cambio vista Schede. Aggiunte attese verificabili URL, aria-current, rimozione tabella, visibilità scheda sintetica e verifica overflow a 390 px con polling di Playwright. Nessun controllo rimosso; nessuna modifica applicativa, SQL o permessi. Verifica ordinaria 45908763172 sul 48d4f86 verde; la QA 45908763248 era ancora in corso al rilevamento. Nuovo gate esatto richiesto prima di F4B.

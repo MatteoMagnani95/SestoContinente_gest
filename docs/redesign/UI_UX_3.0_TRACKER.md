@@ -167,3 +167,6 @@ Gate F3 sincronizzato GO su ff356d1: CI 45906661406, QA 45906661502 tentativo 2 
 
 ## F4A — riferimenti definitivi recuperati
 Pacchetto SestoContinente_3.0_Pacchetto_Definitivo(1).zip aperto e master prompt §5.4–5.6 confrontato con i mockup 05/06. Correzione firma pageHref senza indebolire test storico; icone disciplina, azioni distinte, scorciatoie, accesso calendario e capienza dettagli riallineati. Form orizzontali della release prevalgono sulla vecchia indicazione pannello laterale. Le immagini non sono asset di produzione. Verifica visiva reale a viewport desktop/mobile ancora aperta; non dichiarata equivalenza pixel-perfect. Calendario/piscine/corsie (07) e archivio didattico da completare dopo gate F4A.
+
+## F4A — sincronizzazione del test browser
+QA 45908246524 sul precedente 0a5c9e6: la prova F4A WebKit ha fallito per navigazione concorrente alla scheda prima del completamento del cambio vista Schede. Aggiunte attese verificabili URL, aria-current, rimozione tabella, visibilità scheda sintetica e verifica overflow a 390 px con polling di Playwright. Nessun controllo rimosso; nessuna modifica applicativa, SQL o permessi. Verifica ordinaria 45908763172 sul 48d4f86 verde; la QA 45908763248 era ancora in corso al rilevamento. Nuovo gate esatto richiesto prima di F4B.
