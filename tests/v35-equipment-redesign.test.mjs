@@ -31,3 +31,14 @@ test('Prestiti e revisioni: trigger, indice univoco, date storiche protette, seg
  assert.match(read('app/gestionale/moduli/revisioni/page.tsx'),/Possibile duplicato da verificare/);assert.match(read('app/gestionale/moduli/consegne/page.tsx'),/ReturnEditor/);
  assert.match(read('app/gestionale/moduli/attrezzature/page.tsx'),/equipmentState/);
 });
+
+test('Similarità revisioni: normalizza maiuscole e spazi ai bordi senza confondere date o attrezzature',()=>{
+ const base={attrezzatura_id:'a',data_intervento:'2026-11-25',tipo:'Manutenzione',prossimo_intervento:null};
+ const key=h.revisionSimilarityKey(base);
+ assert.equal(h.revisionSimilarityKey({...base,tipo:' manutenzione '}),key);
+ assert.notEqual(h.revisionSimilarityKey({...base,tipo:'Verifica'}),key);
+ assert.notEqual(h.revisionSimilarityKey({...base,attrezzatura_id:'b'}),key);
+ assert.notEqual(h.revisionSimilarityKey({...base,data_intervento:'2026-11-26'}),key);
+ assert.notEqual(h.revisionSimilarityKey({...base,prossimo_intervento:'2027-01-01'}),key);
+ assert.match(read('app/gestionale/moduli/revisioni/page.tsx'),/const key=revisionSimilarityKey/);
+});
