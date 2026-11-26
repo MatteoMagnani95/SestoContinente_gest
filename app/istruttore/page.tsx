@@ -28,7 +28,7 @@ export default async function Instructor({searchParams}:{searchParams:Promise<{m
  const [lessonResult,studentResult,studentCardResult,materialResult,programResult]=await Promise.all([
  readCourseChunks(scoped,(group,da,a)=>supabase.from('lezioni').select('id,edizione_id,titolo,inizio,fine,materiale,esercizi').in('edizione_id',group).is('annullata_il',null).order('inizio').order('id').range(da,a)),
  tab==='allievi'||tab==='presenze'?readCourseChunks(scoped,(group,da,a)=>supabase.from('iscrizioni_corsi').select('edizione_id,persona_id,stato').in('edizione_id',group).in('stato',['iscritto','concluso']).order('id').range(da,a)):{data:[],error:null},
- tab==='allievi'||tab==='presenze'?tutteLePagine<Learner>((da,a)=>supabase.rpc('allievi_del_mio_corso').order('edizione_id').order('persona_id').range(da,a)):{data:[],error:null},
+ tab==='allievi'||tab==='presenze'?tutteLePagine<Learner>((da,a)=>supabase.rpc('allievi_del_mio_corso').eq('edizione_id',chosen??'00000000-0000-0000-0000-000000000000').order('edizione_id').order('persona_id').range(da,a)):{data:[],error:null},
  tab==='materiali'?readCourseChunks(scoped,(group,da,a)=>supabase.from('documenti').select('id,nome,edizione_id').eq('ambito','didattica').in('edizione_id',group).order('nome').order('id').range(da,a)):{data:[],error:null},
  tab==='materiali'&&edition?.programma_versione_id?supabase.from('versioni_programmi').select('id,versione,stato,obiettivi,teoria,pratica,sequenza_lezioni,durata_ore,verifiche').eq('id',edition.programma_versione_id).maybeSingle():{data:null,error:null}
  ]);

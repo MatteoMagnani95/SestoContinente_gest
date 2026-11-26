@@ -31,8 +31,8 @@ test('Date italiane: orari inesistenti e ambigui bloccati',()=>{
 });
 test('Area personale: lezioni limitate alle edizioni confermate e completate',()=>{
   const page=read('app/area-personale/corsi/page.tsx');
-  assert.match(page,/myCourseIds\.length\?supabase\.from\('lezioni'\)/);
-  assert.match(page,/\.in\('edizione_id',myCourseIds\)\.is\('annullata_il',null\)/);
+  assert.match(page,/readCourseChunks\(myCourseIds,\(group,da,a\)=>supabase\.from\('lezioni'\)/);
+  assert.match(page,/\.in\('edizione_id',group\)\.is\('annullata_il',null\)/);
   assert.match(page,/editions\?\.find\(e=>e\.id===l\.edizione_id\)/);
 });
 test('Callback: nessun redirect esterno via percorso assoluto o backslash',()=>{

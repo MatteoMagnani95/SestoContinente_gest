@@ -15,20 +15,20 @@ export default async function MyCourses({searchParams}:{searchParams:Promise<{ms
  const {supabase,user}=await requireUser();
  const {msg,tab:rawTab,p}=await searchParams;const tabs=['iscrizioni','catalogo','lezioni','materiali','presenze'] as const;const tab=tabs.find(t=>t===rawTab)??(msg==='inviata'?'iscrizioni':'iscrizioni'),page=pageNumber(p),size=20;const href=(n:number)=>'?tab='+tab+'&p='+n;
  const [{data:links,error:linkError},{data:editions,error:editionError},{data:courses}]=await Promise.all([
- supabase.from('collegamenti_persone').select('persona_id').eq('utente_id',user.id),
+ tutteLePagine((da,a)=>supabase.from('collegamenti_persone').select('persona_id').eq('utente_id',user.id).order('persona_id').range(da,a)),
  tutteLePagine((da,a)=>supabase.from('edizioni_corsi').select('id,nome,inizio,fine,stato,corso_id,stagione_id,massimo_partecipanti,direttore_id').order('inizio',{ascending:false}).order('id').range(da,a)),
  tutteLePagine((da,a)=>supabase.from('corsi').select('id,nome,tipo,livello').order('id').range(da,a))
  ]);
  const ids=links?.map(l=>l.persona_id)??[];
- const {data:enrollments,error:enrollmentError}=ids.length?await tutteLePagine((da,a)=>supabase.from('iscrizioni_corsi').select('id,persona_id,edizione_id,stato').in('persona_id',ids).order('id').range(da,a)):{data:[],error:null};
+ const {data:enrollments,error:enrollmentError}=await readCourseChunks(ids,(group,da,a)=>supabase.from('iscrizioni_corsi').select('id,persona_id,edizione_id,stato').in('persona_id',group).order('id').range(da,a));
  const myEnrollments=enrollments?.filter(i=>['iscritto','concluso'].includes(i.stato));
  const myCourseIds=[...new Set((myEnrollments??[]).map(x=>x.edizione_id))];
  const {data:didacticFiles,error:filesError}=await readCourseChunks(myCourseIds,(group,da,a)=>supabase.from('documenti').select('id,nome,edizione_id').in('edizione_id',group).eq('ambito','didattica').eq('visibilita','soci').order('id').range(da,a));
  const [{data:people,error:peopleError},{data:lessons,error:lessonError}]=await Promise.all([
- ids.length?supabase.from('persone').select('id,nome,cognome').in('id',ids).order('cognome').order('nome'):Promise.resolve({data:[],error:null}),
+ readCourseChunks(ids,(group,da,a)=>supabase.from('persone').select('id,nome,cognome').in('id',group).order('cognome').order('nome').order('id').range(da,a)),
  readCourseChunks(myCourseIds,(group,da,a)=>supabase.from('lezioni').select('id,edizione_id,titolo,inizio,fine').in('edizione_id',group).is('annullata_il',null).order('inizio').order('id').range(da,a)),
  ]);
- const {data:eligible,error:eligibilityError}=ids.length?await supabase.from('gest_soci_iscrivibili').select('persona_id,stagione_id').in('persona_id',ids):{data:[],error:null};
+ const {data:eligible,error:eligibilityError}=await readCourseChunks(ids,(group,da,a)=>supabase.from('gest_soci_iscrivibili').select('persona_id,stagione_id').in('persona_id',group).order('persona_id').order('stagione_id').range(da,a));
  const fullName=(id:string)=>{const p=people?.find(x=>x.id===id);return `${p?.cognome??''} ${p?.nome??''}`;};
  const eligibleFor=(season:string,edition:string)=>linkError||editionError||peopleError||enrollmentError||eligibilityError?[]:people?.filter(p=>p.id!==editions?.find(e=>e.id===edition)?.direttore_id&&eligible?.some(x=>x.persona_id===p.id&&x.stagione_id===season)&&!enrollments?.some(i=>i.persona_id===p.id&&i.edizione_id===edition))??[];
  const upcoming=(lessons??[]).filter(l=>Date.parse(l.fine)>=Date.now()).sort((a,b)=>a.inizio.localeCompare(b.inizio));
@@ -39,10 +39,10 @@ export default async function MyCourses({searchParams}:{searchParams:Promise<{ms
  <nav className="sc-secretariat-tabs" aria-label="Sezioni corsi">{[['iscrizioni','Iscrizioni'],['catalogo','Richiedi iscrizione'],['lezioni','Prossime lezioni'],['materiali','Materiali'],['presenze','Le mie presenze']].map(([key,label])=><Link key={key} href={'?tab='+key} aria-current={tab===key?'page':undefined}>{label}</Link>)}</nav>
  {msg==='direttore'&&<p role="alert">Il direttore non può essere allievo dello stesso corso.</p>}{msg==='duplicata'&&<p role="alert">Risulti già iscritto a questa edizione.</p>}{msg==='inviata'&&<div className="notice success">Richiesta d'iscrizione registrata.</div>}{msg==='errore'&&<div className="notice warning">Iscrizione non inviata: verifica adesione attiva e tesseramento valido e che il corso non sia già richiesto.</div>}
  {(linkError||editionError||peopleError||enrollmentError||eligibilityError||lessonError)&&<p className="notice error" role="alert">Alcuni dati dei corsi non sono disponibili. Riprova: le iscrizioni non verificabili sono temporaneamente disabilitate.</p>}
- {tab==='iscrizioni'&&<section className="sc-card"><h2>Iscrizioni attuali e storiche</h2><div className="panel table-panel"><table><thead><tr><th>Persona</th><th>Corso</th><th>Stato</th></tr></thead><tbody>
- {enrollments?.sort((a,b)=>fullName(a.persona_id).localeCompare(fullName(b.persona_id),'it')).slice((page-1)*size,page*size).map(i=><tr key={i.id}><td>{fullName(i.persona_id)}</td><td>{editions?.find(e=>e.id===i.edizione_id)?.nome??'Corso non disponibile'}</td><td><StatusBadge tone={statusTone(i.stato)}>{i.stato.replaceAll('_',' ')}</StatusBadge></td></tr>)}
+ {tab==='iscrizioni'&&<section className="sc-card"><h2>Iscrizioni attuali e storiche</h2><DataTable label="Le mie iscrizioni" mobileCards><thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col">Persona</th><th role="columnheader" scope="col">Corso</th><th role="columnheader" scope="col">Stato</th></tr></thead><tbody role="rowgroup">
+ {enrollments?.sort((a,b)=>fullName(a.persona_id).localeCompare(fullName(b.persona_id),'it')).slice((page-1)*size,page*size).map(i=><tr key={i.id} role="row"><td role="cell" data-label="Persona">{fullName(i.persona_id)}</td><td role="cell" data-label="Corso">{editions?.find(e=>e.id===i.edizione_id)?.nome??'Corso non disponibile'}</td><td role="cell" data-label="Stato"><StatusBadge tone={statusTone(i.stato)}>{i.stato.replaceAll('_',' ')}</StatusBadge></td></tr>)}
  {!enrollmentError&&!linkError&&!enrollments?.length&&<tr><td colSpan={3}>Non risultano iscrizioni.</td></tr>}
- </tbody></table></div><Pagination page={page} size={size} count={enrollmentError?null:enrollments?.length??0} href={href} label="iscrizioni"/></section>}
+ </tbody></DataTable><Pagination page={page} size={size} count={enrollmentError?null:enrollments?.length??0} href={href} label="iscrizioni"/></section>}
  {tab==='catalogo'&&<section className="sc-card"><h2>Richiedi iscrizione a un corso</h2><div className="sc-personal-grid">
  {catalog.slice((page-1)*size,page*size).map(e=><article className="panel" key={e.id}><h3>{e.nome}</h3>
  <p className="muted">{courses?.find(c=>c.id===e.corso_id)?.tipo} · {formatValue(e.inizio)} – {formatValue(e.fine)}</p>

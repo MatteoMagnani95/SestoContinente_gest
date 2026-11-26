@@ -19,7 +19,7 @@ export default async function PersonalArea({searchParams}:{searchParams:Promise<
  const {data:links,error:linksError}=await tutteLePagine((da,a)=>supabase.from('collegamenti_persone').select('persona_id,relazione').eq('utente_id',user.id).order('persona_id').range(da,a));
  if(requestError||linksError)return <div className="container narrow"><h1>Area personale non disponibile</h1><p role="alert">Non è stato possibile verificare il profilo. Riprova prima di procedere.</p><Link href="/smista">Riprova</Link></div>;
  if(request?.stato!=='approvata'&&(!links||links.length===0))redirect('/richiesta/stato');
- const ids=links?.map(x=>x.persona_id)??[];
+ const ids=[...new Set(links?.map(x=>x.persona_id)??[])];
  const [{data:areaSociAccess},{data:season,error:seasonError}]=await Promise.all([supabase.rpc('area_soci_accesso'),supabase.from('stagioni').select('id,nome').eq('attiva',true).maybeSingle()]);
  const [{data:people,error:peopleError},{data:memberships,error:membershipError},{data:certs,error:certError},{data:quotes,error:quoteError},{data:news,error:newsError,count:newsCount},{data:alerts,error:alertError,count:alertCount}]=await Promise.all([
   ids.length?readCourseChunks(ids,(group,da,a)=>supabase.from('persone').select('id,nome,cognome').in('id',group).order('id').range(da,a)):Promise.resolve({data:[],error:null}),
