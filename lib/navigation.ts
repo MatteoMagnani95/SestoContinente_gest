@@ -66,7 +66,7 @@ export function backTarget(path:string,access:NavigationAccess):BackTarget|null{
  const home=homeFor(access);
  return home!==path?{href:home,label:'Torna alla tua area'}:{href:'/',label:'Torna alla home'};
 }
-export const filterKeys=['q','p','stagione','stato','filtro','giorno','vista','piscina','tab','persona','area','corsia','inizio','fine','tipo','anno','dal','al','filtro_modulo','ordine','dir','ambito','np','tp','pm','periodo','p2','disciplina','livello','lezione','edizione','annullate','corsia_id','richieste','visibilita'] as const;
+export const filterKeys=['q','p','stagione','stato','filtro','giorno','vista','piscina','tab','persona','area','corsia','inizio','fine','tipo','anno','dal','al','filtro_modulo','ordine','dir','ambito','np','tp','pm','periodo','p2','disciplina','livello','lezione','edizione','annullate','corsia_id','richieste','visibilita','debito'] as const;
 export function listContext(path:string,search:string){
  const params=new URLSearchParams(search),safe=new URLSearchParams();
  for(const key of filterKeys)for(const val of params.getAll(key))safe.append(key,val);

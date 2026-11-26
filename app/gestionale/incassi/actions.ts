@@ -17,6 +17,7 @@ function back(form:FormData,msg:string):never{
  if(uuid.test(persona))params.set('persona',persona);
  const stato=txt(form,'stato');
  if(['tutte','non_pagata','parziale','pagata','residuo'].includes(stato))params.set('stato',stato);
+ for(const key of ['dal','al']){const value=txt(form,key);if(validPaymentDate(value))params.set(key,value);}const debt=txt(form,'debito');if(uuid.test(debt))params.set('debito',debt);
  redirect(`/gestionale/incassi?${params.toString()}`);
 }
 export async function recordGuidedPayment(form:FormData){
