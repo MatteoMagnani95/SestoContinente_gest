@@ -152,6 +152,48 @@ async function main() {
     assert.equal(await value(staff,"select count(*)::int from prenotazioni_corsie where lezione_id=$1 and stato='confermata'",[adjacent]),0);
     console.log('OK calendario: conflitto concorrente, rollback atomico, adiacenza, tutela prenotazioni parziali e annullamento');
 
+    // Registro presenze: il ruolo istruttore non può modificare la lezione,
+    // ma deve poter acquisire il lock tramite il trigger protetto.
+    const teacherId=randomUUID();
+    await root.query('insert into auth.users(id,email,email_confirmed_at) values($1,$2,now())',[teacherId,teacherId+'@example.invalid']);
+    await root.query("insert into ruoli_utente(utente_id,ruolo) values($1,'istruttore')",[teacherId]);
+    await root.query("insert into collegamenti_persone values($1,$2,'titolare')",[teacherId,person]);
+    const teacher=await session(teacherId);
+    await staff.query("insert into assegnazioni_istruttori(edizione_id,persona_id,ruolo) values($1,$2,'responsabile')",[editions[successful],person]);
+    const learner=participants[0];
+    const adhesion=await value(root,'select id from adesioni where persona_id=$1 and stagione_id=$2',[learner,season]);
+    await root.query("insert into tesseramenti(adesione_id,ente,stato,scade_il) values($1,'Ente','attiva',current_date+50)",[adhesion]);
+    await staff.query("insert into iscrizioni_corsi(edizione_id,persona_id,stato) values($1,$2,'iscritto')",[editions[successful],learner]);
+    const register="insert into presenze(lezione_id,persona_id,presente) values($1,$2,true)";
+    await assert.rejects(member.query(register,[lesson,learner]),{code:'42501'});
+    const fresh=await value(staff,"select crea_lezione_guidata($1,'Registro',(current_date+2+time '10:00') at time zone 'Europe/Rome',(current_date+2+time '11:00') at time zone 'Europe/Rome',null,array[]::uuid[],null,null)",[editions[successful]]);
+    const reverse=await value(staff,"select crea_lezione_guidata($1,'Registro inverso',(current_date+3+time '10:00') at time zone 'Europe/Rome',(current_date+3+time '11:00') at time zone 'Europe/Rome',null,array[]::uuid[],null,null)",[editions[successful]]);
+    async function waitForLock(blocked,blocker){
+      for(let i=0;i<100;i++){
+        if(await value(root,'select $2::int=any(pg_blocking_pids($1::int))',[blocked,blocker]))return;
+        await new Promise(resolve=>setTimeout(resolve,20));
+      }
+      throw Error('Lock concorrente non rilevato');
+    }
+    const pidTeacher=await value(teacher,'select pg_backend_pid()'),pidStaff=await value(otherStaff,'select pg_backend_pid()');
+    await teacher.query('begin');
+    await teacher.query(register,[fresh,learner]);
+    const cancellation=otherStaff.query('select annulla_lezione_guidata($1)',[fresh]).then(()=>null,e=>e);
+    try{await waitForLock(pidStaff,pidTeacher);await teacher.query('commit');}
+    catch(e){await teacher.query('rollback');await cancellation;throw e;}
+    assert.equal((await cancellation)?.code,'P0001');
+    assert.equal(await value(staff,'select annullata_il is null from lezioni where id=$1',[fresh]),true);
+    await assert.rejects(staff.query("update lezioni set fine=fine+interval '15 minutes' where id=$1",[fresh]),{code:'P3506'});
+    await otherStaff.query('begin');
+    await otherStaff.query('select annulla_lezione_guidata($1)',[reverse]);
+    const attendance=teacher.query(register,[reverse,learner]).then(()=>null,e=>e);
+    try{await waitForLock(pidTeacher,pidStaff);await otherStaff.query('commit');}
+    catch(e){await otherStaff.query('rollback');await attendance;throw e;}
+    assert.equal((await attendance)?.code,'P3506');
+    assert.equal(await value(staff,'select count(*)::int from presenze where lezione_id=$1',[reverse]),0);
+    console.log('OK presenze: istruttore assegnato, doppio ordine concorrente, annullamento e modifica diretta protetti');
+
+
     // Il ruolo istruttore non può modificare la lezione, ma può registrare
     // presenze nella propria edizione. Il trigger deve serializzare il lock.
     const teacherId=randomUUID();
