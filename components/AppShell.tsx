@@ -53,6 +53,21 @@ export default function AppShell({access,children}:{access:NavigationAccess;chil
   const desktop=window.matchMedia('(min-width: 1001px)');const update=()=>{if(desktop.matches&&menu.current?.open)navigateFromMenu();};
   desktop.addEventListener('change',update);return()=>desktop.removeEventListener('change',update);
  },[]);
+ // Safari e altri browser possono ridurre soltanto la visual viewport
+ // quando appare la tastiera. Non limitare la viewport durante il pinch zoom.
+ useEffect(()=>{
+  const viewport=window.visualViewport;if(!viewport)return;
+  const root=document.documentElement;
+  const clear=()=>{root.style.removeProperty('--sc-visual-height');root.style.removeProperty('--sc-visual-top');root.removeAttribute('data-sc-keyboard');};
+  const update=()=>{
+   if(!window.matchMedia('(max-width: 1000px)').matches||Math.abs(viewport.scale-1)>.01){clear();return;}
+   root.style.setProperty('--sc-visual-height',Math.max(1,Math.floor(viewport.height))+'px');
+   root.style.setProperty('--sc-visual-top',Math.max(0,Math.floor(viewport.offsetTop))+'px');
+   if(window.innerHeight-viewport.height>120)root.setAttribute('data-sc-keyboard','');else root.removeAttribute('data-sc-keyboard');
+  };
+  update();viewport.addEventListener('resize',update);viewport.addEventListener('scroll',update);window.addEventListener('resize',update);
+  return()=>{viewport.removeEventListener('resize',update);viewport.removeEventListener('scroll',update);window.removeEventListener('resize',update);clear();};
+ },[]);
  const back=backTarget(path,access),target=back?restoredTarget(back,contexts):null;
  const crumbs=internal&&<div className="sc-page-navigation"><Breadcrumb path={path} access={access} title={title.path===path?title.value:''} contexts={contexts}/>{target&&<Link className="sc-back-button" href={target.href}><Icon name="arrow-left"/>{target.label}</Link>}</div>;
  return <>
