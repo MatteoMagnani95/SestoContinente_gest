@@ -18,11 +18,10 @@ export async function askForCourse(form:FormData){
 export async function markNotification(form:FormData){
  const {supabase,user}=await requireUser();
  const p_id=String(form.get('id')??'');
- if(!uuid.test(p_id))return {error:'Notifica non valida.'};
- const {error}=await supabase.rpc('segna_notifica_letta',{p_id});
+ if(!uuid.test(p_id))redirect('/area-personale?tab=notifiche&msg=notifica_errore');
+ await supabase.rpc('segna_notifica_letta',{p_id});
  // La RPC restituisce void anche se l'identificativo non appartiene all'account.
  // Confermare l'esito con una lettura sotto RLS, non dalla sola assenza di errori.
  const {data:notification,error:readError}=await supabase.from('notifiche').select('letta_il').eq('id',p_id).eq('utente_id',user.id).maybeSingle();
- if(readError||!notification?.letta_il)return {error:error?'Impossibile aggiornare la notifica.':'Lettura della notifica non confermata.'};
- revalidatePath('/area-personale');redirect('/area-personale?tab=notifiche&msg=letta');
+ revalidatePath('/area-personale');redirect('/area-personale?tab=notifiche&msg='+(readError||!notification?.letta_il?'notifica_errore':'letta'));
 }
