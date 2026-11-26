@@ -28,7 +28,7 @@ export async function registerAction(form: FormData) {
   const origin = process.env.NEXT_PUBLIC_SITE_URL;
   if (!origin) return {error:'Registrazione temporaneamente non disponibile. Contatta la segreteria.'};
   const legal=informativaRegistrazione(),scelta=imageChoice(form);
-  if(form.has('privacy_versione_vista')&&asText(form,'privacy_versione_vista')!==legal.versione)return {error:'L’informativa è stata aggiornata. Ricarica la registrazione e leggila nuovamente.'};
+  if(asText(form,'privacy_versione_vista')!==legal.versione||asText(form,'immagini_versione_vista')!==(legal.test?'TEST-COLLAUDO-1':versioneImmagini))return {error:'L’informativa è stata aggiornata. Ricarica la registrazione e leggila nuovamente.'};
   if(!legal.url||form.get('presa_visione')!=='on'||!['','si','no'].includes(scelta))return {error:'Apri l’informativa e conferma la presa visione.',field:'presa_visione'};
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -106,7 +106,7 @@ export async function saveApplicationAction(form: FormData) {
   if(!flagStatuto||!flagPrivacy)return {error:'Conferma la presa visione di statuto e informativa privacy.'};
   const legal=applicationLegalConfig(user.id);
   if(!legal.configured)return {error:'Registrazione temporaneamente non disponibile: statuto o informativa privacy non configurati. Contatta la segreteria.'};
-  if((form.has('statuto_versione_vista')&&asText(form,'statuto_versione_vista')!==legal.statutoVersion)||(form.has('privacy_versione_vista')&&asText(form,'privacy_versione_vista')!==legal.privacyVersion))return {error:'I documenti sono stati aggiornati. Ricarica la domanda e conferma nuovamente la presa visione.'};
+  if(asText(form,'statuto_versione_vista')!==legal.statutoVersion||asText(form,'privacy_versione_vista')!==legal.privacyVersion||asText(form,'immagini_versione_vista')!==(legal.testMode?'TEST-COLLAUDO-1':versioneImmagini))return {error:'I documenti sono stati aggiornati. Ricarica la domanda e conferma nuovamente la presa visione.'};
   const {data:prior,error:priorError}=await supabase.from('richieste').select('versione_statuto,versione_privacy').eq('utente_id',user.id).maybeSingle();
   if(priorError)return {error:'Impossibile verificare la pratica esistente.'};
   if(prior&&(prior.versione_statuto||prior.versione_privacy)&&isTestApplication(prior)!==legal.testMode)return {error:'Non è possibile convertire una pratica reale in collaudo o viceversa. Contatta la segreteria.'};
@@ -115,7 +115,8 @@ export async function saveApplicationAction(form: FormData) {
   if(!paese||paese.length>100||(provincia&&!/^[A-Z]{2}$/.test(provincia))||(sesso&&!['M','F'].includes(sesso)))return {error:'Completa Stato, provincia e sesso anagrafico.'};
   if(cf&&!validaCF(cf))return {error:'Controlla il formato e il carattere di controllo del codice fiscale.',field:'codice_fiscale'};
   if(cf){const check=await verificaAnagrafica(identityFromForm(form));if(check.status==='mismatch')return {error:check.message,field:'codice_fiscale'};}
-  const immagini=imageChoice(form);if(!['','si','no'].includes(immagini))return {error:'Scelta foto e video non valida.'};
+  const immagini=imageChoice(form);const sceltaAttesa=asText(form,'immagini_scelta_attesa');
+  if(!['si','no'].includes(immagini)||!form.has('immagini_scelta_attesa')||(sceltaAttesa&&!/^[1-9]\d{0,18}$/.test(sceltaAttesa)))return {error:'Scelta foto e video non verificabile. Ricarica la domanda.'};
   const payload = {
     p_nome: asText(form, 'nome'), p_cognome: asText(form, 'cognome'),
     p_data_nascita: birth, p_luogo_nascita: asText(form,'luogo_nascita'),
@@ -124,15 +125,15 @@ export async function saveApplicationAction(form: FormData) {
     p_cap: asText(form,'cap'), p_comune: asText(form,'comune'), p_telefono: asText(form,'telefono'),
     p_nome_tutore: minor?asText(form,'nome_tutore'):'', p_cognome_tutore: minor?asText(form,'cognome_tutore'):'',
     p_parentela_tutore: minor?asText(form,'parentela_tutore'):'',
-    p_flag_statuto:flagStatuto,p_flag_privacy:flagPrivacy,p_flag_immagini:immagini===''?null:immagini==='si',p_versione_immagini:legal.testMode?'TEST-COLLAUDO-1':versioneImmagini,
+    p_flag_statuto:flagStatuto,p_flag_privacy:flagPrivacy,p_flag_immagini:immagini==='si',p_scelta_attesa:sceltaAttesa||null,p_versione_immagini:legal.testMode?'TEST-COLLAUDO-1':versioneImmagini,
     p_versione_statuto:legal.statutoVersion,
     p_versione_privacy:legal.privacyVersion,p_invia:send,
   };
-  const { error } = await supabase.rpc('salva_domanda_v19', payload);
+  const { error } = await supabase.rpc('salva_domanda_v20', payload);
   if (error) {
     // Non esporre all'utente dettagli SQL o anagrafiche potenzialmente duplicate.
-    console.error('salva_domanda_v19 non completata', {code:error.code});
-    return {error:error.code==='PGRST202'?'Salvataggio temporaneamente non disponibile. Contatta la segreteria.':error.code==='23505'?'Esiste già una pratica con questi dati. Contatta la segreteria.':error.code==='23514'?'Uno o più dati non rispettano i requisiti della domanda.':error.code==='42501'?'La sessione non è autorizzata a salvare questa domanda.': 'Domanda non salvata. Verifica i dati e lo stato della pratica; se persiste, contatta la segreteria.'};
+    console.error('salva_domanda_v20 non completata', {code:error.code});
+    return {error:error.code==='P3508'?'La scelta foto e video è cambiata. Ricarica la domanda prima di confermarla.':error.code==='P3509'?'Le dichiarazioni di prova e reali non possono essere mescolate.':error.code==='PGRST202'?'Salvataggio temporaneamente non disponibile. Contatta la segreteria.':error.code==='23505'?'Esiste già una pratica con questi dati. Contatta la segreteria.':error.code==='23514'?'Uno o più dati non rispettano i requisiti della domanda.':error.code==='42501'?'La sessione non è autorizzata a salvare questa domanda.': 'Domanda non salvata. Verifica i dati e lo stato della pratica; se persiste, contatta la segreteria.'};
   }
   revalidatePath('/richiesta/stato');
   return {next:`/richiesta/stato?msg=${send ? 'inviata' : 'salvata'}`};
