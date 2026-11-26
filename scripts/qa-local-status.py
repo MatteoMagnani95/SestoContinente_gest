@@ -69,7 +69,34 @@ def parse_status(text):
             "NEXT_PUBLIC_SUPABASE_ANON_KEY": anon,
             "SUPABASE_SERVICE_ROLE_KEY": service, "QA_DB_URL": db}
 
+
+
+def self_test():
+    sample = ('API_URL="http://127.0.0.1:54321"\n'
+              'DB_URL="postgresql://postgres:synthetic@127.0.0.1:54322/postgres"\n'
+              'ANON_KEY="synthetic.anon.key"\nSERVICE_ROLE_KEY="synthetic.service.key"\n')
+    expected = parse_status(sample)
+    table = ("│ Project URL │ http://127.0.0.1:54321 │\n"
+             "│ URL │ postgresql://postgres:synthetic@127.0.0.1:54322/postgres │\n"
+             "│ Publishable │ synthetic.anon.key │\n"
+             "│ Secret │ synthetic.service.key │\n")
+    assert parse_status(table) == expected
+    assert parse_status(json.dumps(dict(line.split("=", 1) for line in sample.splitlines()))) == expected
+    assert parse_status(sample + "\nINVALID COMMAND MUST NOT EXECUTE\n") == expected
+    for invalid in [sample.replace("127.0.0.1:54321", "example.invalid:54321"),
+                    sample.replace("synthetic.anon.key", "$(exit 1)"),
+                    sample.replace("54322", "54323")]:
+        try:
+            parse_status(invalid)
+        except ValueError:
+            continue
+        raise AssertionError("Invalid status accepted")
+    print("OK parser status: env, tabella, JSON, endpoint remoto e input non valido")
+
 if __name__ == "__main__":
+    if sys.argv[1:] == ['--self-test']:
+        self_test()
+        raise SystemExit(0)
     if not (os.environ.get("QA_ISOLATED_ENV") == "true"
             and os.environ.get("SESTO_TEST_MODE") == "true"
             and os.environ.get("SESTO_EMAIL_MODE") == "simulate"):
