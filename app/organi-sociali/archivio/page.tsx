@@ -1,3 +1,4 @@
+import {singleSearchParams} from '@/lib/module-ui';
 import BoardFile from '@/components/BoardFile';
 import {PageHeader,ButtonLink,StatusBadge,Alert} from '@/components/ui/Primitives';
 import {Pagination} from '@/components/ui/DataTable';
@@ -14,7 +15,7 @@ const stati={sostituito:'Versione sostituita',bozza:'Bozza',in_approvazione:'In 
 const messages:Record<string,string>={eliminato:'Bozza rimossa dall’elenco corrente. File e versioni conservati.',elimina_collegati:'Bozza non rimovibile.',elimina_conferma:'Conferma la rimozione.',database:'Rimozione non riuscita.',bozza_ok:'Bozza e anteprima PDF salvate nell’archivio.',modificata:'Bozza aggiornata. Versione precedente conservata nello storage.',approvato:'Verbale definitivo approvato e archiviato.',conflitto:'Modifica non completata: la bozza potrebbe essere cambiata o non essere più modificabile. Riapri la versione corrente.',documento:'Documento Word non valido o non disponibile.',storage:'Salvataggio dei file non completato.',conversione:'Impossibile convertire il Word in PDF. Controlla che sia un DOCX leggibile.'};
 type Verbale={id:string;data_consiglio:string;oggetto:string;tipo:string;stato:keyof typeof stati;percorso_docx:string;percorso_pdf:string|null;approvato_il:string|null;rimosso_il:string|null};
 export default async function ArchivioCda({searchParams}:{searchParams:Promise<{q?:string;stato?:string;p?:string;msg?:string;edit?:string;tipo?:string;ordine?:string}>}){
- const {supabase,isStaff}=await requireBoard();const params=await searchParams;
+ const {supabase,isStaff}=await requireBoard();const params=singleSearchParams(await searchParams);
  const q=(params.q??'').trim().slice(0,100),stato=isStaff&&params.stato==='rimosse'?'rimosse':Object.keys(stati).includes(params.stato??'')?params.stato!:'';
  const tipo=tipiVerbale.find(t=>t===params.tipo)??'',ordine=params.ordine==='asc'?'asc':'desc';
  const direct=/^[0-9a-f-]{36}$/i.test(params.edit??'')?params.edit:'';

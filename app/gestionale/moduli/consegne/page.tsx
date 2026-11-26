@@ -4,14 +4,14 @@ import {tutteLePagine} from '@/lib/pagine';
 import {UUID_RE} from '@/lib/course-tools';
 import {dateFilter} from '@/lib/finance-ui';
 import {equipmentLabel,type Equipment,type Loan} from '@/lib/equipment-ui';
-import {pageNumber,listHref} from '@/lib/module-ui';
+import {pageNumber,listHref,singleSearchParams} from '@/lib/module-ui';
 import {PageHeader,MetricCard,ButtonLink,StatusBadge,Alert} from '@/components/ui/Primitives';
 import {DataTable,Pagination} from '@/components/ui/DataTable';
 import {Drawer} from '@/components/ui/Drawer';
 import SearchableSelect from '@/components/ui/SearchableSelect';
 import {LoanEditor,ReturnEditor} from '@/components/EquipmentEditors';
 export default async function Loans({searchParams}:{searchParams:Promise<{attrezzatura?:string;persona?:string;edizione?:string;dal?:string;al?:string;stato?:string;p?:string;edit?:string;msg?:string;nuovo?:string}>}){
- const {supabase}=await requireStaff(),s=await searchParams,page=pageNumber(s.p),size=30,dal=dateFilter(s.dal),al=dateFilter(s.al),item=s.attrezzatura&&UUID_RE.test(s.attrezzatura)?s.attrezzatura:'',person=s.persona&&UUID_RE.test(s.persona)?s.persona:'',course=s.edizione&&UUID_RE.test(s.edizione)?s.edizione:'';
+ const {supabase}=await requireStaff(),s=singleSearchParams(await searchParams),page=pageNumber(s.p),size=30,dal=dateFilter(s.dal),al=dateFilter(s.al),item=s.attrezzatura&&UUID_RE.test(s.attrezzatura)?s.attrezzatura:'',person=s.persona&&UUID_RE.test(s.persona)?s.persona:'',course=s.edizione&&UUID_RE.test(s.edizione)?s.edizione:'';
  const [equip,history,people,courses]=await Promise.all([tutteLePagine((da,a)=>supabase.from('attrezzature').select('*').order('codice').order('id').range(da,a)),tutteLePagine((da,a)=>supabase.from('assegnazioni_attrezzature').select('*').order('assegnata_il',{ascending:false}).order('id').range(da,a)),tutteLePagine((da,a)=>supabase.from('persone').select('id,nome,cognome').order('cognome').order('nome').order('id').range(da,a)),tutteLePagine((da,a)=>supabase.from('edizioni_corsi').select('id,nome').order('nome').order('id').range(da,a))]);
  const all=(history.data??[]) as Loan[],equipment=(equip.data??[]) as Equipment[],open=all.filter(l=>!l.restituita_il),openIds=new Set(open.map(l=>l.attrezzatura_id)),available=equipment.filter(e=>e.stato==='disponibile'&&!openIds.has(e.id)),failed=Boolean(equip.error||history.error||people.error||courses.error||dal&&al&&dal>al);
  const filtered=all.filter(l=>(!item||l.attrezzatura_id===item)&&(!person||l.persona_id===person)&&(!course||l.edizione_id===course)&&(!dal||l.assegnata_il>=dal)&&(!al||l.assegnata_il<=al)&&(!s.stato||s.stato==='attivi'&&!l.restituita_il||s.stato==='restituiti'&&Boolean(l.restituita_il)));

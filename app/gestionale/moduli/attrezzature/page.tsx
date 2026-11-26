@@ -4,13 +4,13 @@ import {tutteLePagine} from '@/lib/pagine';
 import {todayRome} from '@/lib/area-soci';
 import {shiftDay} from '@/lib/calendar-tools';
 import {equipmentState,equipmentStates,equipmentLabel,revisionState,revisionStates,type Equipment} from '@/lib/equipment-ui';
-import {pageNumber,listHref,cleanSearch} from '@/lib/module-ui';
+import {pageNumber,listHref,cleanSearch,singleSearchParams} from '@/lib/module-ui';
 import {PageHeader,MetricCard,StatusBadge,ButtonLink,Alert} from '@/components/ui/Primitives';
 import {DataTable,SearchBar,Pagination} from '@/components/ui/DataTable';
 import {Drawer} from '@/components/ui/Drawer';
 import {EquipmentEditor} from '@/components/EquipmentEditors';
 export default async function Inventory({searchParams}:{searchParams:Promise<{q?:string;categoria?:string;stato?:string;revisione?:string;p?:string;edit?:string;msg?:string}>}){
- const {supabase}=await requireStaff(),s=await searchParams,today=todayRome(),limit=shiftDay(today,30),page=pageNumber(s.p),size=30;
+ const {supabase}=await requireStaff(),s=singleSearchParams(await searchParams),today=todayRome(),limit=shiftDay(today,30),page=pageNumber(s.p),size=30;
  const [items,loans,reviews]=await Promise.all([tutteLePagine((da,a)=>supabase.from('attrezzature').select('*').order('codice').order('id').range(da,a)),tutteLePagine((da,a)=>supabase.from('assegnazioni_attrezzature').select('id,attrezzatura_id').is('restituita_il',null).order('id').range(da,a)),tutteLePagine((da,a)=>supabase.from('revisioni_attrezzature').select('id,attrezzatura_id').order('id').range(da,a))]);
  const all=(items.data??[]) as Equipment[],open=new Set((loans.data??[]).map(l=>l.attrezzatura_id)),locked=new Set((reviews.data??[]).map(r=>r.attrezzatura_id)),failed=Boolean(items.error||loans.error||reviews.error),cats=[...new Set(all.map(e=>e.categoria))].sort((a,b)=>a.localeCompare(b,'it'));
  const q=cleanSearch(s.q??'').toLocaleLowerCase('it'),status=Object.hasOwn(equipmentStates,s.stato??'')?s.stato:'',revision=Object.hasOwn(revisionStates,s.revisione??'')?s.revisione:'';

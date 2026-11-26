@@ -8,9 +8,9 @@ import {money} from '@/lib/finance-ui';
 import {reportPeriod,periodValid,inPeriod,daysTo,priority,orderTasks,debtSummary,type Task} from '@/lib/report-ui';
 import {PageHeader,MetricCard,Alert,StatusBadge,ButtonLink} from '@/components/ui/Primitives';
 import {DataTable,SearchBar,Pagination} from '@/components/ui/DataTable';
-import {pageNumber,listHref} from '@/lib/module-ui';
+import {pageNumber,listHref,singleSearchParams} from '@/lib/module-ui';
 export default async function Report({searchParams}:{searchParams:Promise<{periodo?:string;dal?:string;al?:string;categoria?:string;p?:string}>}){
- const {supabase}=await requireStaff(),s=await searchParams,today=romeDay(new Date().toISOString()),period=reportPeriod(today,s.periodo,s.dal,s.al),page=pageNumber(s.p),size=30;
+ const {supabase}=await requireStaff(),s=singleSearchParams(await searchParams),today=romeDay(new Date().toISOString()),period=reportPeriod(today,s.periodo,s.dal,s.al),page=pageNumber(s.p),size=30;
  const [equipment,medical,quotes,courseFees,people,requests,lessons,events,loans,docs,tickets,adhesions,courses,instructors,verbali]=await Promise.all([
  tutteLePagine((da,a)=>supabase.from('attrezzature').select('id,codice,categoria,marca,modello,prossima_revisione').order('id').range(da,a)),
  tutteLePagine((da,a)=>supabase.from('stato_certificati').select('id,persona_id,scade_il,stato_certificato').order('id').range(da,a)),

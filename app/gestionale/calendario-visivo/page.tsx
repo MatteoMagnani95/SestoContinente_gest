@@ -1,3 +1,4 @@
+import {singleSearchParams} from '@/lib/module-ui';
 import Link from 'next/link';
 import {requireStaff} from '@/lib/security';
 import {tutteLePagine} from '@/lib/pagine';
@@ -22,7 +23,7 @@ const shortDay=(day:string)=>new Intl.DateTimeFormat('it-IT',{day:'numeric',mont
 const periodTitle=(days:string[],context:CalendarContext)=>context.vista==='mese'?new Intl.DateTimeFormat('it-IT',{month:'long',year:'numeric',timeZone:'UTC'}).format(dateUTC(context.giorno)):days.length===1?dayName(days[0]):shortDay(days[0])+' – '+shortDay(days[days.length-1])+' '+days[days.length-1].slice(0,4);
 export default async function CalendarPage({searchParams}:{searchParams:Promise<{giorno?:string;vista?:string;piscina?:string;edizione?:string;annullate?:string;msg?:string;nuovo?:string;crea_giorno?:string;lezione?:string}>}){
  const {supabase}=await requireStaff();
- const params=await searchParams;
+ const params=singleSearchParams(await searchParams);
  const context=calendarContext(params),day=context.giorno,view=context.vista,today=validDay(undefined);
  const {days,from,to}=dateWindow(day,view);
  const [poolResult,laneResult,lessonResult,bookingResult,editionResult]=await Promise.all([

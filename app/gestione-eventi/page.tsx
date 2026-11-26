@@ -3,7 +3,7 @@ import {requireEventManager} from '@/lib/event-access';
 import {formatDate} from '@/lib/security';
 import {type SocioEvento,messaggiEventi,euroEvento,todayRome} from '@/lib/area-soci';
 import {eventPeriod,eventState,eventHref,occupancy} from '@/lib/event-ui';
-import {cleanSearch,pageNumber,listHref} from '@/lib/module-ui';
+import {cleanSearch,pageNumber,listHref,singleSearchParams} from '@/lib/module-ui';
 import {dateFilter} from '@/lib/secretariat';
 import {PageHeader,ButtonLink,StatusBadge,Alert,EmptyState} from '@/components/ui/Primitives';
 import {SearchBar,Pagination} from '@/components/ui/DataTable';
@@ -11,7 +11,7 @@ import {Drawer} from '@/components/ui/Drawer';
 import EventEditor from '@/components/EventEditor';
 export default async function ManageEvents({searchParams}:{searchParams:Promise<{msg?:string;periodo?:string;dal?:string;p?:string;q?:string;stato?:string;richieste?:string}>}){
  const {supabase,user,staff,admin}=await requireEventManager();
- const s=await searchParams,today=todayRome(),periodo=eventPeriod(s.periodo),stato=eventState(s.stato),from=dateFilter(s.dal)||today,page=pageNumber(s.p),size=20,q=cleanSearch(s.q??'');
+ const s=singleSearchParams(await searchParams),today=todayRome(),periodo=eventPeriod(s.periodo),stato=eventState(s.stato),from=dateFilter(s.dal)||today,page=pageNumber(s.p),size=20,q=cleanSearch(s.q??'');
  let query=supabase.from('eventi_soci').select(s.richieste==='1'?'*,eventi_soci_iscrizioni!inner(id)':'*',{count:'exact'});
  if(!staff)query=query.eq('responsabile_id',user.id);
  if(periodo==='prossimi')query=query.gte('al',from).neq('stato','annullato');

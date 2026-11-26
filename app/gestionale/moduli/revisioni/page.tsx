@@ -6,14 +6,14 @@ import {todayRome} from '@/lib/area-soci';
 import {shiftDay} from '@/lib/calendar-tools';
 import {dateFilter,money} from '@/lib/finance-ui';
 import {equipmentLabel,revisionState,revisionStates,revisionSimilarityKey,type Equipment,type Revision} from '@/lib/equipment-ui';
-import {pageNumber,listHref} from '@/lib/module-ui';
+import {pageNumber,listHref,singleSearchParams} from '@/lib/module-ui';
 import {PageHeader,ButtonLink,StatusBadge,Alert} from '@/components/ui/Primitives';
 import {DataTable,SearchBar,Pagination} from '@/components/ui/DataTable';
 import {Drawer} from '@/components/ui/Drawer';
 import SearchableSelect from '@/components/ui/SearchableSelect';
 import {RevisionEditor} from '@/components/EquipmentEditors';
 export default async function Revisions({searchParams}:{searchParams:Promise<{attrezzatura?:string;dal?:string;al?:string;tipo?:string;esito?:string;revisione?:string;p?:string;edit?:string;msg?:string;nuovo?:string}>}){
- const {supabase}=await requireStaff(),s=await searchParams,page=pageNumber(s.p),size=30,today=todayRome(),limit=shiftDay(today,30),dal=dateFilter(s.dal),al=dateFilter(s.al),item=s.attrezzatura&&UUID_RE.test(s.attrezzatura)?s.attrezzatura:'';
+ const {supabase}=await requireStaff(),s=singleSearchParams(await searchParams),page=pageNumber(s.p),size=30,today=todayRome(),limit=shiftDay(today,30),dal=dateFilter(s.dal),al=dateFilter(s.al),item=s.attrezzatura&&UUID_RE.test(s.attrezzatura)?s.attrezzatura:'';
  const [equip,history]=await Promise.all([tutteLePagine((da,a)=>supabase.from('attrezzature').select('*').order('codice').order('id').range(da,a)),tutteLePagine((da,a)=>supabase.from('revisioni_attrezzature').select('*').order('data_intervento',{ascending:false}).order('id').range(da,a))]);
  const equipment=(equip.data??[]) as Equipment[],all=(history.data??[]) as Revision[],map=new Map(equipment.map(e=>[e.id,e])),failed=Boolean(equip.error||history.error||dal&&al&&dal>al),types=[...new Set(all.map(x=>x.tipo))].sort(),outcomes=[...new Set(all.map(x=>x.esito).filter((x):x is string=>Boolean(x)))].sort();
  const key=revisionSimilarityKey,duplicates=new Map<string,number>();for(const r of all)duplicates.set(key(r),(duplicates.get(key(r))??0)+1);

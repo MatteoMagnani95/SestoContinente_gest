@@ -4,13 +4,13 @@ import EditForm from '@/components/EditForm';
 import {Drawer,ConfirmDialog} from '@/components/ui/Drawer';
 import ActionForm from '@/components/ui/ActionForm';
 import {DataTable,FilterBar,SearchBar,Pagination} from '@/components/ui/DataTable';
-import {cleanSearch,pageNumber,listHref} from '@/lib/module-ui';
+import {cleanSearch,pageNumber,listHref,singleSearchParams} from '@/lib/module-ui';
 import {editTeachingModule} from './actions';
 import RemoveRecord from '@/components/RemoveRecord';
 import Link from 'next/link';
 import {requireStaff} from '@/lib/security';
 export default async function ProgrammiDidattici({searchParams}:{searchParams:Promise<{msg?:string;q?:string;tipo?:string;p?:string;ordine?:string}>}){
- const {msg,q='',tipo='',p,ordine:rawOrder}=await searchParams;
+ const {msg,q='',tipo='',p,ordine:rawOrder}=singleSearchParams(await searchParams);
  const ordine=['codice','titolo','tipo'].includes(rawOrder??'')?rawOrder!:'pre_id';
  const page=pageNumber(p),size=30;
  const {supabase}=await requireStaff();let query=supabase.from('moduli_didattici').select('id,pre_id,tipo,codice,titolo,descrizione',{count:'exact'});
