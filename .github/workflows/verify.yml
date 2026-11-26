@@ -28,7 +28,7 @@ jobs:
         with:
           node-version: '22'
       - name: Installa dipendenze
-        run: npm install --no-package-lock --no-audit --no-fund
+        run: npm install --no-audit --no-fund
       - name: Lint applicazione
         run: npm run lint
       - name: Controllo TypeScript
@@ -44,6 +44,19 @@ jobs:
           npm run start -- --hostname 127.0.0.1 --port 3314 > /tmp/sesto-next.log 2>&1 &
           for i in {1..30}; do curl -fsS http://127.0.0.1:3314/ >/dev/null && break; sleep 1; done
           npm run test:browser
+
+      - name: Audit dipendenze runtime (alto o critico blocca il gate)
+        run: npm audit --omit=dev --audit-level=high --json > dependency-audit.json
+      - name: Conserva dipendenze risolte e rapporto audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-evidence
+          path: |
+            package-lock.json
+            dependency-audit.json
+          if-no-files-found: warn
+          retention-days: 7
 
   database:
     runs-on: ubuntu-latest
