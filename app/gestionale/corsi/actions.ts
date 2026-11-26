@@ -52,7 +52,9 @@ export async function updateEdition(form:FormData){
   stato=valueOf(form,'stato',20);if(!COURSE_STATES.some(s=>s===stato))throw Error();
   note=valueOf(form,'note',2000)||null;const raw=valueOf(form,'costo_corso',20);costo_corso=raw?Number(raw.replace(',','.')):null;if(costo_corso!==null&&(!Number.isFinite(costo_corso)||costo_corso<0||!/^\d+(?:[.,]\d{1,2})?$/.test(raw)))return {field:'costo_corso',error:'Indica un importo positivo o zero con al massimo due decimali.'};
  }catch{return {error:'Controlla i dati inseriti per questa edizione.'};}
- const {error}=await supabase.from('edizioni_corsi').update({direttore_id:form.get('direttore_id')||null,nome,massimo_partecipanti:capienza,costo_corso,stato,note}).eq('id',id).select('id').single();
+ const direttore_id=String(form.get('direttore_id')??'');
+ if(!UUID_RE.test(direttore_id))return {field:'direttore_id',error:'Seleziona un direttore valido per l’edizione.'};
+ const {error}=await supabase.from('edizioni_corsi').update({direttore_id,nome,massimo_partecipanti:capienza,costo_corso,stato,note}).eq('id',id).select('id').single();
  if(error){if(error.code==='P3419')return {field:'nome',error:'Questo corso esiste già',href:'/gestionale/corsi/'+error.details};return error.code==='P3421'?{field:'direttore_id',error:'La persona scelta è già allieva di questa edizione. Scegli un altro direttore.'}:{field:'massimo_partecipanti',error:'Verifica la capienza e i dati dell’edizione.'};}
  refresh(id);redirect(detailHref(id,'salvato'));
 }
@@ -112,7 +114,9 @@ export async function addEnrollment(form:FormData){
   const {data:member}=await supabase.from('gest_soci_iscrivibili').select('persona_id').eq('persona_id',person).eq('stagione_id',edition.stagione_id).limit(1);
   if(!member?.length)redirect(detailHref(id,'adesione'));
  }
- const {error}=await supabase.rpc('iscrivi_con_contatto',{p_edizione:id,p_persona:person,p_nome:valueOf(form,'emergenza_nome',160),p_telefono:valueOf(form,'emergenza_telefono',32),p_richiesta:false});
+ let nomeEmergenza:string,telefonoEmergenza:string;
+ try{nomeEmergenza=valueOf(form,'emergenza_nome',160);telefonoEmergenza=valueOf(form,'emergenza_telefono',32);}catch{redirect(detailHref(id,'iscrizione'));}
+ const {error}=await supabase.rpc('iscrivi_con_contatto',{p_edizione:id,p_persona:person,p_nome:nomeEmergenza,p_telefono:telefonoEmergenza,p_richiesta:false});
  if(error)redirect(detailHref(id,error.code==='P3421'?'direttore':error.code==='23505'?'gia_iscritto':error.code==='P3413'?'adesione':'iscrizione'));
  refresh(id);redirect(detailHref(id,'iscritto'));
 }

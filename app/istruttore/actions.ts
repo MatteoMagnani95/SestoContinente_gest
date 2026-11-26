@@ -9,7 +9,9 @@ export async function recordAttendance(form:FormData){
  if(!role)redirect('/?msg=permessi');
  const lezione_id=String(form.get('lezione_id')??'');
  const persona_id=String(form.get('persona_id')??'');
- const presente=String(form.get('presente')??'')==='si';
+ const scelta=String(form.get('presente')??'');
+ if(!['si','no'].includes(scelta))redirect('/istruttore?msg=errore');
+ const presente=scelta==='si';
  const nota_didattica=String(form.get('nota_didattica')??'').trim().slice(0,2000);
  if(!uuid.test(lezione_id)||!uuid.test(persona_id))redirect('/istruttore?msg=errore');
  const {error}=await supabase.from('presenze').upsert({lezione_id,persona_id,presente,nota_didattica},{onConflict:'lezione_id,persona_id'});

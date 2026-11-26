@@ -7,7 +7,7 @@ import {notFound,redirect} from 'next/navigation';
 import {requireStaff} from '@/lib/security';
 import {modules,isModuleKey,type Module,type Field} from '@/lib/modules';
 import {formatValue,datetimeForInput} from '@/lib/format';
-import {formatRome} from '@/lib/course-tools';
+import {formatRome,UUID_RE} from '@/lib/course-tools';
 import {saveModuleRecord} from '@/app/module-actions';
 import CodiceFiscaleAssist from '@/components/CodiceFiscaleAssist';
 import RemoveRecord from '@/components/RemoveRecord';
@@ -82,24 +82,29 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  }
  const {q='',msg='',p='1',corsia,inizio,fine,edit,stato}=await searchParams;
  const feedback=msg==='corsia_occupata'&&modulo==='prenotazioni'?bookingConflictText(corsia,inizio,fine):status[msg];
- const page=Math.min(100,Math.max(1,Number.parseInt(p,10)||1));
+ const editId=edit&&UUID_RE.test(edit)?edit:null;
+ if(modulo==='calendario'&&editId)redirect(`/gestionale/calendario-visivo/${editId}`);
+ const page=editId?1:Math.min(100,Math.max(1,Number.parseInt(p,10)||1));
  const perPage=30;
  const personViews=new Set(['adesioni', 'iscrizioni_corsi', 'assegnazioni_istruttori', 'qualifiche_istruttori', 'brevetti_allievi', 'certificati_medici', 'presenze', 'assegnazioni_attrezzature', 'quote_associative', 'saldi_quote', 'saldi_corsi', 'tesseramenti', 'addebiti_corsi']);
  const personSorted=personViews.has(module.table);
  const medical=modulo==='certificati';
- const senzaFile=medical?await supabase.from('allievi_senza_certificato').select('id,nome,cognome',{count:'exact'}).order('cognome').order('nome').order('id').range((page-1)*perPage,page*perPage-1):null;
- const filtri=medical?await Promise.all(Object.entries(statiCertificato).map(async ([k,label])=>{const {count,error}=await supabase.from('stato_certificati').select('id',{head:true,count:'exact'}).eq('stato_certificato',k);return {k,label,n:error||(k==='mancante'&&senzaFile?.error)?'—':(count??0)+(k==='mancante'?(senzaFile?.count??0):0)};})):[];
+ const missingQuery=medical&&!editId&&(!stato||stato==='mancante')?supabase.from('allievi_senza_certificato').select('id,nome,cognome',{count:'exact'}):null;
+ const medicalSearch=q.trim().slice(0,80).replace(/[%_\\(),.]/g,' ').trim();
+ const missingFiltered=missingQuery&&medicalSearch?missingQuery.or(`cognome.ilike.%${medicalSearch}%,nome.ilike.%${medicalSearch}%`):missingQuery;
+ const senzaFile=missingFiltered?await missingFiltered.order('cognome').order('nome').order('id').range((page-1)*perPage,page*perPage-1):null;
+ const missingTotal=medical?await supabase.from('allievi_senza_certificato').select('id',{head:true,count:'exact'}):null;
+ const filtri=medical?await Promise.all(Object.entries(statiCertificato).map(async ([k,label])=>{const {count,error}=await supabase.from('stato_certificati').select('id',{head:true,count:'exact'}).eq('stato_certificato',k);return {k,label,n:error||(k==='mancante'&&missingTotal?.error)?'—':(count??0)+(k==='mancante'?(missingTotal?.count??0):0)};})):[];
  let query=supabase.from(medical?'stato_certificati':personSorted?`gest_elenco_${module.table}`:module.table).select('*',{count:'exact'});
- if(medical&&stato&&Object.hasOwn(statiCertificato,stato))query=query.eq('stato_certificato',stato);
+ if(!editId&&medical&&stato&&Object.hasOwn(statiCertificato,stato))query=query.eq('stato_certificato',stato);
  const searchField=module.fields.find(f=>f.type==='text' || (!f.type&&f.name!=='codice_fiscale'));
- const safeSearch=q.trim().slice(0,80).replace(/[%_\\]/g,'');
- if(safeSearch&&(personSorted||module.table==='persone')){const cleaned=safeSearch.replace(/[(),.]/g,' ').trim();if(cleaned)query=query.or(`${personSorted?'sort_cognome':'cognome'}.ilike.%${cleaned}%,${personSorted?'sort_nome':'nome'}.ilike.%${cleaned}%`);}
+ const safeSearch=editId?'':q.trim().slice(0,80).replace(/[%_\\]/g,'');
+ if(safeSearch&&(personSorted||medical||module.table==='persone')){const cleaned=safeSearch.replace(/[(),.]/g,' ').trim();if(cleaned)query=query.or(`${personSorted||medical?'sort_cognome':'cognome'}.ilike.%${cleaned}%,${personSorted||medical?'sort_nome':'nome'}.ilike.%${cleaned}%`);}
  else if(safeSearch&&searchField)query=query.ilike(searchField.name,`%${safeSearch}%`);
- const editId=edit&&/^[0-9a-f-]{36}$/i.test(edit)?edit:null;
  if(editId)query=query.eq('id',editId);
- const primary=personSorted?'sort_cognome':module.table==='persone'?'cognome':module.fields.find(f=>['nome','titolo','codice','tipo'].includes(f.name))?.name??module.order??'id';
+ const primary=personSorted||medical?'sort_cognome':module.table==='persone'?'cognome':module.fields.find(f=>['nome','titolo','codice','tipo'].includes(f.name))?.name??module.order??'id';
  query=query.order(primary,{ascending:true,nullsFirst:false});
- if(personSorted||module.table==='persone')query=query.order(personSorted?'sort_nome':'nome',{ascending:true});
+ if(personSorted||medical||module.table==='persone')query=query.order(personSorted||medical?'sort_nome':'nome',{ascending:true});
  const {data,error,count}=await query.order('id',{ascending:true}).range((page-1)*perPage,page*perPage-1);
  const refs=[...new Set(module.fields.map(f=>f.ref?.table).filter((v):v is string=>Boolean(v)))];
  const references:Record<string,Row[]>={};
@@ -170,14 +175,14 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  {feedback&&<p className={`notice ${['salvato','eliminato'].includes(msg)?'success': 'warning'}`} role="status">{feedback}</p>}
  {enrollmentLoadError&&<p className="notice error">Impossibile caricare tutte le iscrizioni dei corsi. Riprova o verifica i permessi.</p>}
  {medical&&<nav className="buttons" aria-label="Filtri certificati"><Link className="button ghost" href="?">Tutti</Link>{filtri.map(f=><Link key={f.k} aria-current={stato===f.k?'page':undefined} className={stato===f.k?'button':'button ghost'} href={'?stato='+f.k}>{f.label} ({f.n})</Link>)}</nav>}
- {medical&&(!stato||stato==='mancante')&&!!senzaFile?.data?.length&&<section className="panel"><h3>Allievi senza certificato registrato</h3><ul>{senzaFile.data.map(p=><li key={p.id}>{p.cognome} {p.nome} · Documento mancante · <Link href={'/area-personale/certificato?persona='+p.id}>Carica certificato</Link></li>)}</ul></section>}
+ {medical&&!editId&&(!stato||stato==='mancante')&&!!senzaFile?.data?.length&&<section className="panel"><h3>Allievi senza certificato registrato</h3><ul>{senzaFile.data.map(p=><li key={p.id}>{p.cognome} {p.nome} · Documento mancante · <Link href={'/area-personale/certificato?persona='+p.id}>Carica certificato</Link></li>)}</ul></section>}
  <div className="module-toolbar">
   <form method="get" className="search-line">{medical&&stato&&<input type="hidden" name="stato" value={stato}/>}<input name="q" aria-label="Cerca" placeholder="Cerca nel campo principale" defaultValue={q}/><button className="button ghost">Cerca</button></form>
   <Link className="button ghost" href={`/gestionale/esporta/${modulo}`}>Esporta CSV</Link>
  </div>
  {!editId&&<details className="panel module-editor"><summary><strong>+ {module.appendOnly?'Registra nuovo versamento':'Aggiungi nuovo record'}</strong></summary>
  <Editor module={module} moduleKey={modulo} references={references}/></details>}
- {error?<div className="notice error">Impossibile leggere i dati. Esegui prima la migrazione 0002 e verifica i permessi.</div>:<div className="panel table-panel"><table><thead><tr>
+ {error?<div className="notice error">Impossibile leggere i dati. Riprova; se il problema persiste verifica permessi e migrazioni con l’amministratore.</div>:<div className="panel table-panel"><table><thead><tr>
  {module.columns.map(c=><th key={c}>{module.fields.find(f=>f.name===c)?.label??({documento_id:'Certificato',stato_certificato:'Stato',rilasciato_da_nome:'Rilasciato da'} as Record<string,string>)[c]??c.replaceAll('_',' ')}</th>)}
  {!module.appendOnly&&<th>Azioni</th>}
  </tr></thead><tbody>
@@ -185,7 +190,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  {module.columns.map(c=><td key={c}>{medical&&c==='documento_id'?(row[c]?<Link href={'/documenti/'+row[c]}>Apri certificato</Link>:<Link href={'/area-personale/certificato?persona='+row.persona_id}>Carica certificato</Link>):medical&&c==='stato_certificato'?statoSingolo(String(row[c])):references[module.fields.find(f=>f.name===c)?.ref?.table??'']?.find(x=>x.id===row[c])
  ? labelOf(references[module.fields.find(f=>f.name===c)?.ref?.table??''].find(x=>x.id===row[c])!,module.fields.find(f=>f.name===c)?.ref?.labels??['id'])
  : c==='persona_id'&&row.sort_cognome?`${row.sort_cognome} ${row.sort_nome??''}`: modulo==='addebiti'&&c==='iscrizione_id'?'Iscrizione non disponibile':c.endsWith('_id')?String(row[c]??'—').slice(0,8):formatValue(row[c],c)}</td>)}
- {!module.appendOnly&&<td><details className="row-editor" open={(msg!=='salvato'&&editId===row.id)||undefined}><summary>Modifica</summary><div className="row-editor-pop"><Editor module={module} moduleKey={modulo} record={row} references={references} admin={isAdministrator===true}/></div></details></td>}
+ {!module.appendOnly&&<td>{modulo==='calendario'?<Link href={`/gestionale/calendario-visivo/${row.id}`}>Modifica lezione e corsie</Link>:<details className="row-editor" open={(msg!=='salvato'&&editId===row.id)||undefined}><summary>Modifica</summary><div className="row-editor-pop"><Editor module={module} moduleKey={modulo} record={row} references={references} admin={isAdministrator===true}/></div></details>}</td>}
  </tr>)}
  {!rows.length&&<tr><td colSpan={module.columns.length+1} className="empty-cell">Nessun record trovato.</td></tr>}
  </tbody></table></div>}

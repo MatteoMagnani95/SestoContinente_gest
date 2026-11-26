@@ -1,5 +1,6 @@
 'use client';
 import {useRef,useState,type ReactNode,type FormEvent} from 'react';
+import {isCalendarDate,todayRome} from '@/lib/course-tools';
 import {useRouter} from 'next/navigation';
 import {createBrowserClient} from '@supabase/ssr';
 import {caricaCertificato,preparaCaricamento} from '@/app/area-personale/certificato/actions';
@@ -10,6 +11,8 @@ export default function CertificateUploadForm({children}:{children:ReactNode}){
   e.preventDefault();if(lock.current)return;
   const form=e.currentTarget,values=new FormData(form),file=values.get('file');
   if(!(file instanceof File)||file.size>10*1024*1024){setError('Seleziona un file di massimo 10 MB.');return;}
+  const dal=String(values.get('rilasciato_il')??''),al=String(values.get('scade_il')??'');
+  if(!isCalendarDate(dal)||!isCalendarDate(al)||al<dal||dal>todayRome()){setError('Controlla data di rilascio e scadenza.');return;}
   lock.current=true;setPending(true);setError('');
   try{
    // I file grandi raggiungono direttamente il deposito privato. La validazione resta sul server.

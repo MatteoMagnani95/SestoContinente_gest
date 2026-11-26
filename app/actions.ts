@@ -12,12 +12,14 @@ import {decisionValidation,isReviewDecision,reviewError,type DecisionResult} fro
 import {identityFromForm,identityFields,verificaAnagrafica,type Identity,type CFResult} from '@/lib/verifica-anagrafica';
 
 const asText = (form: FormData, field: string) => String(form.get(field) ?? '').trim();
+// Le password sono credenziali opache: anche gli spazi sono significativi.
+const passwordText = (form: FormData, field: string) => String(form.get(field) ?? '');
 const go = (path: string, msg: string) => redirect(`${path}?msg=${msg}`);
 
 export async function registerAction(form: FormData) {
   const email = asText(form, 'email').toLowerCase();
-  const password = asText(form, 'password');
-  if (!email.includes('@') || password.length < 10 || password !== asText(form, 'confirm')) {
+  const password = passwordText(form, 'password');
+  if (!email.includes('@') || password.length < 10 || password !== passwordText(form, 'confirm')) {
     go('/registrati', 'password');
   }
   const supabase = await createClient();
@@ -25,19 +27,20 @@ export async function registerAction(form: FormData) {
   if (!origin) go('/registrati', 'registrazione');
   const legal=informativaRegistrazione(),scelta=asText(form,'immagini');
   if(!legal.url||form.get('presa_visione')!=='on'||!['','si','no'].includes(scelta))go('/registrati','privacy');
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: { data:{presa_visione:'si',versione_privacy:legal.versione,immagini:scelta,versione_immagini:legal.test?'TEST-COLLAUDO-1':versioneImmagini},emailRedirectTo: `${origin}/auth/callback?next=%2Frichiesta%2Fnuova` },
   });
   if (error) go('/registrati', 'registrazione');
+  if (data.session) redirect('/smista');
   redirect('/registrati?ok=verifica');
 }
 
 export async function loginAction(form: FormData) {
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({
-    email: asText(form, 'email'), password: asText(form, 'password'),
+    email: asText(form, 'email'), password: passwordText(form, 'password'),
   });
   if (error) go('/accedi', 'credenziali');
   redirect('/smista');
@@ -62,8 +65,8 @@ export async function recoverAction(form: FormData) {
 }
 
 export async function newPasswordAction(form: FormData) {
-  const password = asText(form, 'password');
-  if (password.length < 10 || password !== asText(form, 'confirm')) go('/nuova-password','password');
+  const password = passwordText(form, 'password');
+  if (password.length < 10 || password !== passwordText(form, 'confirm')) go('/nuova-password','password');
   const { supabase } = await requireUser();
   const { error } = await supabase.auth.updateUser({ password });
   if (error) go('/nuova-password', 'database');
