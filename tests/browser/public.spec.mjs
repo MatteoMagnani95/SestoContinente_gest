@@ -171,3 +171,30 @@ test('Viewport visibile ridotta: pannello e pulsante finale restano raggiungibil
  expect(final.y+final.height).toBeLessThanOrEqual(421);
  await dialog.evaluate(e=>e.close());
 });
+
+test('Autenticazione: nomi accessibili distinti, etichette e reflow equivalente a 200/400%',async({page})=>{
+ await page.setViewportSize({width:1280,height:800});
+ await page.goto('/accedi');
+ await expect(page.getByRole('textbox',{name:'Email',exact:true})).toBeVisible();
+ const password=page.getByLabel('Password',{exact:true}),toggle=page.getByRole('button',{name:'Mostra password',exact:true});
+ await password.fill(' Password di prova ');
+ await toggle.focus();await page.keyboard.press('Enter');
+ await expect(password).toHaveAttribute('type','text');
+ await expect(page.getByRole('button',{name:'Nascondi password',exact:true})).toBeFocused();
+ await expect(password).toHaveValue(' Password di prova ');
+ await page.keyboard.press('Enter');await expect(password).toHaveAttribute('type','password');
+ for(const path of ['/','/accedi','/registrati']){
+  await page.goto(path);
+  // 1280/2 e 1280/4 CSS px: equivalente di reflow, non zoom browser fisico.
+  for(const width of [640,320]){
+   await page.setViewportSize({width,height:800});
+   const geometry=await page.evaluate(()=>({w:document.documentElement.clientWidth,s:document.documentElement.scrollWidth}));
+   expect(geometry.s,path+' '+width).toBeLessThanOrEqual(geometry.w+1);
+   await expect(page.getByRole('heading',{level:1})).toBeVisible();
+  }
+ }
+ await expect(page.getByLabel('Password',{exact:true})).toBeVisible();
+ await expect(page.getByLabel('Conferma password',{exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Mostra password',exact:true})).toHaveCount(1);
+ await expect(page.getByRole('button',{name:'Mostra conferma password',exact:true})).toHaveCount(1);
+});
