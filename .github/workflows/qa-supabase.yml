@@ -6,6 +6,8 @@ on:
     paths:
       - '.github/workflows/qa-supabase.yml'
       - 'scripts/qa-local-supabase.mjs'
+      - 'scripts/qa-local-mutations.mjs'
+      - 'package-lock.json'
       - 'supabase/migrations/**'
       - 'app/**'
       - 'components/**'
@@ -92,6 +94,8 @@ jobs:
           export QA_APPLICANT_STATE="$QA_WORK_DIR/applicant.json"
           export QA_FIXTURE_IDS=$(cat "$QA_WORK_DIR/fixtures.json")
           npm run test:browser -- --project='*-staff' --project='*-secretary' --project='*-member' --project='*-instructor' --project='*-board' --project='*-applicant'
+      - name: Salvataggi reali tramite interfaccia e controllo database
+        run: node scripts/qa-local-supabase.mjs mutations
       - name: Rimuovi sessioni sintetiche e arresta servizi locali
         if: always()
         shell: bash
