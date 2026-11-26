@@ -13,7 +13,17 @@ function harness(dbError=null,authorized=true){
  const inserts=[],revalidations=[];
  const exports={};
  const modules={
-  '@/lib/security':{requireStaff:async()=>{if(!authorized)throw Error('Permessi negati');return {supabase:{from(table){assert.equal(table,'cda_componenti');return {insert:async row=>{inserts.push({...row});return {error:dbError};}};}};}},
+  '@/lib/security':{
+   requireStaff:async()=>{
+    if(!authorized)throw Error('Permessi negati');
+    return {supabase:{
+     from(table){
+      assert.equal(table,'cda_componenti');
+      return {insert:async row=>{inserts.push({...row});return {error:dbError};}};
+     }
+    }};
+   }
+  },
   'next/cache':{revalidatePath:path=>revalidations.push(path)},
   'next/navigation':{redirect:()=>{throw new Error('Unexpected redirect after save');}},
  };
