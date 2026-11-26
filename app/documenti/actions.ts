@@ -26,6 +26,7 @@ export async function uploadDocument(form:FormData){
  if(!realMime(buffer,file.type))return {error:'Il contenuto del file non corrisponde al formato selezionato.',field:'file'};
  const nome=String(form.get('nome')||file.name).trim().slice(0,150);
  const categoria=String(form.get('categoria')||'Altro').trim().slice(0,80);
+ if(categoria.toLocaleLowerCase('it-IT')==='certificato medico')return {field:'categoria',error:'Per i certificati medici usa il caricamento dedicato nell’area personale.'};
  const ambito=isStaff?String(form.get('ambito')||'associazione'):'personale';
  const visibilita=isStaff?String(form.get('visibilita')||'staff'):'proprietario';
  const utente=isStaff?String(form.get('utente_id')||'').trim():user.id;
@@ -49,7 +50,12 @@ export async function uploadDocument(form:FormData){
   percorso_storage:path,mime:file.type,dimensione_bytes:file.size,caricato_da:user.id,scadenza_conservazione:conservazione||null}).select('id').single();
  if(error||!data)return {error:'Caricamento non completato. Verifica il file e i permessi.'};
  const uploaded=await supabase.storage.from('sesto-documenti').upload(path,buffer,{contentType:file.type,upsert:false});
- if(uploaded.error){await supabase.rpc('annulla_upload_documento',{p_id:data.id});return {error:'Caricamento non completato. Verifica il file e i permessi.'};}
+ if(uploaded.error){
+  // La RPC elimina il metadata solo se l'oggetto non esiste. Non presumere
+  // che una risposta interrotta significhi che il provider non abbia salvato.
+  await supabase.rpc('annulla_upload_documento',{p_id:data.id});
+  revalidatePath('/documenti');return {error:'Caricamento non confermato. Controlla l’archivio prima di ripetere l’invio.'};
+ }
  revalidatePath('/documenti');redirect('/documenti?msg=ok');
 }
 export async function deleteDocument(form:FormData){
