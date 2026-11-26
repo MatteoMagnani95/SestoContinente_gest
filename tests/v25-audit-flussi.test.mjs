@@ -30,12 +30,13 @@ test('Autenticazione: spazi della password preservati in login e registrazione; 
 test('Istruttore: campo vuoto o manipolato non registra assenze; scelta no esplicita invece salva',async()=>{
  const writes=[];
  const role={select:()=>role,eq:()=>role,maybeSingle:async()=>({data:{ruolo:'istruttore'}})};
- const db={from:table=>table==='ruoli_utente'?role:{upsert:async row=>{writes.push(row);return {error:null};}}};
+ const lesson={select:()=>lesson,eq:()=>lesson,maybeSingle:async()=>({data:{id:'l',edizione_id:'e',annullata_il:null}})};const enrolled={select:()=>enrolled,eq:()=>enrolled,in:()=>enrolled,maybeSingle:async()=>({data:{id:'i'}})};
+ const db={rpc:async()=>({data:true}),from:table=>table==='ruoli_utente'?role:table==='lezioni'?lesson:table==='iscrizioni_corsi'?enrolled:{upsert:async row=>{writes.push(row);return {error:null};}}};
  const {recordAttendance}=load('app/istruttore/actions.ts',{'next/navigation':{redirect},'next/cache':{revalidatePath:()=>{}},'@/lib/security':{requireUser:async()=>({supabase:db,user:{id:'x'}})}});
  const ids={lezione_id:'11111111-1111-4111-8111-111111111111',persona_id:'22222222-2222-4222-8222-222222222222'};
- for(const presente of ['', 'invalid'])await assert.rejects(recordAttendance(form({...ids,presente})),/redirect:\/istruttore\?msg=errore/);
+ for(const presente of ['', 'invalid'])assert.match((await recordAttendance(form({...ids,presente}))).error,/esplicitamente/);
  assert.equal(writes.length,0);
- await assert.rejects(recordAttendance(form({...ids,presente:'no',nota_didattica:'nota'})),/redirect:\/istruttore\?msg=ok/);
+ await assert.rejects(recordAttendance(form({...ids,presente:'no',nota_didattica:'nota'})),/redirect:\/istruttore\?tab=presenze.*msg=ok/);
  assert.equal(writes[0].presente,false);assert.equal(writes[0].nota_didattica,'nota');
 });
 test('Esportazione CSV: protezione delle formule precedute da spazi, tabulazioni o ritorni a capo',async()=>{

@@ -74,7 +74,7 @@ export function listContext(path:string,search:string){
  return path+(safe.size?'?'+safe.toString():'');
 }
 export function contextPath(path:string){
- return ['/gestionale/soci','/gestionale/corsi','/gestionale/richieste','/gestionale/calendario-visivo','/gestionale/utenti','/gestionale/incassi','/gestionale/archivio-incassi','/organi-sociali/archivio','/documenti','/gestione-eventi','/gestionale/report','/gestionale/economia','/gestionale/amministrazione-dati'].includes(path)||/^\/gestionale\/moduli\/[a-z_]+$/.test(path);
+ return ['/gestionale/soci','/gestionale/corsi','/gestionale/richieste','/gestionale/calendario-visivo','/gestionale/utenti','/gestionale/incassi','/gestionale/archivio-incassi','/organi-sociali/archivio','/documenti','/gestione-eventi','/area-personale','/area-personale/corsi','/area-soci','/istruttore','/gestionale/report','/gestionale/economia','/gestionale/amministrazione-dati'].includes(path)||/^\/gestionale\/moduli\/[a-z_]+$/.test(path);
 }
 export function restoredTarget(target:BackTarget,contexts:Record<string,string>){
  const saved=contexts[target.href];

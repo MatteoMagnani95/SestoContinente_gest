@@ -10,12 +10,12 @@ const msg=(error:{code?:string}|null)=>!error?'ok':error.code==='P3416'?'posti':
 function finish(path:string,status:string){revalidatePath('/area-soci');revalidatePath('/gestione-eventi');redirect(`${path}?msg=${status}`);}
 export async function joinEvent(form:FormData){
  const {supabase}=await requireUser();const event=text(form,'evento_id'),person=text(form,'persona_id');
- if(!validId(event)||!validId(person))finish('/area-soci','errore');
- const {error}=await supabase.rpc('area_soci_iscrivi',{p_evento:event,p_persona:person});finish('/area-soci',msg(error));
+ if(!validId(event)||!validId(person))return {error:'Seleziona una persona e un evento validi.'};
+ const {error}=await supabase.rpc('area_soci_iscrivi',{p_evento:event,p_persona:person});if(error)return {error:msg(error)==='posti'?'Posti esauriti.':msg(error)==='stato'?'Evento non aperto alle iscrizioni.':'Iscrizione non riuscita. Verifica i requisiti.'};finish('/area-soci','ok');
 }
 export async function withdrawEvent(form:FormData){
  const {supabase}=await requireUser();const event=text(form,'evento_id'),id=text(form,'iscrizione_id');
- if(!validId(event)||!validId(id)||form.get('conferma')!=='on')finish('/area-soci','errore');
+ if(!validId(event)||!validId(id)||form.get('conferma')!=='on')return {error:'Conferma il ritiro di una iscrizione valida.'};
  const {error}=await supabase.rpc('area_soci_decidi',{p_evento:event,p_iscrizione:id,p_esito:'ritirata'});finish('/area-soci',msg(error));
 }
 export async function saveEvent(form:FormData){
