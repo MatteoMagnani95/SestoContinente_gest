@@ -15,7 +15,8 @@ function realMime(file:Buffer,mime:string){
 }
 export async function uploadDocument(form:FormData){
  const {supabase,user}=await requireUser();
- const {data:roles}=await supabase.from('ruoli_utente').select('ruolo').eq('utente_id',user.id);
+ const {data:roles,error:roleError}=await supabase.from('ruoli_utente').select('ruolo').eq('utente_id',user.id);
+ if(roleError)return {error:'Autorizzazioni non verificabili.'};
  const isStaff=roles?.some(x=>['amministratore','segreteria'].includes(x.ruolo))??false;
  const isAdmin=roles?.some(x=>x.ruolo==='amministratore')??false;
  const file=form.get('file');
@@ -37,6 +38,10 @@ export async function uploadDocument(form:FormData){
  (ambito==='personale'&&(!utente||!['staff','proprietario'].includes(visibilita)))||
  (utente&&!uuid.test(utente))||(persona&&!uuid.test(persona))||(edizione&&!uuid.test(edizione))||(versione&&!uuid.test(versione))||
  (conservazione&&!/^\d{4}-\d{2}-\d{2}$/.test(conservazione)))return {error:'Controlla ambito, visibilità e collegamenti del documento.'};
+ if(isStaff&&ambito==='personale'&&persona){
+  const {data:relation,error:relationError}=await supabase.from('collegamenti_persone').select('utente_id').eq('utente_id',utente).eq('persona_id',persona).limit(1);
+  if(relationError||!relation?.length)return {field:'utente_id',error:'L’account scelto non risulta collegato alla persona. Verifica gli intestatari.'};
+ }
  const path=`${user.id}/${randomUUID()}.${mimeToExt[file.type]}`;
  const {data,error}=await supabase.from('documenti').insert({nome,categoria,ambito,visibilita,
   utente_id:utente||null,persona_id:persona||null,edizione_id:edizione||null,programma_versione_id:versione||null,

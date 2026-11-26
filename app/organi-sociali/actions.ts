@@ -1,4 +1,5 @@
 'use server';
+import {tutteLePagine} from '@/lib/pagine';
 import {redirect} from 'next/navigation';
 import {revalidatePath} from 'next/cache';
 import {requireBoard,requireStaff} from '@/lib/security';
@@ -107,7 +108,7 @@ export async function sostituisciVerbale(form:FormData){
 }
 export async function riprovaFinalizzazione(form:FormData){
  const {supabase}=await requireStaff();const id=val(form,'verbale_id');if(!uuid.test(id))fail('dati');
- const {data,error}=await supabase.rpc('cda_progressi');
+ const {data,error}=await tutteLePagine((da,a)=>supabase.rpc('cda_progressi').order('verbale_id').range(da,a));
  const row=(Array.isArray(data)?data:[]).find((p:{verbale_id:string})=>p.verbale_id===id) as {approvati:number;totali:number}|undefined;
  if(error||!row||Number(row.totali)<=0||Number(row.approvati)!==Number(row.totali))fail('quorum');
  await finalizza(supabase,id);revalidatePath(root);revalidatePath(`${root}/archivio`);redirect(`${root}/archivio?msg=approvato`);

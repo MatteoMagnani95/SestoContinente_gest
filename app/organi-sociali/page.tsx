@@ -28,9 +28,9 @@ export default async function OrganiSociali({searchParams}:{searchParams:Promise
  const tabs=[['panoramica','Panoramica'],['componenti','Componenti in carica'],['sedute','Sedute'],['bozze','Bozze'],['votazioni','Votazioni in corso'],['approvati','Verbali approvati'],['sostituiti','Versioni sostituite']] as const;
  const tab=tabs.find(([k])=>k===rawTab)?.[0]??(msg==='componente_ok'?'componenti':msg==='avviata'||msg==='voto_ok'||msg==='lettura'?'votazioni':msg==='approvato'?'approvati':'panoramica'),page=pageNumber(p),size=25,today=todayRome();
  const [{data:members,error:membersError},{data:verbali,error:verbaliError},{data:progress,error:progressError},{data:people,error:peopleError},{data:pending,error:pendingError},{data:votanti,error:votantiError}]=await Promise.all([
-  supabase.rpc('cda_anagrafiche_membri'),
+  tutteLePagine((da,a)=>supabase.rpc('cda_anagrafiche_membri').order('persona_id').order('dal').range(da,a)),
   tutteLePagine((da,a)=>supabase.from('cda_verbali').select('id,data_consiglio,oggetto,tipo,stato,percorso_docx,percorso_pdf,precedente_id').is('rimosso_il',null).order('data_consiglio',{ascending:false}).order('id').range(da,a)),
-  supabase.rpc('cda_progressi'),
+  tutteLePagine((da,a)=>supabase.rpc('cda_progressi').order('verbale_id').range(da,a)),
   isStaff?tutteLePagine((da,a)=>supabase.from('persone').select('id,nome,cognome').order('cognome').order('nome').order('id').range(da,a)):Promise.resolve({data:[],error:null}),
   isStaff?tutteLePagine((da,a)=>supabase.from('adesioni').select('id,persona_id,stato').eq('stato','da_perfezionare').order('id').range(da,a)):Promise.resolve({data:[],error:null}),
   tutteLePagine((da,a)=>supabase.from('cda_votanti').select('verbale_id,utente_id').eq('utente_id',user.id).order('verbale_id').range(da,a))
@@ -66,13 +66,13 @@ export default async function OrganiSociali({searchParams}:{searchParams:Promise
  <div className="form-grid"><label>Data CdA<input type="date" name="data_consiglio" required/></label><label>Oggetto<input name="oggetto" required maxLength={500}/></label>
  <label>Tipologia<select name="tipo" required defaultValue=""><option value="">Seleziona tipologia…</option><option>Approvazione Adesioni Soci</option><option>Gestione Ordinaria / Altro</option><option>Misto</option></select></label>
  <label>Bozza DOCX (max 3 MB)<input type="file" name="documento" accept=".docx" required/></label></div>
- <p className="tiny muted">Al caricamento viene creata un’anteprima PDF di bozza, disponibile nell’archivio. Il PDF definitivo viene creato dopo il voto unanime. La conversione genera una trascrizione del testo Word; conserva sempre l'originale per l'impaginazione, tabelle e allegati.</p>
+ <p className="tiny muted">Al caricamento viene creata un’anteprima PDF di bozza, disponibile nell’archivio. Il PDF definitivo è reso disponibile dopo il voto unanime. La conversione genera una trascrizione del testo Word; conserva sempre l'originale per l'impaginazione, tabelle e allegati.</p>
  <div className="form-actions"><p>Le eventuali adesioni saranno selezionate e confermate prima di aprire la votazione.</p><button className="button">Carica bozza</button><CancelEditButton/></div></EditForm></Drawer>}{verbaliError?<Alert tone="warning">Sedute non disponibili.</Alert>:<ul>{verbaliCda.slice((page-1)*size,page*size).map(v=><li key={v.id}>{formatDate(v.data_consiglio)} · <Link href={'/organi-sociali/archivio?edit='+v.id}>{v.oggetto}</Link></li>)}</ul>}<Pagination page={page} size={size} count={verbaliError?null:verbaliCda.length} href={p=>'?tab=sedute&p='+p}/></section>}
  {([['in_approvazione','Verbali in approvazione'],['approvato','Verbali approvati'],['bozza','Bozze'],['sostituito','Versioni sostituite']] as const).map(([stato,titolo])=>{
  if(tab!==({in_approvazione:'votazioni',approvato:'approvati',bozza:'bozze',sostituito:'sostituiti'} as const)[stato])return null;
  const gruppo=verbaliCda.filter(v=>stato==='sostituito'?precedenti.has(v.id):v.stato===stato&&!precedenti.has(v.id));
  return <section key={stato} className="panel"><h2>{titolo}</h2>{verbaliError?<Alert tone="warning">Verbali non disponibili.</Alert>:!gruppo.length&&<p>Nessun verbale.</p>}{stato==='bozza'&&isStaff&&<ButtonLink href="?tab=sedute">Nuova seduta e verbale</ButtonLink>}
- {gruppo.slice((page-1)*size,page*size).map(v=>{const p=progressMap.get(v.id);return <article id={'verbale-'+v.id} key={v.id} className="timeline-item"><h3>{formatDate(v.data_consiglio)} · {v.oggetto}</h3>
+ {gruppo.slice((page-1)*size,page*size).map(v=>{const p=progressMap.get(v.id);return <article id={'verbale-'+v.id} key={v.id} className="sc-card timeline-item"><h3>{formatDate(v.data_consiglio)} · {v.oggetto}</h3>
  <p>Tipo: {v.tipo} · <StatusBadge tone={v.stato==='approvato'?'success':v.stato==='in_approvazione'?'warning':'neutral'}>{stato==='sostituito'?'Versione sostituita':v.stato.replaceAll('_',' ')}</StatusBadge> · {progressError?'Voti non disponibili':p&&Number(p.totali)>0?Number(p.approvati)+' / '+Number(p.totali)+' approvazioni':'Votazione non configurata'}</p>
  <Drawer title={'Voti registrati · '+v.oggetto} trigger="Consulta voti"><Firme id={v.id}/></Drawer><Drawer title={'Cronologia · '+v.oggetto} trigger="Cronologia"><Cronologia tipo="verbale" id={v.id} expanded/></Drawer>
  {v.precedente_id&&<Link href={'/organi-sociali/archivio?edit='+v.precedente_id}>Versione precedente</Link>}
@@ -89,7 +89,7 @@ export default async function OrganiSociali({searchParams}:{searchParams:Promise
 }
 async function Firme({id}:{id:string}){
  const {supabase}=await requireBoard();
- const {data,error}=await supabase.rpc('firme_verbale',{p_verbale:id});
+ const {data,error}=await tutteLePagine((da,a)=>supabase.rpc('firme_verbale',{p_verbale:id}).order('utente_id').range(da,a));
  if(error)return <p>Elenco delle approvazioni non disponibile.</p>;
  return <ul>{(data??[]).map((f:{utente_id:string;nominativo:string;votato_il:string|null})=><li key={f.utente_id}>{f.nominativo} · {f.votato_il?'Approvato il '+dataOra(f.votato_il):'In attesa di approvazione'}</li>)}</ul>;
 }

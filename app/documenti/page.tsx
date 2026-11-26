@@ -15,7 +15,8 @@ import {requireUser} from '@/lib/security';
 import {uploadDocument,deleteDocument,editDocumentMetadata} from './actions';
 export default async function Documenti({searchParams}:{searchParams:Promise<{msg?:string;pubblica?:string;q?:string;p?:string;ambito?:string;persona?:string;visibilita?:string;ordine?:string}>}){
  const {supabase,user}=await requireUser();
- const {data:roles}=await supabase.from('ruoli_utente').select('ruolo').eq('utente_id',user.id);
+ const {data:roles,error:roleError}=await supabase.from('ruoli_utente').select('ruolo').eq('utente_id',user.id);
+ if(roleError)return <Alert tone="danger">Autorizzazioni non verificabili. Riprova.</Alert>;
  const isStaff=roles?.some(r=>r.ruolo==='amministratore'||r.ruolo==='segreteria')??false;
  const isAdmin=roles?.some(r=>r.ruolo==='amministratore')??false;
  const {msg,pubblica,q='',p,ambito='',persona,visibilita='',ordine:rawOrder}=await searchParams;
