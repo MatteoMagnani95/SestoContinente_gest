@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - 'fix/**'
+      - 'feature/gestionale-2.0-redesign'
   workflow_dispatch:
 
 permissions:

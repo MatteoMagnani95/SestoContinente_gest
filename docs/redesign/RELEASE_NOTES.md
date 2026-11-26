@@ -6,3 +6,6 @@ Nessun merge, modifica applicativa o SQL produzione in questa fase.
 F0 è un deliverable documentale, non una nuova versione applicativa. Nessun merge su main, nessuna migrazione aggiunta. La CI/Vercel positive appartengono alla base, non alla nuova versione 2.0.
 
 Gate prima del rilascio: copia integrale del capitolato e granularizzazione tracker; staging isolato e account per ruolo; verifica documenti ufficiali; audit completo RLS/storage/RPC; collaudo contabilità, concorrenza, mobile e accessibilità; build nuova; preview verificata; piano rollback per codice e migrazioni; autorizzazione esplicita al merge. Per patch 0019, verificare stato DB senza rieseguirla alla cieca. Nessuna nuova migrazione 0020. Configurazione Vercel production branch e preview environment da confermare.
+
+## Fase 1 — anteprima, non produzione
+Token e primitive introdotti, dashboard usata come integrazione iniziale. Non è un rilascio 2.0. CI e preview da verificare sul commit di F1; test visivi/staging ancora aperti.

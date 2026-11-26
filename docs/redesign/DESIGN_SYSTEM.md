@@ -1,12 +1,14 @@
-# Gestionale Sesto Continente 2.0 — Fase 0
-Data: 2026-11-26. Base esatta: `ea97e2663a3999527b2e3f868c19dfd5b4f646eb`. Ramo: `feature/gestionale-2.0-redesign`.
-Nessun merge, modifica applicativa o SQL produzione in questa fase.
-
-# Design system — specifica di fase 1, non implementato
-- Token proposti: --navy #102B39, --teal #087E83, --ocean #3679B8, --aqua #65C9BE, --surface #F3F7F8, --white #FFFFFF; testo principale navy, secondario ardesia. Calcolare contrasto WCAG prima di approvare qualsiasi accoppiamento; aqua solo decorativo finché non verificato.
-- Macroaree: petrolio segreteria, oceano didattica, viola calendario, ocra attrezzature, verde contabilità, ardesia documenti/sistema. Stati semantici con testo/icona; niente colore come unica informazione.
-- Scala indicativa: 4/8/12/16/24/32px; raggio 8–12px, ombre minime; font sans di sistema inizialmente, valutare Inter/Manrope senza dipendenza remota. H1 28–34 desktop, 26–30 mobile, body 16. Target 44px, focus visibile, motion ridotto.
-- Riuso: EditForm, CancelEditButton, RemoveRecord, LessonComposer, Cronologia, CertificateUploadForm, EligibleEnrollmentSelect, Dichiarazioni, SceltaImmagini. Evitare duplicare business logic.
-- AppShell per role-aware navigation; shell staff condizionale fuori /gestionale senza imporre requireStaff a consigliere o responsabile evento. Non cambiare URL. Client island per pathname e focus; guard server invariati.
-- DataTable con slot espliciti per azioni e mobile card; drawer/dialog a focus gestito fuori dalla tabella, form pending/error accessibili; URL query whitelist per filtri, edit e ritorno. Dirty tracking per form con snapshot iniziale e reset esplicito dopo successo.
-- Validare tutte le dimensioni SC-36.5 e WCAG 2.2 AA; nessuna conformità dichiarata prima dei test.
+# Design system — Fase 1
+Base: patch 0020, ramo feature/gestionale-2.0-redesign. Implementazione iniziale in app/design-tokens.css, app/design-system.css, components/ui/Icon.tsx, components/ui/Primitives.tsx.
+## Token
+Palette richiesta esatta: navy #102B39, teal #087E83, ocean #3679B8, aqua #65C9BE, surface #F3F7F8, white #FFFFFF. Testo secondario #51636F. Petrolio scuro #06696D per link e testo su superfici chiare: il petrolio principale su perla è al limite (non adottato per testo corrente). Font di sistema: nessun download remoto, sans serif per staff e auth. La home pubblica conserva il carattere storico fino alla F4A.
+Macroaree: segreteria petrolio, didattica oceano, calendario #695397, attrezzature #946214, contabilità #267348, sistema #475569. Stati: success #166534 / #E8F5EC, warning #854D0E / #FFF4DE, danger #A12637 / #FDECEF, info #1D5D95 / #EAF3FC, neutral #475569 / #EDF1F4. Testo e icona, non solo colore.
+Scala 4/8/12/16/20/24/32px; radius 8/12; shadow minima; target 44px, font base 16, H1 28–34 desktop e 26–30 mobile, H2 20–24; focus visibile e motion ridotto. CSS legacy mantenuto e collegato via variabili alias; override caricati per ultimi. Non nascondere overflow globale; affrontare la causa in F2/F3/F6.
+## Componenti disponibili
+Button (type=button di default; specificare submit), ButtonLink (link reale), PageHeader, SectionHeader, MetricCard, StatusBadge, Alert (announce solo per cambi dinamici), EmptyState, LoadingState, ErrorState, FormField (render callback locale con id/required/aria-invalid/aria-describedby), FormSection (fieldset/legend), FormActions; Icon (SVG decorativa, senza testo autonomo).
+MetricCard non crea navigazione fittizia. Collegamenti KPI filtrati rimandati a F4B, quando i filtri esistono.
+Dashboard amministrativa come prima integrazione reale: sei metriche, azioni già esistenti, prossime lezioni, errore distinto da lista vuota, scope admin invariato; nessuna query nuova. Non è ancora il redesign completo della dashboard.
+## Verifiche
+Contrasto calcolato WCAG per le coppie token, test automatici in tests/v26-design-system.test.mjs. Test visuali su tutte le viewport, focus reale, screen reader, zoom e WCAG completa ancora da eseguire.
+## Dipendenze successive
+F2: AppShell, Sidebar, Header, Breadcrumb, BackButton, UnsavedChangesGuard; F3: DataTable, SearchBar, FilterBar, Pagination, Modal/Drawer/ConfirmDialog, ActionMenu; F4: Tabs, FileUploader, Timeline e NotificationCenter (riuso componenti esistenti). Non rimuovere GlobalCancelButtons finché i form storici non sono migrati. Nessuna modifica DB, RLS, storage, ruoli o server action.

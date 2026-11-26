@@ -252,3 +252,11 @@ Sono 28 configurazioni, alcune con flussi speciali/redirect. Verificare singolar
 - /area-soci usa RPC area_soci_miei_profili/area_soci_posti, liste limitate 200/1000: preservare autorizzazioni e verificare completezza.
 - /gestionale/page.tsx usa count exact per diversi KPI, lezioni limitate a 8 come anteprima; adesioni conteggiate senza filtro stato nella query rilevata: verificare semantica del KPI attive prima del redesign.
 - /gestionale/soci usa schede_soci con count exact e range: riutilizzare paginazione esistente invece di riscriverla.
+
+## F0 — ulteriore censimento sorgenti (26/11)
+- Amministrazione dati, dipendenze, utenti dettaglio/eliminazione e archivio incassi: requireAdmin; archivio pagamenti già paginato (count/range), amministrazione dati e utenti usano selettori persone limitati a 1000. Conservare admin_fk_dipendenze e l'anteprima eliminazione.
+- Calendario dettaglio: requireStaff e controllo is_admin; limiti 30/100/1000 per query correlate; corsi nuovo usa EditForm e selettori 500/100; corsi elenco ha count/range e selettori 100/500, etichetta Fase 3.2. Preservare paginazione esistente.
+- Importazione: requireStaff e legge importazioni_batch/righe (limit 1000); verificare che il riepilogo non sembri totale se è un campione. Incasso dettaglio requireAdmin; iscrizioni pagina dedicata requireStaff.
+- Moduli didattici: requireStaff, moduli_didattici e details; richiesta dettaglio requireStaff, richieste, stagioni, persone, eventi_pratica, count esatto su query specifiche.
+- Organi archivio e dettaglio requireBoard e count/range; riepilogo via cda_report_sicuro; comunicazioni due route contestuali delegano al componente condiviso (guard va verificata lì).
+- La ricognizione copre ora le principali pagine residue oltre alle aree già esaminate; non prova tutti i rami di ogni action e di ogni policy. L'audit DB live e l'accesso Vercel rimangono aperti; nessuna operazione reale eseguita.

@@ -29,3 +29,6 @@ GitHub Actions al commit ea97e2663a3999527b2e3f868c19dfd5b4f646eb: [45800874698]
 
 ## Ambiente
 Usare Supabase separato, utenti sintetici, mail sink, cron disabilitato o isolato, preview con variabili non produttive. Esistono npm run test:rls e npm run test:patch19, non lanciare contro produzione. Eseguire test su DB locale/staging; verificare script e parametri prima. Registrare SHA, comando, data, output, ambiente, esito e screenshot dove disponibili. Non segnare verificato sulla base di sola lettura.
+
+## T-05 — Fase 1
+Eseguire `node --test tests/v26-design-system.test.mjs` e la CI completa. Test palette esatta, contrasto >=4.5:1 per coppie testo/sfondo, >=3 per focus/bordi, semantica minima, integrazione dashboard e guard. Questi test non sostituiscono rendering, test tastiera, viewport e screen reader. Nessun DB necessario per T-05.

@@ -76,3 +76,6 @@ Audit statico mirato, non revisione riga per riga di tutti i sorgenti né prova 
 | app/gestionale/esporta/[modulo]/route.ts | requireStaff | admin-only, RLS, formula injection |
 
 La presenza di una guard nel file non garantisce che sia invocata in ogni percorso: verificare singole funzioni, chiamate RPC e policy prima di marcare verificato.
+
+## F0 — decisione conservativa
+Conservare le route già paginate e le RPC esistenti; audit ulteriore in PAGE_REQUIREMENTS. Per i ruoli non assumere che requireUser da solo autorizzi operazioni: verificare controllo interno e policy. Fase 1 non modifica auth, RLS, RPC o DB. Configurazione staging e testi ufficiali non verificabili da GitHub.
