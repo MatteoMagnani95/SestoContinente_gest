@@ -1,11 +1,12 @@
 'use server';
 import {tutteLePagine} from '@/lib/pagine';
+import {calendarFormContext,calendarHref} from '@/lib/calendar-tools';
 import {courseViewHref,emergencyPair} from '@/lib/course-ui';
 import {courseDuplicate} from '@/lib/course-errors';
 import {redirect} from 'next/navigation';
 import {revalidatePath} from 'next/cache';
 import {requireStaff} from '@/lib/security';
-import {asRomeISO,COURSE_STATES,ENROLLMENT_STATES,UUID_RE,dateValue,detailHref,textValue,uuidValue} from '@/lib/course-tools';
+import {asRomeISO,lessonInterval,COURSE_STATES,ENROLLMENT_STATES,UUID_RE,dateValue,detailHref,textValue,uuidValue} from '@/lib/course-tools';
 
 const fail='/gestionale/corsi/nuovo?msg=errore';
 function refresh(id?:string){revalidatePath('/gestionale/corsi');revalidatePath('/gestionale');if(id)revalidatePath(`/gestionale/corsi/${id}`);}
@@ -150,7 +151,7 @@ export async function createLesson(form:FormData){
  
  try{
   id=uuidValue(form,'edizione_id');titolo=valueOf(form,'titolo',160);if(!titolo)throw Error();
-  inizio=asRomeISO(valueOf(form,'inizio',16));fine=asRomeISO(valueOf(form,'fine',16));if(fine<=inizio)throw Error();
+  ({inizio,fine}=lessonInterval(form));
   const p=valueOf(form,'piscina_id',40);piscina_id=p?(UUID_RE.test(p)?p:(()=>{throw Error();})()):null;
   corsie=form.getAll('corsie_id').map(v=>String(v)).filter(Boolean);
   if(corsie.length>20||new Set(corsie).size!==corsie.length||corsie.some(v=>!UUID_RE.test(v))||(corsie.length>0&&!piscina_id))throw Error();
@@ -164,7 +165,9 @@ export async function createLesson(form:FormData){
   p_corsie:corsie,p_esercizi:esercizi,p_materiale:materiale
  });
  if(error)return {error:error.code==='23P01'?'Una corsia è già prenotata nell’intervallo richiesto. Nessuna lezione creata.':'Lezione non salvata. Controlla periodo del corso, orari, piscina e conflitti.'};
- refresh(id);revalidatePath('/gestionale/calendario-visivo');redirect(courseViewHref(id,'lezioni','lezione_creata',typeof lessonId==='string'&&UUID_RE.test(lessonId)?lessonId:undefined));
+ refresh(id);revalidatePath('/gestionale/calendario-visivo');const created=typeof lessonId==='string'&&UUID_RE.test(lessonId)?lessonId:undefined;
+ if(form.get('origine')==='calendario')redirect(calendarHref(calendarFormContext(form),{msg:'lezione_creata',lezione:created}));
+ redirect(courseViewHref(id,'lezioni','lezione_creata',created));
 }
 
 export async function recordClassAttendance(form:FormData){
@@ -211,7 +214,9 @@ export async function saveLessonModules(form:FormData){
  if(ids.length>50||ids.some(x=>!UUID_RE.test(x))||new Set(ids).size!==ids.length)return {error:'Composizione non salvata. Controlla i moduli.'};
  const {error}=await supabase.rpc('imposta_moduli_lezione',{p_lezione:lezione,p_moduli:ids});
  if(error)return {error:'Composizione non salvata. Controlla i moduli.'};
- revalidatePath(`/gestionale/corsi/${edizione}`);redirect(courseViewHref(edizione,'lezioni','moduli_salvati',lezione));
+ revalidatePath(`/gestionale/corsi/${edizione}`);revalidatePath('/gestionale/calendario-visivo');
+ if(form.get('origine')==='calendario')redirect(calendarHref(calendarFormContext(form),{msg:'moduli_salvati',lezione}));
+ redirect(courseViewHref(edizione,'lezioni','moduli_salvati',lezione));
 }
 
 // Delete only the selected edition: database foreign keys prevent removing linked history.

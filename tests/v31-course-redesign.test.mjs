@@ -9,9 +9,10 @@ function load(path,dependencies={}){
  const exports={};new Function('exports','require',js)(exports,id=>dependencies[id]??require(id));return exports;
 }
 const h=load('lib/course-ui.ts'),courseTools=load('lib/course-tools.ts'),pages=load('lib/pagine.ts');
+const calendar=load('lib/calendar-tools.ts',{'./course-tools':courseTools});
 const ed='12345678-1234-4234-8234-123456789abc',person='11111111-1111-4111-8111-111111111111',season='22222222-2222-4222-8222-222222222222',lesson='33333333-3333-4333-8333-333333333333';
 function form(entries){const f=new FormData();for(const [k,v] of Object.entries(entries))f.set(k,v);return f;}
-function actions(db){return load('app/gestionale/corsi/actions.ts',{'@/lib/course-ui':h,'@/lib/course-tools':courseTools,'@/lib/pagine':pages,'@/lib/course-errors':{courseDuplicate:async()=>null},'@/lib/security':{requireStaff:async()=>({supabase:db})},'next/cache':{revalidatePath:()=>{}},'next/navigation':{redirect:href=>{throw Error('REDIRECT '+href);}}});}
+function actions(db){return load('app/gestionale/corsi/actions.ts',{'@/lib/course-ui':h,'@/lib/calendar-tools':calendar,'@/lib/course-tools':courseTools,'@/lib/pagine':pages,'@/lib/course-errors':{courseDuplicate:async()=>null},'@/lib/security':{requireStaff:async()=>({supabase:db})},'next/cache':{revalidatePath:()=>{}},'next/navigation':{redirect:href=>{throw Error('REDIRECT '+href);}}});}
 function chain(data){const q={select:()=>q,eq:()=>q,is:()=>q,in:()=>q,order:()=>q,maybeSingle:async()=>({data,error:null}),limit:async()=>({data,error:null}),range:async()=>({data,error:null})};return q;}
 test('Dieci viste URL e compatibilità dei collegamenti storici',()=>{
  assert.equal(h.courseTabs.length,10);

@@ -1,16 +1,19 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
+import CalendarContextFields from '@/components/CalendarContextFields';
+import type {CalendarContext} from '@/lib/calendar-tools';
 import EditForm from '@/components/EditForm';
 import CancelEditButton from '@/components/CancelEditButton';
 import {saveLessonModules} from '@/app/gestionale/corsi/actions';
 type Modulo={id:string;tipo:string;codice:string;titolo:string};
-export default function LessonComposer({edizioneId,lezioneId,moduli,initial}:{edizioneId:string;lezioneId:string;moduli:Modulo[];initial:string[]}){
+export default function LessonComposer({edizioneId,lezioneId,moduli,initial,returnContext}:{edizioneId:string;lezioneId:string;moduli:Modulo[];initial:string[];returnContext?:CalendarContext}){
  const [selected,setSelected]=useState(initial);const [choice,setChoice]=useState('');const [drag,setDrag]=useState<string|null>(null);
  const formRef=useRef<HTMLDivElement>(null);
  useEffect(()=>{const form=formRef.current?.querySelector('form');const reset=()=>{setSelected(initial);setChoice('');setDrag(null);};form?.addEventListener('reset',reset);return()=>form?.removeEventListener('reset',reset);},[initial]);
  function reorder(target:string){if(!drag||drag===target)return;setSelected(prev=>{const a=prev.filter(x=>x!==drag);a.splice(a.indexOf(target),0,drag);return a;});setDrag(null);}
  return <div ref={formRef}><EditForm action={saveLessonModules} className="stack">
  <input type="hidden" data-dirty-track data-dirty-initial={JSON.stringify(initial)} value={JSON.stringify(selected)} readOnly/>
+ {returnContext&&<CalendarContextFields context={returnContext}/>}
  <input type="hidden" name="edizione_id" value={edizioneId}/><input type="hidden" name="lezione_id" value={lezioneId}/>
  <div className="course-inline-form"><label>Aggiungi modulo<select value={choice} onChange={e=>setChoice(e.target.value)}><option value="">Seleziona...</option>{moduli.filter(m=>!selected.includes(m.id)).map(m=><option key={m.id} value={m.id}>{m.tipo} · {m.codice} · {m.titolo}</option>)}</select></label>
  <button type="button" className="button ghost" disabled={!choice} onClick={()=>{setSelected(prev=>[...prev,choice]);setChoice('');}}>Aggiungi</button></div>
