@@ -139,4 +139,7 @@ async function sessions(){
 if(process.argv[2]==='seed')await seed();else if(process.argv[2]==='sessions')await sessions();else if(process.argv[2]==='mutations'){
  const {runMutations}=await import('./qa-local-mutations.mjs');
  await runMutations({api,app,admin,accounts:JSON.parse(await readFile(accountFile,'utf8')),fixtures:JSON.parse(await readFile(join(work,'fixtures.json'),'utf8')),work});
-}else throw Error('Usare seed, sessions o mutations');
+}else if(process.argv[2]==='performance'){
+ const {runPerformance}=await import('./qa-local-performance.mjs');
+ await runPerformance({app,database,accounts:JSON.parse(await readFile(accountFile,'utf8')),work});
+}else throw Error('Usare seed, sessions, mutations o performance');
