@@ -40,7 +40,7 @@ test('Dashboard: conteggi, stagione e destinazioni operative coerenti',()=>{
  assert.match(s,/eq\('stato_certificato','valido'\)\.gte\('scade_il',today\)\.lte\('scade_il',cutoff\)/);
  assert.match(s,/filtro=da_gestire/);assert.match(s,/vista=elenco&filtro_modulo=stato%3Aiscritto/);assert.match(s,/stato=residuo/);
  assert.match(read('app/gestionale/incassi/page.tsx'),/if\(status==='residuo'\)query=query\.gt\('residuo',0\)/);
- assert.match(read('app/gestione-eventi/page.tsx'),/if\(periodo==='prossimi'\)query=query\.gte\('dal',from\)\.neq\('stato','annullato'\)/);
+ assert.match(read('app/gestione-eventi/page.tsx'),/if\(periodo==='prossimi'\)query=query\.gte\('al',from\)\.neq\('stato','annullato'\)/);
  assert.match(read('app/gestionale/moduli/iscrizioni/page.tsx'),/if\(p\.vista==='elenco'\|\|p\.nuovo==='1'/);assert.match(read('app/gestionale/moduli/iscrizioni/page.tsx'),/return <Courses/);
 });
 test('Domande: filtri lato server, riferimento, conteggi per stato, storico e azioni non distruttive',()=>{

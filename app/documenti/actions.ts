@@ -1,4 +1,5 @@
 'use server';
+import {archiveUploadLimit,checkDocumentDestination} from '@/lib/document-ui';
 import {redirect} from 'next/navigation';
 import {revalidatePath} from 'next/cache';
 import {requireUser} from '@/lib/security';
@@ -18,7 +19,7 @@ export async function uploadDocument(form:FormData){
  const isStaff=roles?.some(x=>['amministratore','segreteria'].includes(x.ruolo))??false;
  const isAdmin=roles?.some(x=>x.ruolo==='amministratore')??false;
  const file=form.get('file');
- if(!(file instanceof File)||file.size<=0||file.size>10*1024*1024||!mimeToExt[file.type])return {error:'Seleziona un file PDF o immagine valido, massimo 10 MB.',field:'file'};
+ if(!(file instanceof File)||file.size<=0||file.size>archiveUploadLimit||!mimeToExt[file.type])return {error:'Seleziona un file PDF o immagine valido, massimo 3 MB per questo modulo.',field:'file'};
  const buffer=Buffer.from(await file.arrayBuffer());
  if(!realMime(buffer,file.type))return {error:'Seleziona un file PDF o immagine valido, massimo 10 MB.',field:'file'};
  const nome=String(form.get('nome')||file.name).trim().slice(0,150);
@@ -30,7 +31,7 @@ export async function uploadDocument(form:FormData){
  const edizione=isStaff?String(form.get('edizione_id')||'').trim():'';
  const versione=isStaff?String(form.get('programma_versione_id')||'').trim():'';
  const conservazione=String(form.get('scadenza_conservazione')||'').trim();
- if(ambito==='associazione'&&visibilita==='soci'&&(!isAdmin||utente||persona||edizione||versione))return {error:'La visibilità selezionata non è consentita.'};
+ if(!checkDocumentDestination({ambito,visibilita,utente,persona,edizione,versione,isAdmin}))return {error:'Controlla destinazione, visibilità e collegamenti. Per documenti sanitari usa la procedura certificati.'};
  if(!nome||!categoria||!['associazione','personale','didattica','amministrativo'].includes(ambito)||
  !['staff','proprietario','soci','istruttori'].includes(visibilita)||
  (ambito==='personale'&&(!utente||!['staff','proprietario'].includes(visibilita)))||

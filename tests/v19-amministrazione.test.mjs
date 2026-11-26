@@ -26,7 +26,7 @@ test('Rettifica incassi: blocco del debito, copia originale, cancellazioni atomi
  assert.match(sql,/admin_rettifica_incasso[\s\S]*IF NOT public\.is_admin\(\)/);assert.match(sql,/quote_associative WHERE id=p\.quota_id FOR UPDATE/);assert.match(sql,/INSERT INTO public\.rettifiche_incassi[\s\S]*DELETE FROM public\.movimenti_economici[\s\S]*DELETE FROM public\.pagamenti/);assert.match(sql,/NEW\.idempotency_key IS NOT NULL[\s\S]*pagamento_originale->>'idempotency_key'/);assert.match(read('app/gestionale/incassi/[id]/page.tsx'),/non per un rimborso reale/);
 });
 test('Eventi: rimozione admin serializzata sullo stesso evento, nessuna cascata su iscrizioni',()=>{
- assert.match(sql,/admin_rimuovi_evento[\s\S]*IF NOT public\.is_admin\(\)[\s\S]*WHERE id=p_evento FOR UPDATE/);assert.match(sql,/IF EXISTS\(SELECT 1 FROM public\.eventi_soci_iscrizioni WHERE evento_id=p_evento\) THEN RAISE/);assert.match(sql,/DELETE FROM public\.eventi_soci_iscrizioni WHERE evento_id=p_evento AND id=p_iscrizione/);assert.match(read('app/gestione-eventi/page.tsx'),/action=\{removeEventRecord\}/);
+ assert.match(sql,/admin_rimuovi_evento[\s\S]*IF NOT public\.is_admin\(\)[\s\S]*WHERE id=p_evento FOR UPDATE/);assert.match(sql,/IF EXISTS\(SELECT 1 FROM public\.eventi_soci_iscrizioni WHERE evento_id=p_evento\) THEN RAISE/);assert.match(sql,/DELETE FROM public\.eventi_soci_iscrizioni WHERE evento_id=p_evento AND id=p_iscrizione/);assert.match(read('app/gestione-eventi/[id]/page.tsx'),/action=\{removeEventRecord\}/);
 });
 test('Menu e dati aggiuntivi: accesso amministrativo, modifica nella scheda, gestione vincoli e moduli',()=>{
  assert.match(read('components/StaffNav.tsx'),/isAdmin\?\[item\('\/gestionale\/utenti'[\s\S]*Amministrazione dati/);
