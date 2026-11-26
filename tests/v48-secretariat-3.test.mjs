@@ -36,5 +36,5 @@ test('F3: modifica anagrafica diretta, tesseramento per adesione attiva e quattr
  assert.match(s,/from\('tesseramenti'\).select\('id,ente,scade_il,stato'\).eq\('adesione_id',active.id\)/);
  const editor=s.slice(s.indexOf('<EditForm action={updateMemberProfile}'),s.indexOf('</EditForm>',s.indexOf('<EditForm action={updateMemberProfile}')));
  for(const name of ['nome','cognome','data_nascita','luogo_nascita','provincia_nascita','stato_nascita','indirizzo','cap','comune','provincia_residenza','stato_residenza','telefono','email','codice_fiscale','sesso_cf','cf_omocodia_verificata','cf_override_motivo'])assert.ok(editor.includes('name="'+name+'"'),name);
- assert.equal((editor.match(/\brequired\b/g)||[]).length,2);assert.match(editor,/<CodiceFiscaleAssist\/>/);
+ assert.equal((editor.match(/<input\b[^>]*\srequired(?:\s|=|>)/g)||[]).length,2);assert.match(editor,/<CodiceFiscaleAssist\/>/);
 });
