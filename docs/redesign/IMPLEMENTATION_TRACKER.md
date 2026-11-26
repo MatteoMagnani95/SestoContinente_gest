@@ -124,3 +124,6 @@ SC-05.1–05.3 e 05.5: token e primitive CSS implementati, verifica visuale anco
 - [CI 45810457357](https://github.com/MatteoMagnani95/SestoContinente_gest/actions/runs/45810457357) conclusa success: TypeScript, 130/130 test automatici (5 nuovi, 0 errori, 0 saltati), prebuild e build Next.js. Log job 139876604355: 127 file sorgenti, 289 import, 7 moduli critici; 39/39 pagine statiche generate.
 - Vercel status success associato al commit codice. Non è stato aperto né collaudato con utenti autenticati; nessuna attestazione di staging isolato o test visuale.
 - T-05: palette, contrasti testo 4.5:1, focus/bordi 3:1, struttura delle primitive e integrazione dashboard verificati automaticamente. SC-05.1/2/3/5 restano Implementato perché copertura visuale/adozione globale non ancora verificata; SC-05.4 in lavorazione per i componenti delle fasi 2–4. Nessun SQL e nessuna modifica a main.
+
+## Granularizzazione
+[REQUIREMENTS_DETAIL.md](REQUIREMENTS_DETAIL.md): 1807 clausole con ID stabile, area/priorità/dipendenze/test padre e stato conservativo individuale; le clausole esplicative vanno classificate e i test specificati durante ogni fase. MASTER_SPEC.md resta la fonte vincolante. Non segnare verificato il gruppo prima di aver chiuso le clausole applicabili.
