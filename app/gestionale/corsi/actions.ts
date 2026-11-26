@@ -52,7 +52,9 @@ export async function updateEdition(form:FormData){
   stato=valueOf(form,'stato',20);if(!COURSE_STATES.some(s=>s===stato))throw Error();
   note=valueOf(form,'note',2000)||null;const raw=valueOf(form,'costo_corso',20);costo_corso=raw?Number(raw.replace(',','.')):null;if(costo_corso!==null&&(!Number.isFinite(costo_corso)||costo_corso<0||!/^\d+(?:[.,]\d{1,2})?$/.test(raw)))return {field:'costo_corso',error:'Indica un importo positivo o zero con al massimo due decimali.'};
  }catch{return {error:'Controlla i dati inseriti per questa edizione.'};}
- const {error}=await supabase.from('edizioni_corsi').update({direttore_id:form.get('direttore_id')||null,nome,massimo_partecipanti:capienza,costo_corso,stato,note}).eq('id',id).select('id').single();
+ const direttore_id=String(form.get('direttore_id')??'');
+ if(!UUID_RE.test(direttore_id))return {field:'direttore_id',error:'Seleziona un direttore valido per l’edizione.'};
+ const {error}=await supabase.from('edizioni_corsi').update({direttore_id,nome,massimo_partecipanti:capienza,costo_corso,stato,note}).eq('id',id).select('id').single();
  if(error){if(error.code==='P3419')return {field:'nome',error:'Questo corso esiste già',href:'/gestionale/corsi/'+error.details};return error.code==='P3421'?{field:'direttore_id',error:'La persona scelta è già allieva di questa edizione. Scegli un altro direttore.'}:{field:'massimo_partecipanti',error:'Verifica la capienza e i dati dell’edizione.'};}
  refresh(id);redirect(detailHref(id,'salvato'));
 }
