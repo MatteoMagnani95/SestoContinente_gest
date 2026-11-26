@@ -46,7 +46,7 @@ Le copie SQL root non vanno rieseguite in aggiunta alla directory canonica. Ho c
 
 ## Mappa logica (non schema DB live)
 - identità: ruoli_utente, persone, collegamenti_persone, relazioni_tutori; richieste → adesioni → stagione/tesseramenti/quote. eventi_pratica e registro_operazioni audit. requireUser verifica getUser + account_corrente_abilitato; requireStaff amministratore/segreteria, requireBoard include consigliere_cda, requireAdmin is_admin; istruttori e soci hanno controlli contestuali SQL. Proxy rinnova sessione, non sostituisce autorizzazione.
-- didattica: corsi → edizioni_corsi → iscrizioni_corsi, assegnazioni_istruttori, lezioni → presenze e prenotazioni_corsie; programmi/versioni/moduli; 0019 controlla identità/direttore e firma brevetti. RPC crea_lezione_guidata, modifica_lezione_e_corsie, annulla_lezione_guidata, iscriv i_con_contatto (nome effettivo: iscrivi_con_contatto).
+- didattica: corsi → edizioni_corsi → iscrizioni_corsi, assegnazioni_istruttori, lezioni → presenze e prenotazioni_corsie; programmi/versioni/moduli; 0019 controlla identità/direttore e firma brevetti. RPC crea_lezione_guidata, modifica_lezione_e_corsie, annulla_lezione_guidata, iscrivi_con_contatto.
 - economia: quote_associative/addebiti_corsi → pagamenti → movimenti_economici, saldi_quote/saldi_corsi, rettifiche_incassi, riepilogo_contabile_periodo; trigger vincoli residui e contabilizzazione.
 - attrezzature: attrezzature → revisioni_attrezzature/assegnazioni_attrezzature; trigger aggiornamento revisione e prestito.
 - organi: cda_componenti/cda_verbali/cda_votanti/cda_voti/cda_adesioni/cda_versioni_bozze/cda_letture; RPC voto, finalizzazione, sostituzione e lettura versioni.
@@ -56,3 +56,23 @@ Le copie SQL root non vanno rieseguite in aggiunta alla directory canonica. Ho c
 
 ## Rischi / limiti
 Audit statico mirato, non revisione riga per riga di tutti i sorgenti né prova delle policy live. Duplicati storici, quote e revisioni sospette non verificabili senza accesso read-only a staging. Prima dei test autenticati servono Supabase separato, utenti sintetici, bucket privati, testi ufficiali, email sandbox e Vercel preview isolata. Non alterare segreti o produzione.
+
+## Secondo passaggio di audit statico: confini server
+| Sorgente | Funzioni / meccanismo rilevato | Controllo da collaudare |
+|---|---|---|
+| app/actions.ts | register/login/recover/newPassword, salva_domanda_v19, prendi_in_carico, valuta_domanda | sessioni e transizioni |
+| app/module-actions.ts | saveModuleRecord, deleteModuleRecord, rimuovi_record_gestionale; requireStaff | whitelist modulo, adminOnly, percorsi alternativi |
+| app/gestionale/corsi/actions.ts | createEdition/updateEdition/addEnrollment, iscrivi_con_contatto, crea_lezione_guidata, presenze, rimuovi_record_gestionale | unicità, idoneità, direzione, concorrenza |
+| app/gestionale/incassi/actions.ts | requireStaff/requireAdmin; registra_pagamento_guidato/admin_rettifica_incasso | idempotenza e rettifica |
+| app/gestionale/calendario-visivo/actions.ts | modifica_lezione_e_corsie, annulla_lezione_guidata | collisioni e atomicità |
+| app/gestionale/utenti/actions.ts | requireStaff/requireAdmin, assegnazione/revoca ruolo e collega_account_a_persona | escalation e dipendenze |
+| app/gestionale/utenti/[id]/elimina/actions.ts | requireAdmin e RPC avvio/verifica/conclusione eliminazione + storage remove | conservazione e ripresa da errore |
+| app/documenti/actions.ts, [id]/route.ts | requireUser; upload/edit/delete; documento_sanitario/legge_certificato; download e signed URL | autorizzazione metadati, storage e IDOR |
+| app/organi-sociali/actions.ts, documento/[id]/route.ts | requireBoard/requireStaff; approva_versione_cda, finalizza, sostituisci, leggi_versione_cda | accessi, voto per versione, immutabilità |
+| app/area-soci/actions.ts | requireUser/requireAdmin, area_soci_iscrivi/decidi/salva_evento | ultimo posto e responsabilità |
+| app/istruttore/actions.ts | requireUser; recordAttendance | scope istruttore e RLS |
+| app/gestionale/importazione/actions.ts | requireStaff, stageImport/commitImport, conferma_importazione | dry run e rollback |
+| app/api/cron/promemoria/route.ts | CRON_SECRET; genera_promemoria, genera_promemoria_organizzativi, genera_promemoria_tessere | autorizzazione, idempotenza, mail sandbox |
+| app/gestionale/esporta/[modulo]/route.ts | requireStaff | admin-only, RLS, formula injection |
+
+La presenza di una guard nel file non garantisce che sia invocata in ogni percorso: verificare singole funzioni, chiamate RPC e policy prima di marcare verificato.

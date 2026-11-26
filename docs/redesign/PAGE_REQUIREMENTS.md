@@ -242,3 +242,13 @@ Sono 28 configurazioni, alcune con flussi speciali/redirect. Verificare singolar
 - Schede socio e corso contengono numerose query limitate: non interpretare liste parziali come totali. Calendario Nuova lezione punta a /gestionale/corsi. Utenti assegnazione ruolo senza placeholder esplicito e ricerca persona limitata.
 - Report patch 0020 ha count exact per revisioni ma mostra lista limitata 80: distinzione totale/dettaglio da mantenere. Rendiconto usa riepilogo_contabile_periodo.
 - Area personale legge notifiche, saldi e stagione; istruttore usa assegnazioni e allievi_del_mio_corso; preservare scope e presenze patch 0020.
+
+## Ulteriori evidenze dalle pagine pubbliche e personali
+- /accedi e /nuova-password: input con autocomplete appropriato, manca toggle visibilità da implementare; patch 0020 preserva spazi password lato action.
+- /registrati/informativa-test usa notFound se modalità di prova non attiva; /richiesta/documenti-test usa requireUser e notFound. Preservare gate e separazione testi ufficiali.
+- /richiesta/nuova legge scelte_iscrizione per versione; /area-personale/profilo legge scelta immagini e versione; verificare revoca e storico senza dedurre consenso.
+- /smista richiede utente e legge ruoli, richieste, collegamenti: preservare routing per ruolo.
+- /area-personale/corsi già usa tutteLePagine per iscrizioni, ma altre query con limit 250/150/50; classificare come anteprime o paginare.
+- /area-soci usa RPC area_soci_miei_profili/area_soci_posti, liste limitate 200/1000: preservare autorizzazioni e verificare completezza.
+- /gestionale/page.tsx usa count exact per diversi KPI, lezioni limitate a 8 come anteprima; adesioni conteggiate senza filtro stato nella query rilevata: verificare semantica del KPI attive prima del redesign.
+- /gestionale/soci usa schede_soci con count exact e range: riutilizzare paginazione esistente invece di riscriverla.
