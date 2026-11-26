@@ -30,7 +30,7 @@ export default function SiteHeader({access,onMenu,menuOpen}:{access:NavigationAc
  <Link href="/" className="brand"><span className="brand-symbol" aria-hidden="true">≈</span><span><strong>SESTO CONTINENTE</strong><small>Gestionale associativo</small></span></Link>
  <span className="sc-header-area">{areaLabel(path,access)}</span>
  <nav className="sc-header-nav" aria-label="Account e aree">
- {access.enabled&&access.personal&&access.unread!==null&&<Link className="sc-header-notifications" href="/area-personale?tab=notifiche" aria-label={`Notifiche: ${access.unread} non lette`}><Icon name="bell"/><span>{access.unread}</span></Link>}
+ {access.enabled&&<Link className="sc-header-notifications" href={access.personal?'/area-personale?tab=notifiche':'/notifiche'} aria-label={access.unread===null?'Notifiche':`Notifiche: ${access.unread} non lette`}><Icon name="bell"/><span>{access.unread??'—'}</span></Link>}
  {access.signedIn?<details className="sc-account-menu" key={path}><summary><Icon name="user"/>Account<Icon name="chevron-down"/></summary><div className="sc-account-panel"><AreaLinks access={access}/><LogoutButton/></div></details>:<div className="sc-guest-links">{authPage?<Link href="/">Home</Link>:<AreaLinks access={access}/>}</div>}
  </nav>
  {access.signedIn&&<LogoutButton direct/>}
