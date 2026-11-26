@@ -12,3 +12,8 @@ Dashboard amministrativa come prima integrazione reale: sei metriche, azioni gi�
 Contrasto calcolato WCAG per le coppie token, test automatici in tests/v26-design-system.test.mjs. Test visuali su tutte le viewport, focus reale, screen reader, zoom e WCAG completa ancora da eseguire.
 ## Dipendenze successive
 F2: AppShell, Sidebar, Header, Breadcrumb, BackButton, UnsavedChangesGuard; F3: DataTable, SearchBar, FilterBar, Pagination, Modal/Drawer/ConfirmDialog, ActionMenu; F4: Tabs, FileUploader, Timeline e NotificationCenter (riuso componenti esistenti). Non rimuovere GlobalCancelButtons finché i form storici non sono migrati. Nessuna modifica DB, RLS, storage, ruoli o server action.
+
+## Esito verifiche F1 (commit 5a15d8df9143a82b899a510cc82f3ccc03bfae4e)
+- [CI 45810457357](https://github.com/MatteoMagnani95/SestoContinente_gest/actions/runs/45810457357) conclusa success: TypeScript, 130/130 test automatici (5 nuovi, 0 errori, 0 saltati), prebuild e build Next.js. Log job 139876604355: 127 file sorgenti, 289 import, 7 moduli critici; 39/39 pagine statiche generate.
+- Vercel status success associato al commit codice. Non è stato aperto né collaudato con utenti autenticati; nessuna attestazione di staging isolato o test visuale.
+- T-05: palette, contrasti testo 4.5:1, focus/bordi 3:1, struttura delle primitive e integrazione dashboard verificati automaticamente. SC-05.1/2/3/5 restano Implementato perché copertura visuale/adozione globale non ancora verificata; SC-05.4 in lavorazione per i componenti delle fasi 2–4. Nessun SQL e nessuna modifica a main.
