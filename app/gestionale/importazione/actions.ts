@@ -36,7 +36,13 @@ export async function stageImport(form:FormData){
   if(tipo==='corsi'&&!okEd.has(r.edizione_id))errors.push('Edizione corso non trovata');
   return {batch_id:batch.id,numero:i+2,dati:r,errori:errors};
  });
- for(let i=0;i<rows.length;i+=100){const {error:e}=await supabase.from('importazioni_righe').insert(rows.slice(i,i+100));if(e)q('database');}
+ // A single PostgREST INSERT is one database transaction. A failed
+ // request cannot leave a confirmable prefix of the imported file.
+ const {error:rowsError}=await supabase.from('importazioni_righe').insert(rows);
+ if(rowsError){
+  const {count,error:checkError}=await supabase.from('importazioni_righe').select('id',{head:true,count:'exact'}).eq('batch_id',batch.id);
+  if(checkError||count!==rows.length)q('database');
+ }
  revalidatePath(where);redirect(`${where}?batch=${batch.id}`);
 }
 export async function commitImport(form:FormData){
