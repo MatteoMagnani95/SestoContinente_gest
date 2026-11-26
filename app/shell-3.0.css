@@ -71,3 +71,9 @@
 .sc-global-search-dialog :is(a,button,input):focus-visible{outline-color:var(--sc-focus)}
 .sc-global-search-dialog .sc-icon-button{color:var(--sc-navy)}
 @media(forced-colors:active){.sc-nav-group.is-current>.sc-nav-group-toggle,.sc-bottom-navigation a[aria-current]{border:2px solid CanvasText}}
+
+/* Account actions shared with the functional baseline; keep the branded first row usable. */
+@media(max-width:1000px){
+ .sc-site-header:has(.sc-mobile-greeting) .sc-mobile-greeting{flex:1 1 calc(100% - 120px);min-width:0}
+ .sc-site-header:has(.sc-mobile-greeting) .sc-direct-logout{order:1;margin-inline-start:auto}
+}

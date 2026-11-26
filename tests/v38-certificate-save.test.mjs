@@ -4,6 +4,9 @@ import {readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
 const require=createRequire(import.meta.url);
 const ts=require('typescript');
+const courseTools={};
+new Function('exports','require',ts.transpileModule(readFileSync(new URL('../lib/course-tools.ts',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(courseTools,require);
+const fixedToday=()=>courseTools.todayRome(new Date('2026-11-26T12:00:00Z'));
 const source=readFileSync(new URL('../app/area-personale/certificato/actions.ts',import.meta.url),'utf8');
 const {outputText}=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}});
 
@@ -21,10 +24,8 @@ test('Il certificato originale è conservato quando la conferma del database è 
   };
   const dependencies={
     '@/lib/security':{requireUser:async()=>({supabase,user:{id:'account'}})},
-    '@/lib/course-tools':{UUID_RE:/^persona$/},
+    '@/lib/course-tools':{...courseTools,UUID_RE:/^persona$/,todayRome:fixedToday},
     '@/lib/supabase/admin':{createAuthAdmin:()=>({storage:{from:()=>storage}})},
-    '@/lib/area-soci':{todayRome:()=>'2026-11-26'},
-    '@/lib/payment-tools':{validPaymentDate:()=>true},
     '@/lib/file-certificato':{tipoCertificato:()=>'pdf',certificatoAmmesso:()=>true},
     'next/cache':{revalidatePath:()=>{}},
   };

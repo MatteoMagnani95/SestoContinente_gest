@@ -109,6 +109,33 @@ export async function runMutations({app,admin,accounts,fixtures,work}){
   assert.equal(await count('iscrizioni_corsi',enrollment),1);
   console.log('OK UI richiesta corso e contatto emergenza atomici');
 
+  // A qualified member needs an explicit staff override for this edition.
+  const candidate=accounts.memberB.person;
+  const qualification=await admin.from('qualifiche_istruttori').insert({persona_id:candidate,titolo:'Qualifica sintetica per deroga'});
+  assert.ifError(qualification.error);
+  await staff.goto('/gestionale/corsi/'+fixtures.edition+'?tab=allievi');
+  await staff.getByRole('button',{name:'Iscrivi allievo',exact:true}).click();
+  const picker=staff.getByRole('dialog',{name:'Iscrivi allievo'});
+  const student=picker.locator('select[name=persona_id]');
+  const option=id=>student.locator('option[value="'+id+'"]');
+  await expect(option(candidate)).toHaveCount(0);
+  await picker.locator('input[name=deroga_istruttore]').check();
+  await expect(option(accounts.instructor.person)).toHaveCount(0);
+  await student.selectOption(candidate);
+  const confirmOverride=picker.getByRole('button',{name:'Conferma iscrizione'});
+  await expect(confirmOverride).toBeDisabled();
+  const reason='Percorso didattico autorizzato per il collaudo';
+  await picker.locator('textarea[name=deroga_motivo]').fill(reason);
+  await confirmOverride.click();
+  await expect(picker).toBeHidden();
+  const saved=await one('iscrizioni_corsi','id,stato',{edizione_id:fixtures.edition,persona_id:candidate});
+  assert.equal(saved.stato,'iscritto');
+  const audit=await one('deroghe_iscrizioni_corsi','motivo,autorizzata_da,autorizzata_il',{iscrizione_id:saved.id});
+  assert.equal(audit.motivo,reason);
+  assert.equal(audit.autorizzata_da,accounts.staff.id);
+  assert.ok(Number.isFinite(Date.parse(audit.autorizzata_il)));
+  console.log('OK UI deroga motivata, esclusione direttore e audit persistente');
+
   // Partial payment, settlement and explicit correction of the second payment.
   const debt=fixtures.openQuota;
   const balance=async()=>Number((await one('saldi_quote','residuo',{id:debt})).residuo);

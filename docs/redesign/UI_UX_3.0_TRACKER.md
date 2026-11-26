@@ -60,6 +60,7 @@ Ruoli indicativi dal codice di navigazione e dalle guardie 2.0; la verifica di a
 | `app/gestione-eventi/[id]/page.tsx` | `/gestione-eventi/[id]` | Staff/responsabile autorizzato | 5 | Non iniziato | NV/NV/NV/NV |
 | `app/gestione-eventi/page.tsx` | `/gestione-eventi` | Staff/responsabile autorizzato | 5 | Non iniziato | NV/NV/NV/NV |
 | `app/istruttore/page.tsx` | `/istruttore` | Istruttore autorizzato | 6 | Non iniziato | NV/NV/NV/NV |
+| `app/notifiche/page.tsx` | `/notifiche` | Account autenticato; solo notifiche proprie | 6 | Funzione 2.0 importata; redesign non iniziato | NV/NV/NV/NV |
 | `app/nuova-password/page.tsx` | `/nuova-password` | Pubblico/auth; redirect esistenti | 6 | Non iniziato | NV/NV/NV/NV |
 | `app/organi-sociali/archivio/[id]/page.tsx` | `/organi-sociali/archivio/[id]` | CdA/staff autorizzati | 5 | Non iniziato | NV/NV/NV/NV |
 | `app/organi-sociali/archivio/page.tsx` | `/organi-sociali/archivio` | CdA/staff autorizzati | 5 | Non iniziato | NV/NV/NV/NV |
@@ -157,3 +158,6 @@ Il documento [REGRESSION_TRACKER.md](./REGRESSION_TRACKER.md) integra e prevale 
 
 ## Checkpoint prima della Fase 4
 PR #7 f99564f verificata nei run 45900175385 e 45900175348, inclusi 36 logout effettivi su Supabase locale. Sul redesign, corretta la chiusura con Esc della ricerca globale emersa nella QA 45899921809. Evidenze e dipendenze in REGRESSION_TRACKER.md. Fase 4 bloccata fino a coordinamento e gate esteso sul candidato sincronizzato.
+
+## Sincronizzazione F3 con release 2.0
+Release 302e9e9 approvata (run 45905569811 e 45905569823 success); importazione funzionale REG-001–015 e riconciliazione dei test con a59469a. Inserita route /notifiche nell'inventario; preservati asset, ricerca, sidebar, dashboard e segreteria. Nuovo gate esteso obbligatorio: F4 non avviata. Nessun deploy o SQL produzione.

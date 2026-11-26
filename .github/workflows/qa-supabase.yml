@@ -1,6 +1,8 @@
 name: QA Supabase locale (isolato)
 on:
   workflow_dispatch:
+  push:
+    branches: ['release/gestionale-consolidato', 'fix/deroga-istruttori-corsi']
   pull_request:
     branches: ['main', 'feature/gestionale-2.0-redesign', 'release/gestionale-consolidato']
     paths:
@@ -17,6 +19,7 @@ on:
       - 'components/**'
       - 'lib/**'
       - 'tests/browser/**'
+      - 'docs/redesign/PAGE_REQUIREMENTS.md'
       - 'docs/redesign/REGRESSION_TRACKER.md'
       - 'docs/redesign/UI_UX_3.0_TRACKER.md'
       - 'playwright.config.mjs'
@@ -29,9 +32,9 @@ permissions:
   contents: read
 jobs:
   local-qa:
-    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'feature/gestionale-2.0-redesign' || github.head_ref == 'feature/gestionale-3.0-ui-ux'
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/release/gestionale-consolidato' || github.ref == 'refs/heads/fix/deroga-istruttori-corsi' || github.head_ref == 'release/gestionale-consolidato' || github.head_ref == 'fix/deroga-istruttori-corsi' || github.head_ref == 'feature/gestionale-2.0-redesign' || github.head_ref == 'fix/password-recovery-login' || github.head_ref == 'fix/account-common-navigation' || github.head_ref == 'feature/gestionale-3.0-ui-ux'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       QA_ISOLATED_ENV: 'true'
       SESTO_TEST_MODE: 'true'

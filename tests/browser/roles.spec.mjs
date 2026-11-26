@@ -18,6 +18,9 @@ test('Viste e navigazione per ruolo sintetico, solo lettura',async({page},info)=
   for(const size of [{width:320,height:568},{width:390,height:844},{width:768,height:1024},{width:844,height:390},{width:1280,height:800}]){
    await page.setViewportSize(size);
    expect(await page.evaluate(()=>document.documentElement.scrollWidth),role+' '+path+' '+size.width).toBeLessThanOrEqual(size.width+1);
+   const logout=page.getByRole('button',{name:'Esci dal gestionale',exact:true});
+   await expect(logout).toBeVisible();
+   await expect(logout).toBeInViewport({ratio:1});
   }
   await page.setViewportSize({width:390,height:844});
   await page.locator('.sc-mobile-trigger').click();
@@ -43,6 +46,13 @@ test('Ruolo limitato: accessi incrociati e risorse amministrative negati',async(
   // Un login scaduto non è un successo del controllo di ruolo.
   await expect(page).toHaveURL(url=>url.pathname!==path&&url.pathname!=='/accedi'&&url.searchParams.get('msg')==='permessi');
  }
+});
+
+test('CdA: il consigliere senza ruolo di segreteria non può aggiungere componenti',async({page},info)=>{
+ test.skip(info.project.metadata.role!=='board','Controllo riservato al ruolo consigliere sintetico');
+ await page.goto('/organi-sociali?tab=componenti');
+ await expect(page.getByRole('heading',{name:'Componenti CdA'})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Aggiungi componente'})).toHaveCount(0);
 });
 
 test('Ricerca e navigazione globale per ruolo: accesso, tastiera e chiusura',async({page},info)=>{

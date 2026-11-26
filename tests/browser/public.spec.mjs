@@ -237,6 +237,26 @@ test('Messaggi URL sconosciuti non provocano errori sulle pagine pubbliche',asyn
  }
 });
 
+test('Editor condiviso: finestra centrale orizzontale su desktop, conferma compatta',async({page})=>{
+ for(const size of [{width:1024,height:768},{width:1280,height:800},{width:1600,height:900}]){
+  await page.setViewportSize(size);await page.setContent(responsiveFixture());
+  const dialog=page.getByRole('dialog',{name:'Editor sintetico',includeHidden:true});
+  await dialog.evaluate(e=>e.showModal());
+  const rect=await dialog.boundingBox();
+  expect(Math.abs(rect.x+rect.width/2-size.width/2)).toBeLessThanOrEqual(2);
+  expect(Math.abs(rect.y+rect.height/2-size.height/2)).toBeLessThanOrEqual(2);
+  expect(rect.width).toBeGreaterThanOrEqual(900);
+  expect(rect.height).toBeLessThanOrEqual(size.height-47);
+  const fields=dialog.locator('.form-grid');
+  expect(await fields.evaluate(e=>getComputedStyle(e).gridTemplateColumns.split(' ').length)).toBe(2);
+  await dialog.getByRole('button',{name:'Conferma'}).scrollIntoViewIfNeeded();
+  await expect(dialog.getByRole('button',{name:'Conferma'})).toBeInViewport();
+  await dialog.evaluate(e=>{e.close();e.className='sc-editor-dialog sc-editor-modal sc-editor-confirm';e.showModal();});
+  expect((await dialog.boundingBox()).width).toBeLessThanOrEqual(520);
+  await dialog.evaluate(e=>e.close());
+ }
+});
+
 test('La ricerca globale non è disponibile nelle pagine pubbliche',async({page})=>{
  for(const path of ['/','/accedi','/registrati']){await page.goto(path);await expect(page.getByRole('button',{name:'Ricerca globale'})).toHaveCount(0);await expect(page.getByRole('navigation',{name:'Navigazione rapida mobile'})).toHaveCount(0);}
 });
