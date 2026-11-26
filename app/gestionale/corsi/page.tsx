@@ -10,7 +10,6 @@ import {formatValue} from '@/lib/format';
 
 type Edition={id:string;nome:string;corso_id:string;stagione_id:string;inizio:string;fine:string;stato:string;massimo_partecipanti:number;direttore_id:string|null;corsi:{nome:string;tipo:string;livello:number|null}|null};
 const pageSize=25;
-function href(base:string,q:string,stato:string,stagione:string,p:number){const x=new URLSearchParams();if(q)x.set('q',q);if(stato)x.set('stato',stato);if(stagione)x.set('stagione',stagione);x.set('p',String(p));return `${base}?${x.toString()}`;}
 export default async function Courses({searchParams}:{searchParams:Promise<{q?:string;stato?:string;stagione?:string;p?:string;msg?:string;area?:string;disciplina?:string;livello?:string;ordine?:string}>}){
  const {supabase}=await requireStaff();const p=await searchParams;
  const iscrizioni=p.area==='iscrizioni';const base=iscrizioni?'/gestionale/moduli/iscrizioni':'/gestionale/corsi';
@@ -34,7 +33,7 @@ export default async function Courses({searchParams}:{searchParams:Promise<{q?:s
  const directors=directorIds.length?await supabase.from('persone').select('id,nome,cognome').in('id',directorIds):{data:[],error:null};
  const counts=new Map<string,number>();for(const row of enrollments??[])counts.set(row.edizione_id,(counts.get(row.edizione_id)??0)+1);
  const [storiciCatalogo,storicheEdizioni]=await Promise.all(['corsi','edizioni_corsi'].map(tabella=>tutteLePagine((da,a)=>supabase.from(tabella).select('id,nome').eq('duplicato_storico',true).order('id').range(da,a))));
- const totalPages=Math.max(1,Math.ceil((count??0)/pageSize));
+ 
  const pageHref=(page:number)=>base+'?'+new URLSearchParams({q,stato,stagione,disciplina,livello:livello===null?'':String(livello),ordine:ordine??'nome',p:String(page)}).toString();
  return <>
  <PageHeader eyebrow="Corsi e didattica" title={iscrizioni?'Iscrizioni ai corsi':'Gestione corsi'} description={iscrizioni?'Seleziona prima l’edizione per consultare gli allievi.':'Consulta le edizioni, il direttore e lo stato delle iscrizioni.'} actions={<><ButtonLink href="/gestionale/corsi/nuovo" icon="plus">Nuova edizione del corso</ButtonLink><ButtonLink href="/gestionale/moduli/corsi" variant="secondary">Catalogo corsi</ButtonLink></>}/>

@@ -26,7 +26,7 @@ test('La creazione guidata delle lezioni è atomica e applica RLS',()=>{
 });
 test('Corsi: UI per iscrizioni, istruttori, lezioni e presenze',()=>{
  for(const a of ['addEnrollment','updateEnrollment','addInstructor','replaceResponsible','createLesson','recordClassAttendance']) assert.match(ui,new RegExp(`action=\\{${a}\\}`));
- assert.match(ui,/CourseLanePicker/);
+ assert.match(ui,/CourseLessonFields/);assert.match(file('components/CourseLessonFields.tsx'),/<CourseLanePicker/);
 });
 test('Nuove rotte accessibili solo a staff e navigazione funzionante',()=>{
  for(const f of ['app/gestionale/corsi/page.tsx','app/gestionale/corsi/nuovo/page.tsx','app/gestionale/corsi/[id]/page.tsx']){

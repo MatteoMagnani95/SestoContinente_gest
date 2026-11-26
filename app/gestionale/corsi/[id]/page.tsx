@@ -184,14 +184,14 @@ export default async function EditionDetail({params,searchParams}:{params:Promis
    {tab==='presenze'&&<Section id="presenze" title="Registro presenze">
     {!selected?<p className="muted">{lessonError?'Lezioni non disponibili.':p.lezione?'Lezione non disponibile o annullata. Seleziona un’altra lezione.':'Crea una lezione per iniziare a registrare le presenze.'} {p.lezione&&<Link href={courseViewHref(id,'presenze')}>Seleziona lezione</Link>}</p>:<>
      <form method="get" className="course-lesson-picker"><input type="hidden" name="tab" value="presenze"/><label>Seleziona lezione<select name="lezione" defaultValue={selected.id}>{lessons.map(l=><option key={l.id} value={l.id}>{formatRome(l.inizio)} · {l.titolo}</option>)}</select></label><button className="button ghost" formAction={`/gestionale/corsi/${id}`}>Apri registro</button></form>
-     <EditForm key={selected.id} action={recordClassAttendance} className="stack"><input type="hidden" name="edizione_id" value={id}/><input type="hidden" name="lezione_id" value={selected.id}/>
+     <EditForm key={selected.id+'-'+page} action={recordClassAttendance} className="stack"><input type="hidden" name="edizione_id" value={id}/><input type="hidden" name="lezione_id" value={selected.id}/><input type="hidden" name="pagina" value={page}/>
       <div className="panel table-panel"><table><thead><tr><th>Allievo</th><th>Presenza</th></tr></thead><tbody>
-       {activeLearners.map(e=><tr key={e.id}><td>{displayPerson(e.persona_id,people)}</td><td><select name={`pres_${e.persona_id}`} defaultValue={registered.get(e.persona_id)===true?'si':registered.get(e.persona_id)===false?'no':''} aria-label={`Presenza ${displayPerson(e.persona_id,people)}`}>
+       {paged(activeLearners).map(e=><tr key={e.id}><td>{displayPerson(e.persona_id,people)}</td><td><select name={`pres_${e.persona_id}`} defaultValue={registered.get(e.persona_id)===true?'si':registered.get(e.persona_id)===false?'no':''} aria-label={`Presenza ${displayPerson(e.persona_id,people)}`}>
         <option value="" disabled={typeof registered.get(e.persona_id)==='boolean'}>Da registrare</option><option value="si">Presente</option><option value="no">Assente</option></select></td></tr>)}
        {!activeLearners.length&&<tr><td colSpan={2} className="empty-cell">Nessun allievo confermato.</td></tr>}
       </tbody></table></div><button className="button" disabled={Boolean(attendanceResult.error||enrollError)}>Salva presenze</button>
-     </EditForm></>}
-    <p className="tiny muted">Solo gli allievi iscritti o che hanno concluso il corso possono essere registrati. Le presenze già registrate possono essere corrette; una scelta vuota non cancella i dati. Le note individuali sono disponibili nel modulo presenze avanzato.</p>
+     </EditForm><Pagination page={page} size={size} count={enrollError?null:activeLearners.length} label="allievi" href={next=>courseViewHref(id,'presenze',undefined,selected.id)+'&p='+next}/></>}
+    <p className="tiny muted">Solo gli allievi iscritti o che hanno concluso il corso possono essere registrati. Salva ogni pagina del registro prima di cambiare pagina. Le presenze già registrate possono essere corrette; una scelta vuota non cancella i dati. Le note individuali sono disponibili nel modulo presenze avanzato.</p>
    </Section>}
   </div>
   {tab==='cronologia'&&<Cronologia tipo="corso" id={id} expanded/>}

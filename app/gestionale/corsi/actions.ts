@@ -1,4 +1,5 @@
 'use server';
+import {tutteLePagine} from '@/lib/pagine';
 import {courseViewHref,emergencyPair} from '@/lib/course-ui';
 import {courseDuplicate} from '@/lib/course-errors';
 import {redirect} from 'next/navigation';
@@ -171,16 +172,16 @@ export async function recordClassAttendance(form:FormData){
  try{id=uuidValue(form,'edizione_id');lesson_id=uuidValue(form,'lezione_id');}catch{return {error:'Lezione non valida.'};}
  const {data:lesson}=await supabase.from('lezioni').select('id').eq('id',lesson_id).eq('edizione_id',id).is('annullata_il',null).maybeSingle();
  if(!lesson)return {error:'Registro non disponibile o troppi allievi. Ricarica prima di modificare.'};
- const {data:learners,error:listError}=await supabase.from('iscrizioni_corsi').select('persona_id')
-  .eq('edizione_id',id).in('stato',['iscritto','concluso']).limit(501);
- if(listError||!learners||learners.length>500)return {error:'Elenco allievi non disponibile o superiore al limite del registro. Riprova.'};
+ const {data:learners,error:listError}=await tutteLePagine((da,a)=>supabase.from('iscrizioni_corsi').select('persona_id').eq('edizione_id',id).in('stato',['iscritto','concluso']).order('id').range(da,a));
+ if(listError||!learners)return {error:'Elenco allievi non disponibile. Riprova.'};
  const rows:{lezione_id:string;persona_id:string;presente:boolean}[]=[];
  for(const p of learners){
   const value=String(form.get(`pres_${p.persona_id}`)??'');
   if(value==='si'||value==='no')rows.push({lezione_id:lesson_id,persona_id:p.persona_id,presente:value==='si'});
  }
+ if(rows.length>500)return {error:'Salva al massimo 500 presenze per operazione.'};
  if(rows.length){const {error}=await supabase.from('presenze').upsert(rows,{onConflict:'lezione_id,persona_id'});if(error)return {error:'Presenze non salvate. Verifica gli allievi e riprova.'};}
- refresh(id);redirect(courseViewHref(id,'presenze','presenze_salvate',lesson_id));
+ refresh(id);redirect(courseViewHref(id,'presenze','presenze_salvate',lesson_id)+'&p='+Math.max(1,Math.min(100000,Number.parseInt(String(form.get('pagina')??'1'),10)||1)));
 }
 
 export async function setCourseProgram(form:FormData){
