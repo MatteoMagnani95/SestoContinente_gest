@@ -1,10 +1,23 @@
 import 'server-only';
 import type {createClient} from '@/lib/supabase/server';
 
-// Experimental path only: no production service or schema dependency.
-export function structuralQaEnabled(){
+// Keep disposable QA and an explicitly authorized release strictly separate.
+function structuralLocalQaEnabled(){
  if(process.env.SC_STRUCTURAL_RPC!=='true'||process.env.QA_ISOLATED_ENV!=='true'||process.env.SESTO_TEST_MODE!=='true'||process.env.SESTO_EMAIL_MODE!=='simulate')return false;
  try{const u=new URL(process.env.NEXT_PUBLIC_SUPABASE_URL??'');return ['127.0.0.1','localhost'].includes(u.hostname)&&u.port==='54321'&&u.protocol==='http:';}catch{return false;}
+}
+export function structuralReleaseEnabled(){
+ const e=process.env;
+ if(e.SC_STRUCTURAL_RPC!=='true'||e.SC_STRUCTURAL_RPC_RELEASE!=='true'||e.SESTO_TEST_MODE!=='false'||(e.QA_ISOLATED_ENV!==undefined&&e.QA_ISOLATED_ENV!=='false'))return false;
+ const target=e.SC_STRUCTURAL_RPC_RELEASE_ENV,project=e.SC_STRUCTURAL_RPC_RELEASE_PROJECT_REF;
+ if((target!=='preview'&&target!=='production')||e.VERCEL_ENV!==target||!project||!/^[a-z0-9]{20}$/.test(project))return false;
+ // Exact canonical project URL; no wildcard, custom origin, userinfo, path or query.
+ const canonical='https://'+project+'.supabase.co';
+ return e.NEXT_PUBLIC_SUPABASE_URL===canonical||e.NEXT_PUBLIC_SUPABASE_URL===canonical+'/';
+}
+// Historical export used by the render and lookup paths. OFF by default in both modes.
+export function structuralQaEnabled(){
+ return structuralLocalQaEnabled()||structuralReleaseEnabled();
 }
 export async function structuralRpc(client:Awaited<ReturnType<typeof createClient>>,name:string,args:Record<string,unknown>){
  if(!structuralQaEnabled())return null;
@@ -40,7 +53,7 @@ export function readDashboardSnapshot(v:Record<string,unknown>|null){
 
 const used=new Set<string>();
 export function markStructuralRpcUsed(name:'dashboard'|'soci-counts'|'incassi-totals'|'navigation-account'|'inventory-page'|'person-options'|'soci-page'|'courses-page'|'calendar-snapshot'){
- if(structuralQaEnabled()&&!used.has(name)){used.add(name);console.log('QA_STRUCTURAL_RPC_USED '+name);}
+ if(structuralLocalQaEnabled()&&!used.has(name)){used.add(name);console.log('QA_STRUCTURAL_RPC_USED '+name);}
 }
 
 type AccountSnapshot={enabled:false}|{enabled:true;roles:string[];member:boolean;personal:boolean;unread:number;owner:{nome:string;cognome:string|null}|null};
