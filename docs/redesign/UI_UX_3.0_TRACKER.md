@@ -4,78 +4,78 @@ Data: 26/11/2026. Baseline produzione e HEAD 2.0: `20ae6fcceb5307d58920aa1527a83
 ## Fasi
 | Fase | Stato | Note |
 |---|---|---|
-| 1 — Fondazioni | CI superata | Commit 7b39eb3; run 45897134510 success (lint, TS, static, build, browser, audit, integrazione DB effimero). Collaudo visuale autenticato manuale aperto. |
-| 2 — AppShell | CI superata | Commit b343311; run 45897856873, entrambi i job success. Browser autenticato manuale aperto. |
+| 1 — Fondazioni | Gate superato | Asset e componenti verificati nei rendering finali F7. |
+| 2 — AppShell | Gate superato | Navigazione e logout verificati nel gate F7. |
 | 3 — Centro operativo e segreteria | Gate sincronizzato superato | ff356d1: CI 45906661406 e QA 45906661502 tentativo 2 success; 280 statici, 68 browser ordinari, 166 autenticati, 72 logout. |
 | 4 — Didattica e impianti | Gate superato | cc323fc: CI 45910455789 + QA 45910455776 success; 283 automatici, 68 browser ordinari, 170 autenticati, 72 logout. |
 | 5 — Operazioni associative | Gate superato | b74aa8a: CI 45962908776 + QA 45962908906 success; 286 automatici, 68 browser ordinari, 172 autenticati, 72 logout. |
 | 6 — Aree utente e mobile | Gate superato | e4fdb7f: CI 45965395429 e QA 45965395638 success, 288 statici, 70 browser ordinari, 182 autenticati, 72 logout. |
-| 7 — Collaudo e rilascio | Primo collaudo, correzioni candidate | 80 PNG, 277/280 controlli, tre anomalie font mobile; nuovo gate richiesto. |
+| 7 — Collaudo e rilascio | GO tecnico locale; produzione NO-GO | 31a626c: CI 45969993359 e QA 45969993424 success; 292 statici, 70 browser ordinari, 182 autenticati, 72 logout, 280/280 visuali. |
  
 ## Inventario UI (copertura di base non equivale a redesign della pagina)
-Ruoli indicativi dal codice di navigazione e dalle guardie 2.0; la verifica di accesso per singola route rimane aperta. Stati da verificare per ogni riga: normale, vuoto, errore, caricamento; per operazioni di creazione/modifica/dialog anche dirty form, invio, errore e successo; N/A solo dopo verifica. D=desktop, M=mobile, F=funzionale, S=autorizzazioni. NV=non verificato. Le pagine ereditano token e shell senza essere marcate riprogettate.
+Ruoli indicativi dal codice di navigazione e dalle guardie 2.0. Al checkpoint finale, V indica rendering osservato nel caso visuale indicato; I indica implementazione/ispezione del codice senza certificazione individuale esaustiva. NV indica controllo individuale non attestato in questa matrice, non un fallimento delle suite globali. I risultati funzionali e sicurezza di suite sono in F7_CLOSURE_REPORT.md. Non si presume copertura di ogni stato e combinazione ruolo/route. Stati da verificare per ogni riga: normale, vuoto, errore, caricamento; per operazioni di creazione/modifica/dialog anche dirty form, invio, errore e successo; N/A solo dopo verifica. D=desktop, M=mobile, F=funzionale, S=autorizzazioni. NV=non verificato. Le pagine ereditano token e shell senza essere marcate riprogettate.
 | File | Route | Accesso | Fase | Stato specifico | D/M/F/S |
 |---|---|---|---|---|---|
-| `app/accedi/page.tsx` | `/accedi` | Pubblico/auth; redirect esistenti | 6 | Non iniziato | NV/NV/NV/NV |
-| `app/area-personale/certificato/page.tsx` | `/area-personale/certificato` | Account abilitato; persone collegate | 6 | Non iniziato | NV/NV/NV/NV |
-| `app/area-personale/corsi/page.tsx` | `/area-personale/corsi` | Account abilitato; persone collegate | 6 | Non iniziato | NV/NV/NV/NV |
-| `app/area-personale/documenti/page.tsx` | `/area-personale/documenti` | Account abilitato; persone collegate | 6 | Non iniziato | NV/NV/NV/NV |
-| `app/area-personale/page.tsx` | `/area-personale` | Account abilitato; persone collegate | 6 | Non iniziato | NV/NV/NV/NV |
-| `app/area-personale/profilo/page.tsx` | `/area-personale/profilo` | Account abilitato; persone collegate | 6 | Non iniziato | NV/NV/NV/NV |
-| `app/area-soci/page.tsx` | `/area-soci` | Socio autorizzato | 6 | Non iniziato | NV/NV/NV/NV |
-| `app/comunicazioni/corsi/[id]/page.tsx` | `/comunicazioni/corsi/[id]` | Autorizzazione contestuale | 5 | Non iniziato | NV/NV/NV/NV |
-| `app/comunicazioni/soci/[id]/page.tsx` | `/comunicazioni/soci/[id]` | Autorizzazione contestuale | 5 | Non iniziato | NV/NV/NV/NV |
-| `app/documenti/page.tsx` | `/documenti` | Account autorizzato, RLS | 5 | Non iniziato | NV/NV/NV/NV |
-| `app/gestionale/amministrazione-dati/dipendenze/[tabella]/[id]/page.tsx` | `/gestionale/amministrazione-dati/dipendenze/[tabella]/[id]` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
-| `app/gestionale/amministrazione-dati/page.tsx` | `/gestionale/amministrazione-dati` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
-| `app/gestionale/archivio-incassi/page.tsx` | `/gestionale/archivio-incassi` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
-| `app/gestionale/attrezzature/[id]/page.tsx` | `/gestionale/attrezzature/[id]` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
-| `app/gestionale/calendario-visivo/[id]/page.tsx` | `/gestionale/calendario-visivo/[id]` | Staff; admin-only/contestuale ove previsto | 4 | Non iniziato | NV/NV/NV/NV |
-| `app/gestionale/calendario-visivo/page.tsx` | `/gestionale/calendario-visivo` | Staff; admin-only/contestuale ove previsto | 4 | Non iniziato | NV/NV/NV/NV |
-| `app/gestionale/corsi/[id]/page.tsx` | `/gestionale/corsi/[id]` | Staff; admin-only/contestuale ove previsto | 4 | F4A implementata; collaudo aperto | NV/NV/NV/NV |
-| `app/gestionale/corsi/nuovo/page.tsx` | `/gestionale/corsi/nuovo` | Staff; admin-only/contestuale ove previsto | 4 | F4A implementata; collaudo aperto | NV/NV/NV/NV |
-| `app/gestionale/corsi/page.tsx` | `/gestionale/corsi` | Staff; admin-only/contestuale ove previsto | 4 | F4A implementata; collaudo aperto | NV/NV/NV/NV |
-| `app/gestionale/economia/page.tsx` | `/gestionale/economia` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
-| `app/gestionale/importazione/page.tsx` | `/gestionale/importazione` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
-| `app/gestionale/incassi/[id]/page.tsx` | `/gestionale/incassi/[id]` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
-| `app/gestionale/incassi/page.tsx` | `/gestionale/incassi` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
-| `app/gestionale/incassi/posizione/[id]/page.tsx` | `/gestionale/incassi/posizione/[id]` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
-| `app/gestionale/moduli/[modulo]/page.tsx` | `/gestionale/moduli/[modulo]` | Staff; admin-only/contestuale ove previsto | 5 | Pattern condivisi implementati; redesign altre aree aperto | NV/NV/NV/NV |
-| `app/gestionale/moduli/attrezzature/page.tsx` | `/gestionale/moduli/attrezzature` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
-| `app/gestionale/moduli/consegne/page.tsx` | `/gestionale/moduli/consegne` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
-| `app/gestionale/moduli/contabilita/page.tsx` | `/gestionale/moduli/contabilita` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
-| `app/gestionale/moduli/iscrizioni/page.tsx` | `/gestionale/moduli/iscrizioni` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
-| `app/gestionale/moduli/piscine/page.tsx` | `/gestionale/moduli/piscine` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
-| `app/gestionale/moduli/revisioni/page.tsx` | `/gestionale/moduli/revisioni` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
-| `app/gestionale/page.tsx` | `/gestionale` | Staff; admin-only/contestuale ove previsto | 3 | Implementato; collaudo aperto | NV/NV/NV/NV |
-| `app/gestionale/programmi-didattici/page.tsx` | `/gestionale/programmi-didattici` | Staff; admin-only/contestuale ove previsto | 4 | Non iniziato | NV/NV/NV/NV |
-| `app/gestionale/report/page.tsx` | `/gestionale/report` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
-| `app/gestionale/richieste/[id]/page.tsx` | `/gestionale/richieste/[id]` | Staff; admin-only/contestuale ove previsto | 3 | Implementato; collaudo aperto | NV/NV/NV/NV |
-| `app/gestionale/richieste/page.tsx` | `/gestionale/richieste` | Staff; admin-only/contestuale ove previsto | 3 | Implementato; collaudo aperto | NV/NV/NV/NV |
-| `app/gestionale/soci/[id]/page.tsx` | `/gestionale/soci/[id]` | Staff; admin-only/contestuale ove previsto | 3 | Implementato; collaudo aperto | NV/NV/NV/NV |
-| `app/gestionale/soci/page.tsx` | `/gestionale/soci` | Staff; admin-only/contestuale ove previsto | 3 | Implementato; collaudo aperto | NV/NV/NV/NV |
-| `app/gestionale/utenti/[id]/elimina/page.tsx` | `/gestionale/utenti/[id]/elimina` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
-| `app/gestionale/utenti/[id]/page.tsx` | `/gestionale/utenti/[id]` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
-| `app/gestionale/utenti/page.tsx` | `/gestionale/utenti` | Staff; admin-only/contestuale ove previsto | 5 | Non iniziato | NV/NV/NV/NV |
-| `app/gestione-eventi/[id]/page.tsx` | `/gestione-eventi/[id]` | Staff/responsabile autorizzato | 5 | Non iniziato | NV/NV/NV/NV |
-| `app/gestione-eventi/page.tsx` | `/gestione-eventi` | Staff/responsabile autorizzato | 5 | Non iniziato | NV/NV/NV/NV |
-| `app/istruttore/page.tsx` | `/istruttore` | Istruttore autorizzato | 6 | Non iniziato | NV/NV/NV/NV |
-| `app/notifiche/page.tsx` | `/notifiche` | Account autenticato; solo notifiche proprie | 6 | Funzione 2.0 importata; redesign non iniziato | NV/NV/NV/NV |
-| `app/nuova-password/page.tsx` | `/nuova-password` | Pubblico/auth; redirect esistenti | 6 | Non iniziato | NV/NV/NV/NV |
-| `app/organi-sociali/archivio/[id]/page.tsx` | `/organi-sociali/archivio/[id]` | CdA/staff autorizzati | 5 | Non iniziato | NV/NV/NV/NV |
-| `app/organi-sociali/archivio/page.tsx` | `/organi-sociali/archivio` | CdA/staff autorizzati | 5 | Non iniziato | NV/NV/NV/NV |
-| `app/organi-sociali/page.tsx` | `/organi-sociali` | CdA/staff autorizzati | 5 | Non iniziato | NV/NV/NV/NV |
-| `app/organi-sociali/riepilogo/page.tsx` | `/organi-sociali/riepilogo` | CdA/staff autorizzati | 5 | Non iniziato | NV/NV/NV/NV |
-| `app/page.tsx` | `/` | Pubblico/auth; redirect esistenti | 6 | Brand base implementato; redesign non iniziato | NV/NV/NV/NV |
-| `app/registrati/informativa-test/page.tsx` | `/registrati/informativa-test` | Pubblico/auth; redirect esistenti | 6 | Non iniziato | NV/NV/NV/NV |
-| `app/registrati/page.tsx` | `/registrati` | Pubblico/auth; redirect esistenti | 6 | Non iniziato | NV/NV/NV/NV |
-| `app/richiesta/documenti-test/page.tsx` | `/richiesta/documenti-test` | Richiedente/account abilitato | 6 | Non iniziato | NV/NV/NV/NV |
-| `app/richiesta/nuova/page.tsx` | `/richiesta/nuova` | Richiedente/account abilitato | 6 | Non iniziato | NV/NV/NV/NV |
-| `app/richiesta/stato/page.tsx` | `/richiesta/stato` | Richiedente/account abilitato | 6 | Non iniziato | NV/NV/NV/NV |
-| `app/smista/page.tsx` | `/smista` | Pubblico/auth; redirect esistenti | 6 | Non iniziato | NV/NV/NV/NV |
-| `app/layout.tsx` | Shell globale | Tutti | 2 | Token e marchio implementati; redesign shell non iniziato | NV/NV/NV/NV |
-| `app/gestionale/layout.tsx` | Guard staff | Staff | 2 | Invariato | NV/NV/NV/NV |
-| `app/not-found.tsx` | Errore 404 | Contestuale | 6 | Non iniziato | NV/NV/NV/NV |
+| `app/accedi/page.tsx` | `/accedi` | Pubblico/auth; redirect esistenti | 6 | Verificato scenario visuale 15a; gate F7 | V/V/NV/NV |
+| `app/area-personale/certificato/page.tsx` | `/area-personale/certificato` | Account abilitato; persone collegate | 6 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/area-personale/corsi/page.tsx` | `/area-personale/corsi` | Account abilitato; persone collegate | 6 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/area-personale/documenti/page.tsx` | `/area-personale/documenti` | Account abilitato; persone collegate | 6 | Redirect preservato (nessuna UI propria) | N/A/N/A/NV/NV |
+| `app/area-personale/page.tsx` | `/area-personale` | Account abilitato; persone collegate | 6 | Verificato scenario visuale 13,16; gate F7 | V/V/NV/NV |
+| `app/area-personale/profilo/page.tsx` | `/area-personale/profilo` | Account abilitato; persone collegate | 6 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/area-soci/page.tsx` | `/area-soci` | Socio autorizzato | 6 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/comunicazioni/corsi/[id]/page.tsx` | `/comunicazioni/corsi/[id]` | Autorizzazione contestuale | 5 | Verificato scenario visuale extra corso; gate F7 | V/V/NV/NV |
+| `app/comunicazioni/soci/[id]/page.tsx` | `/comunicazioni/soci/[id]` | Autorizzazione contestuale | 5 | Verificato scenario visuale extra socio; gate F7 | V/V/NV/NV |
+| `app/documenti/page.tsx` | `/documenti` | Account autorizzato, RLS | 5 | Verificato scenario visuale 12; gate F7 | V/V/NV/NV |
+| `app/gestionale/amministrazione-dati/dipendenze/[tabella]/[id]/page.tsx` | `/gestionale/amministrazione-dati/dipendenze/[tabella]/[id]` | Staff; admin-only/contestuale ove previsto | 5 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/gestionale/amministrazione-dati/page.tsx` | `/gestionale/amministrazione-dati` | Staff; admin-only/contestuale ove previsto | 5 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/gestionale/archivio-incassi/page.tsx` | `/gestionale/archivio-incassi` | Staff; admin-only/contestuale ove previsto | 5 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/gestionale/attrezzature/[id]/page.tsx` | `/gestionale/attrezzature/[id]` | Staff; admin-only/contestuale ove previsto | 5 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/gestionale/calendario-visivo/[id]/page.tsx` | `/gestionale/calendario-visivo/[id]` | Staff; admin-only/contestuale ove previsto | 4 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/gestionale/calendario-visivo/page.tsx` | `/gestionale/calendario-visivo` | Staff; admin-only/contestuale ove previsto | 4 | Verificato scenario visuale 07; gate F7 | V/V/NV/NV |
+| `app/gestionale/corsi/[id]/page.tsx` | `/gestionale/corsi/[id]` | Staff; admin-only/contestuale ove previsto | 4 | Verificato scenario visuale 06; gate F7 | V/V/NV/NV |
+| `app/gestionale/corsi/nuovo/page.tsx` | `/gestionale/corsi/nuovo` | Staff; admin-only/contestuale ove previsto | 4 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/gestionale/corsi/page.tsx` | `/gestionale/corsi` | Staff; admin-only/contestuale ove previsto | 4 | Verificato scenario visuale 05; gate F7 | V/V/NV/NV |
+| `app/gestionale/economia/page.tsx` | `/gestionale/economia` | Staff; admin-only/contestuale ove previsto | 5 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/gestionale/importazione/page.tsx` | `/gestionale/importazione` | Staff; admin-only/contestuale ove previsto | 5 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/gestionale/incassi/[id]/page.tsx` | `/gestionale/incassi/[id]` | Staff; admin-only/contestuale ove previsto | 5 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/gestionale/incassi/page.tsx` | `/gestionale/incassi` | Staff; admin-only/contestuale ove previsto | 5 | Verificato scenario visuale 08; gate F7 | V/V/NV/NV |
+| `app/gestionale/incassi/posizione/[id]/page.tsx` | `/gestionale/incassi/posizione/[id]` | Staff; admin-only/contestuale ove previsto | 5 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/gestionale/moduli/[modulo]/page.tsx` | `/gestionale/moduli/[modulo]` | Staff; admin-only/contestuale ove previsto | 5 | Verificato scenario visuale 03 (anagrafiche); gate F7 | V/V/NV/NV |
+| `app/gestionale/moduli/attrezzature/page.tsx` | `/gestionale/moduli/attrezzature` | Staff; admin-only/contestuale ove previsto | 5 | Verificato scenario visuale 09; gate F7 | V/V/NV/NV |
+| `app/gestionale/moduli/consegne/page.tsx` | `/gestionale/moduli/consegne` | Staff; admin-only/contestuale ove previsto | 5 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/gestionale/moduli/contabilita/page.tsx` | `/gestionale/moduli/contabilita` | Staff; admin-only/contestuale ove previsto | 5 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/gestionale/moduli/iscrizioni/page.tsx` | `/gestionale/moduli/iscrizioni` | Staff; admin-only/contestuale ove previsto | 5 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/gestionale/moduli/piscine/page.tsx` | `/gestionale/moduli/piscine` | Staff; admin-only/contestuale ove previsto | 5 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/gestionale/moduli/revisioni/page.tsx` | `/gestionale/moduli/revisioni` | Staff; admin-only/contestuale ove previsto | 5 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/gestionale/page.tsx` | `/gestionale` | Staff; admin-only/contestuale ove previsto | 3 | Verificato scenario visuale 01; gate F7 | V/V/NV/NV |
+| `app/gestionale/programmi-didattici/page.tsx` | `/gestionale/programmi-didattici` | Staff; admin-only/contestuale ove previsto | 4 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/gestionale/report/page.tsx` | `/gestionale/report` | Staff; admin-only/contestuale ove previsto | 5 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/gestionale/richieste/[id]/page.tsx` | `/gestionale/richieste/[id]` | Staff; admin-only/contestuale ove previsto | 3 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/gestionale/richieste/page.tsx` | `/gestionale/richieste` | Staff; admin-only/contestuale ove previsto | 3 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/gestionale/soci/[id]/page.tsx` | `/gestionale/soci/[id]` | Staff; admin-only/contestuale ove previsto | 3 | Verificato scenario visuale 04; gate F7 | V/V/NV/NV |
+| `app/gestionale/soci/page.tsx` | `/gestionale/soci` | Staff; admin-only/contestuale ove previsto | 3 | Verificato scenario visuale 02; gate F7 | V/V/NV/NV |
+| `app/gestionale/utenti/[id]/elimina/page.tsx` | `/gestionale/utenti/[id]/elimina` | Staff; admin-only/contestuale ove previsto | 5 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/gestionale/utenti/[id]/page.tsx` | `/gestionale/utenti/[id]` | Staff; admin-only/contestuale ove previsto | 5 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/gestionale/utenti/page.tsx` | `/gestionale/utenti` | Staff; admin-only/contestuale ove previsto | 5 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/gestione-eventi/[id]/page.tsx` | `/gestione-eventi/[id]` | Staff/responsabile autorizzato | 5 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/gestione-eventi/page.tsx` | `/gestione-eventi` | Staff/responsabile autorizzato | 5 | Verificato scenario visuale 10; gate F7 | V/V/NV/NV |
+| `app/istruttore/page.tsx` | `/istruttore` | Istruttore autorizzato | 6 | Verificato scenario visuale 14,14b; gate F7 | V/V/NV/NV |
+| `app/notifiche/page.tsx` | `/notifiche` | Account autenticato; solo notifiche proprie | 6 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/nuova-password/page.tsx` | `/nuova-password` | Pubblico/auth; redirect esistenti | 6 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/organi-sociali/archivio/[id]/page.tsx` | `/organi-sociali/archivio/[id]` | CdA/staff autorizzati | 5 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/organi-sociali/archivio/page.tsx` | `/organi-sociali/archivio` | CdA/staff autorizzati | 5 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/organi-sociali/page.tsx` | `/organi-sociali` | CdA/staff autorizzati | 5 | Verificato scenario visuale 11; gate F7 | V/V/NV/NV |
+| `app/organi-sociali/riepilogo/page.tsx` | `/organi-sociali/riepilogo` | CdA/staff autorizzati | 5 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/page.tsx` | `/` | Pubblico/auth; redirect esistenti | 6 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/registrati/informativa-test/page.tsx` | `/registrati/informativa-test` | Pubblico/auth; redirect esistenti | 6 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/registrati/page.tsx` | `/registrati` | Pubblico/auth; redirect esistenti | 6 | Verificato scenario visuale 15b; gate F7 | V/V/NV/NV |
+| `app/richiesta/documenti-test/page.tsx` | `/richiesta/documenti-test` | Richiedente/account abilitato | 6 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/richiesta/nuova/page.tsx` | `/richiesta/nuova` | Richiedente/account abilitato | 6 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/richiesta/stato/page.tsx` | `/richiesta/stato` | Richiedente/account abilitato | 6 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/smista/page.tsx` | `/smista` | Pubblico/auth; redirect esistenti | 6 | Redirect preservato (nessuna UI propria) | N/A/N/A/NV/NV |
+| `app/layout.tsx` | Shell globale | Tutti | 2 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
+| `app/gestionale/layout.tsx` | Guard staff | Staff | 2 | Guard staff preservata | N/A/N/A/NV/NV |
+| `app/not-found.tsx` | Errore 404 | Contestuale | 6 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
  
 ## Configurazioni CRUD
 28 moduli censiti da lib/modules.ts; stato non iniziato per tutti; applicare pattern elenco, dettaglio, creazione, modifica, dialog, errore, vuoto e mobile se esistenti. Ruoli da confermare dai controlli server; le voci admin-only rilevate esplicitamente sono mantenute.
@@ -194,3 +194,6 @@ F6 e4fdb7f GO. 34f5d19 CI 45967282072 verde, QA 45967282666 fallita esclusivamen
 
 ## F7 — secondo collaudo e target filtri
 0bdd921: CI 45968851284 e QA 45968851276 verdi (291 statici, 70 pubblici, 182 autenticati, 72 logout, 280/280 visuali). Artifact 15184745456 ispezionato e confrontato con 16 mockup e primo rendering. Diagnostica residuale: 4 filtri da 28px in tre scenari a 320px (12 occorrenze). Corretto flex mobile e reso bloccante il controllo target autonomi. Gate da ripetere sullo SHA esatto; nessun deploy. Zoom browser nativo, fisico, WCAG completa non certificati.
+
+## F7 — chiusura tecnica locale (27/11/2026)
+SHA applicativo collaudato `31a626c5bdec182a556d8261e3921d68a7905f59`; checkout PR `af61e644859d7db7086271e0ccac68515f5c019a`, identico albero `4c22eb83d9722d201b5cf097f46ccf1807638e14`. Entrambi i gate completati: 292 statici, 70 browser ordinari, 182 autenticati, 8 skip configurati, 72 logout, 280 controlli senza anomalie. Artifact 15185395952 con 80 PNG e manifest verificato. Ultimi filtri 320px corretti, zero smallActions. Confronto 16 riferimenti documentato nei cicli precedenti, controllate le schermate aggiornate dei filtri/form. Vedi F7_CLOSURE_REPORT.md per limitazioni e rilascio. Nessun deploy, nessun merge, nessuna modifica DB produzione. GO tecnico locale non è accettazione utente né certificazione WCAG.
