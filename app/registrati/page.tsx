@@ -14,7 +14,7 @@ export default async function Register({searchParams}:{searchParams:Promise<{msg
  const [{msg,ok},access]=await Promise.all([searchParams,getNavigationAccess()]);
  if(access.enabled)redirect('/smista');
  const legal=informativaRegistrazione();
- return <div className="sc-auth-shell sc-register-shell"><section className="sc-card sc-auth-panel"><div className="sc-auth-decoration" aria-hidden="true"/><p className="eyebrow">Adesione · Account</p><div className="sc-auth-title"><span className="sc-heading-icon sc-area-secretariat"><Icon name="users"/></span><h1>Crea il tuo account</h1></div><p>Prima crea un accesso personale; dopo la verifica email potrai compilare la domanda di adesione.</p>
+ return <div className="sc-auth-shell sc-register-shell sc-marine-preview"><section className="sc-card sc-auth-panel"><div className="sc-auth-decoration" aria-hidden="true"/><p className="eyebrow">Adesione · Account</p><div className="sc-auth-title"><span className="sc-heading-icon sc-area-secretariat"><Icon name="users"/></span><h1>Crea il tuo account</h1></div><p>Prima crea un accesso personale; dopo la verifica email potrai compilare la domanda di adesione.</p>
  <ol className="sc-registration-steps" aria-label="Passaggi per l’adesione">{['Creazione account','Verifica email','Domanda di adesione','Verifica associativa'].map((step,i)=><li key={step} aria-current={i===(ok==='verifica'?1:0)?'step':undefined}><span>{i+1}</span>{step}</li>)}</ol>
  {legal.test&&<Alert tone="warning" title="COLLAUDO" announce>Usa esclusivamente dati inventati. Le dichiarazioni sono simulate.</Alert>}
  {msg&&queryMessage(msg)&&<Alert tone="danger" announce>{queryMessage(msg)}</Alert>}

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const css=read('app/marine-premium-tokens.css');
 const tokens=Object.fromEntries([...css.matchAll(/(--[\w-]+):\s*(#[\da-fA-F]{6})\s*;/g)].map(m=>[m[1],m[2]]));
@@ -18,11 +19,20 @@ test('Marine Premium: proposed normal text token pairs meet WCAG AA',()=>{
 test('Marine Premium: control border and focus have minimum 3:1 contrast',()=>{
  for(const bg of ['--sc-white','--sc-surface'])for(const fg of ['--sc-control-border','--sc-focus'])assert.ok(ratio(fg,bg)>=3,fg+' '+bg);
 });
-test('Marine Premium: opt-in layer stays inactive until visual integration',()=>{
- assert.ok(!read('app/layout.tsx').includes('marine-premium-tokens.css'));
+test('Marine Premium: active public layer stays scoped, not global',()=>{
+ assert.match(read('app/layout.tsx'),/import '\.\/marine-premium-tokens\.css'/);
+ for(const path of ['app/page.tsx','app/accedi/page.tsx','app/registrati/page.tsx','app/nuova-password/page.tsx','app/richiesta/nuova/page.tsx','app/richiesta/stato/page.tsx'])assert.match(read(path),/sc-marine-preview/,path);
+ for(const path of ['components/AppShell.tsx','components/StaffNav.tsx','app/gestionale/page.tsx','app/gestionale/incassi/page.tsx'])assert.doesNotMatch(read(path),/sc-marine-preview/,path);
  assert.match(css,/\.sc-marine-preview\s*\{/);
  assert.doesNotMatch(css,/@import|url\(|:root\s*\{|!important/i);
  assert.match(css,/--sc-target:\s*44px/);
  assert.match(css,/--sc-primary-target:\s*48px/);
  assert.match(css,/prefers-reduced-motion:\s*reduce/);
+});
+
+test('Marine Premium: locally generated WebP bytes and no SVG decoration in new layer',()=>{
+ const visual=read('app/marine-premium-public.css');
+ for(const [name,size,hash] of [['marine-hero-768.webp',76596,'35aaf6d9734b3c70461f4a9918f2145c48e5f397d87dcc0d4ac675f1b303645f'],['marine-nereia-640.webp',35958,'86fa1f537dd8af264838f1b715b8e7bc66be49273e5869d8369fcfd20347957a']]){
+ const b=readFileSync(new URL('../public/brand/marine-premium/'+name,import.meta.url));assert.equal(b.length,size);assert.equal(b.toString('ascii',0,4),'RIFF');assert.equal(b.toString('ascii',8,12),'WEBP');assert.equal(createHash('sha256').update(b).digest('hex'),hash);assert.ok(visual.includes(name));}
+ assert.doesNotMatch(visual,/url\([^)]*\.svg|https?:\/\//i);
 });

@@ -1,4 +1,4 @@
-/* Marine Premium 3.2 — opt-in visual layer. Not imported by app/layout.tsx.
+/* Marine Premium 3.2 — opt-in visual layer. Used only on explicitly marked public and applicant surfaces.
    Scope only to an explicitly enabled preview; do not modify guards, semantics or layout visibility. */
 .sc-marine-preview {
   --sc-navy: #082C40;

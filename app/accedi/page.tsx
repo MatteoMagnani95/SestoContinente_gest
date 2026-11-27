@@ -27,7 +27,7 @@ export default async function Login({searchParams}:{searchParams:Promise<{msg?:s
  } catch {
    // Configurazione non valida: non presentare una richiesta impossibile.
  }
- return <div className="sc-auth-shell"><section className="sc-card sc-auth-panel"><div className="sc-auth-decoration" aria-hidden="true"/><p className="eyebrow">Accesso riservato</p><div className="sc-auth-title"><span className="sc-heading-icon sc-area-secretariat"><Icon name="user"/></span><h1>Accedi</h1></div><p>Entra nella tua area personale o nel gestionale.</p>
+ return <div className="sc-auth-shell sc-marine-preview"><section className="sc-card sc-auth-panel"><div className="sc-auth-decoration" aria-hidden="true"/><p className="eyebrow">Accesso riservato</p><div className="sc-auth-title"><span className="sc-heading-icon sc-area-secretariat"><Icon name="user"/></span><h1>Accedi</h1></div><p>Entra nella tua area personale o nel gestionale.</p>
  {msg&&queryMessage(msg)&&<Alert tone={['uscita','recupero','confermata'].includes(msg)?'info':'danger'} announce>{queryMessage(msg)}</Alert>}
  {access.signedIn&&!access.enabled&&<p className="notice warning">L’account non è abilitato. Puoi provare ad accedere con un altro account o contattare la segreteria.</p>}
  <AuthForm action={loginAction} label="Accedi" pendingLabel="Accesso in corso…"><label>Email<input name="email" type="email" required autoComplete="username" autoCapitalize="none" spellCheck={false}/></label><PasswordField/></AuthForm>
