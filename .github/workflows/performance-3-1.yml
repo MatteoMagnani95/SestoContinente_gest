@@ -1,7 +1,7 @@
 name: QA comparativa prestazioni 3.1 (locale)
 on:
   push:
-    branches: ['release/gestionale-3.1', 'perf/3.1-next-pass']
+    branches: ['release/gestionale-3.1', 'perf/3.1-next-pass', 'perf/3.1-structural']
   workflow_dispatch:
 permissions:
   contents: read
@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   compare:
-    if: github.ref == 'refs/heads/release/gestionale-3.1' || github.ref == 'refs/heads/perf/3.1-next-pass'
+    if: github.ref == 'refs/heads/release/gestionale-3.1' || github.ref == 'refs/heads/perf/3.1-next-pass' || github.ref == 'refs/heads/perf/3.1-structural'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -51,11 +51,18 @@ jobs:
           work=$(mktemp -d "$RUNNER_TEMP/sesto-qa.XXXXXX")
           chmod 700 "$work"
           python3 scripts/qa-local-status.py "$status" "$work"
+      - name: Installa esclusivamente i prototipi SQL locali
+        if: github.ref == 'refs/heads/perf/3.1-structural'
+        run: node scripts/qa-install-structural-rpc.mjs
       - name: Dataset e build del candidato
         run: |
           set -euo pipefail
           node scripts/qa-local-supabase.mjs seed
           npm run build
+          if [[ "$GITHUB_REF" == 'refs/heads/perf/3.1-structural' ]]; then
+            export SC_STRUCTURAL_RPC=true QA_DB_LATENCY_MS=40
+            export NODE_OPTIONS="${NODE_OPTIONS:-} --require=$GITHUB_WORKSPACE/scripts/qa-latency.cjs"
+          fi
           npm run start -- --hostname 127.0.0.1 --port 3314 > "$RUNNER_TEMP/sesto-qa-next.log" 2>&1 &
           for i in {1..30}; do
             if curl -fsS http://127.0.0.1:3314/ >/dev/null; then exit 0; fi
@@ -89,6 +96,10 @@ jobs:
           cd "$baseline"
           npm ci --no-audit --no-fund
           npm run build
+          if [[ "$GITHUB_REF" == 'refs/heads/perf/3.1-structural' ]]; then
+            export QA_DB_LATENCY_MS=40
+            export NODE_OPTIONS="${NODE_OPTIONS:-} --require=$GITHUB_WORKSPACE/scripts/qa-latency.cjs"
+          fi
           npm run start -- --hostname 127.0.0.1 --port 3315 > "$RUNNER_TEMP/sesto-qa-baseline.log" 2>&1 &
           for i in {1..30}; do
             if curl -fsS http://127.0.0.1:3315/ >/dev/null; then exit 0; fi
@@ -96,7 +107,13 @@ jobs:
           done
           exit 1
       - name: Benchmark comparativo delle pagine e dei bundle
-        run: node scripts/qa-performance-compare.mjs
+        run: |
+          if [[ "$GITHUB_REF" == 'refs/heads/perf/3.1-structural' ]]; then export QA_DB_LATENCY_MS=40; fi
+          node scripts/qa-performance-compare.mjs
+          if [[ "$GITHUB_REF" == 'refs/heads/perf/3.1-structural' ]]; then
+            grep -q 'QA_LATENCY_ACTIVE 40ms' "$RUNNER_TEMP/sesto-qa-next.log"
+            grep -q 'QA_LATENCY_ACTIVE 40ms' "$RUNNER_TEMP/sesto-qa-baseline.log"
+          fi
       - name: Conserva esclusivamente metriche aggregate
         uses: actions/upload-artifact@v4
         with:

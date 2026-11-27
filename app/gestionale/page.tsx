@@ -7,9 +7,11 @@ import {formatValue} from '@/lib/format';
 import {romeDay,shiftDay} from '@/lib/calendar-tools';
 import {asRomeISO} from '@/lib/course-tools';
 import {exactCount,pendingRequestStates} from '@/lib/secretariat';
+import {structuralRpc,readDashboardSnapshot} from '@/lib/structural-qa';
 export default async function Dashboard(){
  const {supabase,user}=await requireStaff();
  const now=new Date().toISOString(),today=romeDay(now),cutoff=shiftDay(today,30);
+ const readLegacy=async()=>{
  // Start season-independent reads in the same round as the season lookup.
  const seasonPromise=Promise.resolve(supabase.from('stagioni').select('id,nome').eq('attiva',true).maybeSingle());
  const independent=Promise.all([
@@ -29,6 +31,10 @@ export default async function Dashboard(){
   season?supabase.from('saldi_quote').select('id',{head:true,count:'exact'}).eq('stagione_id',season.id).gt('residuo',0):unavailable,
   season?supabase.from('adesioni').select('id',{head:true,count:'exact'}).eq('stagione_id',season.id).eq('stato','da_perfezionare'):unavailable
  ])]);
+  return {season,seasonError,requests,courses,enrollments,revisions,certificates,events,lessons,admin,adhesions,quotes,pendingAdhesions};
+ };
+ const snapshot=readDashboardSnapshot(await structuralRpc(supabase,'sc_perf_dashboard',{p_now:now,p_today:today,p_cutoff:cutoff}));
+ const {season,seasonError,requests,courses,enrollments,revisions,certificates,events,lessons,admin,adhesions,quotes,pendingAdhesions}=snapshot??await readLegacy();
  type Metric={label:string;icon:IconName;area:Area;result:{count:number|null;error:unknown};href:string;note?:string};
  const seasonQuery=season?'&stagione='+season.id:'';
  const summary:Metric[]=[

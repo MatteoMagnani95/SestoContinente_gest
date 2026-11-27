@@ -11,6 +11,7 @@ import Link from 'next/link';
 import {randomUUID} from 'node:crypto';
 import {requireStaffForRender as requireStaff} from '@/lib/security';
 import {recordGuidedPayment} from './actions';
+import {structuralRpc,readFinanceTotals} from '@/lib/structural-qa';
 
 type Balance={id:string;persona_id:string;stagione_id:string;edizione_id?:string|null;importo_dovuto:string|number;versato:string|number;residuo:string|number;stato:string;scadenza:string|null};
 type Person={id:string;nome:string;cognome:string};
@@ -64,11 +65,17 @@ export default async function Incassi({searchParams}:{searchParams:Promise<{tab?
   if(debt)query=query.eq('id',debt);if(dal)query=query.gte('scadenza',dal);if(al)query=query.lte('scadenza',al);
   const [{data,error,count:total},aggregate]=await Promise.all([
    query.order('sort_cognome').order('sort_nome').order('id',{ascending:true}).range((page-1)*perPage,page*perPage-1),
-   tutteLePagine((da,a)=>{let q=supabase.from(tab==='quota'?'gest_elenco_saldi_quote':'gest_elenco_saldi_corsi').select('id,importo_dovuto,versato,residuo').eq('stagione_id',selectedSeason);if(status==='residuo')q=q.gt('residuo',0);else if(status!=='tutte')q=q.eq('stato',status);if(personFilter)q=q.eq('persona_id',personFilter);if(debt)q=q.eq('id',debt);if(dal)q=q.gte('scadenza',dal);if(al)q=q.lte('scadenza',al);return q.order('id').range(da,a);})
+   (async()=>{
+    const optimized=readFinanceTotals(await structuralRpc(supabase,'sc_perf_incassi_totals',{p_tab:tab,p_season:selectedSeason,p_status:status,p_person:personFilter||null,p_debt:debt||null,p_dal:dal||null,p_al:al||null}));
+    if(optimized)return {optimized,data:null,error:null};
+    const legacy=await tutteLePagine((da,a)=>{let q=supabase.from(tab==='quota'?'gest_elenco_saldi_quote':'gest_elenco_saldi_corsi').select('id,importo_dovuto,versato,residuo').eq('stagione_id',selectedSeason);if(status==='residuo')q=q.gt('residuo',0);else if(status!=='tutte')q=q.eq('stato',status);if(personFilter)q=q.eq('persona_id',personFilter);if(debt)q=q.eq('id',debt);if(dal)q=q.gte('scadenza',dal);if(al)q=q.lte('scadenza',al);return q.order('id').range(da,a);});
+    return {...legacy,optimized:null};
+   })()
   ]);
   if(error||dal&&al&&dal>al)errorMessage='Impossibile leggere i saldi o intervallo di scadenza non valido.';
   else {balances=(data??[]) as unknown as Balance[];count=total??0;
-   if(!aggregate.error&&aggregate.data)try{totals=balanceTotals(aggregate.data as Balance[]);}catch{}
+   if(aggregate.optimized)totals=aggregate.optimized;
+   else if(!aggregate.error&&aggregate.data)try{totals=balanceTotals(aggregate.data as Balance[]);}catch{}
   }
  }
  const peopleIds=[...new Set(balances.map(b=>b.persona_id))];

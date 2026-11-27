@@ -167,3 +167,16 @@ test('inventory deferred row editor preserves revision locks and current filters
  assert.match(source,/listHref\(\{q:s.q,categoria:s.categoria,stato:status,revisione:revision,p:String\(page\),editor:id\}\)/);
  assert.match(source,/DeferredEditorButton href=\{editorHref\(e.id\)\}/);
 });
+
+test('validated structural RPCs are local-QA-only and retain legacy fallbacks',()=>{
+ const gate=read('lib/structural-qa.ts');
+ assert.match(gate,/SC_STRUCTURAL_RPC!=='true'/);
+ assert.match(gate,/QA_ISOLATED_ENV!=='true'/);
+ assert.match(gate,/SESTO_TEST_MODE!=='true'/);
+ assert.match(gate,/u.port==='54321'/);
+ assert.match(read('app/gestionale/page.tsx'),/snapshot\?\?await readLegacy\(\)/);
+ assert.match(read('app/gestionale/soci/page.tsx'),/sc_perf_soci_counts/);
+ assert.match(read('app/gestionale/incassi/page.tsx'),/sc_perf_incassi_totals/);
+ assert.match(read('app/gestionale/incassi/page.tsx'),/else if\(!aggregate.error&&aggregate.data\)/);
+ assert.match(read('scripts/qa-latency.cjs'),/target\?\.origin===api.origin/);
+});
