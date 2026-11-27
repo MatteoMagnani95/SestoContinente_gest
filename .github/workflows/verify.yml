@@ -129,6 +129,18 @@ jobs:
           psql "$TEST_0019_DATABASE_URL" -X -v ON_ERROR_STOP=1 -1 -f supabase/migrations/20261127125108_course_calendar_read_snapshots.sql
       - name: Prototipi strutturali RPC, parità, RLS e latenza simulata
         run: node scripts/test-structural-performance-ci.cjs
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 3.4.0
+      - name: Genera migrazione hotfix nel laboratorio e verifica cancellazione atomica
+        run: |
+          set -euo pipefail
+          supabase migration new elimina_edizione_annullata_vuota
+          file=$(find supabase/migrations -maxdepth 1 -name '*_elimina_edizione_annullata_vuota.sql' -print)
+          test -f "$file"
+          cp docs/release/COURSE_DUPLICATE_HOTFIX.sql "$file"
+          psql "$TEST_0019_DATABASE_URL" -X -v ON_ERROR_STOP=1 -1 -f "$file"
+          node scripts/test-course-duplicate-cleanup.cjs
       - name: Prova ripristino su secondo database effimero
         env:
           QA_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}

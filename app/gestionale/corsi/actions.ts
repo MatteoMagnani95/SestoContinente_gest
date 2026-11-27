@@ -2,7 +2,7 @@
 import {tutteLePagine} from '@/lib/pagine';
 import {calendarFormContext,calendarHref} from '@/lib/calendar-tools';
 import {courseViewHref,emergencyPair} from '@/lib/course-ui';
-import {courseDuplicate} from '@/lib/course-errors';
+import {courseDuplicate,findCourseDuplicate,removeCourseEdition} from '@/lib/course-errors';
 import {redirect} from 'next/navigation';
 import {revalidatePath} from 'next/cache';
 import {requireStaff} from '@/lib/security';
@@ -22,6 +22,7 @@ export async function createCatalogCourse(form:FormData){
   if(tipo==='ARA'&&(livello===null||!Number.isInteger(livello)||livello<1||livello>5))throw Error();
   descrizione=valueOf(form,'descrizione',1000)||null;
  }catch{return {error:'Controlla i dati inseriti.'};}
+ const existing=await findCourseDuplicate(supabase,'corsi',{tipo,nome,livello});if(existing)return existing;
  const {error}=await supabase.from('corsi').insert({tipo,nome,livello,descrizione});
  if(error)return await courseDuplicate(supabase,'corsi',{tipo,nome,livello},error)??{error:'Controlla disciplina, nome e livello.',field:'nome'};
  refresh();redirect('/gestionale/corsi/nuovo?msg=catalogo');
@@ -40,6 +41,7 @@ export async function createEdition(form:FormData){
  const {data:season}=await supabase.from('stagioni').select('dal,al').eq('id',stagione_id).maybeSingle();
  if(!season||inizio<season.dal||fine>season.al)return {field:'inizio',error:'Le date devono rientrare nella stagione selezionata.'};
  const direttore_id=String(form.get('direttore_id')??'');if(!UUID_RE.test(direttore_id))return {field:'direttore_id',error:'Seleziona un direttore.'};
+ const existing=await findCourseDuplicate(supabase,'edizioni_corsi',{corso_id,stagione_id,nome,inizio,fine});if(existing)return existing;
  const {data,error}=await supabase.from('edizioni_corsi').insert({direttore_id,corso_id,stagione_id,nome,inizio,fine,massimo_partecipanti:capienza,costo_corso,stato:'programmato',note}).select('id').single();
  if(error)return await courseDuplicate(supabase,'edizioni_corsi',{corso_id,stagione_id,nome,inizio,fine},error)??{error:'Verifica le informazioni dell’edizione.',field:'nome'};
  if(!data)return {error:'Creazione non riuscita.'};
@@ -58,7 +60,7 @@ export async function updateEdition(form:FormData){
  const direttore_id=String(form.get('direttore_id')??'');
  if(!UUID_RE.test(direttore_id))return {field:'direttore_id',error:'Seleziona un direttore valido per l’edizione.'};
  const {error}=await supabase.from('edizioni_corsi').update({direttore_id,nome,massimo_partecipanti:capienza,costo_corso,stato,note}).eq('id',id).select('id').single();
- if(error){if(error.code==='P3510')return {field:'direttore_id',error:'Il direttore deve coincidere con il responsabile già assegnato. Usa Allinea direttore e responsabile nella scheda istruttori.'};if(error.code==='P3419')return {field:'nome',error:'Questo corso esiste già',href:'/gestionale/corsi/'+error.details};return error.code==='P3421'?{field:'direttore_id',error:'La persona scelta è già allieva di questa edizione. Scegli un altro direttore.'}:{field:'massimo_partecipanti',error:'Verifica la capienza e i dati dell’edizione.'};}
+ if(error){if(error.code==='P3510')return {field:'direttore_id',error:'Il direttore deve coincidere con il responsabile già assegnato. Usa Allinea direttore e responsabile nella scheda istruttori.'};if(error.code==='P3419')return await courseDuplicate(supabase,'edizioni_corsi',{nome},error)??{field:'nome',error:'Questo corso esiste già'};if(error.code==='23505')return {field:'nome',error:'Questo corso esiste già'};return error.code==='P3421'?{field:'direttore_id',error:'La persona scelta è già allieva di questa edizione. Scegli un altro direttore.'}:{field:'massimo_partecipanti',error:'Verifica la capienza e i dati dell’edizione.'};}
  refresh(id);redirect(detailHref(id,'salvato'));
 }
 
@@ -241,7 +243,7 @@ export async function deleteEdition(form:FormData){
  const {supabase}=await requireStaff();let id='';
  try{id=uuidValue(form,'edizione_id');}catch{redirect('/gestionale/corsi?msg=dati');}
  if(form.get('conferma')!=='on')redirect(detailHref(id,'elimina_conferma'));
- const {error}=await supabase.rpc('rimuovi_record_gestionale',{p_tabella:'edizioni_corsi',p_id:id});
+ const {error}=await removeCourseEdition(supabase,id);
  if(error)redirect(detailHref(id,['23503','P3414'].includes(error.code)?'elimina_collegati':'elimina_errore'));
  refresh(id);revalidatePath('/gestionale/moduli/edizioni');revalidatePath('/gestionale/moduli/addebiti');
  redirect('/gestionale/corsi?msg=eliminato');

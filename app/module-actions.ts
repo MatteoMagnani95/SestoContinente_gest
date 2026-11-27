@@ -1,6 +1,6 @@
 'use server';
 import {memberTabForModule} from '@/lib/secretariat';
-import {courseDuplicate} from '@/lib/course-errors';
+import {courseDuplicate,removeCourseEdition} from '@/lib/course-errors';
 import {todayRome} from '@/lib/area-soci';
 import {paymentAmount,validPaymentDate} from '@/lib/payment-tools';
 import {redirect} from 'next/navigation';
@@ -241,7 +241,7 @@ export async function deleteModuleRecord(form:FormData){
  if(!table||mod?.appendOnly||!uuid.test(id))redirect('/gestionale?msg=permessi');
  const path=back==='calendario'?'/gestionale/calendario-visivo':back==='soci'?'/gestionale/soci':back==='richieste'?'/gestionale/richieste':back==='organi'?'/organi-sociali':back==='cda_archivio'?'/organi-sociali/archivio':back==='didattica'?'/gestionale/programmi-didattici':back==='corsi'?'/gestionale/corsi':back==='incassi'?'/gestionale/incassi':back.startsWith('corso:')&&uuid.test(back.slice(6))?`/gestionale/corsi/${back.slice(6)}`:back.startsWith('socio:')&&uuid.test(back.slice(6))?`/gestionale/soci/${back.slice(6)}`:`/gestionale/moduli/${key}`;
  if(form.get('conferma')!=='on')redirect(`${path}?msg=elimina_conferma`);
- const {error}=key==='listino'?await supabase.from('listino_corsi').delete().eq('id',id).select('id').single():await supabase.rpc('rimuovi_record_gestionale',{p_tabella:table,p_id:id});
+ const {error}=key==='listino'?await supabase.from('listino_corsi').delete().eq('id',id).select('id').single():key==='edizioni'?await removeCourseEdition(supabase,id):await supabase.rpc('rimuovi_record_gestionale',{p_tabella:table,p_id:id});
  revalidatePath('/', 'layout');
  redirect(`${path}?msg=${error?(['23503','P3414','P0001'].includes(error.code)?'elimina_collegati':'database'):'eliminato'}`);
 }
