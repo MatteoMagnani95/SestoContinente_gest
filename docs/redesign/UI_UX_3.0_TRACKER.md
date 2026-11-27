@@ -45,6 +45,7 @@ Ruoli indicativi dal codice di navigazione e dalle guardie 2.0. Al checkpoint fi
 | `app/gestionale/importazione/page.tsx` | `/gestionale/importazione` | Staff; admin-only/contestuale ove previsto | 5 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
 | `app/gestionale/incassi/[id]/page.tsx` | `/gestionale/incassi/[id]` | Staff; admin-only/contestuale ove previsto | 5 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
 | `app/gestionale/incassi/page.tsx` | `/gestionale/incassi` | Staff; admin-only/contestuale ove previsto | 5 | Verificato scenario visuale 08; gate F7 | V/V/NV/NV |
+| `app/gestionale/incassi/person-options/route.ts` | `/gestionale/incassi/person-options` | Solo QA isolata; staff autenticato, RLS, no-store | 3.1 | Implementato; verifica accesso HTTP e benchmark in corso | I/I/NV/NV |
 | `app/gestionale/incassi/posizione/[id]/page.tsx` | `/gestionale/incassi/posizione/[id]` | Staff; admin-only/contestuale ove previsto | 5 | Implementato; verifica specifica di tutti gli stati non attestata | I/I/NV/NV |
 | `app/gestionale/moduli/[modulo]/page.tsx` | `/gestionale/moduli/[modulo]` | Staff; admin-only/contestuale ove previsto | 5 | Verificato scenario visuale 03 (anagrafiche); gate F7 | V/V/NV/NV |
 | `app/gestionale/moduli/attrezzature/page.tsx` | `/gestionale/moduli/attrezzature` | Staff; admin-only/contestuale ove previsto | 5 | Verificato scenario visuale 09; gate F7 | V/V/NV/NV |

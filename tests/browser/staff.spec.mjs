@@ -317,6 +317,20 @@ test('3.1: local remote person search preserves selection and staff authorizatio
  await search.fill('inesistente-qa');
  await expect(page.getByText('0 opzioni',{exact:true})).toBeVisible();
  await expect(select).toHaveValue(target.value);
- const guest=await page.context().browser().newContext();
- try{const response=await guest.request.get(new URL(endpoint,page.url()).href);expect(response.status()).toBe(401);}finally{await guest.close();}
+ const url=new URL(endpoint,page.url()).href;
+ // Playwright's browser fixture can inherit project storageState: override it explicitly.
+ const guest=await page.context().browser().newContext({storageState:{cookies:[],origins:[]}});
+ try{
+  expect(await guest.cookies()).toHaveLength(0);
+  const response=await guest.request.get(url,{maxRedirects:0});
+  expect(response.status()).toBe(401);
+  expect(await response.json()).toEqual({error:'Accedi'});
+ }finally{await guest.close();}
+ expect(process.env.QA_MEMBER_STATE).toBeTruthy();
+ const member=await page.context().browser().newContext({storageState:process.env.QA_MEMBER_STATE});
+ try{
+  const response=await member.request.get(url,{maxRedirects:0});
+  expect(response.status()).toBe(403);
+  expect(await response.json()).toEqual({error:'Accesso non autorizzato'});
+ }finally{await member.close();}
 });
