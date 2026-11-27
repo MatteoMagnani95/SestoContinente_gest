@@ -9,7 +9,7 @@ const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.
 const enabled={SC_STRUCTURAL_RPC:'true',QA_ISOLATED_ENV:'true',SESTO_TEST_MODE:'true',SESTO_EMAIL_MODE:'simulate',NEXT_PUBLIC_SUPABASE_URL:'http://127.0.0.1:54321'};
 function load(env){
  const exports={};
- runInNewContext(compiled,{exports,process:{env},require(name){assert.equal(name,'server-only');return {};},console:{log(){}}});
+ runInNewContext(compiled,{exports,URL,process:{env},require(name){assert.equal(name,'server-only');return {};},console:{log(){}}});
  return exports;
 }
 test('structural activation is opt-in and impossible outside disposable QA',async()=>{

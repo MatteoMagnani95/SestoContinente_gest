@@ -86,7 +86,9 @@ jobs:
       - name: Prova disattivazione delle ottimizzazioni sullo stesso build
         run: |
           set -euo pipefail
-          SC_STRUCTURAL_RPC=false npm run start -- --hostname 127.0.0.1 --port 3316 > "$RUNNER_TEMP/sesto-qa-disabled.log" 2>&1 &
+          SC_STRUCTURAL_RPC=false node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3316 > "$RUNNER_TEMP/sesto-qa-disabled.log" 2>&1 &
+          disabled_pid=$!
+          trap 'kill "$disabled_pid" 2>/dev/null || true' EXIT
           for i in {1..30}; do
             if curl -fsS http://127.0.0.1:3316/ >/dev/null; then break; fi
             sleep 1
