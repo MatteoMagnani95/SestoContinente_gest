@@ -13,7 +13,7 @@ import {redirect} from 'next/navigation';
 import {todayRome} from '@/lib/area-soci';
 import {statoSingolo} from '@/lib/certificati';
 import Link from 'next/link';
-import {requireUser} from '@/lib/security';
+import {requireUserForRender as requireUser} from '@/lib/security';
 import {markNotification} from './actions';
 import {formatValue} from '@/lib/format';
 export default async function PersonalArea({searchParams}:{searchParams:Promise<{tab?:string;p?:string;msg?:string}>}) {
