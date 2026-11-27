@@ -115,3 +115,68 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.sc_perf_navigation() FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.sc_perf_navigation() TO authenticated;
+
+
+-- Inventory proof: compute complete KPI counts, filter, then return one page.
+CREATE FUNCTION public.sc_perf_inventory(p_today date,p_cutoff date,p_query text,p_category text,p_state text,p_revision text,p_page integer,p_edit uuid)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY INVOKER SET search_path='' AS $$
+DECLARE result jsonb;
+BEGIN
+ IF NOT COALESCE(public.is_staff(),false) THEN RAISE EXCEPTION 'Accesso non autorizzato' USING ERRCODE='42501'; END IF;
+ IF p_today IS NULL OR p_cutoff IS NULL OR p_cutoff<p_today OR p_page IS NULL OR p_page NOT BETWEEN 1 AND 100000 OR length(coalesce(p_query,''))>80 THEN RAISE EXCEPTION 'Filtro non valido' USING ERRCODE='22023'; END IF;
+ WITH all_items AS MATERIALIZED (
+  SELECT a.*,EXISTS(SELECT 1 FROM public.assegnazioni_attrezzature l WHERE l.attrezzatura_id=a.id AND l.restituita_il IS NULL) AS has_loan
+  FROM public.attrezzature a
+ ), derived AS MATERIALIZED (
+  SELECT a.*,
+   CASE WHEN has_loan THEN CASE WHEN stato IN ('in_manutenzione','fuori_servizio') THEN stato ELSE 'assegnata' END WHEN stato='assegnata' THEN 'incongruente' ELSE stato END AS display_state,
+   CASE WHEN prossima_revisione IS NULL THEN 'non_acquisita' WHEN prossima_revisione<p_today THEN 'scaduta' WHEN prossima_revisione<=p_cutoff THEN 'in_scadenza' ELSE 'registrata' END AS revision_state
+  FROM all_items a
+ ), filtered AS MATERIALIZED (
+  SELECT a.* FROM derived a
+  WHERE (coalesce(p_query,'')='' OR EXISTS(SELECT 1 FROM unnest(ARRAY[a.codice,a.categoria,a.marca,a.modello,a.matricola]) v WHERE strpos(lower(v COLLATE pg_catalog."it-x-icu"),lower(p_query COLLATE pg_catalog."it-x-icu"))>0))
+   AND (coalesce(p_category,'')='' OR categoria=p_category)
+   AND (coalesce(p_state,'')='' OR display_state=p_state)
+   AND (coalesce(p_revision,'')='' OR revision_state=p_revision)
+ ), direct AS (SELECT * FROM derived WHERE id=p_edit),
+ selected AS (
+  SELECT * FROM direct
+  UNION ALL
+  SELECT * FROM (SELECT * FROM filtered ORDER BY codice,id LIMIT 30 OFFSET (p_page-1)*30) a WHERE NOT EXISTS(SELECT 1 FROM direct)
+ ), upcoming AS (
+  SELECT * FROM derived WHERE revision_state IN ('scaduta','in_scadenza') ORDER BY prossima_revisione,codice COLLATE pg_catalog."it-x-icu",id LIMIT 6
+ )
+ SELECT jsonb_build_object(
+  'count',(SELECT count(*) FROM filtered),
+  'direct',EXISTS(SELECT 1 FROM direct),
+  'categories',(SELECT coalesce(jsonb_agg(categoria ORDER BY categoria COLLATE pg_catalog."it-x-icu"),'[]'::jsonb) FROM (SELECT DISTINCT categoria FROM derived) c),
+  'metrics',(SELECT jsonb_build_object('available',count(*) FILTER(WHERE display_state='disponibile'),'loaned',count(*) FILTER(WHERE has_loan),'maintenance',count(*) FILTER(WHERE stato='in_manutenzione'),'out',count(*) FILTER(WHERE stato='fuori_servizio'),'due',count(*) FILTER(WHERE revision_state='in_scadenza'),'total',count(*)) FROM derived),
+  'rows',(SELECT coalesce(jsonb_agg(to_jsonb(s)||jsonb_build_object('locked',EXISTS(SELECT 1 FROM public.revisioni_attrezzature r WHERE r.attrezzatura_id=s.id)) ORDER BY s.codice,s.id),'[]'::jsonb) FROM selected s),
+  'upcomingCount',(SELECT count(*) FROM derived WHERE revision_state IN ('scaduta','in_scadenza')),
+  'upcoming',(SELECT coalesce(jsonb_agg(to_jsonb(u) ORDER BY u.prossima_revisione,u.codice COLLATE pg_catalog."it-x-icu",u.id),'[]'::jsonb) FROM upcoming u)
+ ) INTO result;
+ RETURN result;
+END $$;
+REVOKE ALL ON FUNCTION public.sc_perf_inventory(date,date,text,text,text,text,integer,uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.sc_perf_inventory(date,date,text,text,text,text,integer,uuid) TO authenticated;
+
+-- First search prototype for staff-only person selectors. Selected ID is retained separately.
+CREATE FUNCTION public.sc_perf_person_options(p_query text,p_page integer,p_selected uuid)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY INVOKER SET search_path='' AS $$
+DECLARE result jsonb; term text;
+BEGIN
+ IF NOT COALESCE(public.is_staff(),false) THEN RAISE EXCEPTION 'Accesso non autorizzato' USING ERRCODE='42501'; END IF;
+ IF p_page IS NULL OR p_page NOT BETWEEN 1 AND 100000 OR length(coalesce(p_query,''))>120 THEN RAISE EXCEPTION 'Filtro non valido' USING ERRCODE='22023'; END IF;
+ term:=lower(regexp_replace(normalize(btrim(coalesce(p_query,'')),NFD),U&'[\0300-\036f]','','g') COLLATE pg_catalog."it-x-icu");
+ WITH matches AS MATERIALIZED (
+  SELECT id,nome,cognome FROM public.persone
+  WHERE strpos(lower(regexp_replace(normalize(cognome||' '||nome,NFD),U&'[\0300-\036f]','','g') COLLATE pg_catalog."it-x-icu"),term)>0 OR term=''
+ ), page AS (SELECT * FROM matches ORDER BY cognome,nome,id LIMIT 50 OFFSET (p_page-1)*50)
+ SELECT jsonb_build_object('count',(SELECT count(*) FROM matches),
+  'options',(SELECT coalesce(jsonb_agg(jsonb_build_object('value',id,'label',cognome||' '||nome) ORDER BY cognome,nome,id),'[]'::jsonb) FROM page),
+  'selected',(SELECT jsonb_build_object('value',id,'label',cognome||' '||nome) FROM public.persone WHERE id=p_selected))
+ INTO result;
+ RETURN result;
+END $$;
+REVOKE ALL ON FUNCTION public.sc_perf_person_options(text,integer,uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.sc_perf_person_options(text,integer,uuid) TO authenticated;

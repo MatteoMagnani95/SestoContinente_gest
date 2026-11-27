@@ -143,10 +143,51 @@ async function main(){
    await denied(()=>memberRpc(query,season,[]),'42501');
    await denied(()=>financeRpc(query,financialFilters[0]),'42501');
   }
+
+  // Archive fixtures and parity: all rows and KPIs in old code, only 30 rows in new result.
+  await db.query('reset role');
+  await db.query("insert into public.attrezzature(codice,categoria,marca,stato,prossima_revisione) select $1||lpad(n::text,5,'0'),case when n%2=0 then 'Collaudo A' else 'Collaudo B' end,case when n%2=0 then 'Marca À' else 'Marca B' end,(array['disponibile','assegnata','in_manutenzione','fuori_servizio'])[1+n%4],case when n%4=0 then null else current_date+(n%90-30) end from generate_series(1,500) n",[prefix]);
+  const equipment=(await db.query("select id from public.attrezzature where codice like $1 order by codice limit 1",[prefix+'%'])).rows[0].id;
+  await db.query("insert into public.persone(nome,cognome) values('Élodie','Àccénto')");
+  const inventoryRpc=async(q,args)=>(await q('select public.sc_perf_inventory($1,$2,$3,$4,$5,$6,$7,$8) as data',args)).rows[0].data;
+  const inventoryOld=async(q,[today,cutoff,term,category,state,revision,page,edit])=>{
+   const all=[];
+   for(let offset=0;;offset+=500){const batch=(await q("select to_jsonb(a) as row from public.attrezzature a order by codice,id limit 500 offset $1",[offset])).rows.map(r=>r.row);all.push(...batch);if(batch.length<500)break;}
+   const links=(await q('select attrezzatura_id from public.assegnazioni_attrezzature where restituita_il is null')).rows;
+   const reviews=(await q('select attrezzatura_id from public.revisioni_attrezzature')).rows;
+   const open=new Set(links.map(l=>l.attrezzatura_id)),locked=new Set(reviews.map(r=>r.attrezzatura_id));
+   const derived=all.map(e=>({...e,has_loan:open.has(e.id),display_state:open.has(e.id)?(['in_manutenzione','fuori_servizio'].includes(e.stato)?e.stato:'assegnata'):e.stato==='assegnata'?'incongruente':e.stato,revision_state:!e.prossima_revisione?'non_acquisita':e.prossima_revisione<today?'scaduta':e.prossima_revisione<=cutoff?'in_scadenza':'registrata'}));
+   const filtered=derived.filter(e=>(!term||[e.codice,e.categoria,e.marca,e.modello,e.matricola].some(v=>v?.toLocaleLowerCase('it').includes(term.toLocaleLowerCase('it'))))&&(!category||e.categoria===category)&&(!state||e.display_state===state)&&(!revision||e.revision_state===revision));
+   const direct=derived.find(e=>e.id===edit),rows=(direct?[direct]:filtered.slice((page-1)*30,page*30)).map(e=>({...e,locked:locked.has(e.id)}));
+   const upcoming=derived.filter(e=>['scaduta','in_scadenza'].includes(e.revision_state)).sort((a,b)=>a.prossima_revisione.localeCompare(b.prossima_revisione)||a.codice.localeCompare(b.codice,'it'));
+   return {count:filtered.length,direct:!!direct,categories:[...new Set(all.map(e=>e.categoria))].sort((a,b)=>a.localeCompare(b,'it')),metrics:{available:derived.filter(e=>e.display_state==='disponibile').length,loaned:derived.filter(e=>e.has_loan).length,maintenance:derived.filter(e=>e.stato==='in_manutenzione').length,out:derived.filter(e=>e.stato==='fuori_servizio').length,due:derived.filter(e=>e.revision_state==='in_scadenza').length,total:derived.length},rows,upcomingCount:upcoming.length,upcoming:upcoming.slice(0,6)};
+  };
+  const inventoryFilters=[[today,cutoff,prefix,'','','',1,null],[today,cutoff,prefix,'','','',10,null],[today,cutoff,'marca à','Collaudo A','','',1,null],[today,cutoff,prefix,'','incongruente','',1,null],[today,cutoff,prefix,'','','scaduta',1,null],[today,cutoff,'inesistente','','','',1,equipment],[today,cutoff,prefix,'','','',999,null]];
+  const optionsRpc=async(q,args)=>(await q('select public.sc_perf_person_options($1,$2,$3) as data',args)).rows[0].data;
+  const optionsOld=async(q,[term,page,selected])=>{
+   const all=[];
+   for(let offset=0;;offset+=500){const batch=(await q('select id as value,cognome||$1||nome as label from public.persone order by cognome,nome,id limit 500 offset $2',[' ',offset])).rows;all.push(...batch);if(batch.length<500)break;}
+   const normalize=s=>s.normalize('NFD').replace(/\p{Diacritic}/gu,'').toLocaleLowerCase('it');
+   const matched=all.filter(o=>normalize(o.label).includes(normalize(term.trim())));
+   return {count:matched.length,options:matched.slice((page-1)*50,page*50),selected:all.find(o=>o.value===selected)??null};
+  };
+  const optionFilters=[[prefix,1,person],[prefix,40,person],['accento elodie',1,person],['inesistente',1,person],['',1,null]];
+  for(const id of [admin,secretary]){
+   await role(id);
+   for(const args of inventoryFilters)assert.deepEqual(await inventoryRpc(query,args),await inventoryOld(query,args));
+   for(const args of optionFilters)assert.deepEqual(await optionsRpc(query,args),await optionsOld(query,args));
+   assert.equal((await inventoryRpc(query,inventoryFilters[0])).rows.length,30);
+   assert.equal((await optionsRpc(query,optionFilters[0])).options.length,50);
+  }
+  for(const id of [member,disabled,null]){
+   await role(id,id?'authenticated':'anon');
+   await denied(()=>inventoryRpc(query,inventoryFilters[0]),'42501');
+   await denied(()=>optionsRpc(query,optionFilters[0]),'42501');
+  }
   await role(admin);
   const results=[];
   for(const rtt of [0,40,80]){
-   for(const [name,before,after] of [['dashboard',dashboardOld,dashboardRpc],['soci-counts',q=>memberOld(q,season,[prefix]),q=>memberRpc(q,season,[prefix])],['incassi-totals',q=>financeOld(q,financialFilters[0]),q=>financeRpc(q,financialFilters[0])],['navigation-account',navOld,navRpc]]){
+   for(const [name,before,after] of [['dashboard',dashboardOld,dashboardRpc],['soci-counts',q=>memberOld(q,season,[prefix]),q=>memberRpc(q,season,[prefix])],['incassi-totals',q=>financeOld(q,financialFilters[0]),q=>financeRpc(q,financialFilters[0])],['navigation-account',navOld,navRpc],['inventory-page',q=>inventoryOld(q,inventoryFilters[0]),q=>inventoryRpc(q,inventoryFilters[0])],['person-options',q=>optionsOld(q,optionFilters[0]),q=>optionsRpc(q,optionFilters[0])]]){
     const sample=async(fn)=>{
      let requests=0;
      const q=async(sql,args)=>{requests++;if(rtt)await delay(rtt);return db.query(sql,args);};

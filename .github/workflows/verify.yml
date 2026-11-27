@@ -10,6 +10,7 @@ on:
       - 'perf/3.1-next-pass'
       - 'perf/3.1-structural'
       - 'perf/3.1-navigation'
+      - 'perf/3.1-archives'
       - 'release/gestionale-3.1'
   workflow_dispatch:
 
