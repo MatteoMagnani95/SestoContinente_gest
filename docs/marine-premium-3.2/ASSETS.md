@@ -14,3 +14,6 @@ Token: app/marine-premium-tokens.css, scoped .sc-marine-preview, non importato; 
 
 ## Revisione richiesta dall'utente
 Il prototipo HTML precedente è respinto. Riferimenti vincolanti 01–06: fondo a tutta pagina, hero scuro con testo bianco e logo originale, separatore ondulato, quattro step, banner Nereia marino; nelle pagine auth e adesione scheda chiara a sinistra e identità/Nereia a destra, responsive. Non introdurre funzioni inesistenti del mockup. I due WebP 768 e 640 vengono integrati senza ricompressione; 1440/480 non ancora trasferiti. BrandLogo originale invariato. Nuova CSS attiva solo sulle superfici pubbliche e applicante, nessun deploy. Confronto screenshot reali ancora da svolgere; non attestare fedeltà pixel-perfect.
+
+## Revisione 01–06: risoluzioni originali complete
+Aggiunti hero 1440 e 480, senza ricompressione, test SHA256 e dimensioni; media query 480/768/1440. Auth 768 identico al hero 768, non duplicato. Fondo e illustrazione sono ancora la prima opera originale, non lo stesso fondale pulito e le scene separate del riferimento. La fedeltà richiede revisione screenshot e, se necessario, nuovi asset mirati. Loghi originali invariati.

@@ -32,7 +32,7 @@ test('Marine Premium: active public layer stays scoped, not global',()=>{
 
 test('Marine Premium: locally generated WebP bytes and no SVG decoration in new layer',()=>{
  const visual=read('app/marine-premium-public.css');
- for(const [name,size,hash] of [['marine-hero-768.webp',76596,'35aaf6d9734b3c70461f4a9918f2145c48e5f397d87dcc0d4ac675f1b303645f'],['marine-nereia-640.webp',35958,'86fa1f537dd8af264838f1b715b8e7bc66be49273e5869d8369fcfd20347957a']]){
+ for(const [name,size,hash] of [['marine-hero-1440.webp',209738,'68b04ebd489743ff7f1f5a33d2cba7e98816e686380f3ebe97ad5f9393f7b537'],['marine-hero-480.webp',33776,'f1d58f1bf64c8095d663ca0fb254b3764c9a098a167f491cca14cd5360751f61'],['marine-hero-768.webp',76596,'35aaf6d9734b3c70461f4a9918f2145c48e5f397d87dcc0d4ac675f1b303645f'],['marine-nereia-640.webp',35958,'86fa1f537dd8af264838f1b715b8e7bc66be49273e5869d8369fcfd20347957a']]){
  const b=readFileSync(new URL('../public/brand/marine-premium/'+name,import.meta.url));assert.equal(b.length,size);assert.equal(b.toString('ascii',0,4),'RIFF');assert.equal(b.toString('ascii',8,12),'WEBP');assert.equal(createHash('sha256').update(b).digest('hex'),hash);assert.ok(visual.includes(name));}
  assert.doesNotMatch(visual,/url\([^)]*\.svg|https?:\/\//i);
 });

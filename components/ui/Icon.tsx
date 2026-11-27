@@ -1,6 +1,6 @@
 import type { SVGProps } from 'react';
 
-export type IconName = 'users' | 'clipboard' | 'course' | 'equipment' | 'certificate' | 'calendar' | 'check' | 'warning' | 'error' | 'info' | 'archive' | 'search' | 'arrow-left' | 'plus' | 'clock' | 'document' | 'home' | 'menu' | 'close' | 'chevron-down' | 'chevron-right' | 'user' | 'bell' | 'settings' | 'wallet' | 'logout' | 'ara' | 'apnea' | 'nuoto' | 'gav' | 'regulator' | 'wetsuit' | 'computer' | 'file-pdf' | 'file-image' | 'file-sheet' | 'file-word' | 'lock';
+export type IconName = 'users' | 'clipboard' | 'course' | 'equipment' | 'certificate' | 'calendar' | 'check' | 'warning' | 'error' | 'info' | 'archive' | 'search' | 'arrow-left' | 'plus' | 'clock' | 'document' | 'home' | 'menu' | 'close' | 'chevron-down' | 'chevron-right' | 'user' | 'bell' | 'settings' | 'wallet' | 'logout' | 'ara' | 'apnea' | 'nuoto' | 'gav' | 'regulator' | 'wetsuit' | 'computer' | 'file-pdf' | 'file-image' | 'file-sheet' | 'file-word' | 'lock' | 'mail';
 
 const shapes: Record<IconName, React.ReactNode> = {
   gav: <><path d="M4 3h4l2 6h4l2-6h4v17h-6l-2-5-2 5H4Z"/><path d="M7 12h3m4 0h3"/></>,
@@ -11,6 +11,7 @@ const shapes: Record<IconName, React.ReactNode> = {
   'file-image': <><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8" cy="9" r="2"/><path d="m3 17 5-5 4 4 4-5 5 6"/></>,
   'file-sheet': <><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M4 15h16M10 3v18"/></>,
   'file-word': <><path d="M5 3h9l5 5v13H5V3Zm9 0v6h5"/><path d="m8 12 2 5 2-4 2 4 2-5"/></>,
+  mail: <><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></>,
   lock: <><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></>,
   ara: <><path d="M3 9c0-2 2-3 4-3h10c2 0 4 1 4 3v5c0 3-4 4-6 2l-2-2a1.4 1.4 0 0 0-2 0l-2 2c-2 2-6 1-6-2Z"/><path d="M3 9H1v5h2m18-5h2v5h-2"/></>,
   apnea: <><path d="m4 18 2-11 3-4 3 2-2 5-2 11Zm9 0 2-11 3-4 3 2-2 5-2 11Z"/><path d="m6 11 4 1m5-1 4 1"/></>,

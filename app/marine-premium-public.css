@@ -2,7 +2,7 @@
    Public art remains decorative, all existing HTML, links and security stay live. */
 #sc-main:not(.sc-main-staff):has(>.sc-route-content>.sc-marine-preview){
  background:#082c40 linear-gradient(90deg,rgba(8,44,64,.18),rgba(8,44,64,.5),rgba(8,44,64,.18));
- background-image:linear-gradient(180deg,rgba(3,28,44,.12),rgba(3,28,44,.48)),url('/brand/marine-premium/marine-hero-768.webp');
+ background-image:linear-gradient(180deg,rgba(3,28,44,.12),rgba(3,28,44,.48)),var(--sc-marine-hero, url('/brand/marine-premium/marine-hero-768.webp'));
  background-position:center top;background-size:cover;background-repeat:no-repeat;
 }
 #sc-main:has(>.sc-route-content>.sc-marine-preview)>.sc-public-navigation .sc-page-navigation{
@@ -10,7 +10,7 @@
 }
 .sc-marine-preview.sc-public-home{max-width:1280px;padding:0 24px 24px;gap:0;background:transparent}
 .sc-marine-preview .sc-home-hero{position:relative;isolation:isolate;overflow:hidden;grid-template-columns:minmax(0,1.35fr) minmax(0,.65fr);min-height:380px;gap:24px;padding:44px 38px 62px;background:#082c40;border:0;border-radius:0;color:white}
-.sc-marine-preview .sc-home-hero::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,#082c40 3%,rgba(8,44,64,.96) 24%,rgba(8,44,64,.58) 55%,rgba(8,44,64,.12)),url('/brand/marine-premium/marine-hero-768.webp') right center/auto 100% no-repeat}
+.sc-marine-preview .sc-home-hero::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,#082c40 3%,rgba(8,44,64,.96) 24%,rgba(8,44,64,.58) 55%,rgba(8,44,64,.12)),var(--sc-marine-hero, url('/brand/marine-premium/marine-hero-768.webp')) right center/auto 100% no-repeat}
 .sc-marine-preview .sc-home-hero::after{content:"";position:absolute;bottom:-29px;left:-4%;width:108%;height:64px;background:#f4f8fa;border-radius:50% 50% 0 0/50% 50% 0 0;z-index:-1;pointer-events:none}
 .sc-marine-preview .sc-home-hero>div{align-self:center;min-width:0}
 .sc-marine-preview .sc-home-hero h1{color:#fff;font-size:clamp(34px,4.2vw,56px);letter-spacing:-.04em;line-height:1.08}
@@ -33,7 +33,7 @@
 .sc-marine-preview.sc-auth-shell,.sc-marine-preview.sc-marine-applicant-shell{background:transparent;max-width:1110px;margin:auto;padding:20px 24px 46px;display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,.9fr);gap:20px;align-items:start}
 .sc-marine-preview.sc-auth-shell .sc-auth-panel,.sc-marine-preview.sc-marine-applicant-shell>.sc-applicant-page{background:#fff;border:1px solid #d5e8eb;border-radius:20px;box-shadow:0 8px 26px #031c2c45;min-width:0;overflow:hidden}
 .sc-marine-preview.sc-marine-applicant-shell>.sc-applicant-page{width:100%;margin:0;padding:20px}
-.sc-marine-preview .sc-auth-decoration{height:92px;margin:-28px -28px 4px;background:linear-gradient(0deg,#082c4033,transparent),url('/brand/marine-premium/marine-hero-768.webp') center 38%/cover no-repeat;border-radius:0 0 45% 12%/0 0 24% 14%}
+.sc-marine-preview .sc-auth-decoration{height:92px;margin:-28px -28px 4px;background:linear-gradient(0deg,#082c4033,transparent),var(--sc-marine-hero, url('/brand/marine-premium/marine-hero-768.webp')) center 38%/cover no-repeat;border-radius:0 0 45% 12%/0 0 24% 14%}
 .sc-marine-preview .sc-auth-identity-copy{background:#f4f8fa;padding:24px;border-radius:20px;border:1px solid #d5e8eb;box-shadow:var(--sc-shadow)}
 .sc-marine-preview .sc-auth-identity .sc-nereia-project{background:linear-gradient(90deg,#082c40 45%,rgba(8,44,64,.4)),url('/brand/marine-premium/marine-nereia-640.webp') right center/cover no-repeat #082c40;border:1px solid #78bcc9;border-radius:16px}
 .sc-marine-preview .sc-auth-identity .sc-nereia-project :is(strong,span){color:#fff}
@@ -53,7 +53,7 @@
 @media(max-width:600px){
  .sc-marine-preview.sc-public-home{padding:0 12px 20px}
  .sc-marine-preview .sc-home-hero{grid-template-columns:minmax(0,1fr);min-height:0;padding:26px 18px 48px;gap:10px}
- .sc-marine-preview .sc-home-hero::before{background:linear-gradient(90deg,rgba(8,44,64,.97),rgba(8,44,64,.72)),url('/brand/marine-premium/marine-hero-768.webp') center/cover no-repeat}
+ .sc-marine-preview .sc-home-hero::before{background:linear-gradient(90deg,rgba(8,44,64,.97),rgba(8,44,64,.72)),var(--sc-marine-hero, url('/brand/marine-premium/marine-hero-768.webp')) center/cover no-repeat}
  .sc-marine-preview .sc-home-identity{padding:4px;align-items:flex-start}
  .sc-marine-preview .sc-home-identity .sc-brand-full{width:min(100%,154px)}
  .sc-marine-preview .sc-home-process{padding:18px 14px}
@@ -66,4 +66,61 @@
 @media print{
  #sc-main:not(.sc-main-staff):has(>.sc-route-content>.sc-marine-preview){background:white}
  .sc-marine-preview .sc-auth-decoration,.sc-marine-preview .sc-home-hero::before,.sc-marine-preview .sc-home-hero::after{display:none}
+}
+
+/* Reference fidelity pass 01–06: wide hero, rounded wave dividers, separate identity and process cards. */
+#sc-main:not(.sc-main-staff):has(.sc-route-content>.sc-marine-preview){
+ --sc-marine-hero:url('/brand/marine-premium/marine-hero-1440.webp');
+ position:relative;isolation:isolate;
+}
+#sc-main:not(.sc-main-staff):has(.sc-route-content>.sc-marine-applicant-shell){
+ background:#082c40 linear-gradient(180deg,#031c2c22,#031c2c99);
+ background-image:linear-gradient(180deg,#031c2c22,#031c2c99),var(--sc-marine-hero);
+ background-position:center top;background-repeat:no-repeat;background-size:cover;
+}
+#sc-main:not(.sc-main-staff):has(>.sc-route-content>.sc-public-home){background:#f4f8fa}
+.sc-marine-preview.sc-public-home{max-width:none;padding:0 0 32px}
+.sc-marine-preview .sc-home-hero{padding-inline:max(38px,calc((100vw - 1300px)/2));min-height:clamp(380px,34vw,540px)}
+.sc-marine-preview .sc-home-hero::before{background:linear-gradient(90deg,#082c40d9 2%,#082c40a6 28%,#082c4033 58%,#082c4011),var(--sc-marine-hero) center 44%/cover no-repeat}
+.sc-marine-preview .sc-home-hero::after{height:74px;bottom:-38px;border-top:9px solid #68c9ce}
+.sc-marine-preview .sc-home-process{max-width:1380px;width:100%;margin:auto;padding-inline:30px}
+.sc-marine-preview .sc-home-process li{display:grid;grid-template-columns:48px minmax(0,1fr);column-gap:12px;row-gap:2px;align-items:start;position:relative}
+.sc-marine-preview .sc-process-art{grid-column:1;grid-row:1/3;display:grid;place-items:center;width:48px;height:48px;border-radius:50%;background:#c9efef;color:#07515f}
+.sc-marine-preview .sc-process-art .sc-icon{width:30px;height:30px}
+.sc-marine-preview .sc-process-number{grid-column:2;min-width:26px;width:26px;height:26px;font-size:14px}
+.sc-marine-preview .sc-home-process li>div{grid-column:2}
+.sc-marine-preview.sc-public-home>.sc-nereia-project{max-width:1310px;width:calc(100% - 48px);margin:0 auto;border-radius:20px;min-height:154px}
+.sc-marine-preview .sc-nereia-project img{padding:0 12px 0 0;border-radius:0;background:transparent;border-inline-end:1px solid #b7dce2}
+.sc-marine-preview .sc-auth-identity-copy{background:linear-gradient(145deg,#fff 15%,#d8f1f3 100%);border-color:#9dd6dc}
+.sc-marine-preview .sc-auth-identity-copy .eyebrow::after,.sc-marine-preview .sc-auth-panel>.eyebrow::after,.sc-marine-preview .sc-home-process h2::after{content:"";display:block;width:52px;height:4px;margin-top:8px;border-radius:4px;background:#159ba4}
+.sc-marine-preview .sc-auth-decoration,.sc-marine-preview .sc-marine-applicant-art{position:relative;overflow:hidden;height:116px;background:url('/brand/marine-premium/marine-hero-768.webp') center 38%/cover no-repeat;border-radius:0}
+.sc-marine-preview .sc-auth-decoration::after,.sc-marine-preview .sc-marine-applicant-art::after{content:"";position:absolute;inset:auto -12% -26px;height:52px;background:white;border-radius:50% 50% 0 0;border-top:6px solid #b3e4e6}
+.sc-marine-preview .sc-marine-applicant-art{margin:-20px -20px 14px}
+.sc-marine-preview .sc-applicant-page>.sc-page-header-marine{box-shadow:none;background:white;border:0;padding:0;margin-bottom:12px}
+.sc-marine-preview .sc-marine-home-link{grid-column:2;grid-row:1;justify-self:end;align-self:start;display:inline-flex;align-items:center;gap:8px;border:1px solid #b4e1e4;color:white;background:#082c40;padding:8px 14px;min-height:44px;border-radius:12px;text-decoration:none}
+.sc-marine-preview .sc-marine-home-link .sc-icon{width:18px;height:18px}
+.sc-marine-preview.sc-auth-shell,.sc-marine-preview.sc-marine-applicant-shell{grid-template-rows:auto 1fr}
+.sc-marine-preview.sc-auth-shell>.sc-auth-panel,.sc-marine-preview.sc-marine-applicant-shell>.sc-applicant-page{grid-row:2;grid-column:1}
+.sc-marine-preview>.sc-auth-identity{grid-row:2;grid-column:2}
+.sc-marine-preview .sc-registration-steps li[aria-current=step]{background:none;padding:0}
+.sc-marine-preview .sc-applicant-page>.sc-registration-steps{margin:16px 0}
+.sc-marine-preview .sc-applicant-page>.sc-alert{margin:12px 0}
+#sc-main:not(.sc-main-staff):has(.sc-route-content>.sc-auth-shell.sc-marine-preview)::after,
+#sc-main:not(.sc-main-staff):has(.sc-route-content>.sc-marine-applicant-shell)::after{content:"";display:block;height:26px;background:radial-gradient(ellipse at 30% 100%,#0e8a9a 35%,transparent 36%),radial-gradient(ellipse at 75% 100%,#77d0d7 35%,transparent 36%),#082c40;pointer-events:none}
+@media(min-width:1300px){.sc-user-content .sc-marine-applicant-shell{grid-template-columns:minmax(0,1.35fr) minmax(0,.9fr);max-width:1110px}}
+@media(max-width:1000px){
+ #sc-main:not(.sc-main-staff):has(.sc-route-content>.sc-marine-preview){--sc-marine-hero:url('/brand/marine-premium/marine-hero-768.webp')}
+ .sc-marine-preview .sc-home-hero{padding-inline:24px}
+ .sc-marine-preview.sc-auth-shell,.sc-marine-preview.sc-marine-applicant-shell{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto}
+ .sc-marine-preview>.sc-auth-identity{grid-row:3;grid-column:1}
+ .sc-marine-preview .sc-marine-home-link{grid-row:1;grid-column:1}
+}
+@media(max-width:600px){
+ #sc-main:not(.sc-main-staff):has(.sc-route-content>.sc-marine-preview){--sc-marine-hero:url('/brand/marine-premium/marine-hero-480.webp')}
+ .sc-marine-preview .sc-home-hero{min-height:0;padding:26px 18px 56px}
+ .sc-marine-preview .sc-home-hero::before{background:linear-gradient(90deg,#082c40f5,#082c40bb),var(--sc-marine-hero) center/cover no-repeat}
+ .sc-marine-preview .sc-home-process{padding:18px 14px}
+ .sc-marine-preview.sc-public-home>.sc-nereia-project{width:calc(100% - 24px);min-height:0}
+ .sc-marine-preview .sc-auth-decoration,.sc-marine-preview .sc-marine-applicant-art{height:86px;background-image:var(--sc-marine-hero)}
+ .sc-marine-preview .sc-marine-applicant-art{margin:-12px -12px 12px}
 }
