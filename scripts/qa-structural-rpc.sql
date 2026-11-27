@@ -56,3 +56,38 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.sc_perf_soci_counts(uuid,text[]) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.sc_perf_soci_counts(uuid,text[]) TO authenticated;
+
+-- Finance proof: aggregate all filtered rows, never just the visible page.
+CREATE FUNCTION public.sc_perf_incassi_totals(p_tab text,p_season uuid,p_status text,p_person uuid,p_debt uuid,p_dal date,p_al date)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY INVOKER SET search_path='' AS $$
+DECLARE result jsonb;
+BEGIN
+ IF NOT COALESCE(public.is_staff(),false) THEN
+  RAISE EXCEPTION 'Accesso non autorizzato' USING ERRCODE='42501';
+ END IF;
+ IF p_tab IS NULL OR p_tab NOT IN ('quota','corso') OR p_status IS NULL OR p_status NOT IN ('tutte','residuo','non_pagata','parziale','pagata') OR p_season IS NULL OR p_dal>p_al THEN
+  RAISE EXCEPTION 'Filtro non valido' USING ERRCODE='22023';
+ END IF;
+ WITH balances AS (
+  SELECT id,persona_id,stagione_id,stato,scadenza,importo_dovuto,versato,residuo FROM public.gest_elenco_saldi_quote WHERE p_tab='quota'
+  UNION ALL
+  SELECT id,persona_id,stagione_id,stato,scadenza,importo_dovuto,versato,residuo FROM public.gest_elenco_saldi_corsi WHERE p_tab='corso'
+ ), selected AS (
+  SELECT * FROM balances b
+  WHERE b.stagione_id=p_season
+   AND (p_status='tutte' OR (p_status='residuo' AND b.residuo>0) OR b.stato::text=p_status)
+   AND (p_person IS NULL OR b.persona_id=p_person)
+   AND (p_debt IS NULL OR b.id=p_debt)
+   AND (p_dal IS NULL OR b.scadenza>=p_dal)
+   AND (p_al IS NULL OR b.scadenza<=p_al)
+ )
+ SELECT jsonb_build_object('due',coalesce(sum(round(importo_dovuto::numeric*100)),0)/100,
+  'paid',coalesce(sum(round(versato::numeric*100)),0)/100,
+  'residue',coalesce(sum(round(residuo::numeric*100)),0)/100,
+  'settled',count(*) FILTER(WHERE round(residuo::numeric*100)=0),
+  'open',count(*) FILTER(WHERE round(residuo::numeric*100)<>0))
+ INTO result FROM selected;
+ RETURN result;
+END $$;
+REVOKE ALL ON FUNCTION public.sc_perf_incassi_totals(text,uuid,text,uuid,uuid,date,date) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.sc_perf_incassi_totals(text,uuid,text,uuid,uuid,date,date) TO authenticated;
