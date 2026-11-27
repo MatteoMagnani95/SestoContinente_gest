@@ -9,6 +9,7 @@ on:
       - 'release/gestionale-consolidato'
       - 'perf/3.1-next-pass'
       - 'perf/3.1-structural'
+      - 'perf/3.1-navigation'
       - 'release/gestionale-3.1'
   workflow_dispatch:
 

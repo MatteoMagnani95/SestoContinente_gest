@@ -110,51 +110,68 @@ try{
   results.push({role:route.role,path:route.path.replace(/\/[0-9a-f-]{36}/gi,'/[fixture]'),baseline:summary(samples.baseline),candidate:summary(samples.candidate),samples:sampleCount});
   console.log(JSON.stringify(results.at(-1)));
  }
- // Warm dashboard, then measure client-side transitions through the real sidebar.
- const navigation={baseline:[],candidate:[]};
- for(let i=0;i<sampleCount;i++){
-  for(const [key,origin] of i%2?[['candidate',candidate],['baseline',baseline]]:[['baseline',baseline],['candidate',candidate]]){
-   const ctx=await browser.newContext({baseURL:origin,storageState:join(work,'staff.json'),viewport:{width:1280,height:800}});
-   try{
-    const page=await ctx.newPage();
-    await page.goto('/gestionale');
-    await expect(page.getByRole('heading',{name:'Panoramica associativa'})).toBeVisible();
-    const sidebar=page.locator('.sc-staff-sidebar');
-    const group=sidebar.getByRole('button',{name:'Soci e segreteria'});
-    if(await group.getAttribute('aria-expanded')!=='true')await group.click();
-    const link=sidebar.getByRole('link',{name:'Schede soci',exact:true});
-    await expect(link).toBeVisible();
-    await page.evaluate(()=>{
-     window.__qaClientReady=new Promise(resolve=>{
-      let started=null,frame=0;
-      const observer=new MutationObserver(schedule);
-      function check(){
-       frame=0;
-       const table=document.querySelector('#sc-main table[aria-label="Adesioni di soci e allievi"]');
-       if(started!==null&&location.pathname==='/gestionale/soci'&&table?.getClientRects().length){
-        observer.disconnect();resolve(performance.now()-started);
-       }else if(started!==null)schedule();
-      }
-      function schedule(){if(!frame)frame=requestAnimationFrame(check);}
-      document.addEventListener('click',event=>{
-       if(event.target instanceof Element&&event.target.closest('a[href="/gestionale/soci"]')){
-        started=performance.now();observer.observe(document,{childList:true,subtree:true,attributes:true});schedule();
+ // Real sidebar navigation: each route and each repeat starts with a fresh context.
+ const transitions=[
+  {from:'/gestionale',to:'/gestionale/soci',group:'Soci e segreteria',link:'Schede soci',heading:'Soci e allievi',table:'Adesioni di soci e allievi'},
+  {from:'/gestionale/soci',to:'/gestionale/corsi',group:'Corsi e didattica',link:'Gestione corsi',heading:'Gestione corsi'},
+  {from:'/gestionale/corsi',to:'/gestionale/calendario-visivo',group:'Calendario e piscine',link:'Calendario visivo',heading:'Calendario piscine e corsie'},
+  {from:'/gestionale/calendario-visivo',to:'/gestionale/incassi',group:'Pagamenti e contabilità',link:'Incassi e saldi',heading:'Incassi e saldi'},
+  {from:'/gestionale/incassi',to:'/gestionale',link:'Panoramica',heading:'Centro operativo'}
+ ];
+ const navigationScenarios=[];
+ for(const route of transitions){
+  const navigation={baseline:[],candidate:[]};
+  for(let i=0;i<sampleCount;i++){
+   for(const [key,origin] of i%2?[['candidate',candidate],['baseline',baseline]]:[['baseline',baseline],['candidate',candidate]]){
+    const ctx=await browser.newContext({baseURL:origin,storageState:join(work,'staff.json'),viewport:{width:1280,height:800}});
+    try{
+     const page=await ctx.newPage();
+     await page.goto(route.from);
+     await expect(page.getByRole('heading',{level:1}).first()).toBeVisible();
+     const sidebar=page.locator('.sc-staff-sidebar');
+     if(route.group){
+      const group=sidebar.getByRole('button',{name:route.group,exact:true});
+      if(await group.getAttribute('aria-expanded')!=='true')await group.click();
+     }
+     const link=sidebar.getByRole('link',{name:route.link,exact:true});
+     await expect(link).toBeVisible();
+     await page.evaluate(({to,heading,table})=>{
+      window.__qaClientReady=new Promise(resolve=>{
+       let started=null,frame=0;
+       const observer=new MutationObserver(schedule);
+       function check(){
+        frame=0;
+        const root=document.querySelector('#sc-main .sc-route-content');
+        const h=root?.querySelector('h1');
+        const grid=table?Array.from(root?.querySelectorAll('table')??[]).find(t=>t.getAttribute('aria-label')===table):null;
+        if(started!==null&&location.pathname===to&&h?.textContent?.trim()===heading&&h.getClientRects().length&&(!table||grid?.getClientRects().length)){
+         observer.disconnect();resolve(performance.now()-started);
+        }else if(started!==null)schedule();
        }
-      },{capture:true,once:true});
-     });
-    });
-    const start=performance.now();
-    await link.click();
-    await expect(page).toHaveURL(url=>url.pathname==='/gestionale/soci');
-    await expect(page.getByRole('table',{name:'Adesioni di soci e allievi'})).toBeVisible();
-    navigation[key].push({verifiedMs:performance.now()-start,contentReadyMs:await page.evaluate(()=>Promise.race([window.__qaClientReady,new Promise((_,reject)=>setTimeout(()=>reject(Error('Client navigation content not observed')),10000))]))});
-   }finally{await ctx.close();}
+       function schedule(){if(!frame)frame=requestAnimationFrame(check);}
+       document.addEventListener('click',event=>{
+        if(event.target instanceof Element&&event.target.closest('a')?.getAttribute('href')===to){
+         started=performance.now();observer.observe(document,{childList:true,subtree:true,attributes:true});schedule();
+        }
+       },{capture:true,once:true});
+      });
+     },route);
+     const start=performance.now();
+     await link.click();
+     await expect(page).toHaveURL(url=>url.pathname===route.to);
+     await expect(page.getByRole('heading',{level:1,name:route.heading,exact:true})).toBeVisible();
+     if(route.table)await expect(page.getByRole('table',{name:route.table})).toBeVisible();
+     navigation[key].push({verifiedMs:performance.now()-start,contentReadyMs:await page.evaluate(()=>Promise.race([window.__qaClientReady,new Promise((_,reject)=>setTimeout(()=>reject(Error('Client navigation content not observed')),10000))]))});
+    }finally{await ctx.close();}
+   }
   }
+  const metrics=Object.fromEntries(Object.entries(navigation).map(([key,times])=>[key,{medianMs:median(times.map(t=>t.verifiedMs)),p95Ms:percentile(times.map(t=>t.verifiedMs),.95),contentReadyMedianMs:median(times.map(t=>t.contentReadyMs)),contentReadyMaxMs:Math.round(Math.max(...times.map(t=>t.contentReadyMs))*100)/100,samples:times.length}]));
+  navigationScenarios.push({from:route.from,to:route.to,...metrics});
+  console.log(JSON.stringify({scenario:'client sidebar navigation',...navigationScenarios.at(-1)}));
  }
- const navigationComparison=Object.fromEntries(Object.entries(navigation).map(([key,times])=>[key,{medianMs:median(times.map(t=>t.verifiedMs)),p95Ms:percentile(times.map(t=>t.verifiedMs),.95),contentReadyMedianMs:median(times.map(t=>t.contentReadyMs)),contentReadyMaxMs:Math.round(Math.max(...times.map(t=>t.contentReadyMs))*100)/100,samples:times.length}]));
- console.log(JSON.stringify({scenario:'client sidebar navigation dashboard to members',...navigationComparison}));
+ const navigationComparison=navigationScenarios[0];
  // Measure generated static chunks separately from per-route transferred resources.
- const report={simulatedRttMs:Number(env.QA_DB_LATENCY_MS||0),scenario:'isolated comparative browser benchmark',baselineSha:'ebe1085b6dfd7b1b5660c3326baf8d4475819c5f',candidateSha:env.GITHUB_SHA||'local',metrics:results,navigation:navigationComparison,staticChunks:{baseline:await chunks(join(env.QA_BASELINE_DIR,'.next/static/chunks')),candidate:await chunks('.next/static/chunks')},limitations:'9 alternating cold browser contexts per route; server warmed once; p95 is maximum at this sample size; content-ready measured in-browser at first animation frame with required visible DOM; not LCP/INP'};
+ const report={simulatedRttMs:Number(env.QA_DB_LATENCY_MS||0),scenario:'isolated comparative browser benchmark',baselineSha:'ebe1085b6dfd7b1b5660c3326baf8d4475819c5f',candidateSha:env.GITHUB_SHA||'local',metrics:results,navigation:navigationComparison,navigationScenarios,staticChunks:{baseline:await chunks(join(env.QA_BASELINE_DIR,'.next/static/chunks')),candidate:await chunks('.next/static/chunks')},limitations:'9 alternating cold browser contexts per route; server warmed once; p95 is maximum at this sample size; content-ready measured in-browser at first animation frame with required visible DOM; not LCP/INP'};
  await writeFile(join(work,'performance-comparison.json'),JSON.stringify(report,null,2));
  console.log(JSON.stringify(report));
 }finally{await browser.close();}

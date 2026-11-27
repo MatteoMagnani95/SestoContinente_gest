@@ -95,7 +95,38 @@ async function main(){
    ['quota',season,'tutte',null,null,'1900-01-01','1900-01-02'],
    ['corso',season,'tutte',null,null,null,null]
   ];
+  const navRpc=async(q)=>(await q('select public.sc_perf_navigation() as data')).rows[0].data;
+  const navOld=async(q)=>{
+   const enabled=(await q('select public.account_corrente_abilitato() as enabled')).rows[0].enabled===true;
+   if(!enabled)return {enabled:false};
+   const [roles,member,req,links,alerts,owners]=await Promise.all([
+    q('select ruolo::text from public.ruoli_utente where utente_id=auth.uid() order by ruolo::text'),
+    q('select public.area_soci_accesso() as access'),
+    q('select stato from public.richieste where utente_id=auth.uid()'),
+    q('select count(*)::int as n from public.collegamenti_persone where utente_id=auth.uid()'),
+    q('select count(*)::int as n from public.notifiche where utente_id=auth.uid() and letta_il is null'),
+    q("select persona_id from public.collegamenti_persone where utente_id=auth.uid() and relazione='titolare' limit 2")
+   ]);
+   const owner=owners.rows.length===1?(await q('select nome,cognome from public.persone where id=$1',[owners.rows[0].persona_id])).rows[0]??null:null;
+   return {enabled:true,roles:roles.rows.map(r=>r.ruolo),member:member.rows[0].access===true,personal:req.rows.length<=1&&(req.rows[0]?.stato==='approvata'||links.rows[0].n>0),unread:alerts.rows[0].n,owner};
+  };
   const query=(sql,args)=>db.query(sql,args);
+  // Cross-account isolation: fixture owner and notifications belong only to member.
+  await db.query("insert into public.collegamenti_persone(utente_id,persona_id,relazione) values($1,$2,'titolare')",[member,person]);
+  await db.query("insert into public.notifiche(utente_id,tipo,riferimento,titolo,messaggio) values($1,'benchmark','nav','Sintetico','Test')",[member]);
+  for(const id of [admin,secretary,member,disabled]){
+   await role(id);
+   const v=await navRpc(query);
+   assert.deepEqual(v,await navOld(query));
+   if(id===member){assert.equal(v.unread,1);assert.equal(v.personal,true);assert.equal(v.owner.nome,'Sintetico');}
+   else if(id!==disabled){assert.equal(v.unread,0);assert.equal(v.owner,null);}
+  }
+  await role(null,'anon');await denied(()=>navRpc(query),'42501');
+  await db.query('reset role');
+  const second=(await db.query("select id from public.persone where cognome like $1 and id<>$2 order by id limit 1",[prefix+'%',person])).rows[0].id;
+  await db.query("insert into public.collegamenti_persone(utente_id,persona_id,relazione) values($1,$2,'titolare')",[member,second]);
+  await role(member);assert.deepEqual(await navRpc(query),await navOld(query));assert.equal((await navRpc(query)).owner,null);
+
   for(const id of [admin,secretary]){
    await role(id);
    assert.deepEqual(await dashboardRpc(query),await dashboardOld(query));
@@ -115,7 +146,7 @@ async function main(){
   await role(admin);
   const results=[];
   for(const rtt of [0,40,80]){
-   for(const [name,before,after] of [['dashboard',dashboardOld,dashboardRpc],['soci-counts',q=>memberOld(q,season,[prefix]),q=>memberRpc(q,season,[prefix])],['incassi-totals',q=>financeOld(q,financialFilters[0]),q=>financeRpc(q,financialFilters[0])]]){
+   for(const [name,before,after] of [['dashboard',dashboardOld,dashboardRpc],['soci-counts',q=>memberOld(q,season,[prefix]),q=>memberRpc(q,season,[prefix])],['incassi-totals',q=>financeOld(q,financialFilters[0]),q=>financeRpc(q,financialFilters[0])],['navigation-account',navOld,navRpc]]){
     const sample=async(fn)=>{
      let requests=0;
      const q=async(sql,args)=>{requests++;if(rtt)await delay(rtt);return db.query(sql,args);};

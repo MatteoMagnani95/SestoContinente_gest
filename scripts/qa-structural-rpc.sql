@@ -91,3 +91,27 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.sc_perf_incassi_totals(text,uuid,text,uuid,uuid,date,date) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.sc_perf_incassi_totals(text,uuid,text,uuid,uuid,date,date) TO authenticated;
+
+-- Own-account snapshot only. No caller-supplied user id; no elevated rights.
+CREATE FUNCTION public.sc_perf_navigation()
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY INVOKER SET search_path='' AS $$
+DECLARE uid uuid:=auth.uid(); enabled boolean; result jsonb;
+BEGIN
+ IF uid IS NULL THEN RAISE EXCEPTION 'Accesso non autorizzato' USING ERRCODE='42501'; END IF;
+ enabled:=coalesce(public.account_corrente_abilitato(),false);
+ IF NOT enabled THEN RETURN jsonb_build_object('enabled',false); END IF;
+ WITH owners AS (
+  SELECT persona_id FROM public.collegamenti_persone WHERE utente_id=uid AND relazione='titolare' LIMIT 2
+ ), req AS (SELECT stato FROM public.richieste WHERE utente_id=uid)
+ SELECT jsonb_build_object(
+  'enabled',true,
+  'roles',(SELECT coalesce(jsonb_agg(ruolo::text ORDER BY ruolo::text),'[]'::jsonb) FROM public.ruoli_utente WHERE utente_id=uid),
+  'member',coalesce(public.area_soci_accesso(),false),
+  'personal',(SELECT count(*)<=1 FROM req) AND ((SELECT EXISTS(SELECT 1 FROM req WHERE stato='approvata')) OR EXISTS(SELECT 1 FROM public.collegamenti_persone WHERE utente_id=uid)),
+  'unread',(SELECT count(*) FROM public.notifiche WHERE utente_id=uid AND letta_il IS NULL),
+  'owner',CASE WHEN (SELECT count(*) FROM owners)=1 THEN (SELECT jsonb_build_object('nome',p.nome,'cognome',p.cognome) FROM public.persone p JOIN owners o ON o.persona_id=p.id) END
+ ) INTO result;
+ RETURN result;
+END $$;
+REVOKE ALL ON FUNCTION public.sc_perf_navigation() FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.sc_perf_navigation() TO authenticated;
