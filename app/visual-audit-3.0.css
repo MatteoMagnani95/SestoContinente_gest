@@ -38,3 +38,12 @@
  .sc-route-content .sc-attendance-editor :is(select,textarea,input:not([type=hidden]):not([type=checkbox]):not([type=radio])){font-size:16px;min-height:44px}
 }
 @media print{.sc-page-header-marine::before{display:none!important}}
+
+/* F7 manifest: filter form beside its sibling CTA shrank to 28px at 320px.
+   Stack the form and CTA on narrow screens; keep labels and inputs usable. */
+@media(max-width:600px){
+ .sc-staff-content .sc-filter-bar{flex-direction:column;align-items:stretch}
+ .sc-staff-content .sc-filter-bar>.sc-search-bar{flex:0 0 auto;width:100%;min-width:0}
+ .sc-staff-content .sc-filter-bar>.sc-search-bar>label{flex:0 0 100%;width:100%;min-width:0;max-width:none}
+ .sc-staff-content .sc-filter-bar>.sc-search-bar :is(input:not([type=hidden]),select){width:100%;min-width:44px;min-height:44px}
+}

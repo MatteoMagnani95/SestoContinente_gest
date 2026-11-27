@@ -33,3 +33,11 @@ test('F7: correzione input registro e densità non riducono testo o controlli',(
  assert.match(css,/\.sc-dashboard-shortcuts \.sc-quick-action\{min-height:64px/);
  assert.match(read('app/layout.tsx'),/import '\.\/visual-audit-3.0.css'/);
 });
+
+test('F7: filtri mobili non comprimibili e target autonomi inclusi nel gate',()=>{
+ const css=read('app/visual-audit-3.0.css'),visual=read('scripts/qa-local-visual.mjs');
+ assert.match(css,/\.sc-staff-content \.sc-filter-bar\{flex-direction:column;align-items:stretch\}/);
+ assert.match(css,/\.sc-filter-bar>\.sc-search-bar\{flex:0 0 auto;width:100%;min-width:0\}/);
+ assert.match(css,/\.sc-filter-bar>\.sc-search-bar>label\{flex:0 0 100%;width:100%;min-width:0;max-width:none\}/);
+ assert.match(visual,/row.unlabelledInputs!==0\|\|row.smallActions.length!==0/);
+});

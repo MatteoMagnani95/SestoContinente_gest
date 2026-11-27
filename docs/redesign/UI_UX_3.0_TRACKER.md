@@ -191,3 +191,6 @@ CI 45965182027 su d1f3900: TypeScript e database superati; test storico v25-audi
 
 ## F7 — evidenze reali e correzioni, 27/11/2026
 F6 e4fdb7f GO. 34f5d19 CI 45967282072 verde, QA 45967282666 fallita esclusivamente nello step visuale: 182 test autenticati superati; artifact visual-f7 15182899305 scaricato, 80 PNG e manifest, 277/280 controlli, 3 errori font registro presenze mobile. Zero overflow globale e zero input senza label fra quelli controllati. Confronto 16 mockup originali e rendering reale documentato in F7_VISUAL_AUDIT.md. Correzioni font, densità, caricamento immagini e diagnostica; nessun test indebolito. Nuovo gate e confronto visivo richiesti. Zoom nativo e audit WCAG completo aperti; NO-GO produzione.
+
+## F7 — secondo collaudo e target filtri
+0bdd921: CI 45968851284 e QA 45968851276 verdi (291 statici, 70 pubblici, 182 autenticati, 72 logout, 280/280 visuali). Artifact 15184745456 ispezionato e confrontato con 16 mockup e primo rendering. Diagnostica residuale: 4 filtri da 28px in tre scenari a 320px (12 occorrenze). Corretto flex mobile e reso bloccante il controllo target autonomi. Gate da ripetere sullo SHA esatto; nessun deploy. Zoom browser nativo, fisico, WCAG completa non certificati.

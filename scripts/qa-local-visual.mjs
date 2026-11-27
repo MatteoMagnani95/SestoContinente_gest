@@ -78,7 +78,7 @@ for(const [engine,browserType] of [['chromium',chromium],['webkit',webkit]]){
      });
      const row={engine,name,role,viewport:size,overflow:m.scrollWidth>m.width+1,main:m.main,h1:m.h1,smallInput:size.width<=600&&m.visibleInputs.some(x=>x<16),unlabelledInputs:m.unlabelledInputs,smallTargets:m.smallTargets,smallFields:m.smallFields,smallActions:m.smallActions};
      report.checks.push(row);
-     if(row.overflow||row.smallInput||row.main!==1||row.h1!==1||row.unlabelledInputs!==0)report.errors.push({engine,name,viewport:size,reason:'reflow/input/landmark check',row});
+     if(row.overflow||row.smallInput||row.main!==1||row.h1!==1||row.unlabelledInputs!==0||row.smallActions.length!==0)report.errors.push({engine,name,viewport:size,reason:'reflow/input/landmark/action-target check',row});
      if(size.width===390||size.width===1440){
       const image=engine+'-'+name+'-'+size.width+'.png';
       await page.screenshot({path:join(out,image),fullPage:true,animations:'disabled',caret:'hide'});row.screenshot=image;
