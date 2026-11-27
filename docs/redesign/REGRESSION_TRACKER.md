@@ -109,3 +109,6 @@ CI 45964841996: job database superato, TypeScript TS2322 in lib/navigation.ts: i
 
 ### F6 — ripristino contratto link certificato
 CI 45965182027 su d1f3900: TypeScript e database superati; test storico v25-audit-flussi.test.mjs fallito esclusivamente sulla forma testuale del link certificato con persona specifica. Ripristinata la template literal originale `/area-personale/certificato?persona=${p.id}` nella nuova card; destinazione e ID invariati, test storico non modificato. Gate richiesto sul nuovo SHA.
+
+## F7 — candidato preparato (non ancora referenziato)
+Precondizione: QA e4fdb7f 45965395638 esatta verde. CI ordinaria 45965395429 superata (288 statici, 70 browser). d1f3900 QA 45965182094 superata (182 autenticati, 72 logout); non sostituisce il gate esatto. Preparato script locale visuale, artifact dedicato, uniformazione MailContextPage senza azioni o permessi modificati. Matrice 16 mockup + varianti e comunicazioni in F7_VISUAL_AUDIT.md. Evidenze non ancora acquisite. Nessun deploy.

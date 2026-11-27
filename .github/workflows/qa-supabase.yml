@@ -8,6 +8,7 @@ on:
     paths:
       - '.github/workflows/qa-supabase.yml'
       - 'scripts/qa-local-supabase.mjs'
+      - 'scripts/qa-local-visual.mjs'
       - 'scripts/qa-local-mutations.mjs'
       - 'scripts/qa-local-performance.mjs'
       - 'scripts/qa-local-auth.mjs'
@@ -104,6 +105,21 @@ jobs:
         run: node scripts/qa-local-supabase.mjs auth
       - name: Benchmark browser autenticato su archivi sintetici
         run: node scripts/qa-local-supabase.mjs performance
+      - name: Evidenze visuali F7 in Chromium e WebKit
+        env:
+          QA_VISUAL_DIR: ${{ runner.temp }}/sesto-visual-${{ github.run_id }}
+          QA_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/qa-local-visual.mjs
+      - name: Conserva esclusivamente screenshot sintetici e manifest F7
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-f7
+          path: |
+            ${{ runner.temp }}/sesto-visual-${{ github.run_id }}/*.png
+            ${{ runner.temp }}/sesto-visual-${{ github.run_id }}/visual-manifest.json
+          if-no-files-found: warn
+          retention-days: 7
       - name: Rimuovi sessioni sintetiche e arresta servizi locali
         if: always()
         shell: bash
