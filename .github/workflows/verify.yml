@@ -13,6 +13,7 @@ on:
       - 'perf/3.1-archives'
       - 'perf/3.1-soci-page'
       - 'perf/3.1-migration'
+      - 'perf/3.1-final-gates'
       - 'release/gestionale-3.1'
   workflow_dispatch:
 

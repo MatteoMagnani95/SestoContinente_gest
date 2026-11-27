@@ -38,6 +38,10 @@ from pg_tables where schemaname in ('public','auth','storage') order by schemana
 \gexec
 select schemaname,tablename,policyname,permissive,roles,cmd,qual,with_check
 from pg_policies where schemaname in ('public','auth','storage') order by 1,2,3;
+-- New read-only functions must survive backup/restore with identical bodies and ACLs.
+select p.oid::regprocedure::text,md5(pg_get_functiondef(p.oid)),p.prosecdef,p.provolatile,p.proconfig,p.proacl
+from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+where n.nspname='public' and p.proname like 'sc_perf_%' order by 1;
 select n.nspname,c.relname,c.relrowsecurity,c.relforcerowsecurity
 from pg_class c join pg_namespace n on n.oid=c.relnamespace
 where n.nspname in ('public','auth','storage') and c.relkind in ('r','p') order by 1,2;

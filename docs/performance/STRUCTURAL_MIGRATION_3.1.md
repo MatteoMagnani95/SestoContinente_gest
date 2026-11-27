@@ -9,3 +9,6 @@ Sette funzioni additive di sola lettura. Non si modificano tabelle, dati, RLS, t
 4. Spegnere l'attivazione impostando SC_STRUCTURAL_RPC=false o rimuovendo la variabile. Nessun dato da ripristinare: le RPC leggono soltanto.
 ## Vincoli
 Non eseguire db push, link, reset remoto o apply_migration. Non modificare variabili Vercel o database di produzione. Non distribuire su Vercel. Il flag è volutamente impossibile da attivare su endpoint non locale; un futuro rilascio richiederà approvazione separata e gate di staging/produzione.
+
+## Gate di disattivazione
+Test di modulo: tutte le condizioni obbligatorie, URL remoto e malformato, errore RPC e payload non valido. QA browser: stesso build con SC_STRUCTURAL_RPC=false, cinque pagine staff e endpoint ricerca 404, assenza marker. Restore: confronto delle definizioni, proprietà e ACL delle sette funzioni. Nessuna modifica al perimetro di attivazione.

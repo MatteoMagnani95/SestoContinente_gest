@@ -53,13 +53,15 @@ export default async function CalendarPage({searchParams}:{searchParams:Promise<
  const poolLanes=lanes.filter(l=>l.piscina_id===validPool);
  const allLessonNames=new Map(allLessons.map(l=>[l.id,l.titolo]));
  const missingBookingLessons=[...new Set(allBookings.map(b=>b.lezione_id).filter(id=>!allLessonNames.has(id)))];
- const extraLessons=await readCourseChunks(missingBookingLessons,(ids,da,a)=>supabase.from('lezioni').select('id,titolo').in('id',ids).order('id').range(da,a));
+ const [extraLessons,newLesson]=await Promise.all([
+  readCourseChunks(missingBookingLessons,(ids,da,a)=>supabase.from('lezioni').select('id,titolo').in('id',ids).order('id').range(da,a)),
+  UUID_RE.test(params.lezione??'')&&['lezione_creata','moduli_salvati'].includes(params.msg??'')?supabase.from('lezioni').select('id,titolo,edizione_id,annullata_il').eq('id',params.lezione!).maybeSingle():{data:null,error:null}
+ ]);
  for(const l of extraLessons.data??[])allLessonNames.set(l.id,l.titolo);
  const previous=changePeriod(day,view,-1),next=changePeriod(day,view,1);
  const createDay=params.crea_giorno&&days.includes(params.crea_giorno)?params.crea_giorno:day;
  const selectableEditions=editions.filter(e=>['programmato','attivo'].includes(e.stato));
  const canCreate=!poolResult.error&&!laneResult.error&&!editionResult.error&&selectableEditions.length>0;
- const newLesson=UUID_RE.test(params.lezione??'')&&['lezione_creata','moduli_salvati'].includes(params.msg??'')?await supabase.from('lezioni').select('id,titolo,edizione_id,annullata_il').eq('id',params.lezione!).maybeSingle():{data:null,error:null};
  const saved=newLesson.data;
  const [moduleCatalog,moduleLinks]=saved&&params.msg==='lezione_creata'&&!saved.annullata_il?await Promise.all([
   tutteLePagine((da,a)=>supabase.from('moduli_didattici').select('id,tipo,codice,titolo').order('pre_id').order('id').range(da,a)),
