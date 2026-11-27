@@ -228,10 +228,10 @@ async function main(){
   const catalog=(await db.query("insert into public.corsi(nome,tipo) values($1,'APNEA') returning id",[coursePrefix])).rows[0].id;
   const catalogAra=(await db.query("insert into public.corsi(nome,tipo,livello) values($1,'ARA',2) returning id",[coursePrefix+' ARA'])).rows[0].id;
   const courseDate=(await db.query("select dal::text as dal from public.stagioni where id=$1",[season])).rows[0].dal;
-  const courseIds=(await db.query("insert into public.edizioni_corsi(corso_id,stagione_id,nome,inizio,fine) select case when n%2=0 then $1::uuid else $2::uuid end,$3,$4||' '||lpad(n::text,2,'0'),$5::date+n,$5::date+n+1 from generate_series(1,30) n returning id",[catalog,catalogAra,season,coursePrefix,courseDate])).rows.map(r=>r.id);
-  const edition=courseIds[0],director=(await db.query("select id from public.persone where id<>$1 and cognome like $2 order by id limit 1",[person,prefix+'%'])).rows[0].id;
+  const director=(await db.query("select id from public.persone where id<>$1 and cognome like $2 order by id limit 1",[person,prefix+'%'])).rows[0].id;
   await db.query("insert into public.qualifiche_istruttori(persona_id,titolo) values($1,'Qualifica sintetica')",[director]);
-  await db.query("update public.edizioni_corsi set direttore_id=$1 where id=$2",[director,edition]);
+  const courseIds=(await db.query("insert into public.edizioni_corsi(corso_id,stagione_id,nome,inizio,fine,direttore_id) select case when n%2=0 then $1::uuid else $2::uuid end,$3,$4||' '||lpad(n::text,2,'0'),$5::date+n,$5::date+n+1,$6 from generate_series(1,30) n returning id",[catalog,catalogAra,season,coursePrefix,courseDate,director])).rows.map(r=>r.id);
+  const edition=courseIds[0];
   await db.query("insert into public.assegnazioni_istruttori(edizione_id,persona_id,ruolo) values($1,$2,'responsabile')",[edition,director]);
   await db.query("insert into public.iscrizioni_corsi(edizione_id,persona_id,stato) values($1,$2,'iscritto')",[edition,person]);
   const pool=(await db.query("insert into public.piscine(nome) values($1) returning id",[coursePrefix])).rows[0].id;
