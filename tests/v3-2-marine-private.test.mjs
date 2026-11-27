@@ -31,3 +31,10 @@ test('Dashboard has a compact unboxed heading, real season and unchanged warning
  assert.match(css,/\.sc-dashboard-compact-heading\{[^}]*background:none;border:0;box-shadow:none/);
  assert.match(read('scripts/qa-marine-private.mjs'),/dashboard-compact-heading/);
 });
+
+test('Operational headers remain unboxed and member counts preserve readable compact layout',()=>{
+ const css=read('app/marine-premium-private.css'),qa=read('scripts/qa-marine-private.mjs');
+ assert.match(css,/\.sc-marine-private \.sc-page-header\.sc-page-header-marine\{\s*background:none;border:0;border-radius:0;box-shadow:none/);
+ assert.match(css,/\.sc-member-list-metrics \.sc-metric-label\{[^}]*font-size:14px/);
+ assert.match(qa,/15-scheda-socio/);assert.match(qa,/16-anagrafiche/);assert.match(qa,/decorative header/);
+});

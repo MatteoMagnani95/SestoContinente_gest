@@ -28,3 +28,6 @@ F4A: primitive riservate, shell, dashboard, tabelle, filtri e moduli con layer C
 
 ### F4A — correzione densità dashboard richiesta dall'utente
 Eliminare il riquadro «Gestione associativa / Centro operativo» e la relativa illustrazione. Conservare solo h1 compatto, stagione reale quando disponibile e alert originale; azioni e priorità immediatamente sotto. Nessun caricamento di immagini decorative nel nuovo CSS operativo. La scelta sostituisce la precedente proposta di accento pittorico in dashboard. Area pubblica approvata intatta.
+
+### F4B — densità operativa e segreteria
+Revisione del codice soci, scheda socio, richieste, dettaglio richiesta e CRUD anagrafiche; controllo anche intestazioni di corsi/calendario/incassi. Layer CSS: intestazioni di pagina non incorniciate, titolo compatto con descrizioni e azioni conservate; scheda socio mantiene avatar, recapiti, stagione, stato, azioni; conteggi adesioni filtrabili in riga compatta con testo 14px e valore 22–24px, nessun cambio a link o query. Nessuna modifica alle pagine pubbliche. QA ampliata da 14 a 22 viste (44 PNG attesi) con fixture locali per socio, corso, lezione, attrezzatura e archivi operativi. Nessuna attestazione di rendering prima dei nuovi screenshot; restano da verificare editor e dettagli delle sottofasi 4C–4H.

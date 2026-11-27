@@ -1,7 +1,7 @@
 // Actual UI screenshots, isolated synthetic accounts only. No storage state or tokens exported.
 import assert from 'node:assert/strict';
 import {resolve,join} from 'node:path';
-import {mkdir} from 'node:fs/promises';
+import {mkdir,readFile} from 'node:fs/promises';
 import {chromium,expect} from '@playwright/test';
 const e=process.env;
 for(const key of ['QA_ISOLATED_ENV','SESTO_TEST_MODE'])assert.equal(e[key],'true');
@@ -14,6 +14,8 @@ const out=resolve(e.QA_MARINE_PRIVATE_DIR),temp=resolve(e.RUNNER_TEMP),work=reso
 assert.ok(out.startsWith(temp+'/')&&!out.startsWith(work+'/')&&out!==work);
 assert.ok(work.startsWith(temp+'/sesto-qa.'));
 await mkdir(out,{recursive:true});
+const fixtures=JSON.parse(await readFile(join(work,'fixtures.json'),'utf8'));
+for(const key of ['person','edition','lesson','equipment'])assert.match(fixtures[key],/^[0-9a-f-]{36}$/i,key);
 const routes=[
  ['staff','01-dashboard','/gestionale'],['staff','02-soci','/gestionale/soci'],
  ['staff','03-corsi','/gestionale/corsi'],['staff','04-calendario','/gestionale/calendario-visivo'],
@@ -22,6 +24,14 @@ const routes=[
  ['secretary','09-segreteria','/gestionale'],['member','10-area-personale','/area-personale'],
  ['member','11-area-soci','/area-soci'],['member','12-documenti','/documenti'],
  ['instructor','13-istruttore','/istruttore'],['board','14-organi-sociali','/organi-sociali'],
+ ['staff','15-scheda-socio','/gestionale/soci/'+fixtures.person],
+ ['staff','16-anagrafiche','/gestionale/moduli/anagrafiche'],
+ ['staff','17-dettaglio-corso','/gestionale/corsi/'+fixtures.edition],
+ ['staff','18-dettaglio-lezione','/gestionale/calendario-visivo/'+fixtures.lesson],
+ ['staff','19-scheda-attrezzatura','/gestionale/attrezzature/'+fixtures.equipment],
+ ['staff','20-revisioni','/gestionale/moduli/revisioni'],
+ ['staff','21-consegne','/gestionale/moduli/consegne'],
+ ['staff','22-eventi','/gestione-eventi'],
 ];
 const browser=await chromium.launch();
 try{
@@ -42,6 +52,11 @@ try{
      await expect(page.locator('.sc-route-content > .sc-page-header-marine')).toHaveCount(0);
      const box=await heading.boundingBox();
      assert.ok(box&&box.height<=88,name+' oversized dashboard heading '+width);
+    }
+    const compact=page.locator('.sc-route-content > .sc-page-header.sc-page-header-marine');
+    if(await compact.count()){
+     assert.equal(await compact.first().evaluate(el=>getComputedStyle(el).boxShadow),'none',name+' decorative header');
+     assert.equal(await compact.first().evaluate(el=>getComputedStyle(el,'::before').content),'none',name+' decorative overlay');
     }
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1),name+' overflow '+width);
     await expect(page.getByRole('button',{name:'Esci dal gestionale'})).toBeVisible();
