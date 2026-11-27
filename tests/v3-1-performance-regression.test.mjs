@@ -94,3 +94,11 @@ test('form mutation observer still scans relevant form changes and before naviga
  assert.match(source,/if\(!dirtyForms\(\).length\)return/);
  assert.match(source,/beforeunload/);
 });
+
+test('only explicit public branding assets get public caching',()=>{
+ const config=read('next.config.ts');
+ assert.match(config,/private, no-store, max-age=0, must-revalidate/);
+ assert.match(config,/source:'\/brand\/:asset\(sestocontinente-mark.png\|sestocontinente-logo.png\|nereia-logo.png\|favicon.png\)'/);
+ assert.match(config,/public, max-age=86400, must-revalidate/);
+ assert.doesNotMatch(read('components/StaffNav.tsx'),/import \{ modules/);
+});
