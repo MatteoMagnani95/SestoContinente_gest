@@ -41,7 +41,7 @@ export default async function PersonalArea({searchParams}:{searchParams:Promise<
   overview||tab==='notifiche'?supabase.from('notifiche').select('id,titolo,messaggio,creata_il',{count:'exact'}).eq('utente_id',user.id).is('letta_il',null).order('creata_il',{ascending:false}).order('id').range(overview?0:(page-1)*size,overview?2:page*size-1):emptyPage,
  ]);
  const [brevetti,[cards,courseDebts,patents],overviewCourses,upcomingEvents]=await Promise.all([
-  overview?Promise.all(ids.map(async id=>{const {data,count,error}=supabase.from('brevetti_allievi').select('id,persona_id,titolo,ottenuto_il',{count:'exact'}).eq('persona_id',id).order('ottenuto_il',{ascending:false}).order('id').limit(3);return {id,count:error?null:count,data:error?[]:data??[]};})):[],
+  overview?Promise.all(ids.map(async id=>{const {data,count,error}=await supabase.from('brevetti_allievi').select('id,persona_id,titolo,ottenuto_il',{count:'exact'}).eq('persona_id',id).order('ottenuto_il',{ascending:false}).order('id').limit(3);return {id,count:error?null:count,data:error?[]:data??[]};})):[],
   Promise.all([
  tab==='tessere'?readCourseChunks((memberships??[]).map(x=>x.id),(group,da,a)=>supabase.from('tesseramenti').select('id,adesione_id,ente,numero_tessera,emessa_il,scade_il,stato').in('adesione_id',group).order('id').range(da,a)):{data:[],error:null},
  tab==='quote'&&season?readCourseChunks(ids,(group,da,a)=>supabase.from('saldi_corsi').select('id,persona_id,edizione_id,importo_dovuto,versato,residuo').in('persona_id',group).eq('stagione_id',season.id).order('id').range(da,a)):{data:[],error:null},
