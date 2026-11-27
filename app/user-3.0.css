@@ -75,3 +75,11 @@
 @media(max-width:1000px){.sc-user-layout{grid-template-columns:minmax(0,1fr);padding:16px 16px 40px;gap:0}.sc-user-sidebar{display:none}}
 @media(max-width:600px){.sc-user-layout{padding-inline:12px}.sc-bottom-navigation a span{overflow-wrap:anywhere;line-height:1.2}.sc-user-content .sc-route-content>.container{padding-inline:0}}
 @media print{.sc-user-sidebar{display:none!important}.sc-user-layout{display:block;padding:0}}
+
+/* F7 evidence: the attendance editor inherited undersized field text at 320/390px. */
+@media(max-width:600px){
+ .sc-route-content .sc-attendance-item :is(select,textarea,input:not([type=hidden]):not([type=checkbox]):not([type=radio])),
+ .sc-route-content .sc-attendance-editor :is(select,textarea,input:not([type=hidden]):not([type=checkbox]):not([type=radio])){
+  font-size:16px;min-height:44px;line-height:1.5
+ }
+}

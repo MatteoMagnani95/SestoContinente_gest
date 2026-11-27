@@ -59,18 +59,26 @@ for(const [engine,browserType] of [['chromium',chromium],['webkit',webkit]]){
     await expect(page.getByRole('heading',{level:1}).first()).toBeVisible();
     if(heading)await expect(page.getByRole('heading',{level:1,name:heading,exact:true})).toBeVisible();
     if(prepare)await prepare(page);
-    await page.evaluate(()=>document.fonts.ready);
+    await page.evaluate(async()=>{
+     await document.fonts.ready;
+     const images=[...document.querySelectorAll('img[src*="/brand/"]')];
+     for(const image of images)image.loading='eager';
+     await Promise.all(images.map(image=>image.decode()));
+     if(images.some(image=>!image.complete||image.naturalWidth===0))throw Error('Missing local brand asset');
+    });
     for(const size of sizes){
      await page.setViewportSize(size);
      const m=await page.evaluate(()=>{
       const visible=e=>e.getBoundingClientRect().width>0&&e.getBoundingClientRect().height>0&&getComputedStyle(e).visibility!=='hidden'&&!e.closest('[inert]');
       const inputs=[...document.querySelectorAll('input:not([type=hidden]):not([type=checkbox]):not([type=radio]),select,textarea')].filter(visible);
       const controls=[...document.querySelectorAll('button,a[href],input:not([type=hidden]),select,textarea')].filter(visible);
-      return {width:document.documentElement.clientWidth,scrollWidth:document.documentElement.scrollWidth,main:document.querySelectorAll('main').length,h1:document.querySelectorAll('h1').length,visibleInputs:inputs.map(e=>parseFloat(getComputedStyle(e).fontSize)),unlabelledInputs:inputs.filter(e=>!(e.labels?.length||e.getAttribute('aria-label')||e.getAttribute('aria-labelledby')||e.getAttribute('title'))).length,smallTargets:controls.filter(e=>{const r=e.getBoundingClientRect();return r.width<44||r.height<44;}).length};
+      const smallFields=inputs.filter(e=>parseFloat(getComputedStyle(e).fontSize)<16).map(e=>({tag:e.tagName.toLowerCase(),name:e.getAttribute('name'),font:parseFloat(getComputedStyle(e).fontSize)}));
+      const smallActions=controls.filter(e=>e.matches('button,a.sc-button,a.button,select,textarea,input:not([type=checkbox]):not([type=radio])')).filter(e=>{const r=e.getBoundingClientRect();return r.width<44||r.height<44;}).map(e=>({tag:e.tagName.toLowerCase(),type:e.getAttribute('type'),className:typeof e.className==='string'?e.className.slice(0,120):'',width:Math.round(e.getBoundingClientRect().width),height:Math.round(e.getBoundingClientRect().height)}));
+      return {width:document.documentElement.clientWidth,scrollWidth:document.documentElement.scrollWidth,main:document.querySelectorAll('main').length,h1:document.querySelectorAll('h1').length,visibleInputs:inputs.map(e=>parseFloat(getComputedStyle(e).fontSize)),smallFields,smallActions,unlabelledInputs:inputs.filter(e=>!(e.labels?.length||e.getAttribute('aria-label')||e.getAttribute('aria-labelledby')||e.getAttribute('title'))).length,smallTargets:controls.filter(e=>{const r=e.getBoundingClientRect();return r.width<44||r.height<44;}).length};
      });
-     const row={engine,name,role,viewport:size,overflow:m.scrollWidth>m.width+1,main:m.main,h1:m.h1,smallInput:size.width<=600&&m.visibleInputs.some(x=>x<16),unlabelledInputs:m.unlabelledInputs,smallTargets:m.smallTargets};
+     const row={engine,name,role,viewport:size,overflow:m.scrollWidth>m.width+1,main:m.main,h1:m.h1,smallInput:size.width<=600&&m.visibleInputs.some(x=>x<16),unlabelledInputs:m.unlabelledInputs,smallTargets:m.smallTargets,smallFields:m.smallFields,smallActions:m.smallActions};
      report.checks.push(row);
-     if(row.overflow||row.smallInput||row.main!==1||row.h1!==1)report.errors.push({engine,name,viewport:size,reason:'reflow/input/landmark check',row});
+     if(row.overflow||row.smallInput||row.main!==1||row.h1!==1||row.unlabelledInputs!==0)report.errors.push({engine,name,viewport:size,reason:'reflow/input/landmark check',row});
      if(size.width===390||size.width===1440){
       const image=engine+'-'+name+'-'+size.width+'.png';
       await page.screenshot({path:join(out,image),fullPage:true,animations:'disabled',caret:'hide'});row.screenshot=image;

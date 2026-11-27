@@ -19,6 +19,7 @@ import './secretariat-3.0.css';
 import './teaching-3.0.css';
 import './operations-3.0.css';
 import './user-3.0.css';
+import './visual-audit-3.0.css';
 export const viewport: Viewport = {width:'device-width', initialScale:1, viewportFit:'cover'};
 export const metadata: Metadata = {
   title: { default: 'Sesto Continente | Gestionale', template: '%s | Sesto Continente' },

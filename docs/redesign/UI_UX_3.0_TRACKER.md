@@ -9,8 +9,8 @@ Data: 26/11/2026. Baseline produzione e HEAD 2.0: `20ae6fcceb5307d58920aa1527a83
 | 3 — Centro operativo e segreteria | Gate sincronizzato superato | ff356d1: CI 45906661406 e QA 45906661502 tentativo 2 success; 280 statici, 68 browser ordinari, 166 autenticati, 72 logout. |
 | 4 — Didattica e impianti | Gate superato | cc323fc: CI 45910455789 + QA 45910455776 success; 283 automatici, 68 browser ordinari, 170 autenticati, 72 logout. |
 | 5 — Operazioni associative | Gate superato | b74aa8a: CI 45962908776 + QA 45962908906 success; 286 automatici, 68 browser ordinari, 172 autenticati, 72 logout. |
-| 6 — Aree utente e mobile | Implementazione candidata; gate aperto | Mockup 13–16, area personale, istruttori, auth, onboarding, home, sidebar utente e mobile. |
-| 7 — Collaudo e rilascio | Non iniziato | Preview isolata, verifica autorizzazioni e regressioni |
+| 6 — Aree utente e mobile | Gate superato | e4fdb7f: CI 45965395429 e QA 45965395638 success, 288 statici, 70 browser ordinari, 182 autenticati, 72 logout. |
+| 7 — Collaudo e rilascio | Primo collaudo, correzioni candidate | 80 PNG, 277/280 controlli, tre anomalie font mobile; nuovo gate richiesto. |
  
 ## Inventario UI (copertura di base non equivale a redesign della pagina)
 Ruoli indicativi dal codice di navigazione e dalle guardie 2.0; la verifica di accesso per singola route rimane aperta. Stati da verificare per ogni riga: normale, vuoto, errore, caricamento; per operazioni di creazione/modifica/dialog anche dirty form, invio, errore e successo; N/A solo dopo verifica. D=desktop, M=mobile, F=funzionale, S=autorizzazioni. NV=non verificato. Le pagine ereditano token e shell senza essere marcate riprogettate.
@@ -188,3 +188,6 @@ CI 45965182027 su d1f3900: TypeScript e database superati; test storico v25-audi
 
 ## F7 — preparazione candidata
 57 pagine, 7 route handler, 2 layout censiti; 53 pagine modificate rispetto al consolidato, 2 redirect invariati, 2 comunicazioni condividono MailContextPage aggiornato nel candidato. Script di acquisizione F7 integrato nel candidato con 20 scenari, 2 browser, 7 viewport; risultati ancora aperti. Matrice confronto in F7_VISUAL_AUDIT.md. F6 gate esatto obbligatorio prima di aggiornare il ramo. Nessun deploy.
+
+## F7 — evidenze reali e correzioni, 27/11/2026
+F6 e4fdb7f GO. 34f5d19 CI 45967282072 verde, QA 45967282666 fallita esclusivamente nello step visuale: 182 test autenticati superati; artifact visual-f7 15182899305 scaricato, 80 PNG e manifest, 277/280 controlli, 3 errori font registro presenze mobile. Zero overflow globale e zero input senza label fra quelli controllati. Confronto 16 mockup originali e rendering reale documentato in F7_VISUAL_AUDIT.md. Correzioni font, densità, caricamento immagini e diagnostica; nessun test indebolito. Nuovo gate e confronto visivo richiesti. Zoom nativo e audit WCAG completo aperti; NO-GO produzione.

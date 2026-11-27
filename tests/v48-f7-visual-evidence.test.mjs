@@ -24,3 +24,12 @@ test('F7: tutti i 16 riferimenti coperti senza importare immagini di riferimento
  assert.match(s,/if\(report.errors.length\)process.exitCode=1/);
  const m=read('components/MailContextPage.tsx');assert.match(m,/<PageHeader/);assert.match(m,/<AssociationMailForm/);assert.match(m,/contextKey\(context\)/);
 });
+
+
+test('F7: correzione input registro e densità non riducono testo o controlli',()=>{
+ const css=read('app/visual-audit-3.0.css');
+ assert.match(css,/\.sc-route-content \.sc-attendance-editor[\s\S]*?font-size:16px;min-height:44px/);
+ assert.match(css,/\.sc-metric-value,\.sc-metric-note\{grid-column:1\/-1\}/);
+ assert.match(css,/\.sc-dashboard-shortcuts \.sc-quick-action\{min-height:64px/);
+ assert.match(read('app/layout.tsx'),/import '\.\/visual-audit-3.0.css'/);
+});
