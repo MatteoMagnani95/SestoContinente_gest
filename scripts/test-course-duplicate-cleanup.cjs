@@ -25,6 +25,7 @@ async function main(){
   try{
    await root.query('alter table public.edizioni_corsi disable trigger identita_edizione');
    active=await scalar(root,insert.replace('direttore_id,stato)','direttore_id,stato,duplicato_storico)').replace('$4,$5)','$4,$5,true)'),[catalog,season,name,director,'attivo']);
+   await root.query('set constraints all immediate');
    await root.query('alter table public.edizioni_corsi enable trigger identita_edizione');
    await root.query('commit');
   }catch(e){await root.query('rollback');throw e;}
@@ -33,6 +34,9 @@ async function main(){
   const protectedEd=await scalar(staff,insert,[catalog,season,name+' protetto',director,'attivo']);
   await root.query("insert into qualifiche_istruttori(persona_id,titolo) values($1,'Qualifica sintetica')",[director]);
   for(const id of [active,cancelled,protectedEd])await root.query("insert into assegnazioni_istruttori(edizione_id,persona_id,ruolo) values($1,$2,'responsabile')",[id,director]);
+  const adhesion=await scalar(root,"insert into adesioni(stagione_id,persona_id,stato) values($1,$2,'attiva') returning id",[season,student]);
+  await root.query("insert into tesseramenti(adesione_id,ente,stato,scade_il) values($1,'Ente','attiva',current_date+100)",[adhesion]);
+  const enrollment=await scalar(staff,"insert into iscrizioni_corsi(edizione_id,persona_id,stato) values($1,$2,'iscritto') returning id",[active,student]);
   const assignment=await scalar(root,"select id from assegnazioni_istruttori where edizione_id=$1",[active]);
   await assert.rejects(staff.query("select rimuovi_record_gestionale('assegnazioni_istruttori',$1)",[assignment]),{code:'P3414'});
   await assert.rejects(member.query("select elimina_edizione_annullata_vuota($1)",[cancelled]),{code:'42501'});
@@ -46,6 +50,7 @@ async function main(){
   assert.equal(await scalar(root,"select count(*)::int from assegnazioni_istruttori where edizione_id=$1",[cancelled]),0);
   assert.equal(await scalar(root,"select count(*)::int from edizioni_corsi where id=$1",[active]),1);
   assert.equal(await scalar(root,"select count(*)::int from assegnazioni_istruttori where edizione_id=$1",[active]),1);
+  assert.equal(await scalar(root,"select count(*)::int from iscrizioni_corsi where id=$1 and edizione_id=$2 and stato='iscritto'",[enrollment,active]),1);
   assert.equal(await scalar(root,"select duplicato_storico from edizioni_corsi where id=$1",[active]),false);
   await assert.rejects(staff.query(insert,[catalog,season,name,director,'programmato']),{code:'P3419'});
   console.log('OK duplicate normalization, active responsibility protected, unauthorized deletion denied, cancelled empty edition atomically removed');
