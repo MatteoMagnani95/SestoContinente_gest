@@ -1,7 +1,7 @@
 name: QA comparativa prestazioni 3.1 (locale)
 on:
   push:
-    branches: ['release/gestionale-3.1', 'perf/3.1-migration', 'perf/3.1-final-gates', 'perf/3.1-courses-calendar', 'perf/3.1-snapshot-parity', 'perf/3.1-migration-courses-calendar', 'perf/3.1-migration-courses-doc']
+    branches: ['release/gestionale-3.1', 'perf/3.1-migration', 'perf/3.1-final-gates', 'perf/3.1-courses-calendar', 'perf/3.1-snapshot-parity', 'perf/3.1-migration-courses-calendar', 'perf/3.1-migration-courses-doc', 'perf/3.1-profile']
   workflow_dispatch:
 permissions:
   contents: read
@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   compare:
-    if: github.ref == 'refs/heads/release/gestionale-3.1' || github.ref == 'refs/heads/perf/3.1-migration' || github.ref == 'refs/heads/perf/3.1-final-gates' || github.ref == 'refs/heads/perf/3.1-courses-calendar' || github.ref == 'refs/heads/perf/3.1-snapshot-parity' || github.ref == 'refs/heads/perf/3.1-migration-courses-calendar' || github.ref == 'refs/heads/perf/3.1-migration-courses-doc'
+    if: github.ref == 'refs/heads/release/gestionale-3.1' || github.ref == 'refs/heads/perf/3.1-migration' || github.ref == 'refs/heads/perf/3.1-final-gates' || github.ref == 'refs/heads/perf/3.1-courses-calendar' || github.ref == 'refs/heads/perf/3.1-snapshot-parity' || github.ref == 'refs/heads/perf/3.1-migration-courses-calendar' || github.ref == 'refs/heads/perf/3.1-migration-courses-doc' || github.ref == 'refs/heads/perf/3.1-profile'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -128,11 +128,28 @@ jobs:
           grep -q 'QA_LATENCY_ACTIVE 40ms' "$RUNNER_TEMP/sesto-qa-next.log"
           grep -q 'QA_LATENCY_ACTIVE 40ms' "$RUNNER_TEMP/sesto-qa-baseline.log"
           for rpc in dashboard incassi-totals soci-page navigation-account inventory-page person-options courses-page calendar-snapshot; do grep -q "QA_STRUCTURAL_RPC_USED $rpc" "$RUNNER_TEMP/sesto-qa-next.log"; done
+      - name: Profilazione separata delle chiamate HTTP (nessuna misura benchmark alterata)
+        run: |
+          set -euo pipefail
+          export QA_PROFILE_FETCH=true QA_DB_LATENCY_MS=40
+          export NODE_OPTIONS="--require=$GITHUB_WORKSPACE/scripts/qa-latency.cjs --require=$GITHUB_WORKSPACE/scripts/qa-profile-fetch.cjs"
+          (cd "$QA_BASELINE_DIR"; QA_PROFILE_VERSION=baseline SC_STRUCTURAL_RPC=false exec node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3317) > "$RUNNER_TEMP/sesto-profile-baseline.log" 2>&1 &
+          a=$!
+          QA_PROFILE_VERSION=candidate SC_STRUCTURAL_RPC=true node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3318 > "$RUNNER_TEMP/sesto-profile-candidate.log" 2>&1 &
+          b=$!
+          trap 'kill "$a" "$b" 2>/dev/null || true' EXIT
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:3317/ >/dev/null && curl -fsS http://127.0.0.1:3318/ >/dev/null; then break; fi
+            sleep 1
+          done
+          node scripts/qa-profile-routes.mjs
       - name: Conserva esclusivamente metriche aggregate
         uses: actions/upload-artifact@v4
         with:
           name: performance-comparison-${{ github.sha }}
-          path: ${{ env.QA_WORK_DIR }}/performance-comparison.json
+          path: |
+            ${{ env.QA_WORK_DIR }}/performance-comparison.json
+            ${{ env.QA_WORK_DIR }}/fetch-profile-summary.json
           if-no-files-found: error
           retention-days: 14
       - name: Rimuovi sessioni sintetiche e arresta servizi

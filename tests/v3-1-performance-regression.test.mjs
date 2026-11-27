@@ -271,3 +271,18 @@ test('canonical course/calendar migration is applied in CI and QA, never by inst
  assert.match(read('.github/workflows/verify.yml'),/20261127125108_course_calendar_read_snapshots\.sql/);
  assert.match(read('.github/workflows/performance-3-1.yml'),/grep -q '20261127125108'/);
 });
+
+test('instructor render reuses the already verified per-request roles without changing mutation authorization',()=>{
+ const source=read('app/istruttore/page.tsx');
+ assert.match(source,/await readRolesForRender\(supabase,user.id\)/);
+ assert.match(source,/if\(roleError\|\|!roles\?\.some\(role=>role.ruolo==='istruttore'\)\)redirect/);
+ assert.match(source,/await requireUser\(\)/);
+});
+test('HTTP diagnostics run after benchmark on separate isolated servers and persist only aggregate endpoint metrics',()=>{
+ const workflow=read('.github/workflows/performance-3-1.yml'),profile=read('scripts/qa-profile-fetch.cjs');
+ assert.ok(workflow.indexOf('Benchmark comparativo delle pagine e dei bundle')<workflow.indexOf('Profilazione separata'));
+ assert.match(workflow,/--port 3317/);assert.match(workflow,/--port 3318/);
+ assert.match(profile,/QA_ISOLATED_ENV/);assert.match(profile,/target\?\.origin===api.origin/);
+ assert.match(profile,/JSON.stringify\(\{category,endpoint,status,ms:/);
+ assert.doesNotMatch(profile,/target\.search|headers:|body:/);
+});
