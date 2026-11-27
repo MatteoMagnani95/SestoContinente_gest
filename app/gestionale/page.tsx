@@ -10,21 +10,25 @@ import {exactCount,pendingRequestStates} from '@/lib/secretariat';
 export default async function Dashboard(){
  const {supabase,user}=await requireStaff();
  const now=new Date().toISOString(),today=romeDay(now),cutoff=shiftDay(today,30);
- const {data:season,error:seasonError}=await supabase.from('stagioni').select('id,nome').eq('attiva',true).maybeSingle();
- const unavailable={count:null,error:true};
- const [requests,adhesions,courses,enrollments,revisions,certificates,quotes,pendingAdhesions,events,lessons,admin]=await Promise.all([
+ // Start season-independent reads in the same round as the season lookup.
+ const seasonPromise=Promise.resolve(supabase.from('stagioni').select('id,nome').eq('attiva',true).maybeSingle());
+ const independent=Promise.all([
   supabase.from('richieste').select('id',{head:true,count:'exact'}).in('stato',[...pendingRequestStates]),
-  season?supabase.from('adesioni').select('id',{head:true,count:'exact'}).eq('stagione_id',season.id).eq('stato','attiva'):unavailable,
   supabase.from('edizioni_corsi').select('id',{head:true,count:'exact'}).eq('stato','attivo'),
   supabase.from('iscrizioni_corsi').select('id',{head:true,count:'exact'}).eq('stato','iscritto'),
   supabase.from('attrezzature').select('id',{head:true,count:'exact'}).gte('prossima_revisione',today).lte('prossima_revisione',cutoff),
   supabase.from('stato_certificati').select('id',{head:true,count:'exact'}).eq('stato_certificato','valido').gte('scade_il',today).lte('scade_il',cutoff),
-  season?supabase.from('saldi_quote').select('id',{head:true,count:'exact'}).eq('stagione_id',season.id).gt('residuo',0):unavailable,
-  season?supabase.from('adesioni').select('id',{head:true,count:'exact'}).eq('stagione_id',season.id).eq('stato','da_perfezionare'):unavailable,
   supabase.from('eventi_soci').select('id,titolo,dal,al,stato',{count:'exact'}).gte('dal',today).neq('stato','annullato').order('dal').order('id').limit(5),
   supabase.from('lezioni').select('id,titolo,inizio,fine',{count:'exact'}).is('annullata_il',null).gte('inizio',now).order('inizio').order('id').limit(8),
   supabase.from('ruoli_utente').select('ruolo').eq('utente_id',user.id).eq('ruolo','amministratore').maybeSingle()
  ]);
+ const {data:season,error:seasonError}=await seasonPromise;
+ const unavailable={count:null,error:true};
+ const [[requests,courses,enrollments,revisions,certificates,events,lessons,admin],[adhesions,quotes,pendingAdhesions]]=await Promise.all([independent,Promise.all([
+  season?supabase.from('adesioni').select('id',{head:true,count:'exact'}).eq('stagione_id',season.id).eq('stato','attiva'):unavailable,
+  season?supabase.from('saldi_quote').select('id',{head:true,count:'exact'}).eq('stagione_id',season.id).gt('residuo',0):unavailable,
+  season?supabase.from('adesioni').select('id',{head:true,count:'exact'}).eq('stagione_id',season.id).eq('stato','da_perfezionare'):unavailable
+ ])]);
  type Metric={label:string;icon:IconName;area:Area;result:{count:number|null;error:unknown};href:string;note?:string};
  const seasonQuery=season?'&stagione='+season.id:'';
  const summary:Metric[]=[
