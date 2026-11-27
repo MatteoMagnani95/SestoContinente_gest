@@ -132,7 +132,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  const editorId=scope.editor&&UUID_RE.test(scope.editor)?scope.editor:null;
  const openEditorId=editId??editorId;
  // Limit this first pass to modules with simple reference labels and no dependent eligibility rules.
- const deferredReferences=['qualifiche','brevetti','certificati','revisioni','consegne','quote'].includes(modulo);
+ const deferredReferences=['qualifiche','brevetti','certificati','quote'].includes(modulo);
  const fullReferenceOptions=!deferredReferences||nuovo==='1'||Boolean(openEditorId);
  if(modulo==='calendario'&&editId)redirect(`/gestionale/calendario-visivo/${editId}`);
  if(modulo==='calendario'&&nuovo==='1')redirect('/gestionale/calendario-visivo?nuovo=1'+(scopedPool?'&piscina='+scopedPool:'')+(scopedEdition?'&edizione='+scopedEdition:''));
