@@ -128,14 +128,20 @@ jobs:
           grep -q 'QA_LATENCY_ACTIVE 40ms' "$RUNNER_TEMP/sesto-qa-next.log"
           grep -q 'QA_LATENCY_ACTIVE 40ms' "$RUNNER_TEMP/sesto-qa-baseline.log"
           for rpc in dashboard incassi-totals soci-page navigation-account inventory-page person-options courses-page calendar-snapshot; do grep -q "QA_STRUCTURAL_RPC_USED $rpc" "$RUNNER_TEMP/sesto-qa-next.log"; done
+      - name: Conserva esclusivamente metriche aggregate
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-comparison-${{ github.sha }}
+          path: ${{ env.QA_WORK_DIR }}/performance-comparison.json
+          if-no-files-found: error
+          retention-days: 14
       - name: Profilazione separata delle chiamate HTTP (nessuna misura benchmark alterata)
         run: |
           set -euo pipefail
-          export QA_PROFILE_FETCH=true QA_DB_LATENCY_MS=40
-          export NODE_OPTIONS="--require=$GITHUB_WORKSPACE/scripts/qa-latency.cjs --require=$GITHUB_WORKSPACE/scripts/qa-profile-fetch.cjs"
-          (cd "$QA_BASELINE_DIR"; QA_PROFILE_VERSION=baseline SC_STRUCTURAL_RPC=false exec node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3317) > "$RUNNER_TEMP/sesto-profile-baseline.log" 2>&1 &
+          profile_node_options="${NODE_OPTIONS:-} --require=$GITHUB_WORKSPACE/scripts/qa-latency.cjs --require=$GITHUB_WORKSPACE/scripts/qa-profile-fetch.cjs"
+          (cd "$QA_BASELINE_DIR"; QA_PROFILE_FETCH=true QA_DB_LATENCY_MS=40 NODE_OPTIONS="$profile_node_options" QA_PROFILE_VERSION=baseline SC_STRUCTURAL_RPC=false exec node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3317) > "$RUNNER_TEMP/sesto-profile-baseline.log" 2>&1 &
           a=$!
-          QA_PROFILE_VERSION=candidate SC_STRUCTURAL_RPC=true node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3318 > "$RUNNER_TEMP/sesto-profile-candidate.log" 2>&1 &
+          QA_PROFILE_FETCH=true QA_DB_LATENCY_MS=40 NODE_OPTIONS="$profile_node_options" QA_PROFILE_VERSION=candidate SC_STRUCTURAL_RPC=true node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3318 > "$RUNNER_TEMP/sesto-profile-candidate.log" 2>&1 &
           b=$!
           trap 'kill "$a" "$b" 2>/dev/null || true' EXIT
           for i in {1..30}; do
@@ -143,13 +149,11 @@ jobs:
             sleep 1
           done
           node scripts/qa-profile-routes.mjs
-      - name: Conserva esclusivamente metriche aggregate
+      - name: Conserva esclusivamente profilo HTTP aggregato
         uses: actions/upload-artifact@v4
         with:
-          name: performance-comparison-${{ github.sha }}
-          path: |
-            ${{ env.QA_WORK_DIR }}/performance-comparison.json
-            ${{ env.QA_WORK_DIR }}/fetch-profile-summary.json
+          name: fetch-profile-${{ github.sha }}
+          path: ${{ env.QA_WORK_DIR }}/fetch-profile-summary.json
           if-no-files-found: error
           retention-days: 14
       - name: Rimuovi sessioni sintetiche e arresta servizi
