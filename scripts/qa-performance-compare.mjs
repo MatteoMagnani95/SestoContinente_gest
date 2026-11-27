@@ -85,8 +85,32 @@ try{
   results.push({role:route.role,path:route.path.replace(/\/[0-9a-f-]{36}/gi,'/[fixture]'),baseline:summary(samples.baseline),candidate:summary(samples.candidate),samples:5});
   console.log(JSON.stringify(results.at(-1)));
  }
+ // Warm dashboard, then measure client-side transitions through the real sidebar.
+ const navigation={baseline:[],candidate:[]};
+ for(let i=0;i<5;i++){
+  for(const [key,origin] of i%2?[['candidate',candidate],['baseline',baseline]]:[['baseline',baseline],['candidate',candidate]]){
+   const ctx=await browser.newContext({baseURL:origin,storageState:join(work,'staff.json'),viewport:{width:1280,height:800}});
+   try{
+    const page=await ctx.newPage();
+    await page.goto('/gestionale');
+    await expect(page.getByRole('heading',{name:'Panoramica associativa'})).toBeVisible();
+    const sidebar=page.locator('.sc-staff-sidebar');
+    const group=sidebar.getByRole('button',{name:'Soci e segreteria'});
+    if(await group.getAttribute('aria-expanded')!=='true')await group.click();
+    const link=sidebar.getByRole('link',{name:'Schede soci',exact:true});
+    await expect(link).toBeVisible();
+    const start=performance.now();
+    await link.click();
+    await expect(page).toHaveURL(url=>url.pathname==='/gestionale/soci');
+    await expect(page.getByRole('table',{name:'Adesioni di soci e allievi'})).toBeVisible();
+    navigation[key].push(performance.now()-start);
+   }finally{await ctx.close();}
+  }
+ }
+ const navigationComparison=Object.fromEntries(Object.entries(navigation).map(([key,times])=>[key,{medianMs:median(times),p95Ms:percentile(times,.95),samples:times.length}]));
+ console.log(JSON.stringify({scenario:'client sidebar navigation dashboard to members',...navigationComparison}));
  // Measure generated static chunks separately from per-route transferred resources.
- const report={scenario:'isolated comparative browser benchmark',baselineSha:'ebe1085b6dfd7b1b5660c3326baf8d4475819c5f',candidateSha:env.GITHUB_SHA||'local',metrics:results,staticChunks:{baseline:await chunks(join(env.QA_BASELINE_DIR,'.next/static/chunks')),candidate:await chunks('.next/static/chunks')},limitations:'5 alternating cold browser contexts per route; server warmed once; p95 is maximum at this sample size; no field INP/LCP claim'};
+ const report={scenario:'isolated comparative browser benchmark',baselineSha:'ebe1085b6dfd7b1b5660c3326baf8d4475819c5f',candidateSha:env.GITHUB_SHA||'local',metrics:results,navigation:navigationComparison,staticChunks:{baseline:await chunks(join(env.QA_BASELINE_DIR,'.next/static/chunks')),candidate:await chunks('.next/static/chunks')},limitations:'5 alternating cold browser contexts per route; server warmed once; p95 is maximum at this sample size; no field INP/LCP claim'};
  await writeFile(join(work,'performance-comparison.json'),JSON.stringify(report,null,2));
  console.log(JSON.stringify(report));
 }finally{await browser.close();}
