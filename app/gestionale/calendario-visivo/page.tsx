@@ -1,6 +1,6 @@
 import {singleSearchParams} from '@/lib/module-ui';
 import Link from 'next/link';
-import {requireStaff} from '@/lib/security';
+import {requireStaffForRender as requireStaff} from '@/lib/security';
 import {tutteLePagine} from '@/lib/pagine';
 import {readCourseChunks} from '@/lib/course-ui';
 import {calendarContext,calendarHref,calendarLessonHref,calendarViews,changePeriod,dateUTC,dateWindow,dayBounds,intervalOnDay,overlaps,romeDay,validDay,type CalendarContext} from '@/lib/calendar-tools';
