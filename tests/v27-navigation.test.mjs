@@ -9,7 +9,12 @@ function load(file,imports={}){
  const exports={};new Function('exports','require',js)(exports,n=>{if(n in imports)return imports[n];throw Error('Unexpected import: '+n);});return exports;
 }
 const nav=load('lib/navigation.ts'),modules=load('lib/modules.ts');
-const groups=load('components/StaffNav.tsx',{'next/link':{},'next/navigation':{},react:{},'react/jsx-runtime':{},'@/lib/modules':modules,'@/lib/navigation':nav,'@/components/ui/Icon':{}}).staffGroups;
+const menu=load('lib/module-navigation.ts');
+const groups=load('components/StaffNav.tsx',{'next/link':{},'next/navigation':{},react:{},'react/jsx-runtime':{},'@/lib/module-navigation':menu,'@/lib/navigation':nav,'@/components/ui/Icon':{}}).staffGroups;
+test('Lightweight module navigation exactly matches canonical module labels and roles',()=>{
+ assert.deepEqual(Object.keys(menu.moduleNavigation).sort(),Object.keys(modules.modules).sort());
+ for(const [key,value] of Object.entries(modules.modules))assert.deepEqual(menu.moduleNavigation[key],{label:value.label,adminOnly:Boolean(value.adminOnly)},key);
+});
 const guest=nav.guestAccess,staff={...guest,signedIn:true,enabled:true,staff:true,board:true},admin={...staff,admin:true};
 const instructor={...guest,signedIn:true,enabled:true,instructor:true},board={...guest,signedIn:true,enabled:true,board:true},member={...guest,signedIn:true,enabled:true,personal:true,member:true};
 test('Shell condiviso solo per staff, anche fuori /gestionale',()=>{
