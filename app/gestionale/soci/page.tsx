@@ -6,7 +6,7 @@ import {DataTable,FilterBar,SearchBar,Pagination} from '@/components/ui/DataTabl
 import {statusTone,searchTerms,maskedFiscalCode,exactCount} from '@/lib/secretariat';
 import {SecretariatNav,PersonName} from '@/components/ui/Secretariat';
 import {MetricCard} from '@/components/ui/Primitives';
-import {structuralRpc,validCount} from '@/lib/structural-qa';
+import {structuralRpc,validCount,markStructuralRpcUsed} from '@/lib/structural-qa';
 
 const statuses=['da_perfezionare','attiva','sospesa','cessata'] as const;
 type SocioRow={adesione_id:string;persona_id:string;stagione_id:string;stagione:string;stato:string;nome:string;cognome:string;codice_fiscale:string|null;email:string|null;telefono:string|null};
@@ -40,7 +40,7 @@ export default async function SociPage({searchParams}:{searchParams:Promise<{q?:
  let query=base();if(stato)query=query.eq('stato',stato);
  const readCounts=async()=>{
   const counts=await structuralRpc(supabase,'sc_perf_soci_counts',{p_season:chosen==='tutte'?null:chosen,p_terms:searchTerms(q)});
-  if(counts&&['total',...statuses].every(key=>validCount(counts[key])))return ['total',...statuses].map(key=>({count:counts[key] as number,error:null}));
+  if(counts&&['total',...statuses].every(key=>validCount(counts[key]))){markStructuralRpcUsed('soci-counts');return ['total',...statuses].map(key=>({count:counts[key] as number,error:null}));}
   return Promise.all([base(true),...statuses.map(s=>base(true).eq('stato',s))]);
  };
  const [{data,error,count},[total,...byStatus]]=await Promise.all([

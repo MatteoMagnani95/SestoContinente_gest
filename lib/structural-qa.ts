@@ -37,3 +37,8 @@ export function readDashboardSnapshot(v:Record<string,unknown>|null){
  const count=(n:unknown)=>({count:validCount(n)?n:null,error:validCount(n)?null:true});
  return {season,seasonError:null,requests:count(requests),courses:count(courses),enrollments:count(enrollments),revisions:count(revisions),certificates:count(certificates),events,lessons,admin:{data:admin},adhesions:count(adhesions),pendingAdhesions:count(pendingAdhesions),quotes:count(quotes)};
 }
+
+const used=new Set<string>();
+export function markStructuralRpcUsed(name:'dashboard'|'soci-counts'|'incassi-totals'){
+ if(structuralQaEnabled()&&!used.has(name)){used.add(name);console.log('QA_STRUCTURAL_RPC_USED '+name);}
+}

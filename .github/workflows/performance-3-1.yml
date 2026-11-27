@@ -113,6 +113,7 @@ jobs:
           if [[ "$GITHUB_REF" == 'refs/heads/perf/3.1-structural' ]]; then
             grep -q 'QA_LATENCY_ACTIVE 40ms' "$RUNNER_TEMP/sesto-qa-next.log"
             grep -q 'QA_LATENCY_ACTIVE 40ms' "$RUNNER_TEMP/sesto-qa-baseline.log"
+            for rpc in dashboard soci-counts incassi-totals; do grep -q "QA_STRUCTURAL_RPC_USED $rpc" "$RUNNER_TEMP/sesto-qa-next.log"; done
           fi
       - name: Conserva esclusivamente metriche aggregate
         uses: actions/upload-artifact@v4

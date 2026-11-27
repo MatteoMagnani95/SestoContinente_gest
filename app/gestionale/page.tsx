@@ -7,7 +7,7 @@ import {formatValue} from '@/lib/format';
 import {romeDay,shiftDay} from '@/lib/calendar-tools';
 import {asRomeISO} from '@/lib/course-tools';
 import {exactCount,pendingRequestStates} from '@/lib/secretariat';
-import {structuralRpc,readDashboardSnapshot} from '@/lib/structural-qa';
+import {structuralRpc,readDashboardSnapshot,markStructuralRpcUsed} from '@/lib/structural-qa';
 export default async function Dashboard(){
  const {supabase,user}=await requireStaff();
  const now=new Date().toISOString(),today=romeDay(now),cutoff=shiftDay(today,30);
@@ -34,6 +34,7 @@ export default async function Dashboard(){
   return {season,seasonError,requests,courses,enrollments,revisions,certificates,events,lessons,admin,adhesions,quotes,pendingAdhesions};
  };
  const snapshot=readDashboardSnapshot(await structuralRpc(supabase,'sc_perf_dashboard',{p_now:now,p_today:today,p_cutoff:cutoff}));
+ if(snapshot)markStructuralRpcUsed('dashboard');
  const {season,seasonError,requests,courses,enrollments,revisions,certificates,events,lessons,admin,adhesions,quotes,pendingAdhesions}=snapshot??await readLegacy();
  type Metric={label:string;icon:IconName;area:Area;result:{count:number|null;error:unknown};href:string;note?:string};
  const seasonQuery=season?'&stagione='+season.id:'';
