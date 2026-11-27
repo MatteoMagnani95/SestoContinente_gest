@@ -277,3 +277,5 @@ Nuove route introdotte nel redesign, rispetto alla base F0. Perimetri indicativi
 | `app/gestionale/moduli/piscine/page.tsx` | `/gestionale/moduli/piscine` | staff; impianti | Implementata, collaudo autenticato aperto |
 | `app/gestionale/moduli/revisioni/page.tsx` | `/gestionale/moduli/revisioni` | staff; revisioni | Implementata, collaudo autenticato aperto |
 | `app/gestione-eventi/[id]/page.tsx` | `/gestione-eventi/[id]` | staff o gestore autorizzato dell'evento | Implementata, collaudo autenticato aperto |
+
+| `app/gestionale/incassi/person-options/route.ts` | `/gestionale/incassi/person-options` | QA locale esclusiva; staff autenticato, RLS, no-store, ricerca paginata | Prototipo, non attivo in produzione |

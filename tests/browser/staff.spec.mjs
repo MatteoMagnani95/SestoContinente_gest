@@ -300,3 +300,23 @@ test('3.1: simple dynamic archive loads the full reference selector only on crea
  await editor.getByRole('button',{name:'Chiudi pannello'}).click();
  await expect(editor).toBeHidden();
 });
+
+test('3.1: local remote person search preserves selection and staff authorization',async({page})=>{
+ await page.goto('/gestionale/incassi');
+ const endpoint='/gestionale/incassi/person-options';
+ const probe=await page.request.get(endpoint);
+ test.skip(probe.status()===404,'Remote selector is enabled only in structural QA');
+ expect(probe.ok()).toBeTruthy();
+ expect(probe.headers()['cache-control']).toContain('no-store');
+ const initial=await probe.json();
+ expect(initial.options.length).toBeLessThanOrEqual(50);
+ const target=initial.options[0];expect(target).toBeTruthy();
+ const select=page.locator('select[name="persona"]');
+ await select.selectOption(target.value);
+ const search=page.getByRole('searchbox',{name:'Cerca tra le opzioni: Socio'});
+ await search.fill('inesistente-qa');
+ await expect(page.getByText('0 opzioni',{exact:true})).toBeVisible();
+ await expect(select).toHaveValue(target.value);
+ const guest=await page.context().browser().newContext();
+ try{const response=await guest.request.get(new URL(endpoint,page.url()).href);expect(response.status()).toBe(401);}finally{await guest.close();}
+});
