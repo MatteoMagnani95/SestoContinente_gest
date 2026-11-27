@@ -1,0 +1,123 @@
+name: QA rilascio 3.1 RPC OFF senza migrazioni (solo locale)
+on:
+  push:
+    branches: ['ops/3.1-off-release-lab']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  off:
+    if: github.ref == 'refs/heads/ops/3.1-off-release-lab'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      QA_ISOLATED_ENV: 'true'
+      SESTO_TEST_MODE: 'true'
+      SESTO_EMAIL_MODE: simulate
+      QA_BASE_URL: http://127.0.0.1:3314
+      NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3314
+      NEXT_TELEMETRY_DISABLED: '1'
+      SC_STRUCTURAL_RPC: 'false'
+      SC_STRUCTURAL_RPC_RELEASE: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fb14535f9c234388158215b530daa65f5688370e
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 3.4.0
+      - name: Dipendenze e browser
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium webkit
+      - name: Avvia solo Supabase locale
+        run: |
+          set -euo pipefail
+          test -z "${SUPABASE_ACCESS_TOKEN:-}"
+          test ! -f supabase/.temp/project-ref
+          test "$(find supabase/migrations -maxdepth 1 -name '*.sql' | wc -l)" -eq 29
+          mkdir -p "$RUNNER_TEMP/sesto-pending"
+          mv supabase/migrations/20261127122235_structural_read_snapshots.sql supabase/migrations/20261127125108_course_calendar_read_snapshots.sql "$RUNNER_TEMP/sesto-pending/"
+          if [ ! -f supabase/config.toml ] && [ ! -f supabase/config.jsonc ]; then supabase init; fi
+          if [ ! -f supabase/config.toml ]; then supabase config convert --to toml; fi
+          python3 scripts/qa-local-status.py --self-test
+          python3 scripts/qa-local-config.py
+          supabase start > "$RUNNER_TEMP/sesto-supabase-start.log" 2>&1 || { echo "Avvio/migrazioni Supabase locale non riusciti"; exit 1; }
+          status=$(mktemp)
+          chmod 600 "$status"
+          trap 'rm -f "$status"' EXIT
+          supabase status --output env > "$status"
+          work=$(mktemp -d "$RUNNER_TEMP/sesto-qa.XXXXXX")
+          chmod 700 "$work"
+          python3 scripts/qa-local-status.py "$status" "$work"
+      - name: Attesta assenza RPC e schema storico
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {Client} from 'pg';
+          const u=new URL(process.env.QA_DB_URL);
+          assert.equal(u.hostname,'127.0.0.1'===u.hostname?'127.0.0.1':'localhost');
+          assert.equal(u.port,'54322');assert.equal(u.pathname,'/postgres');
+          const db=new Client({connectionString:u.href});await db.connect();
+          try{
+            const r=await db.query("select count(*)::int as n from pg_proc where pronamespace='public'::regnamespace and proname like 'sc_perf_%'");
+            assert.equal(r.rows[0].n,0);
+            const m=await db.query("select count(*)::int as n from supabase_migrations.schema_migrations");
+            assert.equal(m.rows[0].n,27);
+            console.log('Historical schema: 27 migrations, zero structural RPCs');
+          }finally{await db.end();}
+          JS
+          mv "$RUNNER_TEMP/sesto-pending/"*.sql supabase/migrations/
+      - name: Dataset e build del candidato
+        run: |
+          set -euo pipefail
+          node scripts/qa-local-supabase.mjs seed
+          npm run build
+          export SC_STRUCTURAL_RPC=false SC_STRUCTURAL_RPC_RELEASE=false
+          npm run start -- --hostname 127.0.0.1 --port 3314 > "$RUNNER_TEMP/sesto-qa-next.log" 2>&1 &
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:3314/ >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          exit 1
+      - name: Login reali e test browser autenticati
+        run: |
+          set -euo pipefail
+          node scripts/qa-local-supabase.mjs sessions
+          export QA_STAFF_STATE="$QA_WORK_DIR/staff.json"
+          export QA_SECRETARY_STATE="$QA_WORK_DIR/secretary.json"
+          export QA_MEMBER_STATE="$QA_WORK_DIR/member.json"
+          export QA_INSTRUCTOR_STATE="$QA_WORK_DIR/instructor.json"
+          export QA_BOARD_STATE="$QA_WORK_DIR/board.json"
+          export QA_APPLICANT_STATE="$QA_WORK_DIR/applicant.json"
+          export QA_FIXTURE_IDS=$(cat "$QA_WORK_DIR/fixtures.json")
+          npm run test:browser -- --project='*-staff' --project='*-secretary' --project='*-member' --project='*-instructor' --project='*-board' --project='*-applicant'
+      - name: Mutazioni e autenticazione reali, solo sintetiche e RPC OFF
+        run: |
+          node scripts/qa-local-supabase.mjs mutations
+          node scripts/qa-local-supabase.mjs auth
+      - name: Attesta endpoint e RPC disattivati
+        run: |
+          set -euo pipefail
+          if grep -q 'QA_STRUCTURAL_RPC_USED' "$RUNNER_TEMP/sesto-qa-next.log"; then exit 1; fi
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {chromium} from '@playwright/test';
+          import {join} from 'node:path';
+          const b=await chromium.launch();
+          try{
+            const c=await b.newContext({baseURL:process.env.QA_BASE_URL,storageState:join(process.env.QA_WORK_DIR,'staff.json')});
+            const res=await c.request.get('/gestionale/incassi/person-options',{maxRedirects:0});
+            assert.equal(res.status(),404);
+            await c.close();
+          }finally{await b.close();}
+          console.log('RPC OFF: endpoint optimized unavailable as intended');
+          JS
+      - name: Arresta il laboratorio locale
+        if: always()
+        run: supabase stop --no-backup
