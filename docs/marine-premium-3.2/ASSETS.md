@@ -17,3 +17,14 @@ Il prototipo HTML precedente è respinto. Riferimenti vincolanti 01–06: fondo 
 
 ## Revisione 01–06: risoluzioni originali complete
 Aggiunti hero 1440 e 480, senza ricompressione, test SHA256 e dimensioni; media query 480/768/1440. Auth 768 identico al hero 768, non duplicato. Fondo e illustrazione sono ancora la prima opera originale, non lo stesso fondale pulito e le scene separate del riferimento. La fedeltà richiede revisione screenshot e, se necessario, nuovi asset mirati. Loghi originali invariati.
+
+## Asset distinti dopo confronto reale
+Scene generate originali, ritagliate separatamente da un atlante di tre fasce senza testo o marchi. Hero principale precedente mantenuto con due sub; reef, testata e Nereia distinti. Dimensioni byte e SHA256:
+- marine-reef-1440.webp — 76132 — 2ae08406665b22bc3f21f789ab77aba0ba3a7c03b07e1894250e37fc4f64a565
+- marine-reef-768.webp — 27586 — 7d43434b99e8e7bd40c379da6d136dd9d103826d4cc81a8b0510dca37d4ae119
+- marine-reef-480.webp — 11626 — 28cbfc5b77f2ba8ff74108743999a76ba2a730851962cc47685e8776a2849d87
+- marine-auth-strip-1000.webp — 52516 — a23c949b28dc4340a094b18a75c6949395d08c65c59f1924748747b5a98a0298
+- marine-auth-strip-480.webp — 14044 — d79cd71e1a491461e9b74a6089d3a5666fe641765856aea5b08f0638b3f805a7
+- marine-nereia-scene-960.webp — 30492 — 7ab3236575d2ffc578cb8c8048458310bf931d135b8fb17296a3cb84ccc8147c
+- marine-nereia-scene-480.webp — 8560 — d6d1231ea0b12d14d126eed37c0948cd540f7bf28f8abae801a12bc0edee931e
+Le varianti sono referenziate da media query. Il vecchio marine-nereia-640.webp resta archiviato, non utilizzato dal CSS. Nessun logo alterato. Nessun SVG decorativo nuovo.
