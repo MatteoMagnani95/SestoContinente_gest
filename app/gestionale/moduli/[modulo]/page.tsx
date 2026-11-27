@@ -1,5 +1,6 @@
 import BookingConflictPreview from '@/components/BookingConflictPreview';
 import {Drawer} from '@/components/ui/Drawer';
+import DeferredEditorButton from '@/components/DeferredEditorButton';
 import {SecretariatNav} from '@/components/ui/Secretariat';
 import {DataTable,FilterBar,SearchBar,Pagination} from '@/components/ui/DataTable';
 import SearchableSelect from '@/components/ui/SearchableSelect';
@@ -98,7 +99,7 @@ function bookingConflictText(corsia?:string,inizio?:string,fine?:string):string{
  const fascia=dal&&al?` dalle ${dal} alle ${al}`:' nell’intervallo richiesto';
  return `Corsia${numero} già prenotata${fascia}. Scegli un’altra corsia o modifica l’orario.`;
 }
-export default async function ModulePage({params,searchParams}:{params:Promise<{modulo:string}>;searchParams:Promise<{q?:string;msg?:string;p?:string;corsia?:string;inizio?:string;fine?:string;edit?:string;stato?:string;f?:string;v?:string;ordine?:string;dir?:string;filtro_modulo?:string;dal?:string;al?:string;persona?:string;nuovo?:string;pm?:string;stagione?:string;edizione?:string;livello?:string;piscina?:string;corsia_id?:string;lezione?:string}>}){
+export default async function ModulePage({params,searchParams}:{params:Promise<{modulo:string}>;searchParams:Promise<{q?:string;msg?:string;p?:string;corsia?:string;inizio?:string;fine?:string;edit?:string;editor?:string;stato?:string;f?:string;v?:string;ordine?:string;dir?:string;filtro_modulo?:string;dal?:string;al?:string;persona?:string;nuovo?:string;pm?:string;stagione?:string;edizione?:string;livello?:string;piscina?:string;corsia_id?:string;lezione?:string}>}){
  const {modulo}=await params;
  if(!isModuleKey(modulo))notFound();
  if(modulo==='pagamenti')redirect('/gestionale/incassi');
@@ -128,6 +129,8 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  const ui=moduleUi[modulo];
  const feedback=msg==='corsia_occupata'&&modulo==='prenotazioni'?bookingConflictText(corsia,inizio,fine):Object.hasOwn(status,msg)?status[msg]:undefined;
  const editId=edit&&UUID_RE.test(edit)?edit:null;
+ const editorId=scope.editor&&UUID_RE.test(scope.editor)?scope.editor:null;
+ const openEditorId=editId??editorId;
  if(modulo==='calendario'&&editId)redirect(`/gestionale/calendario-visivo/${editId}`);
  if(modulo==='calendario'&&nuovo==='1')redirect('/gestionale/calendario-visivo?nuovo=1'+(scopedPool?'&piscina='+scopedPool:'')+(scopedEdition?'&edizione='+scopedEdition:''));
  const page=editId?1:pageNumber(p);
@@ -259,6 +262,12 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  }
  const rows=(data??[]) as unknown as Row[];
  const href=(page:number)=>listHref({q,p:String(page),stato,dal,al,persona:personId,stagione:seasonId,edizione:scopedEdition,piscina:scopedPool,corsia_id:scopedLane,lezione:scopedLesson,livello:catalogLevel===null?undefined:String(catalogLevel),vista:modulo==='iscrizioni'?'elenco':undefined,filtro_modulo:selectedFilter?selectedFilter.name+':'+filterValue:undefined,ordine,dir});
+ const editorHref=(id:string)=>{
+  const params=new URLSearchParams(href(page).slice(1));
+  params.set('editor',id);
+  if(medical&&missingPage>1)params.set('pm',String(missingPage));
+  return '?'+params.toString();
+ };
  const referenceIndex=new Map(Object.entries(references).map(([table,entries])=>[table,new Map(entries.map(row=>[row.id,row]))]));
  const numeric=(c:string)=>module.fields.some(field=>field.name===c&&field.type==='number');
  const display=(row:Row,c:string)=>{
@@ -307,7 +316,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  {!module.appendOnly&&<th role="columnheader" scope="col">Azioni</th>}
  </tr></thead><tbody role="rowgroup">{rows.map(row=><tr key={row.id} role="row">
  {module.columns.map(c=><td key={c} role="cell" data-label={columnLabel(c,module)} className={numeric(c)?'sc-number':undefined}>{modulo==='anagrafiche'&&c==='codice_fiscale'?maskedFiscalCode(typeof row[c]==='string'?row[c]:null):modulo==='anagrafiche'&&['nome','cognome'].includes(c)?displayName(typeof row[c]==='string'?row[c]:null):display(row,c)}</td>)}
- {!module.appendOnly&&<td role="cell" data-label="Azioni"><div className="sc-row-actions">{modulo==='anagrafiche'&&<Link href={'/gestionale/soci/'+row.id}>Apri scheda</Link>}{modulo==='corsie'&&<Link href={'/gestionale/moduli/prenotazioni?corsia_id='+row.id+'&piscina='+row.piscina_id}>Prenotazioni corsia</Link>}{modulo==='calendario'?<Link href={'/gestionale/calendario-visivo/'+row.id}>Modifica lezione e corsie</Link>:<Drawer key={row.id+'-'+msg} title={'Modifica '+entityLabel(modulo)+' · '+rowLabel(row,references,module)} trigger={modulo==='versioni'&&['approvato','archiviato'].includes(String(row.stato))?'Consulta versione':'Modifica'} initialOpen={msg!=='salvato'&&editId===row.id}><Editor module={module} moduleKey={modulo} record={row} references={references} admin={isAdministrator===true} personId={personId} poolId={scopedPool} laneId={scopedLane} lessonId={scopedLesson}/></Drawer>}</div></td>}
+ {!module.appendOnly&&<td role="cell" data-label="Azioni"><div className="sc-row-actions">{modulo==='anagrafiche'&&<Link href={'/gestionale/soci/'+row.id}>Apri scheda</Link>}{modulo==='corsie'&&<Link href={'/gestionale/moduli/prenotazioni?corsia_id='+row.id+'&piscina='+row.piscina_id}>Prenotazioni corsia</Link>}{modulo==='calendario'?<Link href={'/gestionale/calendario-visivo/'+row.id}>Modifica lezione e corsie</Link>:openEditorId===row.id?<Drawer key={row.id+'-'+msg} title={'Modifica '+entityLabel(modulo)+' · '+rowLabel(row,references,module)} trigger={modulo==='versioni'&&['approvato','archiviato'].includes(String(row.stato))?'Consulta versione':'Modifica'} initialOpen={msg!=='salvato'&&openEditorId===row.id}><Editor module={module} moduleKey={modulo} record={row} references={references} admin={isAdministrator===true} personId={personId} poolId={scopedPool} laneId={scopedLane} lessonId={scopedLesson}/></Drawer>:<DeferredEditorButton href={editorHref(row.id)} label={modulo==='versioni'&&['approvato','archiviato'].includes(String(row.stato))?'Consulta versione':'Modifica'}/>}</div></td>}
  </tr>)}
  {!rows.length&&<tr><td colSpan={module.columns.length+(module.appendOnly?0:1)} className="empty-cell">Nessun risultato con questi filtri.</td></tr>}
  </tbody></DataTable>}
