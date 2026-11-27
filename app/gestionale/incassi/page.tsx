@@ -9,7 +9,7 @@ import {Drawer,ConfirmDialog} from '@/components/ui/Drawer';
 import ActionForm from '@/components/ui/ActionForm';
 import Link from 'next/link';
 import {randomUUID} from 'node:crypto';
-import {requireStaff} from '@/lib/security';
+import {requireStaffForRender as requireStaff} from '@/lib/security';
 import {recordGuidedPayment} from './actions';
 
 type Balance={id:string;persona_id:string;stagione_id:string;edizione_id?:string|null;importo_dovuto:string|number;versato:string|number;residuo:string|number;stato:string;scadenza:string|null};
@@ -38,10 +38,12 @@ function linkFor(p:{tab:string;stagione:string;stato:string;persona:string;dal:s
 }
 export default async function Incassi({searchParams}:{searchParams:Promise<{tab?:string;stagione?:string;stato?:string;persona?:string;p?:string;msg?:string;dal?:string;al?:string;debito?:string}>}){
  const {supabase}=await requireStaff();
- const {data:admin}=await supabase.rpc('is_admin');
- const p=await searchParams;
- const {data:seasons,error:seasonError}=await tutteLePagine((da,a)=>supabase.from('stagioni').select('id,nome,attiva').order('dal',{ascending:false}).order('id').range(da,a));
- const {data:allPeople,error:peopleError}=await tutteLePagine((da,a)=>supabase.from('persone').select('id,nome,cognome').order('cognome').order('nome').order('id').range(da,a));
+ const [{data:admin},p,{data:seasons,error:seasonError},{data:allPeople,error:peopleError}]=await Promise.all([
+  supabase.rpc('is_admin'),
+  searchParams,
+  tutteLePagine((da,a)=>supabase.from('stagioni').select('id,nome,attiva').order('dal',{ascending:false}).order('id').range(da,a)),
+  tutteLePagine((da,a)=>supabase.from('persone').select('id,nome,cognome').order('cognome').order('nome').order('id').range(da,a))
+ ]);
  const dal=dateFilter(p.dal),al=dateFilter(p.al),debt=p.debito&&uuid.test(p.debito)?p.debito:'';
  const selectedSeason=p.stagione?((seasons??[]).find(s=>s.id===p.stagione)?.id??''):((seasons??[]).find(s=>s.attiva)?.id??(seasons??[])[0]?.id??'');
  const tab=p.tab==='corso'?'corso':'quota';
@@ -49,6 +51,9 @@ export default async function Incassi({searchParams}:{searchParams:Promise<{tab?
  const personFilter=p.persona&&uuid.test(p.persona)?p.persona:'';
  const page=Math.max(1,Math.min(10000,Number.parseInt(p.p??'1',10)||1));
  const perPage=25;
+ let recentQuery=supabase.from('pagamenti').select('id,persona_id,quota_id,addebito_corso_id,importo,metodo,data_pagamento,riferimento').order('creato_il',{ascending:false}).limit(15);
+ if(personFilter)recentQuery=recentQuery.eq('persona_id',personFilter);
+ const recentPromise=Promise.resolve(recentQuery);
  let balances:Balance[]=[];
  let count=0;let totals:ReturnType<typeof balanceTotals>|null=null;
  let errorMessage='';
@@ -57,10 +62,12 @@ export default async function Incassi({searchParams}:{searchParams:Promise<{tab?
   if(status==='residuo')query=query.gt('residuo',0);else if(status!=='tutte')query=query.eq('stato',status);
   if(personFilter)query=query.eq('persona_id',personFilter);
   if(debt)query=query.eq('id',debt);if(dal)query=query.gte('scadenza',dal);if(al)query=query.lte('scadenza',al);
-  const {data,error,count:total}=await query.order('sort_cognome').order('sort_nome').order('id',{ascending:true}).range((page-1)*perPage,page*perPage-1);
+  const [{data,error,count:total},aggregate]=await Promise.all([
+   query.order('sort_cognome').order('sort_nome').order('id',{ascending:true}).range((page-1)*perPage,page*perPage-1),
+   tutteLePagine((da,a)=>{let q=supabase.from(tab==='quota'?'gest_elenco_saldi_quote':'gest_elenco_saldi_corsi').select('id,importo_dovuto,versato,residuo').eq('stagione_id',selectedSeason);if(status==='residuo')q=q.gt('residuo',0);else if(status!=='tutte')q=q.eq('stato',status);if(personFilter)q=q.eq('persona_id',personFilter);if(debt)q=q.eq('id',debt);if(dal)q=q.gte('scadenza',dal);if(al)q=q.lte('scadenza',al);return q.order('id').range(da,a);})
+  ]);
   if(error||dal&&al&&dal>al)errorMessage='Impossibile leggere i saldi o intervallo di scadenza non valido.';
   else {balances=(data??[]) as unknown as Balance[];count=total??0;
-   const aggregate=await tutteLePagine((da,a)=>{let q=supabase.from(tab==='quota'?'gest_elenco_saldi_quote':'gest_elenco_saldi_corsi').select('id,importo_dovuto,versato,residuo').eq('stagione_id',selectedSeason);if(status==='residuo')q=q.gt('residuo',0);else if(status!=='tutte')q=q.eq('stato',status);if(personFilter)q=q.eq('persona_id',personFilter);if(debt)q=q.eq('id',debt);if(dal)q=q.gte('scadenza',dal);if(al)q=q.lte('scadenza',al);return q.order('id').range(da,a);});
    if(!aggregate.error&&aggregate.data)try{totals=balanceTotals(aggregate.data as Balance[]);}catch{}
   }
  }
@@ -72,9 +79,7 @@ export default async function Incassi({searchParams}:{searchParams:Promise<{tab?
  ]);
  const names=new Map(((people??[]) as Person[]).map(x=>[x.id,`${x.cognome} ${x.nome}`]));
  const courseNames=new Map(((courses??[]) as Course[]).map(x=>[x.id,x.nome]));
- let recentQuery=supabase.from('pagamenti').select('id,persona_id,quota_id,addebito_corso_id,importo,metodo,data_pagamento,riferimento').order('creato_il',{ascending:false}).limit(15);
- if(personFilter)recentQuery=recentQuery.eq('persona_id',personFilter);
- const {data:recent,error:recentError}=await recentQuery;
+ const {data:recent,error:recentError}=await recentPromise;
  const {data:historyPeople}=recent?.length?await supabase.from('persone').select('id,nome,cognome').in('id',[...new Set(recent.map(r=>r.persona_id))]):{data:[]};
  const historyNames=new Map(((historyPeople??[]) as Person[]).map(x=>[x.id,`${x.cognome} ${x.nome}`]));
  const filter={tab,stagione:selectedSeason,stato:status,persona:personFilter,dal,al,debito:debt};
