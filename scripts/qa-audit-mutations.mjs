@@ -116,4 +116,57 @@ try{
  const editions=await admin.from('edizioni_corsi').select('id,nome').eq('corso_id',original.corso_id).eq('stagione_id',original.stagione_id).eq('inizio',original.inizio).eq('fine',original.fine);
  assert.ok(!editions.error);assert.deepEqual(editions.data.filter(x=>x.nome.trim().toLowerCase()===original.nome.trim().toLowerCase()).map(x=>x.id),[original.id]);
  console.log('OK UI guided course duplicate blocked and original linked');
+
+ // Delete with dependent rows: the first deletion must fail without data loss.
+ await staff.goto('/gestionale/moduli/piscine?edit='+pool.id);
+ const protectedEditor=staff.getByRole('dialog',{name:'Modifica '+poolName});
+ await protectedEditor.getByRole('button',{name:'Elimina piscina',exact:true}).click();
+ const protectedConfirm=staff.getByRole('dialog',{name:'Elimina piscina · '+poolName});
+ await protectedConfirm.locator('input[name=conferma]').check();
+ await protectedConfirm.getByRole('button',{name:'Elimina piscina',exact:true}).click();
+ await expect(staff).toHaveURL(/msg=elimina_collegati/);
+ assert.equal((await one('piscine','id',{id:pool.id})).id,pool.id);
+ assert.equal((await one('corsie','id',{id:lane.id})).id,lane.id);
+ await staff.goto('/gestionale/moduli/corsie?edit='+lane.id);
+ const laneEdit=staff.getByRole('dialog',{name:/Modifica corsia/});
+ await laneEdit.getByRole('button',{name:'Elimina corsia',exact:true}).click();
+ const laneConfirm=staff.getByRole('dialog',{name:/Elimina corsia/});
+ await laneConfirm.locator('input[name=conferma]').check();
+ await laneConfirm.getByRole('button',{name:'Elimina corsia',exact:true}).click();
+ await expect(staff).toHaveURL(/msg=eliminato/);
+ const laneGone=await admin.from('corsie').select('id').eq('id',lane.id);assert.ok(!laneGone.error);assert.deepEqual(laneGone.data,[]);
+ await staff.goto('/gestionale/moduli/piscine?edit='+pool.id);
+ await protectedEditor.getByRole('button',{name:'Elimina piscina',exact:true}).click();
+ await protectedConfirm.locator('input[name=conferma]').check();
+ await protectedConfirm.getByRole('button',{name:'Elimina piscina',exact:true}).click();
+ await expect(staff).toHaveURL(/msg=eliminato/);
+ const poolGone=await admin.from('piscine').select('id').eq('id',pool.id);assert.ok(!poolGone.error);assert.deepEqual(poolGone.data,[]);
+ console.log('OK UI protected deletion, dependent row preserved, lane then pool removed');
+ // Two independent authenticated browser contexts submit the same new identity
+ // without waiting for the first response. The database is the final arbiter.
+ const secondStaff=await open('staff');
+ const raceName='Corso race '+randomUUID();
+ const prepare=async(page,name)=>{
+  await page.goto('/gestionale/corsi/nuovo');
+  const f=page.locator('form').filter({has:page.getByRole('button',{name:'Crea edizione',exact:true})});
+  for(const key of ['corso_id','stagione_id','direttore_id'])await f.locator('select[name='+key+']').selectOption(original[key]);
+  await f.locator('input[name=nome]').fill(name);
+  for(const key of ['inizio','fine'])await f.locator('input[name='+key+']').fill(original[key]);
+  await f.locator('input[name=costo_corso]').fill('0');
+  return f;
+ };
+ const [formA,formB]=await Promise.all([prepare(staff,raceName),prepare(secondStaff,'  '+raceName.toUpperCase()+'  ')]);
+ await Promise.all([formA.getByRole('button',{name:'Crea edizione',exact:true}).click(),formB.getByRole('button',{name:'Crea edizione',exact:true}).click()]);
+ const raceResult=async page=>{
+  await expect.poll(async()=>{if(new URL(page.url()).pathname!=='/gestionale/corsi/nuovo')return 'created';if(await page.getByRole('alert').filter({hasText:'Questo corso esiste già'}).count())return 'duplicate';return 'pending';},{timeout:20000}).not.toBe('pending');
+  return new URL(page.url()).pathname==='/gestionale/corsi/nuovo'?'duplicate':'created';
+ };
+ const outcomes=await Promise.all([raceResult(staff),raceResult(secondStaff)]);assert.deepEqual(outcomes.sort(),['created','duplicate']);
+ const rows=await admin.from('edizioni_corsi').select('id,nome').eq('corso_id',original.corso_id).eq('stagione_id',original.stagione_id).eq('inizio',original.inizio).eq('fine',original.fine);
+ assert.ok(!rows.error);const matching=rows.data.filter(x=>x.nome.trim().toLowerCase()===raceName.toLowerCase());assert.equal(matching.length,1);
+ for(const page of [staff,secondStaff]){
+  if(new URL(page.url()).pathname==='/gestionale/corsi/nuovo')await expect(page.getByRole('alert').filter({hasText:'Questo corso esiste già'}).getByRole('link',{name:'Apri quello esistente'})).toHaveAttribute('href','/gestionale/corsi/'+matching[0].id);
+  else await expect(page).toHaveURL(u=>u.pathname==='/gestionale/corsi/'+matching[0].id);
+ }
+ console.log('OK UI concurrent normalized course creation: exactly one edition, loser links to winner');
 }finally{for(const c of contexts)await c.close();await browser.close();}

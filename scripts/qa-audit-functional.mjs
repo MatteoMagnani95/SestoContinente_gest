@@ -24,6 +24,30 @@ const guardianId=accounts.guardian.id;
 const roles=async()=> (await db.query('select ruolo::text from public.ruoli_utente where utente_id=$1 order by ruolo',[guardianId])).rows.map(r=>r.ruolo);
 const add=role=>db.query('insert into public.ruoli_utente(utente_id,ruolo) values($1,$2)',[guardianId,role]);
 const remove=role=>db.query('delete from public.ruoli_utente where utente_id=$1 and ruolo=$2',[guardianId,role]);
+// Full navigation may interrupt background requests. Do not ignore exceptions:
+// settle each destination before leaving, attribute pageerrors and request failures to
+// a route, and preserve the original zero-uncaught-exception requirement.
+function observePage(page,engine){
+ const errors=[],requests=[];
+ let phase='initial';
+ function safeMessage(s){
+  return String(s??'').replace(/https?:\/\/[^\s"'<>]+/g,v=>{try{const u=new URL(v);return u.origin+u.pathname;}catch{return '[url]';}}).slice(0,600);
+ }
+ page.on('pageerror',err=>{
+  const record={engine,phase,route:new URL(page.url()).pathname,name:safeMessage(err.name),message:safeMessage(err.message),stack:safeMessage(err.stack).split('\n').slice(0,3)};
+  errors.push(record);console.log('AUD-009 PAGEERROR '+JSON.stringify(record));
+ });
+ page.on('requestfailed',req=>{
+  const u=new URL(req.url()),record={engine,phase,route:new URL(page.url()).pathname,target:u.origin+u.pathname,type:req.resourceType(),failure:safeMessage(req.failure()?.errorText)};
+  requests.push(record);console.log('AUD-009 REQUESTFAILED '+JSON.stringify(record));
+ });
+ return {errors,requests,phase(value){phase=value;}};
+}
+async function settled(page){
+ // Network-idle is used here as a diagnostic separation between document
+ // loading and navigation-away, not as the assertion that content is ready.
+ await page.waitForLoadState('networkidle',{timeout:15000});
+}
 async function allowed(page,path,destination=path.split('?')[0]){
  const res=await page.goto(path,{waitUntil:'domcontentloaded'});
  assert.equal(res?.status(),200,path);
@@ -91,17 +115,36 @@ try{
    const staff=await context(browser,'staff');
    try{
     const page=await staff.newPage();
-    const errors=[];page.on('pageerror',err=>errors.push(err.name));
+    const audit=observePage(page,engine);
     for(const module of modules){
      const path='/gestionale/moduli/'+module;
+     audit.phase('archive '+module);
      await allowed(page,path,module==='pagamenti'?'/gestionale/incassi':path);
+     await settled(page);
      await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(391);
      console.log('OK '+engine+' archive '+module);
     }
     for(const path of ['/gestionale/utenti','/gestionale/amministrazione-dati','/gestionale/report','/gestionale/programmi-didattici','/gestionale/importazione','/gestione-eventi','/gestione-eventi/'+fixtures.event,'/gestionale/attrezzature/'+fixtures.equipment,'/gestionale/corsi/'+fixtures.edition,'/gestionale/calendario-visivo/'+fixtures.lesson]){
-     await allowed(page,path);console.log('OK '+engine+' route '+path.split('/').slice(0,3).join('/'));
+     audit.phase('route '+path.split('/').slice(0,3).join('/'));
+     await allowed(page,path);await settled(page);console.log('OK '+engine+' route '+path.split('/').slice(0,3).join('/'));
     }
-    assert.deepEqual(errors,[],'uncaught browser errors in archive sweep');
+    // Real client navigation too: do not replace interactive navigation with only direct GETs.
+    audit.phase('client navigation dashboard');
+    await allowed(page,'/gestionale');await settled(page);
+    const nav=page.locator('.sc-staff-sidebar');
+    for(const [label,destination] of [['Soci','/gestionale/soci'],['Corsi','/gestionale/corsi']]){
+     audit.phase('client navigation '+label);
+     const link=nav.locator('a[href="'+destination+'"]').first();
+     // On the mobile viewport the sidebar is hidden: exercise the desktop
+     // navigation at its actual visible width, after mobile reflow assertions.
+     await page.setViewportSize({width:1280,height:900});
+     await expect(link).toBeVisible();
+     await link.click();
+     await expect(page).toHaveURL(u=>u.pathname===destination);
+     await expect(page.getByRole('heading',{level:1}).first()).toBeVisible();
+     await settled(page);
+    }
+    assert.deepEqual(audit.errors,[],'uncaught browser errors in archive and interactive navigation sweep');
     const off=await staff.request.get('/gestionale/incassi/person-options?q=test',{maxRedirects:0});assert.equal(off.status(),404);
    }finally{await staff.close();}
   }finally{await browser.close();}
