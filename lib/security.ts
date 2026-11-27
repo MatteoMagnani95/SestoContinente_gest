@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 
 export type Stato = 'bozza'|'inviata'|'in_verifica'|'integrazione_richiesta'|'approvata'|'respinta';
@@ -61,6 +62,9 @@ export async function requireStaff() {
   }
   return { supabase, user };
 }
+
+/** Request-scoped React Server Component memoization. Mutations continue to call requireStaff directly. */
+export const requireStaffForRender=cache(requireStaff);
 
 export async function requireBoard(){
  const {supabase,user}=await requireUser();
