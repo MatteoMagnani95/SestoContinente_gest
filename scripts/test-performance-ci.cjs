@@ -32,6 +32,34 @@ async function main(){
   }
   assert.equal((await db.query("select count(*)::int as total from notifiche where utente_id=$1",[b])).rows[0].total,0);
   console.log(JSON.stringify({scenario:'notifiche sintetiche, RLS e pagine',rows:20000,visible:10000,countMs:Math.round(countMs*100)/100,pageMs:times,timeoutMs:10000}));
+  // Candidate index experiment: same synthetic fixtures and role, no production DDL.
+  // Report measurements, never impose a flaky wall-clock threshold in CI.
+  const statements=[
+   {name:'unread-count',sql:"select count(*)::int as total from notifiche where utente_id=$1 and letta_il is null",args:[a]},
+   {name:'unread-first-page',sql:"select id,utente_id from notifiche where utente_id=$1 and letta_il is null order by creata_il desc,id limit 20",args:[a]},
+   {name:'unread-deep-page',sql:"select id,utente_id from notifiche where utente_id=$1 and letta_il is null order by creata_il desc,id limit 20 offset 4980",args:[a]}
+  ];
+  const sample=async()=>{
+   const out={};
+   for(const item of statements){
+    const warm=await db.query(item.sql,item.args);
+    const times=[];
+    for(let i=0;i<7;i++){const t=performance.now();const result=await db.query(item.sql,item.args);times.push(performance.now()-t);assert.deepEqual(result.rows,warm.rows);}
+    times.sort((a,b)=>a-b);
+    out[item.name]={medianMs:Math.round(times[3]*100)/100,result:warm.rows};
+   }
+   return out;
+  };
+  const before=await sample();
+  await db.query('reset role');
+  await db.query('create index sc_bench_notifiche_unread_order on public.notifiche (utente_id,creata_il desc,id) where letta_il is null');
+  await db.query('analyze notifiche');
+  await db.query('set local role authenticated');
+  await db.query("select set_config('request.jwt.claim.sub',$1,true)",[a]);
+  const after=await sample();
+  for(const item of statements)assert.deepEqual(after[item.name].result,before[item.name].result);
+  assert.equal((await db.query("select count(*)::int as total from notifiche where utente_id=$1",[b])).rows[0].total,0);
+  console.log(JSON.stringify({scenario:'candidate unread notification index',samples:7,rows:20000,metrics:statements.map(({name})=>({name,beforeMs:before[name].medianMs,afterMs:after[name].medianMs})),sameResults:true,rlsIsolated:true,productionChanges:false}));
   await db.query('rollback');
  }finally{await db.end();}
 }
