@@ -4,9 +4,16 @@ import { readAccountForRender, readRolesForRender } from '@/lib/security';
 import { accountFirstName, guestAccess, type NavigationAccess } from '@/lib/navigation';
 /** Presentation only: never use this as a replacement for requireUser/Staff/Admin/Board or RLS. */
 export const getNavigationAccess=cache(async():Promise<NavigationAccess>=>{
- const {supabase,user,status}=await readAccountForRender();
+ const {supabase,user,status,snapshot}=await readAccountForRender();
  if(status==='guest'||!user)return guestAccess;
  if(status!=='enabled')return {...guestAccess,signedIn:true};
+ if(snapshot?.enabled){
+  const allowed=new Set(snapshot.roles),admin=allowed.has('amministratore'),staff=admin||allowed.has('segreteria');
+  const firstName=snapshot.owner?accountFirstName([snapshot.owner]):undefined;
+  const surname=firstName&&typeof snapshot.owner?.cognome==='string'?snapshot.owner.cognome.trim():'';
+  const lastInitial=/^\p{L}/u.test(surname)?Array.from(surname)[0]:undefined;
+  return {signedIn:true,enabled:true,staff,admin,instructor:allowed.has('istruttore'),board:staff||allowed.has('consigliere_cda'),personal:snapshot.personal,member:snapshot.member,unread:snapshot.unread,firstName,lastInitial};
+ }
  const [roles,member,request,links,alerts,owners]=await Promise.all([
   readRolesForRender(supabase,user.id),
   supabase.rpc('area_soci_accesso'),

@@ -180,3 +180,14 @@ test('validated structural RPCs are local-QA-only and retain legacy fallbacks',(
  assert.match(read('app/gestionale/incassi/page.tsx'),/else if\(!aggregate.error&&aggregate.data\)/);
  assert.match(read('scripts/qa-latency.cjs'),/target\?\.origin===api.origin/);
 });
+
+test('own-account RPC is gated, validates snapshot and shares it only within the verified render',()=>{
+ const s=read('lib/security.ts'),nav=read('lib/navigation-access.ts'),sql=read('scripts/qa-structural-rpc.sql');
+ assert.match(s,/if\(error\|\|!user\)return [^\n]*status:'guest'/);
+ assert.match(s,/structuralRpc\(supabase,'sc_perf_navigation',\{\}\)/);
+ assert.match(s,/account.supabase===supabase&&account.user\?\.id===userId&&account.status==='enabled'/);
+ assert.match(nav,/if\(snapshot\?\.enabled\)/);
+ assert.match(sql,/CREATE FUNCTION public.sc_perf_navigation\(\)[\s\S]*?SECURITY INVOKER[\s\S]*?uid uuid:=auth.uid\(\)/);
+ assert.match(sql,/REVOKE ALL ON FUNCTION public.sc_perf_navigation\(\) FROM PUBLIC,anon,authenticated/);
+ assert.match(read('.github/workflows/performance-3-1.yml'),/QA_STRUCTURAL_RPC_USED navigation-account/);
+});

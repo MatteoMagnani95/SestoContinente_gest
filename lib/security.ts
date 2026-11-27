@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
+import {structuralRpc,readAccountSnapshot,markStructuralRpcUsed,structuralQaEnabled} from '@/lib/structural-qa';
 
 export type Stato = 'bozza'|'inviata'|'in_verifica'|'integrazione_richiesta'|'approvata'|'respinta';
 export const statoLabel: Record<Stato,string> = {
@@ -69,13 +70,19 @@ export async function requireStaff() {
 export const readAccountForRender=cache(async()=>{
  const supabase=await createClient();
  const {data:{user},error}=await supabase.auth.getUser();
- if(error||!user)return {supabase,user:null,status:'guest' as const};
+ if(error||!user)return {supabase,user:null,status:'guest' as const,snapshot:null};
+ const snapshot=readAccountSnapshot(await structuralRpc(supabase,'sc_perf_navigation',{}));
+ if(snapshot){markStructuralRpcUsed('navigation-account');return {supabase,user,status:snapshot.enabled?'enabled' as const:'disabled' as const,snapshot};}
  const {data:enabled,error:statusError}=await supabase.rpc('account_corrente_abilitato');
- return {supabase,user,status:statusError||enabled!==true?'disabled' as const:'enabled' as const};
+ return {supabase,user,status:statusError||enabled!==true?'disabled' as const:'enabled' as const,snapshot:null};
 });
-export const readRolesForRender=cache(async(supabase:Awaited<ReturnType<typeof createClient>>,userId:string)=>
- await supabase.from('ruoli_utente').select('ruolo').eq('utente_id',userId)
-);
+export const readRolesForRender=cache(async(supabase:Awaited<ReturnType<typeof createClient>>,userId:string)=>{
+ if(structuralQaEnabled()){
+  const account=await readAccountForRender();
+  if(account.supabase===supabase&&account.user?.id===userId&&account.status==='enabled'&&account.snapshot?.enabled)return {data:account.snapshot.roles.map(ruolo=>({ruolo})),error:null};
+ }
+ return await supabase.from('ruoli_utente').select('ruolo').eq('utente_id',userId);
+});
 export const requireUserForRender=cache(async()=>{
  const account=await readAccountForRender();
  if(account.status==='guest'||!account.user)redirect('/accedi?msg=account');

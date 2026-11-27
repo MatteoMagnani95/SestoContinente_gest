@@ -39,6 +39,16 @@ export function readDashboardSnapshot(v:Record<string,unknown>|null){
 }
 
 const used=new Set<string>();
-export function markStructuralRpcUsed(name:'dashboard'|'soci-counts'|'incassi-totals'){
+export function markStructuralRpcUsed(name:'dashboard'|'soci-counts'|'incassi-totals'|'navigation-account'){
  if(structuralQaEnabled()&&!used.has(name)){used.add(name);console.log('QA_STRUCTURAL_RPC_USED '+name);}
+}
+
+type AccountSnapshot={enabled:false}|{enabled:true;roles:string[];member:boolean;personal:boolean;unread:number;owner:{nome:string;cognome:string|null}|null};
+export function readAccountSnapshot(v:Record<string,unknown>|null):AccountSnapshot|null{
+ if(!v)return null;
+ if(v.enabled===false)return {enabled:false};
+ if(v.enabled!==true||!Array.isArray(v.roles)||!v.roles.every(str)||typeof v.member!=='boolean'||typeof v.personal!=='boolean'||!validCount(v.unread))return null;
+ const owner=v.owner===null?null:record(v.owner)&&str(v.owner.nome)&&(v.owner.cognome===null||str(v.owner.cognome))?{nome:v.owner.nome,cognome:v.owner.cognome}:null;
+ if(v.owner!==null&&!owner)return null;
+ return {enabled:true,roles:v.roles,member:v.member,personal:v.personal,unread:v.unread,owner};
 }
