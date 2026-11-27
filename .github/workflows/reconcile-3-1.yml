@@ -1,0 +1,71 @@
+name: Prova riconciliazione 3.1 (solo locale)
+on:
+  push:
+    branches: ['ops/3.1-reconciliation-lab']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  reconcile:
+    if: github.ref == 'refs/heads/ops/3.1-reconciliation-lab'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      QA_ISOLATED_ENV: 'true'
+      SESTO_TEST_MODE: 'true'
+      SESTO_EMAIL_MODE: simulate
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 3.4.0
+      - run: npm ci --no-audit --no-fund
+      - name: Avvia solo Supabase locale con schema storico
+        run: |
+          set -euo pipefail
+          test -z "${SUPABASE_ACCESS_TOKEN:-}"
+          test ! -f supabase/.temp/project-ref
+          test "$(find supabase/migrations -maxdepth 1 -name '*.sql' | wc -l)" -eq 29
+          mkdir -p "$RUNNER_TEMP/sesto-pending"
+          mv supabase/migrations/20261127122235_structural_read_snapshots.sql supabase/migrations/20261127125108_course_calendar_read_snapshots.sql "$RUNNER_TEMP/sesto-pending/"
+          if [ ! -f supabase/config.toml ] && [ ! -f supabase/config.jsonc ]; then supabase init; fi
+          if [ ! -f supabase/config.toml ]; then supabase config convert --to toml; fi
+          python3 scripts/qa-local-config.py
+          supabase start > "$RUNNER_TEMP/sesto-start.log" 2>&1 || { echo "Avvio locale fallito"; exit 1; }
+          status=$(mktemp)
+          chmod 600 "$status"
+          trap 'rm -f "$status"' EXIT
+          supabase status --output env > "$status"
+          work=$(mktemp -d "$RUNNER_TEMP/sesto-reconcile.XXXXXX")
+          chmod 700 "$work"
+          python3 scripts/qa-local-status.py "$status" "$work"
+          mv "$RUNNER_TEMP/sesto-pending/"*.sql supabase/migrations/
+      - name: Simula disallineamento storico e riconciliazione CLI
+        run: |
+          set -euo pipefail
+          supabase migration repair --help
+          supabase db push --help
+          node scripts/qa-reconcile-history.mjs simulate
+          # Never omit --local. No remote link, token or credentials.
+          supabase migration repair --local --status applied 20261125223000 20261126160000 20261126162500 20261126163000 20261126163410 20261126163420 20261126171000 20261126172500 20261126213000
+          supabase migration repair --local --status reverted 20261127091403
+          node scripts/qa-reconcile-history.mjs repaired
+          supabase db push --local --dry-run > "$QA_WORK_DIR/dry-run.txt" 2>&1
+          node scripts/qa-reconcile-history.mjs dry-run
+          supabase db push --local
+          node scripts/qa-reconcile-history.mjs final
+          node scripts/qa-install-structural-rpc.mjs
+      - name: Salva esito aggregato senza dati o credenziali
+        uses: actions/upload-artifact@v4
+        with:
+          name: reconciliation-evidence
+          path: ${{ env.QA_WORK_DIR }}/reconciliation-evidence.json
+          if-no-files-found: error
+      - name: Arresta il laboratorio locale
+        if: always()
+        run: supabase stop --no-backup
