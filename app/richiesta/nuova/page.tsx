@@ -1,3 +1,4 @@
+import {PageHeader} from '@/components/ui/Primitives';
 import {applicationLegalConfig,isTestApplication} from '@/lib/application-config';
 import {versioneImmagini} from '@/lib/scelte';
 import Link from 'next/link';
@@ -15,7 +16,7 @@ export default async function NewRequest({searchParams}:{searchParams:Promise<{m
   const {data:scelta,error:sceltaError}=await supabase.from('scelte_iscrizione').select('id,scelta,versione').eq('utente_id',user.id).eq('tipo','immagini').order('id',{ascending:false}).limit(1).maybeSingle();
   if(sceltaError)return <div className="container narrow"><h1>Scelte non disponibili</h1><p>Non è possibile leggere le dichiarazioni già registrate. Riprova prima di modificare la domanda.</p><Link href="/richiesta/stato">Torna alla domanda</Link></div>;
   if(request&&(request.versione_statuto||request.versione_privacy)&&isTestApplication(request)!==legal.testMode)return <div className="container narrow"><h1>Modalità della pratica non disponibile</h1><p>Non è possibile convertire una pratica reale in collaudo o viceversa. Contatta la segreteria.</p><Link href="/richiesta/stato">Torna alla pratica</Link></div>;
-  return <div className="container narrow sc-applicant-page"><div className="page-intro"><p className="eyebrow">Adesione all'associazione</p><h1>{request?.stato==='integrazione_richiesta'?'Completa la tua domanda':'Richiedi l’adesione'}</h1><p>Compila i dati richiesti. La domanda sarà esaminata dalla segreteria.</p></div>
+  return <div className="container narrow sc-applicant-page"><PageHeader area="secretariat" icon="clipboard" marine eyebrow="Adesione all'associazione" title={request?.stato==='integrazione_richiesta'?'Completa la tua domanda':'Richiedi l’adesione'} description="Compila i dati richiesti. La domanda sarà esaminata dalla segreteria."/>
     
     {request?.stato==='integrazione_richiesta' && <div className="notice"><strong>Informazioni richieste dalla segreteria:</strong> {request.nota_pubblica}</div>}
     {msg && <div className="notice error" role="alert">{queryMessage(msg)}</div>}

@@ -97,9 +97,17 @@ export function mobileDestinations(path:string,access:NavigationAccess):MobileDe
  if(staffArea(path,access)||(path==='/'&&access.staff))return [{href:'/gestionale',label:'Dashboard',icon:'home'},{href:'/gestionale/soci',label:'Soci',icon:'users'},{href:'/gestionale/corsi',label:'Corsi',icon:'course'},{href:'/gestionale/calendario-visivo',label:'Calendario',icon:'calendar'}];
  if(access.instructor&&(isWithin(path,'/istruttore')||isWithin(path,'/gestione-eventi')||(!access.personal&&!access.board)))return [{href:'/istruttore',label:'Corsi',icon:'course'},{href:'/gestione-eventi',label:'Eventi',icon:'calendar'},{href:'/documenti',label:'Documenti',icon:'document'},{href:'/area-personale/profilo',label:'Profilo',icon:'user'}];
  if(access.board&&(isWithin(path,'/organi-sociali')||!access.personal))return [{href:'/organi-sociali',label:'Consiglio',icon:'clipboard'},{href:'/documenti',label:'Documenti',icon:'document'},{href:'/area-personale/profilo',label:'Profilo',icon:'user'}];
- if(access.personal)return [{href:'/area-personale',label:'La mia area',icon:'home'},{href:'/area-personale/corsi',label:'Corsi',icon:'course'},...(access.member?[{href:'/area-soci',label:'Eventi',icon:'calendar' as const}]:[]),{href:'/area-personale/profilo',label:'Profilo',icon:'user'}];
+ if(access.personal)return [{href:'/area-personale',label:'La mia area',icon:'home'},{href:'/area-personale/corsi',label:'Corsi',icon:'course'},...(access.member?[{href:'/area-soci',label:'Eventi',icon:'calendar' as const}]:[]),{href:'/documenti',label:'Documenti',icon:'document'},{href:'/area-personale/profilo',label:'Profilo',icon:'user'}];
  return [{href:'/richiesta/stato',label:'Domanda',icon:'clipboard'},{href:'/documenti',label:'Documenti',icon:'document'},{href:'/area-personale/profilo',label:'Profilo',icon:'user'}];
 }
 export function searchVisible(path:string,access:NavigationAccess){
  return access.enabled&&path!=='/'&&path!=='/smista'&&!['/accedi','/registrati','/nuova-password','/richiesta'].some(p=>isWithin(path,p));
+}
+
+/** Desktop user navigation: high-level destinations only; page tabs remain contextual. */
+export function userAreaDestinations(path:string,access:NavigationAccess):MobileDestination[]{
+ if(!access.enabled||staffArea(path,access)||!['/area-personale','/area-soci','/istruttore','/gestione-eventi','/documenti','/notifiche','/richiesta/stato','/comunicazioni/corsi'].some(base=>isWithin(path,base)))return [];
+ if(access.instructor&&(['/istruttore','/gestione-eventi','/comunicazioni/corsi'].some(base=>isWithin(path,base))||!access.personal))return [{href:'/istruttore',label:'Area istruttori',icon:'course'},{href:'/gestione-eventi',label:'Gestisci eventi soci',icon:'calendar'},{href:'/documenti',label:'Documenti',icon:'document'},...(access.personal?[{href:'/area-personale',label:'Area personale',icon:'home' as const}]:[]),{href:'/area-personale/profilo',label:'Profilo e consensi',icon:'user'}];
+ if(access.personal)return [{href:'/area-personale',label:'Area personale',icon:'home'},{href:'/area-personale/corsi',label:'Corsi e lezioni',icon:'course'},...(access.member?[{href:'/area-soci',label:'Eventi e area soci',icon:'calendar' as const}]:[]),{href:'/area-personale/certificato',label:'Certificato medico',icon:'certificate'},{href:'/documenti',label:'Documenti',icon:'document'},{href:'/richiesta/stato',label:'Stato domanda',icon:'clipboard'},{href:'/area-personale/profilo',label:'Profilo e consensi',icon:'user'},...(access.instructor?[{href:'/istruttore',label:'Area istruttori',icon:'course' as const}]:[])];
+ return [];
 }

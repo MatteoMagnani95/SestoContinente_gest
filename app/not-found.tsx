@@ -1,2 +1,2 @@
-import Link from 'next/link';
-export default function NotFound(){return <div className="container narrow"><h1>Pagina non trovata</h1><p>Il collegamento non è disponibile oppure non hai accesso al contenuto richiesto.</p><Link href="/">Torna all'inizio</Link></div>}
+import {PageHeader,ButtonLink} from '@/components/ui/Primitives';
+export default function NotFound(){return <div className="container narrow"><PageHeader area="system" icon="info" marine title="Pagina non trovata" description="Il collegamento non è disponibile oppure non hai accesso al contenuto richiesto." actions={<ButtonLink href="/" variant="secondary" icon="home">Torna all'inizio</ButtonLink>}/></div>}

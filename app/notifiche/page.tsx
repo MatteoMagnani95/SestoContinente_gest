@@ -11,7 +11,7 @@ export default async function AccountNotifications({searchParams}:{searchParams:
  const page=pageNumber(p),size=30;
  const {data,error,count}=await supabase.from('notifiche').select('id,titolo,messaggio,creata_il',{count:'exact'}).eq('utente_id',user.id).is('letta_il',null).order('creata_il',{ascending:false}).order('id').range((page-1)*size,page*size-1);
  return <div className="container narrow">
- <PageHeader eyebrow="Account" title="Le mie notifiche" description="Consulta le comunicazioni destinate al tuo account."/>
+ <PageHeader area="calendar" icon="bell" marine eyebrow="Account" title="Le mie notifiche" description="Consulta le comunicazioni destinate al tuo account."/>
  {msg==='letta'&&<Alert tone="success" announce>Notifica segnata come letta.</Alert>}
  {msg==='errore'&&<Alert tone="warning" announce>Impossibile aggiornare la notifica.</Alert>}
  <section className="sc-card"><h2>Notifiche da leggere</h2>

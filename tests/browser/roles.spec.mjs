@@ -15,7 +15,7 @@ test('Viste e navigazione per ruolo sintetico, solo lettura',async({page},info)=
   const target=new URL(path,'http://localhost');
   await expect(page).toHaveURL(url=>url.pathname===target.pathname);
   await expect(page.getByRole('heading',{level:1}).first()).toBeVisible();
-  for(const size of [{width:320,height:568},{width:390,height:844},{width:768,height:1024},{width:844,height:390},{width:1280,height:800}]){
+  for(const size of [{width:320,height:568},{width:390,height:844},{width:768,height:1024},{width:844,height:390},{width:1024,height:768},{width:1280,height:800},{width:1440,height:900},{width:1920,height:1080}]){
    await page.setViewportSize(size);
    expect(await page.evaluate(()=>document.documentElement.scrollWidth),role+' '+path+' '+size.width).toBeLessThanOrEqual(size.width+1);
    const logout=page.getByRole('button',{name:'Esci dal gestionale',exact:true});
@@ -71,4 +71,37 @@ test('Ricerca e navigazione globale per ruolo: accesso, tastiera e chiusura',asy
  await page.keyboard.press('Escape');
  await expect(dialog).toBeHidden();await expect(trigger).toBeFocused();
  await expect(page.getByRole('navigation',{name:'Navigazione rapida mobile'})).toBeVisible();
+});
+
+
+test('F6: interfacce personali e didattiche, accessi reali e navigazione mobile',async({page},info)=>{
+ const role=info.project.metadata.role;
+ if(role==='member'){
+  await page.goto('/area-personale');
+  await expect(page.getByRole('navigation',{name:'Attività personali'}).getByRole('link',{name:'Corsi e lezioni'})).toBeVisible();
+  await expect(page.getByRole('navigation',{name:'Attività personali'}).getByRole('link',{name:'Documenti'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Le mie iscrizioni ai corsi'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'I tuoi brevetti'})).toBeVisible();
+  await expect(page.locator('.sc-personal-dashboard').getByRole('complementary',{name:'Progetto Nereia'})).toBeVisible();
+  await expect(page.getByText('Paga online',{exact:true})).toHaveCount(0);
+  await page.setViewportSize({width:390,height:844});
+  await expect(page.getByRole('navigation',{name:'Navigazione rapida mobile'}).getByRole('link',{name:'Documenti'})).toBeVisible();
+  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(391);
+ }else if(role==='instructor'){
+  await page.goto('/istruttore');
+  await expect(page.getByRole('navigation',{name:'Sezioni istruttore'}).getByRole('link')).toHaveCount(5);
+  await expect(page.locator('.sc-instructor-course').first()).toBeVisible();
+  await page.goto('/istruttore?tab=presenze');
+  await expect(page.getByRole('heading',{name:/Registro presenze/})).toBeVisible();
+  await expect(page.getByText('Nessuna assenza viene registrata automaticamente.',{exact:false})).toBeVisible();
+  await page.setViewportSize({width:390,height:844});
+  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(391);
+ }else if(role==='applicant'){
+  await page.goto('/richiesta/stato');await expect(page.getByRole('heading',{level:1})).toBeVisible();
+  await expect(page.getByRole('navigation',{name:'Attività personali'})).toHaveCount(0);
+ }else if(role==='board'){
+  await page.goto('/organi-sociali');await expect(page.getByRole('heading',{level:1})).toBeVisible();
+ }else if(role==='secretary'){
+  await page.goto('/gestionale');await expect(page.getByRole('heading',{level:1})).toBeVisible();
+ }
 });

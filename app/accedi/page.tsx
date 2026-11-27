@@ -1,3 +1,5 @@
+import AuthIdentity from '@/components/ui/AuthIdentity';
+import {Icon} from '@/components/ui/Icon';
 import Link from 'next/link';
 import {redirect} from 'next/navigation';
 import {headers} from 'next/headers';
@@ -25,7 +27,7 @@ export default async function Login({searchParams}:{searchParams:Promise<{msg?:s
  } catch {
    // Configurazione non valida: non presentare una richiesta impossibile.
  }
- return <div className="sc-auth-shell"><section className="sc-card sc-auth-panel"><p className="eyebrow">Accesso riservato</p><h1>Accedi</h1><p>Entra nella tua area personale o nel gestionale.</p>
+ return <div className="sc-auth-shell"><section className="sc-card sc-auth-panel"><div className="sc-auth-decoration" aria-hidden="true"/><p className="eyebrow">Accesso riservato</p><div className="sc-auth-title"><span className="sc-heading-icon sc-area-secretariat"><Icon name="user"/></span><h1>Accedi</h1></div><p>Entra nella tua area personale o nel gestionale.</p>
  {msg&&queryMessage(msg)&&<Alert tone={['uscita','recupero','confermata'].includes(msg)?'info':'danger'} announce>{queryMessage(msg)}</Alert>}
  {access.signedIn&&!access.enabled&&<p className="notice warning">L’account non è abilitato. Puoi provare ad accedere con un altro account o contattare la segreteria.</p>}
  <AuthForm action={loginAction} label="Accedi" pendingLabel="Accesso in corso…"><label>Email<input name="email" type="email" required autoComplete="username" autoCapitalize="none" spellCheck={false}/></label><PasswordField/></AuthForm>
@@ -33,5 +35,5 @@ export default async function Login({searchParams}:{searchParams:Promise<{msg?:s
   {!recoveryConfigured?<Alert tone="danger">Recupero password temporaneamente non disponibile. Contatta la segreteria.</Alert>:canonicalRecoveryUrl?<><p>Per recuperare la password, apri la pagina sul dominio ufficiale del gestionale.</p><a className="button" href={canonicalRecoveryUrl}>Vai al recupero password</a></>:<><p>Inserisci l’indirizzo email con cui ti sei registrato. Apri il link ricevuto nello stesso browser e dispositivo.</p><AuthForm action={recoverAction} label="Invia link di recupero" pendingLabel="Invio in corso…"><label>Email dell’account<input name="email" type="email" maxLength={254} required autoComplete="email" autoCapitalize="none" spellCheck={false}/></label></AuthForm></>}
  </details>
  <details className="sc-auth-recovery"><summary>Non hai ricevuto l’email di verifica?</summary><AuthForm action={resendVerificationAction} label="Richiedi nuova email" pendingLabel="Invio in corso…"><label>Email dell’account<input name="email" type="email" required autoComplete="email"/></label></AuthForm></details>
- <p className="auth-bottom">Non hai un account? <Link href="/registrati">Crea il tuo account</Link></p></section></div>;
+ <p className="auth-bottom">Non hai un account? <Link href="/registrati">Crea il tuo account</Link></p></section><AuthIdentity/></div>;
 }
