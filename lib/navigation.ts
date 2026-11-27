@@ -91,7 +91,7 @@ export function accountFirstName(owners:readonly {nome:unknown}[]):string|undefi
 }
 export function greeting(access:NavigationAccess){return access.enabled&&access.firstName?'Ciao, '+access.firstName:'Ciao';}
 export function initials(access:NavigationAccess){return access.enabled&&access.firstName?(Array.from(access.firstName).slice(0,1).join('')+(access.lastInitial??'')).toLocaleUpperCase('it'):'';}
-export type MobileDestination={href:string;label:string;icon:'home'|'users'|'course'|'calendar'|'document'|'user'|'clipboard'};
+export type MobileDestination={href:string;label:string;icon:'home'|'users'|'course'|'calendar'|'document'|'user'|'clipboard'|'certificate'};
 export function mobileDestinations(path:string,access:NavigationAccess):MobileDestination[]{
  if(!access.enabled)return [];
  if(staffArea(path,access)||(path==='/'&&access.staff))return [{href:'/gestionale',label:'Dashboard',icon:'home'},{href:'/gestionale/soci',label:'Soci',icon:'users'},{href:'/gestionale/corsi',label:'Corsi',icon:'course'},{href:'/gestionale/calendario-visivo',label:'Calendario',icon:'calendar'}];
