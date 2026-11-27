@@ -72,7 +72,7 @@ test('Snapshot dirty: baseline dopo salvataggio confermato e guard strutturale',
 test('Menu mobile inizialmente chiuso, dialog e confine server conservato',()=>{
  const shell=read('components/AppShell.tsx'),style=read('app/navigation.css'),header=read('components/SiteHeader.tsx'),access=read('lib/navigation-access.ts');
  assert.match(shell,/useState\(false\)/);assert.match(shell,/\.showModal\(\)/);assert.match(shell,/onCancel=/);assert.match(shell,/aria-labelledby="sc-menu-title"/);assert.match(shell,/staffArea\(path,access\)/);
- assert.match(style,/\.sc-staff-sidebar\{display:none;\}/);assert.match(header,/aria-expanded=\{menuOpen\}/);assert.match(header,/access\.instructor&&/);assert.match(header,/access\.board&&/);assert.match(header,/access\.staff&&/);assert.match(access,/account_corrente_abilitato/);assert.match(read('app/gestionale/layout.tsx'),/await requireStaff\(\)/);
+ assert.match(style,/\.sc-staff-sidebar\{display:none;\}/);assert.match(header,/aria-expanded=\{menuOpen\}/);assert.match(header,/access\.instructor&&/);assert.match(header,/access\.board&&/);assert.match(header,/access\.staff&&/);assert.match(access,/await readAccountForRender\(\)/);assert.match(access,/if\(status!=='enabled'\)return \{\.\.\.guestAccess,signedIn:true\}/);assert.match(read('lib/security.ts'),/readAccountForRender=cache\(async\(\)=>\{[\s\S]*?supabase\.rpc\('account_corrente_abilitato'\)/);assert.match(read('app/gestionale/layout.tsx'),/await requireStaff\(\)/);
 });
 test('Composizione didattica e selettori controllati: valore serializzato tracciato senza inviare nuovi dati al server',()=>{
  const marker=new Input('','["a","b"]','hidden');
