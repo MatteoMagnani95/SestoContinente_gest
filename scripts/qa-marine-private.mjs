@@ -36,6 +36,13 @@ try{
     await page.setViewportSize({width,height:width>=1024?900:844});
     await page.evaluate(()=>document.fonts.ready);
     await expect(page.getByRole('heading',{level:1}).first()).toBeVisible();
+    if(path==='/gestionale'){
+     const heading=page.locator('.sc-dashboard-compact-heading');
+     await expect(heading).toBeVisible();
+     await expect(page.locator('.sc-route-content > .sc-page-header-marine')).toHaveCount(0);
+     const box=await heading.boundingBox();
+     assert.ok(box&&box.height<=88,name+' oversized dashboard heading '+width);
+    }
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1),name+' overflow '+width);
     await expect(page.getByRole('button',{name:'Esci dal gestionale'})).toBeVisible();
     if(width<=1000){
