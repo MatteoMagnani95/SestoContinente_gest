@@ -38,3 +38,15 @@ test('Operational headers remain unboxed and member counts preserve readable com
  assert.match(css,/\.sc-member-list-metrics \.sc-metric-label\{[^}]*font-size:14px/);
  assert.match(qa,/15-scheda-socio/);assert.match(qa,/16-anagrafiche/);assert.match(qa,/decorative header/);
 });
+
+test('Marine operations compact layer preserves local assets and covers finance, course and equipment views',()=>{
+ const css=read('app/marine-premium-operations.css'),qa=read('scripts/qa-marine-private.mjs');
+ assert.match(read('app/layout.tsx'),/import '\.\/marine-premium-operations\.css'/);
+ assert.doesNotMatch(css,/@import|:root\s*\{|url\(/i);
+ assert.ok(Buffer.byteLength(css)<8000);
+ assert.match(css,/\.sc-marine-private \.sc-calendar-controls\{/);
+ assert.match(css,/\.sc-marine-private \.payment-filters\{/);
+ assert.match(css,/\.sc-loan-kpis/);
+ assert.match(qa,/undersized control/);assert.match(qa,/clipped KPI/);
+ for(const p of ['23-corsi-tabella','24-archivio-incassi','25-contabilita','26-economia','27-incassi-corsi'])assert.ok(qa.includes(p));
+});

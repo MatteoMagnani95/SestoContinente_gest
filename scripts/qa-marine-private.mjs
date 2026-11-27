@@ -32,6 +32,11 @@ const routes=[
  ['staff','20-revisioni','/gestionale/moduli/revisioni'],
  ['staff','21-consegne','/gestionale/moduli/consegne'],
  ['staff','22-eventi','/gestione-eventi'],
+ ['staff','23-corsi-tabella','/gestionale/corsi?vista=tabella'],
+ ['staff','24-archivio-incassi','/gestionale/archivio-incassi'],
+ ['staff','25-contabilita','/gestionale/moduli/contabilita'],
+ ['staff','26-economia','/gestionale/economia'],
+ ['staff','27-incassi-corsi','/gestionale/incassi?tab=corso'],
 ];
 const browser=await chromium.launch();
 try{
@@ -40,7 +45,7 @@ try{
   try{
    const page=await ctx.newPage();
    const response=await page.goto(path);
-   assert.equal(response?.status(),200,name);assert.equal(new URL(page.url()).pathname,path,name);
+   assert.equal(response?.status(),200,name);assert.equal(new URL(page.url()).pathname,new URL(path,app.origin).pathname,name);
    await expect(page.locator('#sc-main.sc-marine-private')).toBeVisible();
    for(const width of [320,390,768,1024,1440]){
     await page.setViewportSize({width,height:width>=1024?900:844});
@@ -67,6 +72,10 @@ try{
      });
      assert.ok(brand.lines>0&&brand.lines<=2&&brand.width>=80,name+' header '+width+': '+JSON.stringify(brand));
     }
+    const operational=await page.locator('.sc-calendar-filter,.payment-filters,.sc-operational-filters').evaluateAll(forms=>forms.flatMap(form=>[...form.querySelectorAll('input:not([type=hidden]):not([type=checkbox]):not([type=radio]),select,button[type=submit]')].filter(el=>el.getClientRects().length).map(el=>({tag:el.tagName,width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height}))));
+    for(const control of operational)assert.ok(control.width>=44&&control.height>=44,name+' undersized control '+width+' '+JSON.stringify(control));
+    const metrics=await page.locator(':is(.sc-finance-kpis,.sc-equipment-kpis,.sc-loan-kpis) .sc-metric-value').evaluateAll(items=>items.map(el=>({width:el.clientWidth,scroll:el.scrollWidth})));
+    for(const m of metrics)assert.ok(m.scroll<=m.width+1,name+' clipped KPI '+width);
     if(width===390||width===1440)await page.screenshot({path:join(out,name+'-'+width+'.png'),fullPage:true,animations:'disabled',caret:'hide'});
    }
    console.log('OK visual '+name+' '+role+' (5 viewports)');
