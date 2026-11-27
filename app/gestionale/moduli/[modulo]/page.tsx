@@ -15,7 +15,7 @@ import EditForm from '@/components/EditForm';
 import CancelEditButton from '@/components/CancelEditButton';
 import Link from 'next/link';
 import {notFound,redirect} from 'next/navigation';
-import {requireStaff} from '@/lib/security';
+import {requireStaffForRender as requireStaff} from '@/lib/security';
 import {modules,isModuleKey,type Module,type Field,type ModuleKey} from '@/lib/modules';
 import {formatValue,datetimeForInput} from '@/lib/format';
 import {formatRome,UUID_RE} from '@/lib/course-tools';
