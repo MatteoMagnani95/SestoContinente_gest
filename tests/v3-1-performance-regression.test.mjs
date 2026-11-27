@@ -127,3 +127,14 @@ test('module reference pagination retains ordering and historical values',()=>{
  assert.match(source,/seasonNames.get\(a.stagione_id\)/);
  assert.match(source,/missing.length\?await supabase.from\('gest_elenco_adesioni'\)/);
 });
+
+test('simple reference archives defer full option lists until an editor is requested',()=>{
+ const source=read('app/gestionale/moduli/[modulo]/page.tsx');
+ assert.match(source,/const deferredReferences=\['qualifiche','brevetti','certificati','revisioni','consegne','quote'\].includes\(modulo\)/);
+ assert.match(source,/const fullReferenceOptions=!deferredReferences\|\|nuovo==='1'\|\|Boolean\(openEditorId\)/);
+ assert.match(source,/if\(!fullReferenceOptions&&table!=='stagioni'\)\{[\s\S]*?UUID_RE.test\(id\)[\s\S]*?\.in\('id',ids\)[\s\S]*?return;/);
+ assert.match(source,/params.set\('nuovo','1'\)/);
+ assert.match(source,/deferredReferences&&!fullReferenceOptions\?<DeferredEditorButton primary href=\{createHref\(\)\} label=\{ui.create\}/);
+ assert.match(source,/initialOpen=\{nuovo==='1'&&!msg\}/);
+ assert.match(source,/refQuery\(\).range\(offset,offset\+499\)/);
+});
