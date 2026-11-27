@@ -30,6 +30,9 @@ const routes=[
  {role:'staff',path:'/gestionale/corsi/'+id(fixtures.edition)},
  {role:'staff',path:'/gestionale/calendario-visivo'},
  {role:'staff',path:'/gestionale/moduli/attrezzature',rows:30},
+ {role:'staff',path:'/gestionale/moduli/tesseramenti'},
+ {role:'staff',path:'/gestionale/incassi'},
+ {role:'staff',path:'/gestionale/utenti'},
  {role:'member',path:'/area-personale?tab=notifiche'},
  {role:'instructor',path:'/istruttore'}
 ];
