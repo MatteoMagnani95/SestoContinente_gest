@@ -7,6 +7,8 @@ on:
       - 'fix/**'
       - 'feature/gestionale-2.0-redesign'
       - 'release/gestionale-consolidato'
+      - 'perf/3.1-next-pass'
+      - 'release/gestionale-3.1'
   workflow_dispatch:
 
 permissions:
