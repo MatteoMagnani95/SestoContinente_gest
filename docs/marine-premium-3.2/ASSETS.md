@@ -28,3 +28,16 @@ Scene generate originali, ritagliate separatamente da un atlante di tre fasce se
 - marine-nereia-scene-960.webp — 30492 — 7ab3236575d2ffc578cb8c8048458310bf931d135b8fb17296a3cb84ccc8147c
 - marine-nereia-scene-480.webp — 8560 — d6d1231ea0b12d14d126eed37c0948cd540f7bf28f8abae801a12bc0edee931e
 Le varianti sono referenziate da media query. Il vecchio marine-nereia-640.webp resta archiviato, non utilizzato dal CSS. Nessun logo alterato. Nessun SVG decorativo nuovo.
+
+## Direzione pittorica approvata dall'utente — 27 novembre 2026
+Tre opere originali approvate come direzione artistica, a campiture irregolari e geometriche, non fotografie o volti sintetici realistici. Opera 2 per hero (specchiata per liberare il testo a sinistra), opera 1 per testata panoramica, opera 3 per ritaglio Nereia. Margine corallino ricavato dall'opera 2 senza figure umane; una sola occorrenza per evitare ripetizioni. Nessun testo o marchio incorporato. Non riusare i vecchi fondali realistici nel CSS attivo; conservati come archivio di lavoro nel branch. Nuovi file WebP e digest:
+- marine-paint-hero-1440.webp — 245788 byte — 878c6ba01f427cee177f230ade421f6d2e87ab00f8dac6c82e708edcd7a8665e
+- marine-paint-hero-768.webp — 92946 byte — 9ca63c5828fe90e01add83cf15361b988f6f36deebb58cae5134fa8c794ab45d
+- marine-paint-hero-480.webp — 45726 byte — a200a04e18de0b53bbe7a3bba36056e4c12b80e64eee2018f4af7e25e12438d7
+- marine-paint-auth-1000.webp — 57566 byte — 7e8358265de95ec92059291cafee02b7f6eb583b638d71c7cdfef1197ccc36e3
+- marine-paint-auth-480.webp — 20722 byte — eadc8f5593102f4dbffb2f141bec128d8adc919a5914ef0b3e891233b7ef9b29
+- marine-paint-nereia-960.webp — 80958 byte — 7827b8418608204baf903e747a48604cc047c917fbab2cb67d3eba724231d333
+- marine-paint-nereia-480.webp — 30422 byte — 7f1f92a07998cc93c4fea545a09cdecf874c34ba14ea0b5c6c3b0055f02afcda
+- marine-paint-reef-360.webp — 65090 byte — ec5c0bd6c0909ca565b5991372ffc5a09a46cad03d0faf027f959235814aa36f
+- marine-paint-reef-240.webp — 36394 byte — 0f4f4a4f8fa8ae12e2e06b98cad117c84a0396c4d77af82f2bae5c1a6306281d
+Controllo visuale manuale dei ritagli: leggibilità della composizione, soggetti non deformati dal ridimensionamento, coerenza cromatica, nessun falso logo evidente. Non certifica anatomia o realismo tecnico dell'attrezzatura; il rendering finale e l'approvazione utente restano obbligatori. Nessun intervento sulle pagine interne.

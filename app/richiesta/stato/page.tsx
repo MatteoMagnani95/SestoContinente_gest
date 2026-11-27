@@ -25,5 +25,5 @@ export default async function RequestStatus({searchParams}:{searchParams:Promise
       {r.stato==='approvata' && <div className="actions"><Link className="button" href="/area-personale">Vai alla tua area personale</Link></div>}
       {['inviata','in_verifica'].includes(r.stato) && <p className="muted">La segreteria sta gestendo la tua pratica. Non sono richieste altre azioni al momento.</p>}{r.stato==='respinta'&&<p>Consulta il messaggio della segreteria. Per chiarimenti contattala direttamente.</p>}
     </div><p className="muted tiny">L'approvazione non conferma l'avvenuto pagamento della quota o il tesseramento.</p>
-  </div><AuthIdentity/><Link href="/" className="sc-marine-home-link">Torna alla home</Link></div>;
+  </div><AuthIdentity/></div>;
 }

@@ -23,5 +23,5 @@ export default async function NewRequest({searchParams}:{searchParams:Promise<{m
     {request?.stato==='integrazione_richiesta' && <div className="notice"><strong>Informazioni richieste dalla segreteria:</strong> {request.nota_pubblica}</div>}
     {msg && <div className="notice error" role="alert">{queryMessage(msg)}</div>}
     <ApplicationForm saved={request?{...request,flag_statuto:request.versione_statuto===legal.statutoVersion&&request.flag_statuto,flag_privacy:request.versione_privacy===legal.privacyVersion&&request.flag_privacy}:null} sceltaRegistrata={scelta?.versione===(legal.testMode?'TEST-COLLAUDO-1':versioneImmagini)?scelta.scelta:null} sceltaAttesa={scelta?String(scelta.id):null} legalConfigured={legal.configured} testMode={legal.testMode} statutoUrl={legal.configured?legal.statutoUrl:''} privacyUrl={legal.configured?legal.privacyUrl:''} statutoVersion={legal.statutoVersion} privacyVersion={legal.privacyVersion} />
-  </div><AuthIdentity/><Link href="/" className="sc-marine-home-link">Torna alla home</Link></div>;
+  </div><AuthIdentity/></div>;
 }

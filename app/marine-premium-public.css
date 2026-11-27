@@ -10,7 +10,7 @@
 }
 .sc-marine-preview.sc-public-home{max-width:1280px;padding:0 24px 24px;gap:0;background:transparent}
 .sc-marine-preview .sc-home-hero{position:relative;isolation:isolate;overflow:hidden;grid-template-columns:minmax(0,1.35fr) minmax(0,.65fr);min-height:380px;gap:24px;padding:44px 38px 62px;background:#082c40;border:0;border-radius:0;color:white}
-.sc-marine-preview .sc-home-hero::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,#082c40 3%,rgba(8,44,64,.96) 24%,rgba(8,44,64,.58) 55%,rgba(8,44,64,.12)),var(--sc-marine-hero, url('/brand/marine-premium/marine-hero-768.webp')) right center/auto 100% no-repeat}
+.sc-marine-preview .sc-home-hero::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,#082c40 3%,rgba(8,44,64,.96) 24%,rgba(8,44,64,.58) 55%,rgba(8,44,64,.12)),var(--sc-marine-hero, url('/brand/marine-premium/marine-paint-hero-768.webp')) right center/auto 100% no-repeat}
 .sc-marine-preview .sc-home-hero::after{content:"";position:absolute;bottom:-29px;left:-4%;width:108%;height:64px;background:#f4f8fa;border-radius:50% 50% 0 0/50% 50% 0 0;z-index:-1;pointer-events:none}
 .sc-marine-preview .sc-home-hero>div{align-self:center;min-width:0}
 .sc-marine-preview .sc-home-hero h1{color:#fff;font-size:clamp(34px,4.2vw,56px);letter-spacing:-.04em;line-height:1.08}
@@ -53,7 +53,7 @@
 @media(max-width:600px){
  .sc-marine-preview.sc-public-home{padding:0 12px 20px}
  .sc-marine-preview .sc-home-hero{grid-template-columns:minmax(0,1fr);min-height:0;padding:26px 18px 48px;gap:10px}
- .sc-marine-preview .sc-home-hero::before{background:linear-gradient(90deg,rgba(8,44,64,.97),rgba(8,44,64,.72)),var(--sc-marine-hero, url('/brand/marine-premium/marine-hero-768.webp')) center/cover no-repeat}
+ .sc-marine-preview .sc-home-hero::before{background:linear-gradient(90deg,rgba(8,44,64,.97),rgba(8,44,64,.72)),var(--sc-marine-hero, url('/brand/marine-premium/marine-paint-hero-768.webp')) center/cover no-repeat}
  .sc-marine-preview .sc-home-identity{padding:4px;align-items:flex-start}
  .sc-marine-preview .sc-home-identity .sc-brand-full{width:min(100%,154px)}
  .sc-marine-preview .sc-home-process{padding:18px 14px}
@@ -70,7 +70,7 @@
 
 /* Reference fidelity pass 01–06: wide hero, rounded wave dividers, separate identity and process cards. */
 #sc-main:not(.sc-main-staff):has(.sc-route-content>.sc-marine-preview){
- --sc-marine-hero:url('/brand/marine-premium/marine-hero-1440.webp');
+ --sc-marine-hero:url('/brand/marine-premium/marine-paint-hero-1440.webp');
  position:relative;isolation:isolate;
 }
 #sc-main:not(.sc-main-staff):has(.sc-route-content>.sc-marine-applicant-shell){
@@ -97,8 +97,6 @@
 .sc-marine-preview .sc-auth-decoration::after,.sc-marine-preview .sc-marine-applicant-art::after{content:"";position:absolute;inset:auto -12% -26px;height:52px;background:white;border-radius:50% 50% 0 0;border-top:6px solid #b3e4e6}
 .sc-marine-preview .sc-marine-applicant-art{margin:-20px -20px 14px}
 .sc-marine-preview .sc-applicant-page>.sc-page-header-marine{box-shadow:none;background:white;border:0;padding:0;margin-bottom:12px}
-.sc-marine-preview .sc-marine-home-link{grid-column:2;grid-row:1;justify-self:end;align-self:start;display:inline-flex;align-items:center;gap:8px;border:1px solid #b4e1e4;color:white;background:#082c40;padding:8px 14px;min-height:44px;border-radius:12px;text-decoration:none}
-.sc-marine-preview .sc-marine-home-link .sc-icon{width:18px;height:18px}
 .sc-marine-preview.sc-auth-shell,.sc-marine-preview.sc-marine-applicant-shell{grid-template-rows:auto 1fr}
 .sc-marine-preview.sc-auth-shell>.sc-auth-panel,.sc-marine-preview.sc-marine-applicant-shell>.sc-applicant-page{grid-row:2;grid-column:1}
 .sc-marine-preview>.sc-auth-identity{grid-row:2;grid-column:2}
@@ -109,14 +107,13 @@
 #sc-main:not(.sc-main-staff):has(.sc-route-content>.sc-marine-applicant-shell)::after{content:"";display:block;height:26px;background:radial-gradient(ellipse at 30% 100%,#0e8a9a 35%,transparent 36%),radial-gradient(ellipse at 75% 100%,#77d0d7 35%,transparent 36%),#082c40;pointer-events:none}
 @media(min-width:1300px){.sc-user-content .sc-marine-applicant-shell{grid-template-columns:minmax(0,1.35fr) minmax(0,.9fr);max-width:1110px}}
 @media(max-width:1000px){
- #sc-main:not(.sc-main-staff):has(.sc-route-content>.sc-marine-preview){--sc-marine-hero:url('/brand/marine-premium/marine-hero-768.webp')}
+ #sc-main:not(.sc-main-staff):has(.sc-route-content>.sc-marine-preview){--sc-marine-hero:url('/brand/marine-premium/marine-paint-hero-768.webp')}
  .sc-marine-preview .sc-home-hero{padding-inline:24px}
  .sc-marine-preview.sc-auth-shell,.sc-marine-preview.sc-marine-applicant-shell{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto}
  .sc-marine-preview>.sc-auth-identity{grid-row:3;grid-column:1}
- .sc-marine-preview .sc-marine-home-link{grid-row:1;grid-column:1}
 }
 @media(max-width:600px){
- #sc-main:not(.sc-main-staff):has(.sc-route-content>.sc-marine-preview){--sc-marine-hero:url('/brand/marine-premium/marine-hero-480.webp')}
+ #sc-main:not(.sc-main-staff):has(.sc-route-content>.sc-marine-preview){--sc-marine-hero:url('/brand/marine-premium/marine-paint-hero-480.webp')}
  .sc-marine-preview .sc-home-hero{min-height:0;padding:26px 18px 56px}
  .sc-marine-preview .sc-home-hero::before{background:linear-gradient(90deg,#082c40f5,#082c40bb),var(--sc-marine-hero) center/cover no-repeat}
  .sc-marine-preview .sc-home-process{padding:18px 14px}
@@ -129,16 +126,15 @@
 @media (min-width:1001px) and (max-width:1299px){
  .sc-user-content .sc-marine-applicant-shell{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto}
  .sc-user-content .sc-marine-applicant-shell>.sc-auth-identity{grid-column:1;grid-row:3}
- .sc-user-content .sc-marine-applicant-shell>.sc-marine-home-link{grid-column:1;grid-row:1}
 }
 
 /* Pass based on the 12 REAL screenshots of c2242fc, artifact 15221971189.
    Separate scene roles: clean reef, female diver strip, independent Nereia.
    Original official logos remain unchanged. No functional controls hidden. */
 #sc-main:not(.sc-main-staff):has(.sc-route-content>.sc-marine-preview){
- --sc-marine-reef:url('/brand/marine-premium/marine-reef-1440.webp');
- --sc-marine-strip:url('/brand/marine-premium/marine-auth-strip-1000.webp');
- --sc-marine-nereia:url('/brand/marine-premium/marine-nereia-scene-960.webp');
+ --sc-marine-reef:url('/brand/marine-premium/marine-paint-reef-360.webp');
+ --sc-marine-strip:url('/brand/marine-premium/marine-paint-auth-1000.webp');
+ --sc-marine-nereia:url('/brand/marine-premium/marine-paint-nereia-960.webp');
 }
 #sc-main:not(.sc-main-staff):has(.sc-route-content>:is(.sc-auth-shell.sc-marine-preview,.sc-marine-applicant-shell)){
  background-color:#082c40;
@@ -204,13 +200,13 @@ body:has(#sc-main:not(.sc-main-staff) .sc-route-content>.sc-marine-preview)>.sc-
  .sc-user-content .sc-marine-applicant-shell,.sc-user-content .sc-marine-applicant-shell:has(.sc-application){grid-template-columns:minmax(0,1fr)}
 }
 @media(max-width:1000px){
- #sc-main:not(.sc-main-staff):has(.sc-route-content>.sc-marine-preview){--sc-marine-reef:url('/brand/marine-premium/marine-reef-768.webp')}
+ #sc-main:not(.sc-main-staff):has(.sc-route-content>.sc-marine-preview){--sc-marine-reef:url('/brand/marine-premium/marine-paint-reef-360.webp')}
 }
 @media(max-width:600px){
  #sc-main:not(.sc-main-staff):has(.sc-route-content>.sc-marine-preview){
- --sc-marine-reef:url('/brand/marine-premium/marine-reef-480.webp');
- --sc-marine-strip:url('/brand/marine-premium/marine-auth-strip-480.webp');
- --sc-marine-nereia:url('/brand/marine-premium/marine-nereia-scene-480.webp');
+ --sc-marine-reef:url('/brand/marine-premium/marine-paint-reef-240.webp');
+ --sc-marine-strip:url('/brand/marine-premium/marine-paint-auth-480.webp');
+ --sc-marine-nereia:url('/brand/marine-premium/marine-paint-nereia-480.webp');
  }
  .sc-marine-preview .sc-applicant-page .sc-application{padding:12px}
  .sc-marine-preview .sc-auth-identity .sc-nereia-project{min-height:112px}
@@ -218,4 +214,44 @@ body:has(#sc-main:not(.sc-main-staff) .sc-route-content>.sc-marine-preview)>.sc-
 @media print{
  #sc-main:not(.sc-main-staff):has(.sc-route-content>:is(.sc-auth-shell.sc-marine-preview,.sc-marine-applicant-shell)){background:white}
  .sc-marine-preview .sc-marine-applicant-art{display:none}
+}
+
+/* User-approved painterly art direction — 27/11/2026.
+   The header, content, status, and forms remain real UI.
+   A single decorative reef fragment fades into the page edge; avoid tiled art. */
+#sc-main:not(.sc-main-staff):has(.sc-route-content>:is(.sc-auth-shell.sc-marine-preview,.sc-marine-applicant-shell)){
+ background-color:#082c40;
+ background-image:linear-gradient(90deg,#082c40 0%,#082c40 58%,#082c40b8 76%,#082c4012 100%),linear-gradient(180deg,transparent 0,#082c4000 50%,#082c40 98%),var(--sc-marine-reef);
+ background-size:100% 100%,100% min(100%,860px),min(360px,28vw) auto;
+ background-position:center,center top,right top;
+ background-repeat:no-repeat;
+}
+.sc-marine-preview .sc-home-hero::before{
+ background:linear-gradient(90deg,#082c40f5 0%,#082c40e8 20%,#082c40aa 34%,#082c4038 52%,#082c4008 75%),var(--sc-marine-hero) center 46%/cover no-repeat;
+}
+.sc-marine-preview .sc-home-hero h1,.sc-marine-preview .sc-home-hero .sc-home-lead{text-shadow:0 2px 6px #031c2c66}
+.sc-marine-preview .sc-home-hero .sc-home-lead{max-width:29ch}
+.sc-marine-preview .sc-home-hero::after{border-top-color:#8ad6d8}
+.sc-marine-preview.sc-auth-shell,.sc-marine-preview.sc-marine-applicant-shell{grid-template-rows:auto;padding-top:12px}
+.sc-marine-preview.sc-auth-shell>.sc-auth-panel,.sc-marine-preview.sc-marine-applicant-shell>.sc-applicant-page{grid-row:1;grid-column:1}
+.sc-marine-preview>.sc-auth-identity{grid-row:1;grid-column:2}
+.sc-marine-preview .sc-auth-decoration,.sc-marine-preview .sc-marine-applicant-art{background-position:center 42%}
+.sc-marine-preview .sc-auth-identity .sc-nereia-project,.sc-marine-preview.sc-public-home>.sc-nereia-project{
+ background:linear-gradient(90deg,#082c40 0%,#082c40f5 28%,#082c40ce 48%,#082c4028 80%),var(--sc-marine-nereia) center right/cover no-repeat #082c40;
+}
+@media (min-width:1001px) and (max-width:1299px){
+ .sc-user-content .sc-marine-applicant-shell>.sc-auth-identity{grid-column:1;grid-row:2}
+}
+@media(max-width:1000px){
+ .sc-marine-preview.sc-auth-shell,.sc-marine-preview.sc-marine-applicant-shell{grid-template-rows:auto auto}
+ .sc-marine-preview>.sc-auth-identity{grid-row:2;grid-column:1}
+}
+@media(max-width:600px){
+ #sc-main:not(.sc-main-staff):has(.sc-route-content>:is(.sc-auth-shell.sc-marine-preview,.sc-marine-applicant-shell)){
+  background-size:100% 100%,100% min(100%,575px),min(240px,45vw) auto;
+ }
+ .sc-marine-preview .sc-home-hero::before{background:linear-gradient(90deg,#082c40ef,#082c40bb),var(--sc-marine-hero) center/cover no-repeat}
+}
+@media print{
+ #sc-main:not(.sc-main-staff):has(.sc-route-content>:is(.sc-auth-shell.sc-marine-preview,.sc-marine-applicant-shell)){background:white}
 }
