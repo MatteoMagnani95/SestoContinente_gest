@@ -8,7 +8,7 @@ import {balanceTotals,dateFilter,methodLabel} from '@/lib/finance-ui';
 import EditForm from '@/components/EditForm';
 import {Drawer,ConfirmDialog} from '@/components/ui/Drawer';
 import ActionForm from '@/components/ui/ActionForm';
-import Link from 'next/link';
+import Link from '@/components/ui/PrivateLink';
 import {randomUUID} from 'node:crypto';
 import {requireStaffForRender as requireStaff} from '@/lib/security';
 import {recordGuidedPayment} from './actions';

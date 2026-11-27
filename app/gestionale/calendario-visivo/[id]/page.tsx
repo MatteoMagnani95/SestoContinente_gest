@@ -7,7 +7,7 @@ import CourseScheduleFields from '@/components/CourseScheduleFields';
 import LessonComposer from '@/components/LessonComposer';
 import {calendarContext,calendarHref,romeDay,romeTime} from '@/lib/calendar-tools';
 import {tutteLePagine} from '@/lib/pagine';
-import Link from 'next/link';
+import Link from '@/components/ui/PrivateLink';
 import RemoveRecord from '@/components/RemoveRecord';
 import {notFound} from 'next/navigation';
 import {requireStaff} from '@/lib/security';

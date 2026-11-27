@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/ui/PrivateLink';
 import {requireAdmin,formatDate} from '@/lib/security';
 import {tutteLePagine} from '@/lib/pagine';
 import {money,methodLabel,movementFilter,movementTotals} from '@/lib/finance-ui';

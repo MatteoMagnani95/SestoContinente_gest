@@ -27,13 +27,15 @@ const remove=role=>db.query('delete from public.ruoli_utente where utente_id=$1 
 // Preserve the original rapid sweep and a separate interactive navigation
 // control. Track request lifecycle without logging headers, cookies or queries.
 function observePage(page,engine){
- const errors=[],pending=new Map(),failures=[];
+ const errors=[],pending=new Map(),failures=[],downloadPrefetch=[];
  let phase='initial',serial=0;
  const safeUrl=v=>{try{const u=new URL(v);return u.origin+u.pathname;}catch{return '[non-http]';}};
- const safeMessage=s=>String(s??'').replace(/https?:\/\/[^\s"'<>]+/g,safeUrl).slice(0,800);
+ const safeMessage=s=>String(s??'').replace(/https?:\/\/[^\s"'<>]+/g,safeUrl).replace(/\?[^\s"'<>]+/g,'?[redacted]').slice(0,800);
  const route=()=>safeUrl(page.url());
  page.on('request',req=>{
   const h=req.headers();
+  const pathname=new URL(req.url()).pathname;
+  if((h.rsc==='1'||h['next-router-prefetch']==='1'||h['next-router-segment-prefetch'])&&/^\/gestionale\/(?:esporta\/|importazione\/modello$|corsi\/[^/]+\/stampe$)/.test(pathname))downloadPrefetch.push({phase,target:safeUrl(req.url())});
   pending.set(req,{id:++serial,phase,route:route(),target:safeUrl(req.url()),type:req.resourceType(),rsc:h.rsc==='1',prefetch:h['next-router-prefetch']==='1'||Boolean(h['next-router-segment-prefetch'])||h.purpose==='prefetch',started:Date.now()});
  });
  page.on('requestfinished',req=>pending.delete(req));
@@ -45,7 +47,7 @@ function observePage(page,engine){
   const record={engine,phase,route:route(),name:safeMessage(err.name),message:safeMessage(err.message),stack:safeMessage(err.stack).split('\n').slice(0,4),recentFailures:failures.slice(-5),pending:[...pending.values()].slice(0,10)};
   errors.push(record);console.log('AUD-009 PAGEERROR '+JSON.stringify(record));
  });
- return {errors,phase(value){phase=value;},snapshot(){console.log('AUD-009 PENDING '+JSON.stringify({engine,phase,count:pending.size,requests:[...pending.values()].slice(0,10)}));}};
+ return {errors,downloadPrefetch,phase(value){phase=value;},snapshot(){console.log('AUD-009 PENDING '+JSON.stringify({engine,phase,count:pending.size,requests:[...pending.values()].slice(0,10)}));}};
 }
 async function settled(page,audit){
  // Network-idle is not a readiness requirement: Next.js can keep RSC
@@ -155,6 +157,14 @@ try{
      await settled(page,audit);
     }
     assert.deepEqual(audit.errors,[],'uncaught browser errors in archive and interactive navigation sweep');
+    assert.deepEqual(audit.downloadPrefetch,[],'download endpoints must not be fetched as RSC/prefetch');
+    // Real download, not only direct API permission checks.
+    audit.phase('CSV download');await allowed(page,'/gestionale/moduli/anagrafiche');
+    const csvLink=page.getByRole('link',{name:'Esporta archivio CSV',exact:true});
+    const [download]=await Promise.all([page.waitForEvent('download'),csvLink.click()]);
+    assert.match(download.suggestedFilename(),/\.csv$/i);
+    assert.equal(await download.failure(),null);
+    assert.deepEqual(audit.errors,[],'uncaught browser errors after CSV download');
     const off=await staff.request.get('/gestionale/incassi/person-options?q=test',{maxRedirects:0});assert.equal(off.status(),404);
    }finally{await staff.close();}
   }finally{await browser.close();}

@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/ui/PrivateLink';
 import {notFound} from 'next/navigation';
 import {requireStaff,formatDate} from '@/lib/security';
 import {UUID_RE} from '@/lib/course-tools';

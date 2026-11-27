@@ -15,7 +15,7 @@ import CancelEditButton from '@/components/CancelEditButton';
 import EditForm from '@/components/EditForm';
 import Cronologia from '@/components/Cronologia';
 import {tutteLePagine} from '@/lib/pagine';
-import Link from 'next/link';
+import Link from '@/components/ui/PrivateLink';
 import {notFound} from 'next/navigation';
 import {requireStaffForRender as requireStaff} from '@/lib/security';
 import {UUID_RE,courseName,formatRome,ENROLLMENT_STATES,COURSE_STATES} from '@/lib/course-tools';
@@ -189,7 +189,7 @@ export default async function EditionDetail({params,searchParams}:{params:Promis
    </Section>}
    {tab==='stampe'&&<Section id="stampe" title="Documenti e stampe">
  <ButtonLink href={`/gestionale/corsi/${id}/stampe?tipo=programma`}>Scarica programma completo PDF</ButtonLink>
- <h3>Registri delle lezioni</h3>{lessons.map(l=><div className="course-list-row" key={l.id}><div><strong>{l.titolo}</strong><p>{formatRome(l.inizio)}</p></div><div className="buttons"><Link href={`/gestionale/corsi/${id}/stampe?tipo=piscina&lezione=${l.id}`}>Registro Piscina PDF</Link><Link href={`/gestionale/corsi/${id}/stampe?tipo=teoria&lezione=${l.id}`}>Registro Teoria PDF</Link></div></div>)}
+ <h3>Registri delle lezioni</h3>{lessons.map(l=><div className="course-list-row" key={l.id}><div><strong>{l.titolo}</strong><p>{formatRome(l.inizio)}</p></div><div className="buttons"><a href={`/gestionale/corsi/${id}/stampe?tipo=piscina&lezione=${l.id}`}>Registro Piscina PDF</a><a href={`/gestionale/corsi/${id}/stampe?tipo=teoria&lezione=${l.id}`}>Registro Teoria PDF</a></div></div>)}
  <h3>Documenti associati all’edizione</h3>{documentResult.error?<Alert tone="warning">Documenti non disponibili.</Alert>:documentResult.data?.length?<ul>{documentResult.data.map(d=><li key={d.id}><Link href={'/documenti/'+d.id}>{d.nome}</Link> · {d.categoria}</li>)}</ul>:<p>Nessun documento associato.</p>}{pagination(documentResult.error?null:documentResult.count,'documenti')}
  </Section>}
  {tab==='brevetti'&&<Section id="brevetti" title="Brevetti rilasciati"><p>Il direttore viene registrato al rilascio secondo i vincoli esistenti. Il nominativo storico non viene sostituito automaticamente.</p><ButtonLink href={'/gestionale/moduli/brevetti?edizione='+id+'&nuovo=1'}>Registra brevetto</ButtonLink>{patentResult.error?<Alert tone="warning">Brevetti non disponibili.</Alert>:patentResult.data?.length?<DataTable label="Brevetti rilasciati"><thead><tr><th>Allievo</th><th>Brevetto</th><th>Data</th><th>Rilasciato da</th><th>Azioni</th></tr></thead><tbody>{patentResult.data.map(b=><tr key={b.id}><td><Link href={'/gestionale/soci/'+b.persona_id}>{displayPerson(b.persona_id,personById)}</Link></td><td>{b.titolo} · {b.ente??'—'}</td><td>{formatValue(b.ottenuto_il)}</td><td>{b.rilasciato_da_nome??'Non acquisito'}</td><td><Link href={'/gestionale/moduli/brevetti?edit='+b.id+'&edizione='+id}>Apri brevetto</Link></td></tr>)}</tbody></DataTable>:<p>Nessun brevetto registrato per questa edizione.</p>}{pagination(patentResult.error?null:patentResult.count,'brevetti')}</Section>}

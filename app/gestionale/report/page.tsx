@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/ui/PrivateLink';
 import {requireStaff} from '@/lib/security';
 import {formatValue} from '@/lib/format';
 import {romeDay,shiftDay} from '@/lib/calendar-tools';

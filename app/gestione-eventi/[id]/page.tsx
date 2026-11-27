@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/ui/PrivateLink';
 import {notFound} from 'next/navigation';
 import {requireEventManager} from '@/lib/event-access';
 import {formatDate} from '@/lib/security';

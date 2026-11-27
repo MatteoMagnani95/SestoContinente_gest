@@ -1,5 +1,5 @@
 'use client';
-import Link from 'next/link';
+import Link from '@/components/ui/PrivateLink';
 import { usePathname } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import type { ModuleKey } from '@/lib/modules';

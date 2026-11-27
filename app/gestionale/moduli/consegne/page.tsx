@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/ui/PrivateLink';
 import {requireStaffForRender as requireStaff,formatDate} from '@/lib/security';
 import {tutteLePagine} from '@/lib/pagine';
 import {UUID_RE} from '@/lib/course-tools';

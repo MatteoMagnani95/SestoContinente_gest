@@ -1,5 +1,5 @@
 import {PageHeader} from '@/components/ui/Primitives';
-import Link from 'next/link';
+import Link from '@/components/ui/PrivateLink';
 import {tutteLePagine} from '@/lib/pagine';
 import {DataTable,Pagination} from '@/components/ui/DataTable';
 import {pageNumber} from '@/lib/module-ui';
@@ -26,7 +26,7 @@ export default async function Importazione({searchParams}:{searchParams:Promise<
  return <><PageHeader area="system" icon="archive" marine eyebrow="Documenti e Sistema · Riservato staff" title="Importazione Dati" description="Tre passaggi: modello, caricamento, controllo in quarantena e conferma atomica. Nessuna riga viene importata prima della conferma."/>
  {p.msg&&<p role="status" className={`notice ${success?'success':'warning'}`}>{p.msg==='importato'?(success?messages.importato+' ('+preview!.length+' righe)':messages.esito):Object.hasOwn(messages,p.msg)?messages[p.msg]:'Controlla lo stato dell’operazione.'}</p>}
  <section className="panel"><h2>1. Scarica il modello e prepara i dati</h2><p>I codici fiscali devono essere univoci; per i corsi storici si usa l’ID di un’edizione già presente, senza creare duplicati di persone.</p>
- <div className="buttons"><Link className="button ghost" href="/gestionale/importazione/modello?tipo=soci">Modello soci Excel</Link><Link className="button ghost" href="/gestionale/importazione/modello?tipo=corsi">Modello corsi Excel</Link></div></section>
+ <div className="buttons"><a className="button ghost" href="/gestionale/importazione/modello?tipo=soci">Modello soci Excel</a><a className="button ghost" href="/gestionale/importazione/modello?tipo=corsi">Modello corsi Excel</a></div></section>
  <section className="panel"><h2>2. Carica e valida</h2><form action={stageImport} className="stack">
  <label>Tipologia<select name="tipo" required><option value="soci">Soci storici</option><option value="corsi">Corsi e brevetti (storico Access)</option></select></label>
  <label>File Excel o CSV<input name="file" type="file" accept=".xlsx,.csv" required/></label>
