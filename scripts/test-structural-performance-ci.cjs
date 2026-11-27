@@ -233,6 +233,7 @@ async function main(){
   const courseIds=(await db.query("insert into public.edizioni_corsi(corso_id,stagione_id,nome,inizio,fine,direttore_id) select case when n%2=0 then $1::uuid else $2::uuid end,$3,$4||' '||lpad(n::text,2,'0'),$5::date+n,$5::date+n+1,$6 from generate_series(1,30) n returning id",[catalog,catalogAra,season,coursePrefix,courseDate,director])).rows.map(r=>r.id);
   const edition=courseIds[0];
   await db.query("insert into public.assegnazioni_istruttori(edizione_id,persona_id,ruolo) values($1,$2,'responsabile')",[edition,director]);
+  await db.query("insert into public.tesseramenti(adesione_id,ente,stato,scade_il) select id,'Collaudo strutturale','attiva',greatest(current_date+90,(select al from public.stagioni where id=$2)) from public.adesioni where persona_id=$1 and stagione_id=$2",[person,season]);
   await db.query("insert into public.iscrizioni_corsi(edizione_id,persona_id,stato) values($1,$2,'iscritto')",[edition,person]);
   const pool=(await db.query("insert into public.piscine(nome) values($1) returning id",[coursePrefix])).rows[0].id;
   const lane=(await db.query("insert into public.corsie(piscina_id,numero) values($1,1) returning id",[pool])).rows[0].id;
