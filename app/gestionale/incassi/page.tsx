@@ -43,15 +43,10 @@ export default async function Incassi({searchParams}:{searchParams:Promise<{tab?
  const p=await searchParams;
  const remoteOptionsPromise=structuralQaEnabled()?structuralRpc(supabase,'sc_perf_person_options',{p_query:'',p_page:1,p_selected:p.persona&&uuid.test(p.persona)?p.persona:null}).then(readPersonOptions):Promise.resolve(null);
  const peoplePromise=remoteOptionsPromise.then(personOptions=>personOptions?{data:[],error:null}:tutteLePagine((da,a)=>supabase.from('persone').select('id,nome,cognome').order('cognome').order('nome').order('id').range(da,a)));
- const [{data:admin},{data:seasons,error:seasonError},personOptions]=await Promise.all([
-  supabase.rpc('is_admin'),
-  tutteLePagine((da,a)=>supabase.from('stagioni').select('id,nome,attiva').order('dal',{ascending:false}).order('id').range(da,a)),
-  remoteOptionsPromise
- ]);
- if(personOptions)markStructuralRpcUsed('person-options');
- const {data:allPeople,error:peopleError}=await peoplePromise;
+ const adminPromise=Promise.resolve(supabase.rpc('is_admin'));
+ const seasonsPromise=tutteLePagine((da,a)=>supabase.from('stagioni').select('id,nome,attiva').order('dal',{ascending:false}).order('id').range(da,a));
+ // Recent payments do not depend on season selection or the person-picker payload.
  const dal=dateFilter(p.dal),al=dateFilter(p.al),debt=p.debito&&uuid.test(p.debito)?p.debito:'';
- const selectedSeason=p.stagione?((seasons??[]).find(s=>s.id===p.stagione)?.id??''):((seasons??[]).find(s=>s.attiva)?.id??(seasons??[])[0]?.id??'');
  const tab=p.tab==='corso'?'corso':'quota';
  const status=['non_pagata','parziale','pagata','residuo'].includes(p.stato??'')?p.stato!:'tutte';
  const personFilter=p.persona&&uuid.test(p.persona)?p.persona:'';
@@ -60,6 +55,8 @@ export default async function Incassi({searchParams}:{searchParams:Promise<{tab?
  let recentQuery=supabase.from('pagamenti').select('id,persona_id,quota_id,addebito_corso_id,importo,metodo,data_pagamento,riferimento').order('creato_il',{ascending:false}).limit(15);
  if(personFilter)recentQuery=recentQuery.eq('persona_id',personFilter);
  const recentPromise=Promise.resolve(recentQuery);
+ const {data:seasons,error:seasonError}=await seasonsPromise;
+ const selectedSeason=p.stagione?((seasons??[]).find(s=>s.id===p.stagione)?.id??''):((seasons??[]).find(s=>s.attiva)?.id??(seasons??[])[0]?.id??'');
  let balances:Balance[]=[];
  let count=0;let totals:ReturnType<typeof balanceTotals>|null=null;
  let errorMessage='';
@@ -95,6 +92,8 @@ export default async function Incassi({searchParams}:{searchParams:Promise<{tab?
  ]);
  // Preserve independent error handling of the two historical lookups.
  const [peopleResult,historyResult]=combined.error?await Promise.all([loadPeople(peopleIds),loadPeople(historyIds)]):[combined,combined];
+ const [{data:admin},personOptions,{data:allPeople,error:peopleError}]=await Promise.all([adminPromise,remoteOptionsPromise,peoplePromise]);
+ if(personOptions)markStructuralRpcUsed('person-options');
  const names=new Map(((peopleResult.data??[]) as Person[]).map(x=>[x.id,`${x.cognome} ${x.nome}`]));
  const courseNames=new Map(((courses??[]) as Course[]).map(x=>[x.id,x.nome]));
  const historyNames=new Map(((historyResult.data??[]) as Person[]).map(x=>[x.id,`${x.cognome} ${x.nome}`]));

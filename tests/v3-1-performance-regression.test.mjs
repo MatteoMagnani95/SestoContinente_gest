@@ -104,7 +104,14 @@ test('only explicit public branding assets get public caching',()=>{
 
 test('finance loads independent reads and preserves full filtered aggregate',()=>{
  const source=read('app/gestionale/incassi/page.tsx');
- assert.match(source,/const \[\{data:admin\},\{data:seasons,error:seasonError\},personOptions\]=await Promise.all/);
+ assert.match(source,/const adminPromise=Promise.resolve\(supabase.rpc\('is_admin'\)\)/);
+ assert.match(source,/const seasonsPromise=tutteLePagine/);
+ assert.match(source,/const \{data:seasons,error:seasonError\}=await seasonsPromise/);
+ assert.match(source,/const \[\{data:admin\},personOptions,\{data:allPeople,error:peopleError\}\]=await Promise.all\(\[adminPromise,remoteOptionsPromise,peoplePromise\]\)/);
+ assert.ok(source.indexOf('const recentPromise=Promise.resolve(recentQuery)')<source.indexOf('await seasonsPromise'));
+ assert.ok(source.indexOf('await seasonsPromise')<source.indexOf('if(selectedSeason)'));
+ assert.ok(source.indexOf('if(selectedSeason)')<source.indexOf('await Promise.all([adminPromise,remoteOptionsPromise,peoplePromise])'));
+ assert.ok(source.indexOf('await recentPromise')<source.indexOf('await Promise.all([adminPromise,remoteOptionsPromise,peoplePromise])'));
  assert.match(source,/peoplePromise=remoteOptionsPromise.then\(personOptions=>personOptions\?\{data:\[\],error:null\}:tutteLePagine/);
  assert.match(source,/allIds=\[\.\.\.new Set\(\[\.\.\.peopleIds,\.\.\.historyIds\]\)\]/);
  assert.match(source,/combined.error\?await Promise.all\(\[loadPeople\(peopleIds\),loadPeople\(historyIds\)\]\)/);
