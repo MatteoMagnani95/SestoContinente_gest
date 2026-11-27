@@ -54,15 +54,15 @@ a { color: var(--sc-teal-ink); }
 .sc-section-header p { color: var(--sc-muted); margin: 4px 0 0; }
 .sc-card { background: var(--sc-white); border: 1px solid var(--sc-border); min-width: 0; }
 .sc-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 185px), 1fr)); gap: var(--sc-space-3); margin-bottom: var(--sc-space-6); }
-.sc-metric { --sc-accent: var(--sc-system); --sc-tint:var(--sc-system-tint); display:grid; align-content:start; gap:var(--sc-space-2); background:var(--sc-tint); padding:var(--sc-space-4); }
+.sc-metric { --sc-accent: var(--sc-system); --sc-tint:var(--sc-system-tint); display:grid; align-content:start; gap:var(--sc-space-2); background:var(--sc-white); padding:var(--sc-space-4); border-top:3px solid var(--sc-accent); }
 .sc-area-secretariat { --sc-accent: var(--sc-secretariat); --sc-tint:var(--sc-secretariat-tint); }
 .sc-area-teaching { --sc-accent: var(--sc-teaching); --sc-tint:var(--sc-teaching-tint); }
 .sc-area-calendar { --sc-accent: var(--sc-calendar); --sc-tint:var(--sc-calendar-tint); }
 .sc-area-equipment { --sc-accent: var(--sc-equipment); --sc-tint:var(--sc-equipment-tint); }
 .sc-area-finance { --sc-accent: var(--sc-finance); --sc-tint:var(--sc-finance-tint); }
 .sc-area-system { --sc-accent: var(--sc-system); --sc-tint:var(--sc-system-tint); }
-.sc-metric-icon { color: var(--sc-accent); display: inline-flex; align-items:center; }
-.sc-metric-icon .sc-icon { width:26px;height:26px; }
+.sc-metric-icon { color:var(--sc-accent); background:var(--sc-tint); display:inline-flex; align-items:center; justify-content:center; width:40px; height:40px; border-radius:12px; }
+.sc-metric-icon .sc-icon { width:22px;height:22px; }
 .sc-area-pool { --sc-accent: var(--sc-pool); --sc-tint:var(--sc-pool-tint); }
 .sc-area-event { --sc-accent: var(--sc-event); --sc-tint:var(--sc-event-tint); }
 .sc-area-certificate { --sc-accent: var(--sc-certificate); --sc-tint:var(--sc-certificate-tint); }

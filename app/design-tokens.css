@@ -60,7 +60,9 @@
   --sc-space-8: 32px;
   --sc-radius-sm: 12px;
   --sc-radius: 16px;
-  --sc-shadow: 0 3px 14px rgb(7 59 76 / 6%);
+  --sc-shadow: 0 2px 4px rgb(7 59 76 / 2%), 0 8px 24px rgb(7 59 76 / 4%);
+  --sc-shadow-raised: 0 4px 8px rgb(7 59 76 / 4%), 0 12px 32px rgb(7 59 76 / 8%);
+  --sc-surface-subtle: #F1F6F8;
   --sc-target: 44px;
   --sc-primary-target: 48px;
   --sc-quick-target: 68px;

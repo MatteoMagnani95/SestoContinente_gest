@@ -1,4 +1,10 @@
 # Sesto Continente 3.0 — tracker
+## Rifinitura grafica locale — 27/11/2026
+
+Ramo `feature/gestionale-3.0-design-polish`, fotografia upstream `77e73c6`. Sette CSS condivisi aggiornati per header, menu, KPI, scorciatoie e tabelle; nessuna modifica funzionale. 17/17 controlli dedicati superati, parsing 19 CSS e integrità sorgenti superati. Suite completa, build e verifica browser non completate per limiti dell'ambiente. Stato: **pubblicazione autorizzata; trasferimento su ramo remoto e gate completo in preparazione**. Dettagli in `docs/redesign/DESIGN_POLISH_2026-11-27.md`. Le attestazioni F7 sottostanti rimangono storiche e non certificano questa rifinitura. Il 27/11/2026 l’utente ha chiesto «Pubblica»: si usa il ramo remoto della PR #6 e il progetto Vercel esistente, dopo gate esatto, senza migrazioni, reset o upgrade.
+
+---
+
 Data: 26/11/2026. Baseline produzione e HEAD 2.0: `20ae6fcceb5307d58920aa1527a83e2d1cf938f4`. Ramo: `feature/gestionale-3.0-ui-ux`. Albero Git ricorsivo non troncato: 451 elementi, 56 page, 7 route handler, 2 layout e not-found. Fonte 2.0: docs/redesign/MASTER_SPEC.md, DESIGN_SYSTEM.md, PAGE_REQUIREMENTS.md. Il master 3.0 e 16 mockup ricevuti sono riferimenti esterni, non pubblicati nel repository. Nessuna modifica DB o deploy. main e fix/0020 divergono solo per vercel.json; altri fix sono antenati. Preservata configurazione di produzione.
  
 ## Fasi
