@@ -16,6 +16,10 @@ const nextConfig: NextConfig = {
       {source:'/((?!_next/static|_next/image|favicon.ico).*)',headers:[
         {key:'Cache-Control',value:'private, no-store, max-age=0, must-revalidate'},
       ]},
+      // Exact, public branding files only; personalized pages remain private/no-store.
+      {source:'/brand/:asset(sestocontinente-mark.png|sestocontinente-logo.png|nereia-logo.png|favicon.png)',headers:[
+        {key:'Cache-Control',value:'public, max-age=86400, must-revalidate'},
+      ]},
     ];
   },
 };
