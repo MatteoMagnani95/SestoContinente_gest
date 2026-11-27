@@ -1,7 +1,7 @@
 name: QA comparativa prestazioni 3.1 (locale)
 on:
   push:
-    branches: ['release/gestionale-3.1']
+    branches: ['release/gestionale-3.1', 'perf/3.1-next-pass']
   workflow_dispatch:
 permissions:
   contents: read
@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   compare:
-    if: github.ref == 'refs/heads/release/gestionale-3.1'
+    if: github.ref == 'refs/heads/release/gestionale-3.1' || github.ref == 'refs/heads/perf/3.1-next-pass'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
