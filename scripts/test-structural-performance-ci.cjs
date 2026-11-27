@@ -1,5 +1,6 @@
 // Versioned migration is installed in disposable PostgreSQL CI; all synthetic fixtures rolled back.
 const {Client}=require('pg');
+const {readFileSync}=require('node:fs');
 const {randomUUID}=require('node:crypto');
 const {performance}=require('node:perf_hooks');
 const {setTimeout:delay}=require('node:timers/promises');
@@ -17,6 +18,7 @@ async function main(){
   assert.equal(installed.length,7);
   for(const f of installed){assert.equal(f.prosecdef,false);assert.equal(f.provolatile,'s');assert.equal(f.anon_exec,false);assert.equal(f.authenticated_exec,true);assert.ok(f.proconfig?.includes('search_path=""'));}
   console.log('Versioned structural migration: 7 stable invoker RPCs, authenticated grants and anonymous denial verified');
+  await db.query(readFileSync('scripts/qa-course-calendar-rpc.sql','utf8'));
   const admin=randomUUID(),secretary=randomUUID(),member=randomUUID(),disabled=randomUUID();
   for(const [id,role] of [[admin,'amministratore'],[secretary,'segreteria'],[member,'socio'],[disabled,'segreteria']]){
    await db.query('insert into auth.users(id,email,email_confirmed_at,banned_until) values($1,$2,now(),$3)',[id,id+'@example.invalid',id===disabled?'2099-12-31':null]);
@@ -219,10 +221,83 @@ async function main(){
    await role(id,id?'authenticated':'anon');
    await denied(()=>membersPageRpc(query,pageFilters[0]),'42501');
   }
+
+  // Fixtures use the real constraints and triggers, without disabling any guard.
+  await db.query('reset role');
+  const coursePrefix='Corso '+randomUUID();
+  const catalog=(await db.query("insert into public.corsi(nome,tipo) values($1,'APNEA') returning id",[coursePrefix])).rows[0].id;
+  const catalogAra=(await db.query("insert into public.corsi(nome,tipo,livello) values($1,'ARA',2) returning id",[coursePrefix+' ARA'])).rows[0].id;
+  const courseDate=(await db.query("select dal::text as dal from public.stagioni where id=$1",[season])).rows[0].dal;
+  const courseIds=(await db.query("insert into public.edizioni_corsi(corso_id,stagione_id,nome,inizio,fine) select case when n%2=0 then $1::uuid else $2::uuid end,$3,$4||' '||lpad(n::text,2,'0'),$5::date+n,$5::date+n+1 from generate_series(1,30) n returning id",[catalog,catalogAra,season,coursePrefix,courseDate])).rows.map(r=>r.id);
+  const edition=courseIds[0],director=(await db.query("select id from public.persone where id<>$1 and cognome like $2 order by id limit 1",[person,prefix+'%'])).rows[0].id;
+  await db.query("insert into public.qualifiche_istruttori(persona_id,titolo) values($1,'Qualifica sintetica')",[director]);
+  await db.query("update public.edizioni_corsi set direttore_id=$1 where id=$2",[director,edition]);
+  await db.query("insert into public.assegnazioni_istruttori(edizione_id,persona_id,ruolo) values($1,$2,'responsabile')",[edition,director]);
+  await db.query("insert into public.iscrizioni_corsi(edizione_id,persona_id,stato) values($1,$2,'iscritto')",[edition,person]);
+  const pool=(await db.query("insert into public.piscine(nome) values($1) returning id",[coursePrefix])).rows[0].id;
+  const lane=(await db.query("insert into public.corsie(piscina_id,numero) values($1,1) returning id",[pool])).rows[0].id;
+  const lessonDay=(await db.query("select inizio::text as day from public.edizioni_corsi where id=$1",[edition])).rows[0].day;
+  const lesson=(await db.query("insert into public.lezioni(edizione_id,titolo,inizio,fine,piscina_id) values($1,'Lezione sintetica',($2::date+time '10:00') at time zone 'Europe/Rome',($2::date+time '11:00') at time zone 'Europe/Rome',$3) returning id",[edition,lessonDay,pool])).rows[0].id;
+  await db.query("insert into public.prenotazioni_corsie(lezione_id,corsia_id,inizio,fine) select id,$2,inizio,fine from public.lezioni where id=$1",[lesson,lane]);
+  await db.query("insert into public.lezioni(edizione_id,titolo,inizio,fine,annullata_il) values($1,'Teoria annullata',($2::date+time '12:00') at time zone 'Europe/Rome',($2::date+time '13:00') at time zone 'Europe/Rome',now())",[edition,lessonDay]);
+  const rpcCourses=async(q,args)=>(await q('select public.sc_perf_courses_page($1,$2,$3,$4,$5,$6,$7) as data',args)).rows[0].data;
+  const jsonRows=async(q,sql,args=[])=>{const r=(await q('select to_jsonb(x) as row from ('+sql+') x',args)).rows;return r.map(x=>x.row);};
+  const oldCourses=async(q,[selected,terms,status,discipline,level,order,page])=>{
+   const seasons=await jsonRows(q,'select id,nome,attiva,dal from public.stagioni order by dal desc,id');
+   const chosen=seasons.find(s=>s.id===selected)?.id??'';
+   const where=" from public.edizioni_corsi e join public.corsi c on c.id=e.corso_id where ($1::uuid is null or e.stagione_id=$1) and ($2='' or e.stato=$2) and ($3='' or c.tipo=$3) and ($4::integer is null or c.livello=$4) and not exists(select 1 from unnest($5::text[]) t(term) where e.nome not ilike '%'||term||'%')";
+   const args=[chosen||null,status,discipline,level,terms];
+   const ordering={nome:'e.nome asc',nome_desc:'e.nome desc',inizio:'e.inizio desc',fine:'e.fine desc'}[order];
+   const [rows,count,historicalCatalog,historicalEditions]=await Promise.all([
+    jsonRows(q,"select e.id,e.nome,e.corso_id,e.stagione_id,e.inizio,e.fine,e.stato,e.massimo_partecipanti,e.direttore_id,jsonb_build_object('nome',c.nome,'tipo',c.tipo,'livello',c.livello) as corsi"+where+' order by '+ordering+',e.id limit 25 offset $6',[...args,(page-1)*25]),
+    q('select count(*)::int as n'+where,args).then(r=>r.rows[0].n),
+    jsonRows(q,'select id,nome from public.corsi where duplicato_storico order by id'),
+    jsonRows(q,'select id,nome from public.edizioni_corsi where duplicato_storico order by id')
+   ]);
+   const ids=rows.map(r=>r.id),directorIds=rows.map(r=>r.direttore_id).filter(Boolean);
+   const [enrollments,directors,staff]=await Promise.all([
+    q("select edizione_id from public.iscrizioni_corsi where stato='iscritto' and edizione_id=any($1::uuid[]) order by id",[ids]),
+    jsonRows(q,'select id,nome,cognome from public.persone where id=any($1::uuid[]) order by id',[directorIds]),
+    jsonRows(q,'select id,edizione_id,ruolo,sort_nome,sort_cognome from public.gest_elenco_assegnazioni_istruttori where edizione_id=any($1::uuid[]) order by sort_cognome,sort_nome,id',[ids])
+   ]);
+   const counts={};for(const e of enrollments.rows)counts[e.edizione_id]=(counts[e.edizione_id]??0)+1;
+   return {seasons,chosen,count,rows,counts,directors,staff,historicalCatalog,historicalEditions};
+  };
+  const courseFilters=[[season,[coursePrefix],'','',null,'nome',1],[season,[coursePrefix],'programmato','ARA',2,'nome_desc',1],['invalid',[coursePrefix],'','',null,'inizio',2],['',[coursePrefix],'','',null,'fine',99],[season,['inesistente'],'','',null,'nome',1],['',[],'','',null,'nome',1]];
+  const rpcCalendar=async(q,args)=>(await q('select public.sc_perf_calendar($1,$2,$3) as data',args)).rows[0].data;
+  const oldCalendar=async(q,[from,to,cancelled])=>{
+   const [pools,lanes,lessons,bookings,editions]=await Promise.all([
+    jsonRows(q,'select id,nome,indirizzo,orari_disponibili,limitazioni from public.piscine order by nome,id'),
+    jsonRows(q,'select id,numero,piscina_id,note from public.corsie order by numero,id'),
+    jsonRows(q,'select id,titolo,edizione_id,inizio,fine,piscina_id,annullata_il from public.lezioni where inizio<$2 and fine>$1 and ($3::boolean or annullata_il is null) order by inizio,id',[from,to,cancelled]),
+    jsonRows(q,"select id,lezione_id,corsia_id,inizio,fine,stato from public.prenotazioni_corsie where stato='confermata' and inizio<$2 and fine>$1 order by inizio,id",[from,to]),
+    jsonRows(q,'select id,nome,stato,inizio,fine from public.edizioni_corsi order by nome,id')
+   ]);
+   const missing=[...new Set(bookings.map(b=>b.lezione_id).filter(id=>!lessons.some(l=>l.id===id)))];
+   const extraLessons=missing.length?await jsonRows(q,'select id,titolo from public.lezioni where id=any($1::uuid[]) order by id',[missing]):[];
+   return {pools,lanes,lessons,bookings,editions,extraLessons};
+  };
+  const from=lessonDay+'T00:00:00+01:00',to=new Date(Date.parse(from)+86400000).toISOString();
+  const calendarFilters=[[from,to,false],[from,to,true],['1900-01-01T00:00:00Z','1900-01-02T00:00:00Z',false]];
+  for(const id of [admin,secretary]){
+   await role(id);
+   for(const args of courseFilters)assert.deepEqual(await rpcCourses(query,args),await oldCourses(query,args));
+   assert.equal((await rpcCourses(query,courseFilters[0])).count,30);
+   assert.equal((await rpcCourses(query,courseFilters[0])).rows.length,25);
+   for(const args of calendarFilters)assert.deepEqual(await rpcCalendar(query,args),await oldCalendar(query,args));
+   assert.ok((await rpcCalendar(query,calendarFilters[0])).bookings.some(b=>b.lezione_id===lesson));
+   assert.ok((await rpcCalendar(query,calendarFilters[1])).lessons.some(l=>l.titolo==='Teoria annullata'));
+   await denied(()=>rpcCalendar(query,['1900-01-01','1901-01-01',false]),'22023');
+  }
+  for(const id of [member,disabled,null]){
+   await role(id,id?'authenticated':'anon');
+   await denied(()=>rpcCourses(query,courseFilters[0]),'42501');
+   await denied(()=>rpcCalendar(query,calendarFilters[0]),'42501');
+  }
   await role(admin);
   const results=[];
   for(const rtt of [0,40,80]){
-   for(const [name,before,after] of [['dashboard',dashboardOld,dashboardRpc],['soci-counts',q=>memberOld(q,season,[prefix]),q=>memberRpc(q,season,[prefix])],['incassi-totals',q=>financeOld(q,financialFilters[0]),q=>financeRpc(q,financialFilters[0])],['navigation-account',navOld,navRpc],['inventory-page',q=>inventoryOld(q,inventoryFilters[0]),q=>inventoryRpc(q,inventoryFilters[0])],['person-options',q=>optionsOld(q,optionFilters[0]),q=>optionsRpc(q,optionFilters[0])],['soci-page',q=>membersPageOld(q,pageFilters[0]),q=>membersPageRpc(q,pageFilters[0])]]){
+   for(const [name,before,after] of [['dashboard',dashboardOld,dashboardRpc],['soci-counts',q=>memberOld(q,season,[prefix]),q=>memberRpc(q,season,[prefix])],['incassi-totals',q=>financeOld(q,financialFilters[0]),q=>financeRpc(q,financialFilters[0])],['navigation-account',navOld,navRpc],['inventory-page',q=>inventoryOld(q,inventoryFilters[0]),q=>inventoryRpc(q,inventoryFilters[0])],['person-options',q=>optionsOld(q,optionFilters[0]),q=>optionsRpc(q,optionFilters[0])],['soci-page',q=>membersPageOld(q,pageFilters[0]),q=>membersPageRpc(q,pageFilters[0])],['courses-page',q=>oldCourses(q,courseFilters[0]),q=>rpcCourses(q,courseFilters[0])],['calendar-snapshot',q=>oldCalendar(q,calendarFilters[0]),q=>rpcCalendar(q,calendarFilters[0])]]){
     const sample=async(fn)=>{
      let requests=0;
      const q=async(sql,args)=>{requests++;if(rtt)await delay(rtt);return db.query(sql,args);};
