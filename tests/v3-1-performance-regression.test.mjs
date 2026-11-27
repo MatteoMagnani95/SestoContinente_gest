@@ -56,7 +56,7 @@ test('render-scoped authentication shares verified account and roles without cac
 
 test('staff navigation preserves accessible state and the authorization boundary',()=>{
  const nav=read('components/StaffNav.tsx');
- assert.match(nav,/prefetch=\{open\?undefined:false\}/);
+ assert.doesNotMatch(nav,/prefetch=\{open\?undefined:false\}/);
  assert.match(nav,/aria-expanded=\{open\}/);
  assert.match(read('app/gestionale/layout.tsx'),/await requireStaff\(\)/);
 });
@@ -157,4 +157,13 @@ test('dedicated equipment routes defer real editors while keeping complete filte
  assert.match(loans,/s.nuovo==='1'\?<Drawer/);
  assert.match(loans,/primary href=\{createHref\} label="Registra consegna"/);
  assert.match(loans,/equipment.filter\(e=>e.stato==='disponibile'&&!openIds.has\(e.id\)\)/);
+});
+
+test('inventory deferred row editor preserves revision locks and current filters',()=>{
+ const source=read('app/gestionale/moduli/attrezzature/page.tsx');
+ assert.match(source,/selectedEditor===e.id\?<Drawer/);
+ assert.match(source,/lockedDates=\{locked.has\(e.id\)\}/);
+ assert.match(source,/open=\{open.has\(e.id\)\}/);
+ assert.match(source,/listHref\(\{q:s.q,categoria:s.categoria,stato:status,revisione:revision,p:String\(page\),editor:id\}\)/);
+ assert.match(source,/DeferredEditorButton href=\{editorHref\(e.id\)\}/);
 });
