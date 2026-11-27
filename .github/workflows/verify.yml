@@ -141,6 +141,10 @@ jobs:
           cp docs/release/COURSE_DUPLICATE_HOTFIX.sql "$file"
           psql "$TEST_0019_DATABASE_URL" -X -v ON_ERROR_STOP=1 -1 -f "$file"
           node scripts/test-course-duplicate-cleanup.cjs
+      - name: Migrazione AUD-006 consolidata su database effimero
+        run: |
+          cmp docs/audit-3.2/AUD006_CANDIDATE.sql "supabase/migrations/20261127225433_audit006_private_medical_classification.sql"
+          psql "$TEST_0019_DATABASE_URL" -X -v ON_ERROR_STOP=1 -1 -f "supabase/migrations/20261127225433_audit006_private_medical_classification.sql"
       - name: Prova ripristino su secondo database effimero
         env:
           QA_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}

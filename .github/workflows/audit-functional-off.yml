@@ -152,9 +152,6 @@ jobs:
           path: ${{ env.QA_WORK_DIR }}/performance-comparison.json
           if-no-files-found: error
           retention-days: 14
-      - name: Mutazioni aggiuntive effettive dopo benchmark
-        timeout-minutes: 8
-        run: node scripts/qa-audit-mutations.mjs
       - name: Pulizia servizi e dati sintetici
         if: always()
         run: |

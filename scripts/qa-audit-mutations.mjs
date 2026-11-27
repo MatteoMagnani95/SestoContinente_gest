@@ -1,4 +1,4 @@
-// Extra actual browser mutations, after benchmark to keep the exact load dataset intact.
+// Extra actual browser mutations on an independent isolated dataset.
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
@@ -17,7 +17,7 @@ for(const x of Object.values(a))assert.match(x.email,/@example\.invalid$/);
 const admin=createClient(api.href,e.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
 const one=async(table,columns,filters)=>{let q=admin.from(table).select(columns);for(const [k,v] of Object.entries(filters))q=q.eq(k,v);const r=await q.single();assert.ok(!r.error,table+' '+r.error?.code);return r.data;};
 const browser=await chromium.launch();const contexts=[];
-const open=async role=>{const c=await browser.newContext({baseURL:app.href,storageState:join(work,role+'.json'),viewport:{width:390,height:844}});contexts.push(c);return c.newPage();};
+const open=async role=>{const c=await browser.newContext({baseURL:app.href,viewport:{width:390,height:844}});contexts.push(c);const page=await c.newPage();await page.goto('/accedi');await page.locator('input[name=email]').first().fill(a[role].email);await page.locator('input[name=password]').fill(a[role].password);await page.getByRole('button',{name:'Accedi',exact:true}).click();await page.waitForURL(u=>!['/accedi','/smista','/'].includes(u.pathname),{timeout:30000});return page;};
 try{
  const staff=await open('staff'),member=await open('member'),guardian=await open('guardian');
  const title='Evento audit '+randomUUID(),day=new Date(Date.now()+14*86400000).toISOString().slice(0,10);
@@ -72,4 +72,48 @@ try{
  await staff.reload();await expect(staff.getByText('Tesoriere',{exact:true}).first()).toBeVisible();
  await member.goto('/organi-sociali');await expect(member).toHaveURL(u=>u.pathname!=='/organi-sociali'&&u.searchParams.get('msg')==='permessi');
  console.log('OK UI board appointment, four-year term, no automatic application role escalation');
+
+ // Create an independent pool and lane through the actual staff UI.
+ const poolName='Piscina audit '+randomUUID();
+ await staff.goto('/gestionale/moduli/piscine?nuovo=1');
+ const poolForm=staff.getByRole('dialog',{name:'Aggiungi piscina'});
+ await poolForm.locator('input[name=nome]').fill(poolName);
+ await poolForm.locator('input[name=indirizzo]').fill('Indirizzo sintetico');
+ await poolForm.getByRole('button',{name:'Aggiungi piscina',exact:true}).click();
+ await expect(staff).toHaveURL(/msg=salvato/);
+ const pool=await one('piscine','id,indirizzo',{nome:poolName});assert.equal(pool.indirizzo,'Indirizzo sintetico');
+ await staff.goto('/gestionale/moduli/piscine?edit='+pool.id);
+ const poolEdit=staff.getByRole('dialog',{name:'Modifica '+poolName});
+ await poolEdit.locator('textarea[name=limitazioni]').fill('Limitazione sintetica');
+ await poolEdit.getByRole('button',{name:'Salva modifiche'}).click();await expect(staff).toHaveURL(/msg=salvato/);
+ assert.equal((await one('piscine','limitazioni',{id:pool.id})).limitazioni,'Limitazione sintetica');
+ const newLane='/gestionale/moduli/corsie?piscina='+pool.id+'&nuovo=1';
+ const laneForm=staff.getByRole('dialog',{name:'Aggiungi corsia'});
+ async function fillLane(){
+  await staff.goto(newLane);
+  await laneForm.locator('select[name=piscina_id]').selectOption(pool.id);
+  await laneForm.locator('input[name=numero]').fill('7');
+  await laneForm.getByRole('button',{name:'Salva corsia',exact:true}).click();
+ }
+ await fillLane();await expect(staff).toHaveURL(/msg=salvato/);
+ const lane=await one('corsie','id,numero',{piscina_id:pool.id,numero:7});assert.equal(lane.numero,7);
+ await fillLane();await expect(laneForm.getByRole('alert')).toContainText('duplicati');
+ assert.equal((await one('corsie','id',{piscina_id:pool.id,numero:7})).id,lane.id);
+ console.log('OK UI pool create and update, lane create and duplicate rejected');
+ // Existing course identity, including whitespace/case normalization, must not
+ // be recreated through the guided form. Check the original ID, not only UI.
+ const fixtures=JSON.parse(await readFile(join(work,'fixtures.json'),'utf8'));
+ const original=await one('edizioni_corsi','id,corso_id,stagione_id,nome,inizio,fine,direttore_id',{id:fixtures.edition});
+ await staff.goto('/gestionale/corsi/nuovo');
+ const courseForm=staff.locator('form').filter({has:staff.getByRole('button',{name:'Crea edizione',exact:true})});
+ for(const name of ['corso_id','stagione_id','direttore_id'])await courseForm.locator('select[name='+name+']').selectOption(original[name]);
+ await courseForm.locator('input[name=nome]').fill('  '+original.nome.toUpperCase()+'  ');
+ for(const name of ['inizio','fine'])await courseForm.locator('input[name='+name+']').fill(original[name]);
+ await courseForm.locator('input[name=costo_corso]').fill('0');
+ await courseForm.getByRole('button',{name:'Crea edizione',exact:true}).click();
+ const duplicate=courseForm.getByRole('alert');await expect(duplicate).toContainText('Questo corso esiste già');
+ await expect(duplicate.getByRole('link',{name:'Apri quello esistente'})).toHaveAttribute('href','/gestionale/corsi/'+original.id);
+ const editions=await admin.from('edizioni_corsi').select('id,nome').eq('corso_id',original.corso_id).eq('stagione_id',original.stagione_id).eq('inizio',original.inizio).eq('fine',original.fine);
+ assert.ok(!editions.error);assert.deepEqual(editions.data.filter(x=>x.nome.trim().toLowerCase()===original.nome.trim().toLowerCase()).map(x=>x.id),[original.id]);
+ console.log('OK UI guided course duplicate blocked and original linked');
 }finally{for(const c of contexts)await c.close();await browser.close();}
