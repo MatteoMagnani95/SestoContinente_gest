@@ -20,3 +20,13 @@ Nuovi asset indipendenti generati e ottimizzati; il confronto definitivo è aper
 
 ## Verifica reale 3cc0223 — 27/11/2026
 Artifact 15221893146, 12 PNG reali. Confronto delle sei schermate desktop con riferimenti 01–06 e revisione del layout. Hero a tutta larghezza, pannelli distinti, testata e footer riscontrati; restano un fondale troppo realistico e un link Torna alla home duplicato dalla navigazione originale. L'utente approva la nuova direzione artistica pittorica (tre illustrazioni) e richiede qualità anti AI-slop. Nuovo pass limitato ad asset e stile pubblico, rimozione del link supplementare (AppShell invariato). Nessun cambiamento ai campi, consensi, sicurezza o account. Il nuovo commit richiede nuovi screenshot; quelli di 3cc0223 non rappresentano le nuove illustrazioni. Nessun GO prima di approvazione delle sei schermate complete.
+
+## Verifica reale 89b5a85 — 27/11/2026
+Artifact 15222997879 / run 46046850795, 12 PNG (1440 e 390). CI 46046850757: 333 statici, 70 browser, database e audit OK. QA autenticata OFF e flusso reale di registrazione/adesione completati; benchmark del commit in corso al momento della revisione.
+01: direzione pittorica coerente, logo ufficiale, quattro passi, CTA reali; inquadratura alta taglia parzialmente il secondo sub, mobile troppo scuro, CTA header poco evidenti. Corretto crop, gradiente mobile e CTA header solo homepage.
+02: testata e Nereia coerenti, moduli leggibili e recupero/reinvio preservati; bordo rettangolare netto del reef laterale. Corretto con strati di gradiente delle dimensioni esatte del frammento.
+03: stesso difetto del reef; mantenere avvisi sintetici e consensi, non comprimere campi.
+04: stessa correzione reef; messaggi non rivelatori e invio reale preservati.
+05: modulo reale più lungo del riferimento, campi obbligatori e facoltativi non rimossi. Mobile: brand si dispone lettera per lettera nell'header, pur senza overflow orizzontale. Correzione grid header circoscritta alle superfici applicant.
+06: stato, dichiarazioni, riepilogo corretti; medesimo difetto mobile e reef, stessa correzione. Nessun download o azione inventata.
+Nuovo gate QA: verifica righe effettive del nome brand (max 2), larghezza minima e header applicant <=160px, logout visibile a viewport mobile. Il gate anti AI-slop visivo resta manuale; immagini stilizzate approvate ma non materiale tecnico subacqueo. Nessuna alterazione a area riservata o azioni. Gli screenshot 89b5a85 sono evidenza reale pre-correzione, non dell'ultimo commit.

@@ -54,6 +54,18 @@ export async function runAuth({app,admin}){
     await page.evaluate(()=>document.fonts.ready);
     await expect(page.getByRole('heading',{level:1}).first()).toBeVisible();
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1),name+' overflow '+width);
+    // Catch vertical letter-by-letter wrapping even when document scrollWidth is valid.
+    const brand=await page.locator('.sc-site-header .brand strong').evaluate(el=>{
+     const range=document.createRange();range.selectNodeContents(el);
+     const rects=Array.from(range.getClientRects()).filter(r=>r.width>0&&r.height>0);
+     return {lines:new Set(rects.map(r=>Math.round(r.top))).size,width:el.getBoundingClientRect().width};
+    });
+    assert.ok(brand.lines>0&&brand.lines<=2&&brand.width>=80,name+' header brand collapsed at '+width+': '+JSON.stringify(brand));
+    if((name==='05-domanda'||name==='06-verifica-associativa')&&width<=1000){
+     await expect(page.locator('.sc-site-header .sc-direct-logout button')).toBeVisible();
+     const header=await page.locator('.sc-site-header').boundingBox();
+     assert.ok(header&&header.height<=160,name+' excessive mobile header height '+width);
+    }
     if(width===390||width===1440)await page.screenshot({path:join(out,name+'-'+width+'.png'),fullPage:true,animations:'disabled',caret:'hide'});
    }}finally{if(original)await page.setViewportSize(original);}
   };
