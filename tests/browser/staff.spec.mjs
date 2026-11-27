@@ -284,3 +284,19 @@ test('3.1: references on demand for creating an equipment revision',async({page}
  await editor.getByRole('button',{name:'Chiudi pannello'}).click();
  await expect(editor).toBeHidden();
 });
+
+test('3.1: simple dynamic archive loads the full reference selector only on creation',async({page})=>{
+ await page.goto('/gestionale/moduli/quote');
+ const create=page.getByRole('button',{name:'Registra quota associativa',exact:true});
+ await expect(create).toBeVisible();
+ await expect(page.getByRole('dialog',{name:'Registra quota associativa'})).toHaveCount(0);
+ await create.click();
+ const editor=page.getByRole('dialog',{name:'Registra quota associativa'});
+ await expect(editor).toBeVisible();
+ await expect(page).toHaveURL(url=>url.searchParams.get('nuovo')==='1');
+ const select=editor.locator('select[name="persona_id"]');
+ await expect(select).toBeVisible();
+ await expect.poll(()=>select.locator('option').count()).toBeGreaterThan(1);
+ await editor.getByRole('button',{name:'Chiudi pannello'}).click();
+ await expect(editor).toBeHidden();
+});
