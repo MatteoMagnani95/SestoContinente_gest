@@ -63,8 +63,31 @@ export async function requireStaff() {
   return { supabase, user };
 }
 
-/** Request-scoped React Server Component memoization. Mutations continue to call requireStaff directly. */
-export const requireStaffForRender=cache(requireStaff);
+/** RSC render only. React cache is scoped to the current server request.
+ * Never call these helpers from mutations or route handlers.
+ * The original guards below/above remain uncached for those callers. */
+export const readAccountForRender=cache(async()=>{
+ const supabase=await createClient();
+ const {data:{user},error}=await supabase.auth.getUser();
+ if(error||!user)return {supabase,user:null,status:'guest' as const};
+ const {data:enabled,error:statusError}=await supabase.rpc('account_corrente_abilitato');
+ return {supabase,user,status:statusError||enabled!==true?'disabled' as const:'enabled' as const};
+});
+export const readRolesForRender=cache(async(supabase:Awaited<ReturnType<typeof createClient>>,userId:string)=>
+ await supabase.from('ruoli_utente').select('ruolo').eq('utente_id',userId)
+);
+export const requireUserForRender=cache(async()=>{
+ const account=await readAccountForRender();
+ if(!account.user||account.status==='guest')redirect('/accedi?msg=account');
+ if(account.status!=='enabled')redirect('/accedi?msg=account_disattivato');
+ return {supabase:account.supabase,user:account.user};
+});
+export const requireStaffForRender=cache(async()=>{
+ const {supabase,user}=await requireUserForRender();
+ const {data,error}=await readRolesForRender(supabase,user.id);
+ if(error||!data?.some(item=>['amministratore','segreteria'].includes(item.ruolo)))redirect('/?msg=permessi');
+ return {supabase,user};
+});
 
 export async function requireBoard(){
  const {supabase,user}=await requireUser();
