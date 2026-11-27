@@ -104,7 +104,14 @@ test('only explicit public branding assets get public caching',()=>{
 
 test('finance loads independent reads and preserves full filtered aggregate',()=>{
  const source=read('app/gestionale/incassi/page.tsx');
- assert.match(source,/const \[\{data:admin\},\{data:seasons,error:seasonError\},personOptions\]=await Promise.all/);
+ assert.match(source,/const adminPromise=Promise.resolve\(supabase.rpc\('is_admin'\)\)/);
+ assert.match(source,/const seasonsPromise=tutteLePagine/);
+ assert.match(source,/const \{data:seasons,error:seasonError\}=await seasonsPromise/);
+ assert.match(source,/const \[\{data:admin\},personOptions,\{data:allPeople,error:peopleError\}\]=await Promise.all\(\[adminPromise,remoteOptionsPromise,peoplePromise\]\)/);
+ assert.ok(source.indexOf('const recentPromise=Promise.resolve(recentQuery)')<source.indexOf('await seasonsPromise'));
+ assert.ok(source.indexOf('await seasonsPromise')<source.indexOf('if(selectedSeason)'));
+ assert.ok(source.indexOf('if(selectedSeason)')<source.indexOf('await Promise.all([adminPromise,remoteOptionsPromise,peoplePromise])'));
+ assert.ok(source.indexOf('await recentPromise')<source.indexOf('await Promise.all([adminPromise,remoteOptionsPromise,peoplePromise])'));
  assert.match(source,/peoplePromise=remoteOptionsPromise.then\(personOptions=>personOptions\?\{data:\[\],error:null\}:tutteLePagine/);
  assert.match(source,/allIds=\[\.\.\.new Set\(\[\.\.\.peopleIds,\.\.\.historyIds\]\)\]/);
  assert.match(source,/combined.error\?await Promise.all\(\[loadPeople\(peopleIds\),loadPeople\(historyIds\)\]\)/);
@@ -171,7 +178,7 @@ test('inventory deferred row editor preserves revision locks and current filters
  assert.match(source,/DeferredEditorButton href=\{editorHref\(e.id\)\}/);
 });
 
-test('validated structural RPCs are local-QA-only and retain legacy fallbacks',()=>{
+test('validated structural RPCs require explicit QA or release activation and retain legacy fallbacks',()=>{
  const gate=read('lib/structural-qa.ts');
  assert.match(gate,/SC_STRUCTURAL_RPC!=='true'/);
  assert.match(gate,/QA_ISOLATED_ENV!=='true'/);
@@ -228,7 +235,7 @@ test('complete fresh member snapshot keeps the original paginated path as fallba
  assert.match(read('.github/workflows/performance-3-1.yml'),/soci-page navigation-account inventory-page/);
 });
 
-test('versioned migration is read-only and activation remains local and opt-in',()=>{
+test('versioned migration is read-only and activation remains opt-in',()=>{
  const sql=read('supabase/migrations/20261127122235_structural_read_snapshots.sql');
  assert.equal((sql.match(/CREATE FUNCTION public\.sc_perf_/g)||[]).length,7);
  assert.equal((sql.match(/STABLE SECURITY INVOKER SET search_path=''/g)||[]).length,7);

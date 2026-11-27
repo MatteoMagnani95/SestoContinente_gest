@@ -19,6 +19,9 @@ on:
       - 'perf/3.1-migration-courses-calendar'
       - 'perf/3.1-migration-courses-doc'
       - 'perf/3.1-profile'
+      - 'perf/3.1-finance-critical-path'
+      - 'perf/3.1-release-prep'
+      - 'perf/3.1-rc-integration'
       - 'release/gestionale-3.1'
   workflow_dispatch:
 
