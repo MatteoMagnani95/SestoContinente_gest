@@ -1,7 +1,7 @@
 name: QA comparativa prestazioni 3.1 (locale)
 on:
   push:
-    branches: ['release/gestionale-3.1', 'perf/3.1-migration', 'perf/3.1-final-gates', 'perf/3.1-courses-calendar', 'perf/3.1-snapshot-parity']
+    branches: ['release/gestionale-3.1', 'perf/3.1-migration', 'perf/3.1-final-gates', 'perf/3.1-courses-calendar', 'perf/3.1-snapshot-parity', 'perf/3.1-migration-courses-calendar']
   workflow_dispatch:
 permissions:
   contents: read
@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   compare:
-    if: github.ref == 'refs/heads/release/gestionale-3.1' || github.ref == 'refs/heads/perf/3.1-migration' || github.ref == 'refs/heads/perf/3.1-final-gates' || github.ref == 'refs/heads/perf/3.1-courses-calendar' || github.ref == 'refs/heads/perf/3.1-snapshot-parity'
+    if: github.ref == 'refs/heads/release/gestionale-3.1' || github.ref == 'refs/heads/perf/3.1-migration' || github.ref == 'refs/heads/perf/3.1-final-gates' || github.ref == 'refs/heads/perf/3.1-courses-calendar' || github.ref == 'refs/heads/perf/3.1-snapshot-parity' || github.ref == 'refs/heads/perf/3.1-migration-courses-calendar'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -57,6 +57,7 @@ jobs:
           supabase migration list --help
           supabase migration list --local | tee "$RUNNER_TEMP/sesto-migrations.log"
           grep -q '20261127122235' "$RUNNER_TEMP/sesto-migrations.log"
+          grep -q '20261127125108' "$RUNNER_TEMP/sesto-migrations.log"
           node scripts/qa-install-structural-rpc.mjs
       - name: Dataset e build del candidato
         run: |

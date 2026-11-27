@@ -16,6 +16,7 @@ on:
       - 'perf/3.1-final-gates'
       - 'perf/3.1-courses-calendar'
       - 'perf/3.1-snapshot-parity'
+      - 'perf/3.1-migration-courses-calendar'
       - 'release/gestionale-3.1'
   workflow_dispatch:
 
@@ -117,7 +118,10 @@ jobs:
       - name: Benchmark sintetico, paginazione e isolamento RLS
         run: node scripts/test-performance-ci.cjs
       - name: Applica migrazione strutturale versionata su database effimero
-        run: psql "$TEST_0019_DATABASE_URL" -X -v ON_ERROR_STOP=1 -1 -f supabase/migrations/20261127122235_structural_read_snapshots.sql
+        run: |
+          psql "$TEST_0019_DATABASE_URL" -X -v ON_ERROR_STOP=1 -1 -f supabase/migrations/20261127122235_structural_read_snapshots.sql
+          echo '552dfa8bef6b616c518a195795452e0c41bc12a04c6776b1e88c4092a36acf09  supabase/migrations/20261127125108_course_calendar_read_snapshots.sql' | sha256sum -c -
+          psql "$TEST_0019_DATABASE_URL" -X -v ON_ERROR_STOP=1 -1 -f supabase/migrations/20261127125108_course_calendar_read_snapshots.sql
       - name: Prototipi strutturali RPC, parità, RLS e latenza simulata
         run: node scripts/test-structural-performance-ci.cjs
       - name: Prova ripristino su secondo database effimero

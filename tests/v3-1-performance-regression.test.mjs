@@ -240,7 +240,7 @@ test('versioned migration is read-only and activation remains local and opt-in',
 });
 
 test('course and calendar snapshots are staff-only, bounded and retain legacy fallbacks',()=>{
- const course=read('app/gestionale/corsi/page.tsx'),calendar=read('app/gestionale/calendario-visivo/page.tsx'),sql=read('scripts/qa-course-calendar-rpc.sql');
+ const course=read('app/gestionale/corsi/page.tsx'),calendar=read('app/gestionale/calendario-visivo/page.tsx'),sql=read('supabase/migrations/20261127125108_course_calendar_read_snapshots.sql');
  assert.match(course,/sc_perf_courses_page/);
  assert.match(course,/}:await readLegacy\(\)/);
  assert.match(course,/counts:new Map\(Object.entries\(snapshot.counts\)\)/);
@@ -259,4 +259,15 @@ test('browser snapshot parity compares both staff roles and the full rendered re
  assert.match(source,/edizione:fixtures.secondEdition/);
  assert.match(source,/Prenotata\.\*Lezione sintetica/);
  assert.match(read('.github/workflows/performance-3-1.yml'),/node scripts\/qa-course-calendar-parity\.mjs/);
+});
+
+test('canonical course/calendar migration is applied in CI and QA, never by installer, and stale pages keep legacy recovery',()=>{
+ const course=read('app/gestionale/corsi/page.tsx'),installer=read('scripts/qa-install-structural-rpc.mjs'),ci=read('scripts/test-structural-performance-ci.cjs');
+ assert.match(course,/const snapshot=requested>1&&candidate\?\.rows\.length===0\?null:candidate/);
+ assert.match(installer,/rows.length,9/);
+ assert.doesNotMatch(installer,/readFile|db\.query\('begin'\)|notify pgrst/);
+ assert.match(ci,/installed.length,9/);
+ assert.doesNotMatch(ci,/qa-course-calendar-rpc\.sql/);
+ assert.match(read('.github/workflows/verify.yml'),/20261127125108_course_calendar_read_snapshots\.sql/);
+ assert.match(read('.github/workflows/performance-3-1.yml'),/grep -q '20261127125108'/);
 });

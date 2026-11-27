@@ -22,7 +22,9 @@ export default async function Courses({searchParams}:{searchParams:Promise<{q?:s
  const view=courseListView(p.vista_corsi);
  const requested=Math.min(10000,Math.max(1,Number.parseInt(p.p??'1',10)||1));
 
- const snapshot=readCoursesPage(await structuralRpc(supabase,'sc_perf_courses_page',{p_season:p.stagione??'',p_terms:searchTerms(q),p_status:stato,p_discipline:disciplina,p_level:livello,p_order:ordine??'nome',p_page:requested}));
+ const candidate=readCoursesPage(await structuralRpc(supabase,'sc_perf_courses_page',{p_season:p.stagione??'',p_terms:searchTerms(q),p_status:stato,p_discipline:disciplina,p_level:livello,p_order:ordine??'nome',p_page:requested}));
+ // PostgREST rejects out-of-range noninitial pages; retain its existing recovery/error semantics.
+ const snapshot=requested>1&&candidate?.rows.length===0?null:candidate;
  const readLegacy=async()=>{
  const storicoCatalogoPromise=tutteLePagine((da,a)=>supabase.from('corsi').select('id,nome').eq('duplicato_storico',true).order('id').range(da,a));
  const storicheEdizioniPromise=tutteLePagine((da,a)=>supabase.from('edizioni_corsi').select('id,nome').eq('duplicato_storico',true).order('id').range(da,a));
