@@ -31,13 +31,16 @@ export default async function Courses({searchParams}:{searchParams:Promise<{q?:s
  if(ordine==='inizio'||ordine==='fine')query=query.order(ordine,{ascending:false});else query=query.order('nome',{ascending:ordine!=='nome_desc'});
  const {data,error,count}=await query.order('id').range((requested-1)*pageSize,requested*pageSize-1);
  const rows=(data??[]) as unknown as Edition[];const ids=rows.map(x=>x.id);
- const {data:enrollments,error:enrollmentError}=ids.length?await tutteLePagine((da,a)=>supabase.from('iscrizioni_corsi').select('edizione_id').in('edizione_id',ids).eq('stato','iscritto').order('id').range(da,a)):{data:[],error:null};
  const directorIds=[...new Set(rows.map(e=>e.direttore_id).filter((x):x is string=>Boolean(x)))];
- const directors=directorIds.length?await supabase.from('persone').select('id,nome,cognome').in('id',directorIds):{data:[],error:null};
- const {data:staff,error:staffError}=ids.length?await tutteLePagine((da,a)=>supabase.from('gest_elenco_assegnazioni_istruttori').select('id,edizione_id,ruolo,sort_nome,sort_cognome').in('edizione_id',ids).order('sort_cognome').order('sort_nome').order('id').range(da,a)):{data:[],error:null};
+ const [{data:enrollments,error:enrollmentError},directors,{data:staff,error:staffError},storiciCatalogo,storicheEdizioni]=await Promise.all([
+  ids.length?tutteLePagine((da,a)=>supabase.from('iscrizioni_corsi').select('edizione_id').in('edizione_id',ids).eq('stato','iscritto').order('id').range(da,a)):{data:[],error:null},
+  directorIds.length?supabase.from('persone').select('id,nome,cognome').in('id',directorIds):{data:[],error:null},
+  ids.length?tutteLePagine((da,a)=>supabase.from('gest_elenco_assegnazioni_istruttori').select('id,edizione_id,ruolo,sort_nome,sort_cognome').in('edizione_id',ids).order('sort_cognome').order('sort_nome').order('id').range(da,a)):{data:[],error:null},
+  tutteLePagine((da,a)=>supabase.from('corsi').select('id,nome').eq('duplicato_storico',true).order('id').range(da,a)),
+  tutteLePagine((da,a)=>supabase.from('edizioni_corsi').select('id,nome').eq('duplicato_storico',true).order('id').range(da,a))
+ ]);
  const staffNames=(id:string,role:string)=>staffError?'Non disponibile':(staff??[]).filter(a=>a.edizione_id===id&&a.ruolo===role).map(a=>[a.sort_cognome,a.sort_nome].filter(Boolean).join(' ')).join(', ')||'Da assegnare';
  const counts=new Map<string,number>();for(const row of enrollments??[])counts.set(row.edizione_id,(counts.get(row.edizione_id)??0)+1);
- const [storiciCatalogo,storicheEdizioni]=await Promise.all(['corsi','edizioni_corsi'].map(tabella=>tutteLePagine((da,a)=>supabase.from(tabella).select('id,nome').eq('duplicato_storico',true).order('id').range(da,a))));
  
  const pageHref=(page:number)=>base+'?'+new URLSearchParams({q,stato,stagione,disciplina,livello:livello===null?'':String(livello),ordine:ordine??'nome',vista_corsi:view,p:String(page)}).toString();
  const viewHref=(mode:typeof view)=>{const params=new URLSearchParams(pageHref(requested).split('?')[1]);params.set('vista_corsi',mode);return base+'?'+params.toString();};
