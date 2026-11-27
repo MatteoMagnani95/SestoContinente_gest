@@ -134,7 +134,17 @@ export default function GlobalCancelButtons(){
    if(!window.confirm(WARNING))event.preventDefault();
   };
   scan();
-  const observer=new MutationObserver(scan);
+  // Ignore unrelated table, menu and status updates. Form snapshots are still
+  // reconciled synchronously for relevant DOM changes and before navigation.
+  const affectsForms=(node:Node)=>{
+   if(!(node instanceof Element))return Boolean(node.parentElement?.closest('form'));
+   return Boolean(node.closest('form')||node.matches('input,select,textarea,button,option')||node.querySelector('form,input,select,textarea,button[form]'));
+  };
+  const observer=new MutationObserver(records=>{
+   if(records.some(record=>affectsForms(record.target)||
+    Array.from(record.addedNodes).some(affectsForms)||
+    Array.from(record.removedNodes).some(affectsForms)))scan();
+  });
   observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['value','checked','selected']});
   document.addEventListener('click',onClick,true);
   document.addEventListener('submit',onSubmit,true);
