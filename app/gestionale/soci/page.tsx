@@ -1,6 +1,6 @@
 import {singleSearchParams} from '@/lib/module-ui';
 import Link from 'next/link';
-import {requireStaff} from '@/lib/security';
+import {requireStaffForRender as requireStaff} from '@/lib/security';
 import {PageHeader,ButtonLink,StatusBadge,Alert} from '@/components/ui/Primitives';
 import {DataTable,FilterBar,SearchBar,Pagination} from '@/components/ui/DataTable';
 import {statusTone,searchTerms,maskedFiscalCode,exactCount} from '@/lib/secretariat';
