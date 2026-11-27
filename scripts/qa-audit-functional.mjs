@@ -24,29 +24,36 @@ const guardianId=accounts.guardian.id;
 const roles=async()=> (await db.query('select ruolo::text from public.ruoli_utente where utente_id=$1 order by ruolo',[guardianId])).rows.map(r=>r.ruolo);
 const add=role=>db.query('insert into public.ruoli_utente(utente_id,ruolo) values($1,$2)',[guardianId,role]);
 const remove=role=>db.query('delete from public.ruoli_utente where utente_id=$1 and ruolo=$2',[guardianId,role]);
-// Full navigation may interrupt background requests. Do not ignore exceptions:
-// settle each destination before leaving, attribute pageerrors and request failures to
-// a route, and preserve the original zero-uncaught-exception requirement.
+// Preserve the original rapid sweep and a separate interactive navigation
+// control. Track request lifecycle without logging headers, cookies or queries.
 function observePage(page,engine){
- const errors=[],requests=[];
- let phase='initial';
- function safeMessage(s){
-  return String(s??'').replace(/https?:\/\/[^\s"'<>]+/g,v=>{try{const u=new URL(v);return u.origin+u.pathname;}catch{return '[url]';}}).slice(0,600);
- }
+ const errors=[],pending=new Map(),failures=[];
+ let phase='initial',serial=0;
+ const safeUrl=v=>{try{const u=new URL(v);return u.origin+u.pathname;}catch{return '[non-http]';}};
+ const safeMessage=s=>String(s??'').replace(/https?:\/\/[^\s"'<>]+/g,safeUrl).slice(0,800);
+ const route=()=>safeUrl(page.url());
+ page.on('request',req=>{
+  const h=req.headers();
+  pending.set(req,{id:++serial,phase,route:route(),target:safeUrl(req.url()),type:req.resourceType(),rsc:h.rsc==='1',prefetch:h['next-router-prefetch']==='1'||Boolean(h['next-router-segment-prefetch'])||h.purpose==='prefetch',started:Date.now()});
+ });
+ page.on('requestfinished',req=>pending.delete(req));
+ page.on('requestfailed',req=>{
+  const record={...(pending.get(req)||{target:safeUrl(req.url()),type:req.resourceType()}),failedPhase:phase,failedRoute:route(),failure:safeMessage(req.failure()?.errorText)};
+  pending.delete(req);failures.push(record);console.log('AUD-009 REQUESTFAILED '+JSON.stringify(record));
+ });
  page.on('pageerror',err=>{
-  const record={engine,phase,route:new URL(page.url()).pathname,name:safeMessage(err.name),message:safeMessage(err.message),stack:safeMessage(err.stack).split('\n').slice(0,3)};
+  const record={engine,phase,route:route(),name:safeMessage(err.name),message:safeMessage(err.message),stack:safeMessage(err.stack).split('\n').slice(0,4),recentFailures:failures.slice(-5),pending:[...pending.values()].slice(0,10)};
   errors.push(record);console.log('AUD-009 PAGEERROR '+JSON.stringify(record));
  });
- page.on('requestfailed',req=>{
-  const u=new URL(req.url()),record={engine,phase,route:new URL(page.url()).pathname,target:u.origin+u.pathname,type:req.resourceType(),failure:safeMessage(req.failure()?.errorText)};
-  requests.push(record);console.log('AUD-009 REQUESTFAILED '+JSON.stringify(record));
- });
- return {errors,requests,phase(value){phase=value;}};
+ return {errors,phase(value){phase=value;},snapshot(){console.log('AUD-009 PENDING '+JSON.stringify({engine,phase,count:pending.size,requests:[...pending.values()].slice(0,10)}));}};
 }
-async function settled(page){
- // Network-idle is used here as a diagnostic separation between document
- // loading and navigation-away, not as the assertion that content is ready.
- await page.waitForLoadState('networkidle',{timeout:15000});
+async function settled(page,audit){
+ // Network-idle is not a readiness requirement: Next.js can keep RSC
+ // prefetch requests alive. Use a bounded observation window for diagnostics,
+ // while heading/URL/status and zero pageerror remain mandatory.
+ await page.waitForLoadState('load',{timeout:15000});
+ await page.waitForTimeout(750);
+ audit.snapshot();
 }
 async function allowed(page,path,destination=path.split('?')[0]){
  const res=await page.goto(path,{waitUntil:'domcontentloaded'});
@@ -120,17 +127,18 @@ try{
      const path='/gestionale/moduli/'+module;
      audit.phase('archive '+module);
      await allowed(page,path,module==='pagamenti'?'/gestionale/incassi':path);
-     await settled(page);
+     audit.snapshot();
      await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(391);
      console.log('OK '+engine+' archive '+module);
     }
     for(const path of ['/gestionale/utenti','/gestionale/amministrazione-dati','/gestionale/report','/gestionale/programmi-didattici','/gestionale/importazione','/gestione-eventi','/gestione-eventi/'+fixtures.event,'/gestionale/attrezzature/'+fixtures.equipment,'/gestionale/corsi/'+fixtures.edition,'/gestionale/calendario-visivo/'+fixtures.lesson]){
      audit.phase('route '+path.split('/').slice(0,3).join('/'));
-     await allowed(page,path);await settled(page);console.log('OK '+engine+' route '+path.split('/').slice(0,3).join('/'));
+     await allowed(page,path);audit.snapshot();console.log('OK '+engine+' route '+path.split('/').slice(0,3).join('/'));
     }
+    audit.phase('rapid sweep complete');await page.waitForTimeout(750);audit.snapshot();
     // Real client navigation too: do not replace interactive navigation with only direct GETs.
     audit.phase('client navigation dashboard');
-    await allowed(page,'/gestionale');await settled(page);
+    await allowed(page,'/gestionale');await settled(page,audit);
     const nav=page.locator('.sc-staff-sidebar');
     for(const [label,destination,group] of [['Soci','/gestionale/soci','Soci e segreteria'],['Corsi','/gestionale/corsi','Corsi e didattica']]){
      audit.phase('client navigation '+label);
@@ -144,7 +152,7 @@ try{
      await link.click();
      await expect(page).toHaveURL(u=>u.pathname===destination);
      await expect(page.getByRole('heading',{level:1}).first()).toBeVisible();
-     await settled(page);
+     await settled(page,audit);
     }
     assert.deepEqual(audit.errors,[],'uncaught browser errors in archive and interactive navigation sweep');
     const off=await staff.request.get('/gestionale/incassi/person-options?q=test',{maxRedirects:0});assert.equal(off.status(),404);
