@@ -31,3 +31,14 @@ Il precedente gate F7 non certifica questi nuovi CSS. Il nuovo commit remoto dev
 ## Anteprima
 
 `design-preview/sesto-continente-design-preview.html` è una presentazione autonoma con quattro schermate dimostrative: panoramica, soci, corsi e modulo, con selezione della larghezza telefono. Usa i fogli CSS del progetto e markup renderizzato dai componenti condivisi; la dashboard usa il template reale con un accesso ai dati simulato soltanto nel generatore temporaneo. Nomi e numeri sono esempi, le azioni non sono operative. L'anteprima non costituisce un test dell'applicazione autenticata. Il file di consegna è separato dal codice da integrare.
+
+
+## Rilascio verificato — 27/11/2026
+
+- Commit applicativo remoto pubblicato: `ebe1085b6dfd7b1b5660c3326baf8d4475819c5f`, sul ramo `feature/gestionale-3.0-ui-ux`, PR #6 esistente.
+- CI [45975747550](https://github.com/segreteriasestocontinente/SestoContinente_gest/actions/runs/45975747550): success, lint e TypeScript superati, 292/292 test automatici, build, 70 test browser, integrazione database effimero e audit dipendenze superati.
+- QA isolata [45975747730](https://github.com/segreteriasestocontinente/SestoContinente_gest/actions/runs/45975747730): success, 182 test autenticati, 8 skip configurati, 72 logout diretti/da menu, CRUD, recupero account, Storage e benchmark. Controlli visuali F7: 280 verifiche, zero anomalie; artifact `15187107733`.
+- Deploy Vercel produzione: `dpl_9UQLWhAyBHYeywFL8631p8dWmtNY`, stato **READY**, framework Next.js, circa 21 secondi di build. Alias principale verificato sul commit applicativo: https://sesto-continente-gest-lime.vercel.app/ .
+- Verifica online in Chrome: home e accesso caricati; nuovo header con gradiente e bordo acqua da 3 px confermato tramite stile calcolato, immagini caricate. Login a 390 px senza overflow, campi da 50 px con font da 16 px; viewport ripristinata. Nessun login o invio di moduli in produzione.
+- Scansione error/fatal del solo nuovo deployment negli ultimi 10 minuti: nessuna voce restituita. Non è una certificazione di tutte le funzioni della produzione.
+- Nessuna migrazione SQL, reset, modifica di ambiente, upgrade del piano o merge su main. La revisione successiva di questo rapporto è esclusivamente documentale e non è il commit applicativo attestato dai gate sopra.
