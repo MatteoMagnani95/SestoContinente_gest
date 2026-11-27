@@ -8,6 +8,7 @@ on:
       - 'feature/gestionale-2.0-redesign'
       - 'release/gestionale-consolidato'
       - 'perf/3.1-next-pass'
+      - 'perf/3.1-structural'
       - 'release/gestionale-3.1'
   workflow_dispatch:
 
@@ -108,6 +109,8 @@ jobs:
         run: psql "$TEST_0019_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f docs/redesign/F5_HISTORICAL_AUDIT.sql
       - name: Benchmark sintetico, paginazione e isolamento RLS
         run: node scripts/test-performance-ci.cjs
+      - name: Prototipi strutturali RPC, parità, RLS e latenza simulata
+        run: node scripts/test-structural-performance-ci.cjs
       - name: Prova ripristino su secondo database effimero
         env:
           QA_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
