@@ -238,3 +238,16 @@ test('versioned migration is read-only and activation remains local and opt-in',
  assert.match(read('.github/workflows/verify.yml'),/20261127122235_structural_read_snapshots\.sql/);
  assert.match(read('.github/workflows/performance-3-1.yml'),/supabase migration list --local/);
 });
+
+test('course and calendar snapshots are staff-only, bounded and retain legacy fallbacks',()=>{
+ const course=read('app/gestionale/corsi/page.tsx'),calendar=read('app/gestionale/calendario-visivo/page.tsx'),sql=read('scripts/qa-course-calendar-rpc.sql');
+ assert.match(course,/sc_perf_courses_page/);
+ assert.match(course,/}:await readLegacy\(\)/);
+ assert.match(course,/counts:new Map\(Object.entries\(snapshot.counts\)\)/);
+ assert.match(calendar,/sc_perf_calendar/);
+ assert.match(calendar,/snapshot\?\{data:snapshot.extraLessons,error:null\}:readCourseChunks/);
+ assert.equal((sql.match(/STABLE SECURITY INVOKER SET search_path=''/g)||[]).length,2);
+ assert.equal((sql.match(/public.is_staff\(\)/g)||[]).length,2);
+ assert.match(sql,/pg_column_size\(result\)>2097152/);
+ assert.match(read('.github/workflows/performance-3-1.yml'),/courses-page calendar-snapshot; do grep/);
+});

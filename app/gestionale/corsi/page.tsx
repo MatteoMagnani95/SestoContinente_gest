@@ -9,6 +9,7 @@ import {Icon} from '@/components/ui/Icon';
 import {requireStaffForRender as requireStaff} from '@/lib/security';
 import {courseName,COURSE_STATES} from '@/lib/course-tools';
 import {formatValue} from '@/lib/format';
+import {structuralRpc,readCoursesPage,markStructuralRpcUsed} from '@/lib/structural-qa';
 
 type Edition={id:string;nome:string;corso_id:string;stagione_id:string;inizio:string;fine:string;stato:string;massimo_partecipanti:number;direttore_id:string|null;corsi:{nome:string;tipo:string;livello:number|null}|null};
 const pageSize=25;
@@ -20,6 +21,9 @@ export default async function Courses({searchParams}:{searchParams:Promise<{q?:s
  const disciplina=validDiscipline(p.disciplina),livello=validLevel(p.livello),ordine=['inizio','fine','nome_desc'].includes(p.ordine??'')?p.ordine:'nome';
  const view=courseListView(p.vista_corsi);
  const requested=Math.min(10000,Math.max(1,Number.parseInt(p.p??'1',10)||1));
+
+ const snapshot=readCoursesPage(await structuralRpc(supabase,'sc_perf_courses_page',{p_season:p.stagione??'',p_terms:searchTerms(q),p_status:stato,p_discipline:disciplina,p_level:livello,p_order:ordine??'nome',p_page:requested}));
+ const readLegacy=async()=>{
  const storicoCatalogoPromise=tutteLePagine((da,a)=>supabase.from('corsi').select('id,nome').eq('duplicato_storico',true).order('id').range(da,a));
  const storicheEdizioniPromise=tutteLePagine((da,a)=>supabase.from('edizioni_corsi').select('id,nome').eq('duplicato_storico',true).order('id').range(da,a));
  const {data:seasons,error:seasonError}=await tutteLePagine((da,a)=>supabase.from('stagioni').select('id,nome,attiva').order('dal',{ascending:false}).order('id').range(da,a));
@@ -41,8 +45,18 @@ export default async function Courses({searchParams}:{searchParams:Promise<{q?:s
   storicoCatalogoPromise,
   storicheEdizioniPromise
  ]);
- const staffNames=(id:string,role:string)=>staffError?'Non disponibile':(staff??[]).filter(a=>a.edizione_id===id&&a.ruolo===role).map(a=>[a.sort_cognome,a.sort_nome].filter(Boolean).join(' ')).join(', ')||'Da assegnare';
+
  const counts=new Map<string,number>();for(const row of enrollments??[])counts.set(row.edizione_id,(counts.get(row.edizione_id)??0)+1);
+  return {seasons,seasonError,stagione,error,count,rows,counts,enrollmentError,directors,staff,staffError,storiciCatalogo,storicheEdizioni};
+ };
+ if(snapshot)markStructuralRpcUsed('courses-page');
+ const {seasons,seasonError,stagione,error,count,rows,counts,enrollmentError,directors,staff,staffError,storiciCatalogo,storicheEdizioni}=snapshot?{
+  seasons:snapshot.seasons,seasonError:null,stagione:snapshot.chosen,error:null,count:snapshot.count,rows:snapshot.rows,
+  counts:new Map(Object.entries(snapshot.counts)),enrollmentError:null,directors:{data:snapshot.directors,error:null},staff:snapshot.staff,staffError:null,
+  storiciCatalogo:{data:snapshot.historicalCatalog,error:null},storicheEdizioni:{data:snapshot.historicalEditions,error:null}
+ }:await readLegacy();
+ const staffNames=(id:string,role:string)=>staffError?'Non disponibile':(staff??[]).filter(a=>a.edizione_id===id&&a.ruolo===role).map(a=>[a.sort_cognome,a.sort_nome].filter(Boolean).join(' ')).join(', ')||'Da assegnare';
+
  
  const pageHref=(page:number)=>base+'?'+new URLSearchParams({q,stato,stagione,disciplina,livello:livello===null?'':String(livello),ordine:ordine??'nome',vista_corsi:view,p:String(page)}).toString();
  const viewHref=(mode:typeof view)=>{const params=new URLSearchParams(pageHref(requested).split('?')[1]);params.set('vista_corsi',mode);return base+'?'+params.toString();};

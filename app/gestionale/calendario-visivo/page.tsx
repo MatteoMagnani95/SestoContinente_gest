@@ -15,6 +15,7 @@ import CourseLessonFields from '@/components/CourseLessonFields';
 import SearchableSelect from '@/components/ui/SearchableSelect';
 import LessonComposer from '@/components/LessonComposer';
 import {createLesson} from '@/app/gestionale/corsi/actions';
+import {structuralRpc,readCalendarSnapshot,markStructuralRpcUsed} from '@/lib/structural-qa';
 
 type Lesson={id:string;titolo:string;edizione_id:string;inizio:string;fine:string;piscina_id:string|null;annullata_il:string|null};
 type Booking={id:string;lezione_id:string;corsia_id:string;inizio:string;fine:string;stato:string};
@@ -30,7 +31,11 @@ export default async function CalendarPage({searchParams}:{searchParams:Promise<
  const boundsByDay=new Map(days.map(d=>[d,dayBounds(d)]));
  const labelsByDay=new Map(days.map(d=>[d,dayName(d)]));
  const labelDay=(d:string)=>labelsByDay.get(d)??dayName(d);
- const [poolResult,laneResult,lessonResult,bookingResult,editionResult]=await Promise.all([
+ const snapshot=readCalendarSnapshot(await structuralRpc(supabase,'sc_perf_calendar',{p_from:from,p_to:to,p_cancelled:context.annullate}));
+ if(snapshot)markStructuralRpcUsed('calendar-snapshot');
+ const [poolResult,laneResult,lessonResult,bookingResult,editionResult]=snapshot?[
+  {data:snapshot.pools,error:null},{data:snapshot.lanes,error:null},{data:snapshot.lessons,error:null},{data:snapshot.bookings,error:null},{data:snapshot.editions,error:null}
+ ] as const:await Promise.all([
   tutteLePagine((da,a)=>supabase.from('piscine').select('id,nome,indirizzo,orari_disponibili,limitazioni').order('nome').order('id').range(da,a)),
   tutteLePagine((da,a)=>supabase.from('corsie').select('id,numero,piscina_id,note').order('numero').order('id').range(da,a)),
   tutteLePagine((da,a)=>{let query=supabase.from('lezioni').select('id,titolo,edizione_id,inizio,fine,piscina_id,annullata_il').lt('inizio',to).gt('fine',from);if(!context.annullate)query=query.is('annullata_il',null);return query.order('inizio').order('id').range(da,a);}),
@@ -54,7 +59,7 @@ export default async function CalendarPage({searchParams}:{searchParams:Promise<
  const allLessonNames=new Map(allLessons.map(l=>[l.id,l.titolo]));
  const missingBookingLessons=[...new Set(allBookings.map(b=>b.lezione_id).filter(id=>!allLessonNames.has(id)))];
  const [extraLessons,newLesson]=await Promise.all([
-  readCourseChunks(missingBookingLessons,(ids,da,a)=>supabase.from('lezioni').select('id,titolo').in('id',ids).order('id').range(da,a)),
+  snapshot?{data:snapshot.extraLessons,error:null}:readCourseChunks(missingBookingLessons,(ids,da,a)=>supabase.from('lezioni').select('id,titolo').in('id',ids).order('id').range(da,a)),
   UUID_RE.test(params.lezione??'')&&['lezione_creata','moduli_salvati'].includes(params.msg??'')?supabase.from('lezioni').select('id,titolo,edizione_id,annullata_il').eq('id',params.lezione!).maybeSingle():{data:null,error:null}
  ]);
  for(const l of extraLessons.data??[])allLessonNames.set(l.id,l.titolo);

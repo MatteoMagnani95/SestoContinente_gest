@@ -39,7 +39,7 @@ export function readDashboardSnapshot(v:Record<string,unknown>|null){
 }
 
 const used=new Set<string>();
-export function markStructuralRpcUsed(name:'dashboard'|'soci-counts'|'incassi-totals'|'navigation-account'|'inventory-page'|'person-options'|'soci-page'){
+export function markStructuralRpcUsed(name:'dashboard'|'soci-counts'|'incassi-totals'|'navigation-account'|'inventory-page'|'person-options'|'soci-page'|'courses-page'|'calendar-snapshot'){
  if(structuralQaEnabled()&&!used.has(name)){used.add(name);console.log('QA_STRUCTURAL_RPC_USED '+name);}
 }
 
@@ -78,4 +78,36 @@ export function readMembersPage(v:Record<string,unknown>|null){
  if(!keys.every(k=>validCount(counts[k])))return null;
  if(v.chosen!=='tutte'&&!v.seasons.some(s=>s.id===v.chosen))return null;
  return {seasons:v.seasons as MemberSeason[],chosen:v.chosen,count:v.count,counts:counts as Record<typeof keys[number],number>,rows:v.rows as MemberRow[]};
+}
+
+type Named={id:string;nome:string};
+const named=(v:unknown):v is Named=>record(v)&&str(v.id)&&str(v.nome);
+type CourseEdition={id:string;nome:string;corso_id:string;stagione_id:string;inizio:string;fine:string;stato:string;massimo_partecipanti:number;direttore_id:string|null;corsi:{nome:string;tipo:string;livello:number|null}};
+const courseEdition=(v:unknown):v is CourseEdition=>record(v)&&['id','nome','corso_id','stagione_id','inizio','fine','stato'].every(k=>str(v[k]))&&validCount(v.massimo_partecipanti)&&(v.direttore_id===null||str(v.direttore_id))&&record(v.corsi)&&str(v.corsi.nome)&&str(v.corsi.tipo)&&(v.corsi.livello===null||validCount(v.corsi.livello));
+type Director=Named&{cognome:string};
+const director=(v:unknown):v is Director=>named(v)&&str((v as unknown as Record<string,unknown>).cognome);
+type CourseStaff={id:string;edizione_id:string;ruolo:string;sort_nome:string|null;sort_cognome:string|null};
+const courseStaff=(v:unknown):v is CourseStaff=>record(v)&&['id','edizione_id','ruolo'].every(k=>str(v[k]))&&['sort_nome','sort_cognome'].every(k=>v[k]===null||str(v[k]));
+function arrayOf<T>(v:unknown,guard:(v:unknown)=>v is T):v is T[]{return Array.isArray(v)&&v.every(guard);}
+export function readCoursesPage(v:Record<string,unknown>|null){
+ if(!v||!str(v.chosen)||!validCount(v.count)||!arrayOf(v.seasons,memberSeason)||!arrayOf(v.rows,courseEdition)||v.rows.length>25||v.rows.length>v.count||!record(v.counts)||!Object.values(v.counts).every(validCount)||!arrayOf(v.directors,director)||!arrayOf(v.staff,courseStaff)||!arrayOf(v.historicalCatalog,named)||!arrayOf(v.historicalEditions,named))return null;
+ if(v.chosen&&!v.seasons.some(s=>s.id===v.chosen))return null;
+ const ids=new Set(v.rows.map(r=>r.id));if(!Object.keys(v.counts).every(id=>ids.has(id)))return null;
+ return {chosen:v.chosen,count:v.count,seasons:v.seasons,rows:v.rows,counts:v.counts as Record<string,number>,directors:v.directors,staff:v.staff,historicalCatalog:v.historicalCatalog,historicalEditions:v.historicalEditions};
+}
+type CalendarPool=Named&{indirizzo:string|null;orari_disponibili:string|null;limitazioni:string|null};
+const calendarPool=(v:unknown):v is CalendarPool=>record(v)&&named(v)&&['indirizzo','orari_disponibili','limitazioni'].every(k=>(v as unknown as Record<string,unknown>)[k]===null||str((v as unknown as Record<string,unknown>)[k]));
+type CalendarLane={id:string;piscina_id:string;numero:number;note:string|null};
+const calendarLane=(v:unknown):v is CalendarLane=>record(v)&&str(v.id)&&str(v.piscina_id)&&validCount(v.numero)&&(v.note===null||str(v.note));
+type CalendarLesson=Lesson&{edizione_id:string;piscina_id:string|null;annullata_il:string|null};
+const calendarLesson=(v:unknown):v is CalendarLesson=>record(v)&&lesson(v)&&str((v as unknown as Record<string,unknown>).edizione_id)&&['piscina_id','annullata_il'].every(k=>(v as unknown as Record<string,unknown>)[k]===null||str((v as unknown as Record<string,unknown>)[k]));
+type CalendarBooking={id:string;lezione_id:string;corsia_id:string;inizio:string;fine:string;stato:string};
+const calendarBooking=(v:unknown):v is CalendarBooking=>record(v)&&['id','lezione_id','corsia_id','inizio','fine','stato'].every(k=>str(v[k]))&&v.stato==='confermata';
+type CalendarEdition=Named&{stato:string;inizio:string;fine:string};
+const calendarEdition=(v:unknown):v is CalendarEdition=>record(v)&&named(v)&&['stato','inizio','fine'].every(k=>str((v as unknown as Record<string,unknown>)[k]));
+type ExtraLesson={id:string;titolo:string};
+const extraLesson=(v:unknown):v is ExtraLesson=>record(v)&&str(v.id)&&str(v.titolo);
+export function readCalendarSnapshot(v:Record<string,unknown>|null){
+ if(!v||!arrayOf(v.pools,calendarPool)||!arrayOf(v.lanes,calendarLane)||!arrayOf(v.lessons,calendarLesson)||!arrayOf(v.bookings,calendarBooking)||!arrayOf(v.editions,calendarEdition)||!arrayOf(v.extraLessons,extraLesson))return null;
+ return {pools:v.pools,lanes:v.lanes,lessons:v.lessons,bookings:v.bookings,editions:v.editions,extraLessons:v.extraLessons};
 }

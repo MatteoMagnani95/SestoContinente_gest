@@ -28,7 +28,7 @@ test('RPC error, rejection, null and malformed result fall back without fabricat
   assert.equal(await module.structuralRpc({rpc},'sc_perf_dashboard',{}),null);
  }
  const malformed=await module.structuralRpc({rpc:async()=>({data:{count:1},error:null})},'sc_perf_dashboard',{});
- for(const name of ['readDashboardSnapshot','readMembersPage','readInventorySnapshot','readPersonOptions','readFinanceTotals','readAccountSnapshot'])assert.equal(module[name](malformed),null);
+ for(const name of ['readDashboardSnapshot','readMembersPage','readInventorySnapshot','readPersonOptions','readFinanceTotals','readAccountSnapshot','readCoursesPage','readCalendarSnapshot'])assert.equal(module[name](malformed),null);
  const result={enabled:false};
  assert.equal((await module.structuralRpc({rpc:async()=>({data:result,error:null})},'sc_perf_navigation',{})).enabled,false);
 });
