@@ -78,7 +78,7 @@ export const readRolesForRender=cache(async(supabase:Awaited<ReturnType<typeof c
 );
 export const requireUserForRender=cache(async()=>{
  const account=await readAccountForRender();
- if(!account.user||account.status==='guest')redirect('/accedi?msg=account');
+ if(account.status==='guest'||!account.user)redirect('/accedi?msg=account');
  if(account.status!=='enabled')redirect('/accedi?msg=account_disattivato');
  return {supabase:account.supabase,user:account.user};
 });
