@@ -101,7 +101,9 @@ jobs:
       - name: Screenshot area riservata e reflow per ruolo
         env:
           QA_MARINE_PRIVATE_DIR: ${{ runner.temp }}/marine-private-${{ github.run_id }}
-        run: node scripts/qa-marine-private.mjs
+        run: |
+          node scripts/qa-local-supabase.mjs visual-fixtures
+          node scripts/qa-marine-private.mjs
       - name: Conserva screenshot area riservata sintetica
         if: always()
         uses: actions/upload-artifact@v4

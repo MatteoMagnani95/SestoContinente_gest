@@ -48,6 +48,8 @@
 .sc-marine-private .timeline-item{padding:10px 0;overflow-wrap:anywhere}
 .sc-marine-private .timeline-item h3{font-size:17px;line-height:1.35;margin:0 0 4px}
 .sc-marine-private .timeline-item strong{font-size:15px;text-transform:none}
+/* Inline emphasis in dates, costs and remaining places must stay inline. */
+.sc-marine-private .timeline-item p strong{display:inline}
 .sc-marine-private .timeline-item p{font-size:15px;line-height:1.5;margin:4px 0}
 .sc-marine-private .timeline-item small,.sc-marine-private .timeline-item p.tiny{font-size:14px}
 .sc-marine-private .sc-notification-list .timeline-item{display:grid;gap:4px}

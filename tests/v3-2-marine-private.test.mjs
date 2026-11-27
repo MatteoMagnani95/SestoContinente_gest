@@ -61,3 +61,15 @@ test('Marine members layer keeps timeline text readable and extends role-specifi
  assert.match(qa,/unreadable timeline text/);
  for(const name of ['28-profilo','29-corsi-personali','31-notifiche-personali','32-notifiche-account','35-presenze-istruttore','36-componenti-cda','37-archivio-cda','38-riepilogo-cda','39-documenti-staff','40-documenti-soci'])assert.ok(qa.includes(name));
 });
+
+test('Marine final review covers the real table, populated notifications, portal editors and brand loading',()=>{
+ const qa=read('scripts/qa-marine-private.mjs'),css=read('app/marine-premium-private.css'),member=read('app/marine-premium-members.css');
+ assert.match(qa,/vista_corsi=tabella/);assert.match(qa,/Notifica visuale sintetica/);
+ assert.match(qa,/editor not landscape/);assert.match(qa,/portal styling inactive/);
+ for(const name of ['41-editor-anagrafica','42-editor-attrezzatura','43-editor-lezione','44-editor-cda'])assert.ok(qa.includes(name));
+ assert.match(css,/body:has\(>#sc-main\.sc-marine-private\)>\.sc-editor-dialog/);
+ assert.match(member,/\.timeline-item p strong\{display:inline\}/);
+ assert.match(read('scripts/qa-local-auth.mjs'),/waitForBrandImages\(page\)/);
+ assert.match(read('scripts/qa-marine-images.mjs'),/naturalWidth/);
+ assert.match(read('.github/workflows/marine-premium-off.yml'),/qa-local-supabase\.mjs visual-fixtures/);
+});

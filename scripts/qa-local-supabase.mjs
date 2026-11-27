@@ -199,10 +199,20 @@ async function sessions(){
 if(process.argv[2]==='seed')await seed();else if(process.argv[2]==='sessions')await sessions();else if(process.argv[2]==='mutations'){
  const {runMutations}=await import('./qa-local-mutations.mjs');
  await runMutations({api,app,admin,accounts:JSON.parse(await readFile(accountFile,'utf8')),fixtures:JSON.parse(await readFile(join(work,'fixtures.json'),'utf8')),work});
+}else if(process.argv[2]==='visual-fixtures'){
+ // Existing notification was consumed by the mutation test. Add a dedicated
+ // local-only synthetic record after those tests; leave their assertions intact.
+ assert.equal(env.SC_STRUCTURAL_RPC,'false');assert.equal(env.SC_STRUCTURAL_RPC_RELEASE,'false');
+ const accounts=JSON.parse(await readFile(accountFile,'utf8'));
+ const db=new Client({connectionString:database.href});await db.connect();
+ try{
+  await db.query("insert into notifiche(utente_id,tipo,riferimento,titolo,messaggio) values($1,'collaudo',$2,'Notifica visuale sintetica','Messaggio di collaudo: verifica il testo su più righe e il pulsante Segna come letta. Nessun dato reale.')",[accounts.member.id,randomUUID()]);
+ }finally{await db.end();}
+ console.log('OK fixture notifica visuale locale');
 }else if(process.argv[2]==='performance'){
  const {runPerformance}=await import('./qa-local-performance.mjs');
  await runPerformance({app,database,accounts:JSON.parse(await readFile(accountFile,'utf8')),work});
 }else if(process.argv[2]==='auth'){
  const {runAuth}=await import('./qa-local-auth.mjs');
  await runAuth({app,admin});
-}else throw Error('Usare seed, sessions, mutations, performance o auth');
+}else throw Error('Usare seed, sessions, mutations, visual-fixtures, performance o auth');

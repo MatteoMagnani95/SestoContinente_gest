@@ -73,6 +73,7 @@ body:has(>#sc-main.sc-marine-private)>.sc-site-header :is(.sc-global-search-trig
 .sc-marine-private .sc-data-table{box-shadow:none}
 .sc-marine-private .sc-data-table th{background:#e8f1f5;color:#082c40;font-size:14px;letter-spacing:0}
 .sc-marine-private .sc-data-table td{font-size:15px;line-height:1.5}
+.sc-marine-private .sc-data-table .sc-row-actions :is(a,button){overflow-wrap:normal;word-break:normal}
 .sc-marine-private .sc-data-table tbody tr:nth-child(even) td{background:#f9fbfc}
 .sc-marine-private .sc-data-table tbody tr:is(:hover,:focus-within) td{background:#eaf4f5}
 .sc-marine-private .sc-filter-bar{background:#fff;border-color:#dfe8ed}
@@ -82,8 +83,16 @@ body:has(>#sc-main.sc-marine-private)>.sc-site-header :is(.sc-global-search-trig
 .sc-marine-private .sc-button-secondary{background:#fff;color:#00566a;border-color:#778994}
 .sc-marine-private .sc-button-secondary:hover{background:#e5f3f4}
 .sc-marine-private :is(.sc-field label,.sc-search-bar label,.sc-editor-body label){font-size:15px;font-weight:600}
-.sc-marine-private .sc-editor-header{background:#f4f8fa;border-bottom:1px solid #dfe8ed}
-.sc-marine-private .sc-editor-body fieldset:not(.edit-fields){border-radius:12px}
+/* Drawer mounts in a body portal, not under #sc-main. Scope its presentation to
+   the same enabled private route; never restyle the approved public screens. */
+body:has(>#sc-main.sc-marine-private)>.sc-editor-dialog{
+ --sc-navy:#082c40;--sc-teal:#006d74;--sc-teal-ink:#00566a;--sc-border:#dfe8ed;
+ --sc-muted:#526878;--sc-control-border:#778994;--sc-focus:#075985;
+ --sc-radius:16px;--sc-radius-sm:12px;color:#102d3b;
+}
+body:has(>#sc-main.sc-marine-private)>.sc-editor-dialog .sc-editor-header{background:#f4f8fa;border-bottom:1px solid #dfe8ed}
+body:has(>#sc-main.sc-marine-private)>.sc-editor-dialog .sc-editor-body fieldset:not(.edit-fields){border-radius:12px}
+body:has(>#sc-main.sc-marine-private)>.sc-editor-dialog .sc-editor-body label{font-size:15px;font-weight:600}
 .sc-marine-private .sc-status{font-weight:650}
 .sc-marine-private .sc-metric-value{font-variant-numeric:tabular-nums;letter-spacing:-.02em;color:#082c40}
 .sc-marine-private .sc-metric-note{line-height:1.4}

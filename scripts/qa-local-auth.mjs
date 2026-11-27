@@ -5,6 +5,7 @@ import {setTimeout as delay} from 'node:timers/promises';
 import {chromium,expect} from '@playwright/test';
 import {mkdir} from 'node:fs/promises';
 import {resolve,join} from 'node:path';
+import {waitForBrandImages} from './qa-marine-images.mjs';
 
 export async function runAuth({app,admin}){
  assert.equal(process.env.QA_ISOLATED_ENV,'true');
@@ -66,7 +67,7 @@ export async function runAuth({app,admin}){
      const header=await page.locator('.sc-site-header').boundingBox();
      assert.ok(header&&header.height<=160,name+' excessive mobile header height '+width);
     }
-    if(width===390||width===1440)await page.screenshot({path:join(out,name+'-'+width+'.png'),fullPage:true,animations:'disabled',caret:'hide'});
+    if(width===390||width===1440){await waitForBrandImages(page);await page.screenshot({path:join(out,name+'-'+width+'.png'),fullPage:true,animations:'disabled',caret:'hide'});}
    }}finally{if(original)await page.setViewportSize(original);}
   };
   if(process.env.QA_MARINE_VISUAL_DIR){await page.goto('/');await capture('01-home');await page.goto('/accedi');await capture('02-login');}
