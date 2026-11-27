@@ -7,6 +7,8 @@ import {chromium,expect} from '@playwright/test';
 export async function runAuth({app,admin}){
  assert.equal(process.env.QA_ISOLATED_ENV,'true');
  assert.ok(['127.0.0.1','localhost'].includes(app.hostname));
+ assert.ok(process.env.NEXT_PUBLIC_SITE_URL,'NEXT_PUBLIC_SITE_URL is required for local signup and recovery');
+ assert.equal(new URL(process.env.NEXT_PUBLIC_SITE_URL).origin,app.origin,'Local site origin must match the QA application');
  const mail='http://127.0.0.1:54324',seen=new Set();
  const email='signup-'+randomUUID()+'@example.invalid';
  const oldPassword=' '+randomBytes(20).toString('hex')+' ',newPassword=' '+randomBytes(20).toString('hex')+' ';

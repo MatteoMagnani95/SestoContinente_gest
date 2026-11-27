@@ -1,5 +1,6 @@
 import BookingConflictPreview from '@/components/BookingConflictPreview';
 import {Drawer} from '@/components/ui/Drawer';
+import DeferredEditorButton from '@/components/DeferredEditorButton';
 import {SecretariatNav} from '@/components/ui/Secretariat';
 import {DataTable,FilterBar,SearchBar,Pagination} from '@/components/ui/DataTable';
 import SearchableSelect from '@/components/ui/SearchableSelect';
@@ -15,7 +16,7 @@ import EditForm from '@/components/EditForm';
 import CancelEditButton from '@/components/CancelEditButton';
 import Link from 'next/link';
 import {notFound,redirect} from 'next/navigation';
-import {requireStaff} from '@/lib/security';
+import {requireStaffForRender as requireStaff} from '@/lib/security';
 import {modules,isModuleKey,type Module,type Field,type ModuleKey} from '@/lib/modules';
 import {formatValue,datetimeForInput} from '@/lib/format';
 import {formatRome,UUID_RE} from '@/lib/course-tools';
@@ -98,7 +99,7 @@ function bookingConflictText(corsia?:string,inizio?:string,fine?:string):string{
  const fascia=dal&&al?` dalle ${dal} alle ${al}`:' nell’intervallo richiesto';
  return `Corsia${numero} già prenotata${fascia}. Scegli un’altra corsia o modifica l’orario.`;
 }
-export default async function ModulePage({params,searchParams}:{params:Promise<{modulo:string}>;searchParams:Promise<{q?:string;msg?:string;p?:string;corsia?:string;inizio?:string;fine?:string;edit?:string;stato?:string;f?:string;v?:string;ordine?:string;dir?:string;filtro_modulo?:string;dal?:string;al?:string;persona?:string;nuovo?:string;pm?:string;stagione?:string;edizione?:string;livello?:string;piscina?:string;corsia_id?:string;lezione?:string}>}){
+export default async function ModulePage({params,searchParams}:{params:Promise<{modulo:string}>;searchParams:Promise<{q?:string;msg?:string;p?:string;corsia?:string;inizio?:string;fine?:string;edit?:string;editor?:string;stato?:string;f?:string;v?:string;ordine?:string;dir?:string;filtro_modulo?:string;dal?:string;al?:string;persona?:string;nuovo?:string;pm?:string;stagione?:string;edizione?:string;livello?:string;piscina?:string;corsia_id?:string;lezione?:string}>}){
  const {modulo}=await params;
  if(!isModuleKey(modulo))notFound();
  if(modulo==='pagamenti')redirect('/gestionale/incassi');
@@ -128,6 +129,11 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  const ui=moduleUi[modulo];
  const feedback=msg==='corsia_occupata'&&modulo==='prenotazioni'?bookingConflictText(corsia,inizio,fine):Object.hasOwn(status,msg)?status[msg]:undefined;
  const editId=edit&&UUID_RE.test(edit)?edit:null;
+ const editorId=scope.editor&&UUID_RE.test(scope.editor)?scope.editor:null;
+ const openEditorId=editId??editorId;
+ // Limit this first pass to modules with simple reference labels and no dependent eligibility rules.
+ const deferredReferences=['qualifiche','brevetti','certificati','quote'].includes(modulo);
+ const fullReferenceOptions=!deferredReferences||nuovo==='1'||Boolean(openEditorId);
  if(modulo==='calendario'&&editId)redirect(`/gestionale/calendario-visivo/${editId}`);
  if(modulo==='calendario'&&nuovo==='1')redirect('/gestionale/calendario-visivo?nuovo=1'+(scopedPool?'&piscina='+scopedPool:'')+(scopedEdition?'&edizione='+scopedEdition:''));
  const page=editId?1:pageNumber(p);
@@ -141,11 +147,11 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  const missingFiltered=missingQuery&&medicalSearch?missingQuery.or(`cognome.ilike.%${medicalSearch}%,nome.ilike.%${medicalSearch}%`):missingQuery;
  if(missingFiltered)for(const term of searchTerms(q).slice(1))missingFiltered.or('cognome.ilike.%'+term+'%,nome.ilike.%'+term+'%');
  const missingPage=pageNumber((singleSearchParams(await searchParams)).pm);
- const senzaFile=missingFiltered?await missingFiltered.order('cognome').order('nome').order('id').range((missingPage-1)*perPage,missingPage*perPage-1):null;
+ const missingPagePromise=missingFiltered?Promise.resolve(missingFiltered.order('cognome').order('nome').order('id').range((missingPage-1)*perPage,missingPage*perPage-1)):Promise.resolve(null);
  const missingCountQuery=medical&&!dal&&!al?supabase.from('allievi_senza_certificato').select('id',{head:true,count:'exact'}):null;
  if(missingCountQuery&&personId)missingCountQuery.eq('id',personId);
  if(missingCountQuery)for(const term of searchTerms(q))missingCountQuery.or('cognome.ilike.%'+term+'%,nome.ilike.%'+term+'%');
- const missingTotal=missingCountQuery?await missingCountQuery:null;
+ const [senzaFile,missingTotal]=await Promise.all([missingPagePromise,missingCountQuery??Promise.resolve(null)]);
  const filtri=medical?await Promise.all(Object.entries(statiCertificato).map(async ([k,label])=>{let filterQuery=supabase.from('stato_certificati').select('id',{head:true,count:'exact'}).eq('stato_certificato',k==='in_scadenza'?'valido':k);if(k==='in_scadenza')filterQuery=filterQuery.gte('scade_il',today).lte('scade_il',shiftDay(today,30));if(k==='valido')filterQuery=filterQuery.gt('scade_il',shiftDay(today,30));if(personId)filterQuery=filterQuery.eq('persona_id',personId);if(dal)filterQuery=filterQuery.gte('scade_il',dal);if(al)filterQuery=filterQuery.lte('scade_il',al);for(const term of searchTerms(q))filterQuery=filterQuery.or('sort_cognome.ilike.%'+term+'%,sort_nome.ilike.%'+term+'%');const {count,error}=await filterQuery;return {k,label,n:error||(k==='mancante'&&missingTotal?.error)?'—':(count??0)+(k==='mancante'?(missingTotal?.count??0):0)};})):[];
  let query=supabase.from(medical?'stato_certificati':personSorted?`gest_elenco_${module.table}`:module.table).select(modulo==='prenotazioni'?'*,corsie!inner(piscina_id)':'*',{count:'exact'});
  if(!editId&&scopedPool)query=query.eq(modulo==='prenotazioni'?'corsie.piscina_id':'piscina_id',scopedPool);
@@ -196,7 +202,8 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
     active.push(...batch);if(batch.length<500)break;offset+=batch.length;
    }
    const existingIds=[...new Set((data??[]).map(row=>String(row.iscrizione_id??'')).filter(Boolean))];
-   const missing=existingIds.filter(id=>!active.some(r=>r.id===id));
+   const activeIds=new Set(active.map(r=>r.id));
+   const missing=existingIds.filter(id=>!activeIds.has(id));
    const historical=missing.length?await supabase.from('iscrizioni_corsi').select(columns).in('id',missing):{data:[],error:null};
    if(historical.error)enrollmentLoadError=true;
    const map=(r:Enroll,selectable:boolean):Row=>{
@@ -210,22 +217,39 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
    const columns='id,sort_cognome,sort_nome,stagione_id';
    const members:{id:string;sort_cognome:string|null;sort_nome:string|null;stagione_id:string}[]=[];
    const seasons:{id:string;nome:string}[]=[];
-   for(let offset=0;;offset+=500){const {data:batch,error}=await supabase.from('gest_elenco_adesioni').select(columns).order('sort_cognome').order('sort_nome').order('id').range(offset,offset+499);if(error){referenceError=true;break;}members.push(...(batch??[]));if((batch??[]).length<500)break;}
-   for(let offset=0;;offset+=500){const {data:batch,error}=await supabase.from('stagioni').select('id,nome').order('id').range(offset,offset+499);if(error){referenceError=true;break;}seasons.push(...(batch??[]));if((batch??[]).length<500)break;}
-   const missing=currentIds.filter(id=>!members.some(r=>r.id===id));
+   await Promise.all([
+    (async()=>{for(let offset=0;;offset+=500){const {data:batch,error}=await supabase.from('gest_elenco_adesioni').select(columns).order('sort_cognome').order('sort_nome').order('id').range(offset,offset+499);if(error){referenceError=true;break;}members.push(...(batch??[]));if((batch??[]).length<500)break;}})(),
+    (async()=>{for(let offset=0;;offset+=500){const {data:batch,error}=await supabase.from('stagioni').select('id,nome').order('id').range(offset,offset+499);if(error){referenceError=true;break;}seasons.push(...(batch??[]));if((batch??[]).length<500)break;}})()
+   ]);
+   const memberIds=new Set(members.map(r=>r.id));
+   const seasonNames=new Map(seasons.map(s=>[s.id,s.nome]));
+   const missing=currentIds.filter(id=>!memberIds.has(id));
    const {data:extra,error:extraError}=missing.length?await supabase.from('gest_elenco_adesioni').select(columns).in('id',missing):{data:[],error:null};if(extraError)referenceError=true;
-   for(const a of [...members,...(extra??[])])rows.push({id:a.id,etichetta:`${a.sort_cognome??''} ${a.sort_nome??''} · ${seasons.find(s=>s.id===a.stagione_id)?.nome??'Stagione'}`});
+   for(const a of [...members,...(extra??[])])rows.push({id:a.id,etichetta:`${a.sort_cognome??''} ${a.sort_nome??''} · ${seasonNames.get(a.stagione_id)??'Stagione'}`});
    references[table]=rows.sort((a,b)=>String(a.etichetta).localeCompare(String(b.etichetta),'it'));return;
   }
   const ref=module.fields.find(f=>f.ref?.table===table)?.ref;
   const cols=[...new Set(['id',...(ref?.labels??[]),...(modulo==='prenotazioni'&&table==='corsie'?['numero','piscina_id','note']:[]),...(modulo==='prenotazioni'&&table==='lezioni'?['titolo','edizione_id','inizio','fine','piscina_id','annullata_il']:[]),...(modulo==='prenotazioni'&&table==='piscine'?['nome','orari_disponibili','limitazioni']:[]),...(modulo==='iscrizioni'&&table==='edizioni_corsi'?['stagione_id','stato','direttore_id']:[])])].join(',');
+  if(!fullReferenceOptions&&table!=='stagioni'){
+   // The list needs only visible row labels. Season options remain complete for filtering.
+   const keys=module.fields.filter(field=>field.ref?.table===table).map(field=>field.name);
+   const ids=[...new Set((data??[]).flatMap(row=>keys.map(key=>String(row[key]??''))).filter(id=>UUID_RE.test(id)))];
+   const result=ids.length?await supabase.from(table).select(cols).in('id',ids):{data:[],error:null};
+   if(result.error)referenceError=true;
+   references[table]=(result.data??[]) as unknown as Row[];
+   return;
+  }
   const refOrder=ref?.labels?.[0]??(table==='piscine'?'nome':'id');
-  let refQuery=supabase.from(table).select(cols).order(refOrder,{ascending:true});
-  if(table==='persone')refQuery=refQuery.order('nome',{ascending:true});
+  const refQuery=()=>{
+   let query=supabase.from(table).select(cols).order(refOrder,{ascending:true});
+   if(table==='persone')query=query.order('nome',{ascending:true});
+   return query.order('id');
+  };
   let selected:Row[]=[];
-  for(let offset=0;;offset+=500){const {data:batch,error:refError}=await refQuery.order('id').range(offset,offset+499);if(refError){referenceError=true;break;}selected.push(...((batch??[]) as unknown as Row[]));if((batch??[]).length<500)break;}
+  for(let offset=0;;offset+=500){const {data:batch,error:refError}=await refQuery().range(offset,offset+499);if(refError){referenceError=true;break;}selected.push(...((batch??[]) as unknown as Row[]));if((batch??[]).length<500)break;}
   const currentKeys=module.fields.filter(f=>f.ref?.table===table).map(f=>f.name);
-  const missingIds=[...new Set((data??[]).flatMap(row=>currentKeys.map(k=>String(row[k]??''))).filter(id=>id&&!selected.some(r=>r.id===id)))];
+  const selectedIds=new Set(selected.map(r=>r.id));
+  const missingIds=[...new Set((data??[]).flatMap(row=>currentKeys.map(k=>String(row[k]??''))).filter(id=>id&&!selectedIds.has(id)))];
   if(missingIds.length){const {data:extra,error:extraError}=await supabase.from(table).select(cols).in('id',missingIds);if(extraError)referenceError=true;selected.push(...((extra??[]) as unknown as Row[]));}
   selected.sort((a,b)=>labelOf(a,ref?.labels??['id']).localeCompare(labelOf(b,ref?.labels??['id']),'it'));
   if(modulo==='istruttori'&&table==='persone'){
@@ -258,12 +282,25 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  }
  const rows=(data??[]) as unknown as Row[];
  const href=(page:number)=>listHref({q,p:String(page),stato,dal,al,persona:personId,stagione:seasonId,edizione:scopedEdition,piscina:scopedPool,corsia_id:scopedLane,lezione:scopedLesson,livello:catalogLevel===null?undefined:String(catalogLevel),vista:modulo==='iscrizioni'?'elenco':undefined,filtro_modulo:selectedFilter?selectedFilter.name+':'+filterValue:undefined,ordine,dir});
+ const createHref=()=>{
+  const params=new URLSearchParams(href(page).slice(1));
+  params.set('nuovo','1');
+  if(medical&&missingPage>1)params.set('pm',String(missingPage));
+  return '?'+params.toString();
+ };
+ const editorHref=(id:string)=>{
+  const params=new URLSearchParams(href(page).slice(1));
+  params.set('editor',id);
+  if(medical&&missingPage>1)params.set('pm',String(missingPage));
+  return '?'+params.toString();
+ };
+ const referenceIndex=new Map(Object.entries(references).map(([table,entries])=>[table,new Map(entries.map(row=>[row.id,row]))]));
  const numeric=(c:string)=>module.fields.some(field=>field.name===c&&field.type==='number');
  const display=(row:Row,c:string)=>{
   if(medical&&c==='documento_id')return row[c]?<Link href={'/documenti/'+row[c]}>Apri certificato</Link>:<Link href={'/area-personale/certificato?persona='+row.persona_id}>Carica certificato</Link>;
   if(medical&&c==='stato_certificato'){const value=row[c]==='valido'&&String(row.scade_il)>=today&&String(row.scade_il)<=shiftDay(today,30)?'in_scadenza':String(row[c]);return <StatusBadge tone={tone(value)}>{statoSingolo(value)}</StatusBadge>;}
   const field=module.fields.find(field=>field.name===c);
-  const reference=references[field?.ref?.table??'']?.find(x=>x.id===row[c]);
+  const reference=typeof row[c]==='string'?referenceIndex.get(field?.ref?.table??'')?.get(row[c] as string):undefined;
   if(reference&&modulo==='prenotazioni'&&c==='lezione_id')return <Link href={'/gestionale/calendario-visivo/'+reference.id}>{labelOf(reference,field?.ref?.labels??['id'])}</Link>;
   if(reference&&modulo==='prenotazioni'&&c==='corsia_id')return <Link href={'/gestionale/moduli/corsie?edit='+reference.id}>{labelOf(reference,field?.ref?.labels??['id'])}</Link>;
   if(reference&&modulo==='corsie'&&c==='piscina_id')return <Link href={'/gestionale/moduli/piscine?edit='+reference.id}>{labelOf(reference,field?.ref?.labels??['id'])}</Link>;
@@ -275,7 +312,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
   return formatValue(row[c],c);
  };
  return <>
- <PageHeader eyebrow={secretariatLinks.some(l=>l.href==='/gestionale/moduli/'+modulo)?'Segreteria':calendarModule?'Impianti e calendario':teachingModule?'Corsi e didattica':financeModule?'Contabilità e incassi':'Gestionale'} area={secretariatLinks.some(l=>l.href==='/gestionale/moduli/'+modulo)?'secretariat':calendarModule?'pool':teachingModule?'teaching':financeModule?'finance':'system'} icon={calendarModule?'calendar':teachingModule?'course':financeModule?'wallet':'archive'} marine title={module.label} description={module.description} actions={!editId&&(modulo==='calendario'?<ButtonLink href={'/gestionale/calendario-visivo?nuovo=1'+(scopedPool?'&piscina='+scopedPool:'')+(scopedEdition?'&edizione='+scopedEdition:'')}>Nuova lezione</ButtonLink>:<Drawer primary title={ui.create} trigger={ui.create} initialOpen={nuovo==='1'&&!msg}><Editor module={module} moduleKey={modulo} references={references} personId={personId} editionId={scopedEdition} poolId={scopedPool} laneId={scopedLane} lessonId={scopedLesson}/></Drawer>)}/>
+ <PageHeader eyebrow={secretariatLinks.some(l=>l.href==='/gestionale/moduli/'+modulo)?'Segreteria':calendarModule?'Impianti e calendario':teachingModule?'Corsi e didattica':financeModule?'Contabilità e incassi':'Gestionale'} area={secretariatLinks.some(l=>l.href==='/gestionale/moduli/'+modulo)?'secretariat':calendarModule?'pool':teachingModule?'teaching':financeModule?'finance':'system'} icon={calendarModule?'calendar':teachingModule?'course':financeModule?'wallet':'archive'} marine title={module.label} description={module.description} actions={!editId&&(modulo==='calendario'?<ButtonLink href={'/gestionale/calendario-visivo?nuovo=1'+(scopedPool?'&piscina='+scopedPool:'')+(scopedEdition?'&edizione='+scopedEdition:'')}>Nuova lezione</ButtonLink>:deferredReferences&&!fullReferenceOptions?<DeferredEditorButton primary href={createHref()} label={ui.create}/>:<Drawer primary title={ui.create} trigger={ui.create} initialOpen={nuovo==='1'&&!msg}><Editor module={module} moduleKey={modulo} references={references} personId={personId} editionId={scopedEdition} poolId={scopedPool} laneId={scopedLane} lessonId={scopedLesson}/></Drawer>)}/>
  {secretariatLinks.some(l=>l.href==='/gestionale/moduli/'+modulo)&&<SecretariatNav active={'/gestionale/moduli/'+modulo}/>}
  {personId&&memberTabForModule(modulo)&&<div className="sc-row-actions"><Link className="sc-button sc-button-secondary" href={'/gestionale/soci/'+personId+'?tab='+memberTabForModule(modulo)}>Torna alla scheda socio</Link><span className="muted">Elenco contestuale alla scheda selezionata</span></div>}
  {scopedEdition&&<p><Link href={'/gestionale/corsi/'+scopedEdition+'?tab='+(modulo==='brevetti'?'brevetti':'panoramica')}>Torna alla scheda del corso</Link> · Elenco per edizione selezionata</p>}
@@ -305,7 +342,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  {!module.appendOnly&&<th role="columnheader" scope="col">Azioni</th>}
  </tr></thead><tbody role="rowgroup">{rows.map(row=><tr key={row.id} role="row">
  {module.columns.map(c=><td key={c} role="cell" data-label={columnLabel(c,module)} className={numeric(c)?'sc-number':undefined}>{modulo==='anagrafiche'&&c==='codice_fiscale'?maskedFiscalCode(typeof row[c]==='string'?row[c]:null):modulo==='anagrafiche'&&['nome','cognome'].includes(c)?displayName(typeof row[c]==='string'?row[c]:null):display(row,c)}</td>)}
- {!module.appendOnly&&<td role="cell" data-label="Azioni"><div className="sc-row-actions">{modulo==='anagrafiche'&&<Link href={'/gestionale/soci/'+row.id}>Apri scheda</Link>}{modulo==='corsie'&&<Link href={'/gestionale/moduli/prenotazioni?corsia_id='+row.id+'&piscina='+row.piscina_id}>Prenotazioni corsia</Link>}{modulo==='calendario'?<Link href={'/gestionale/calendario-visivo/'+row.id}>Modifica lezione e corsie</Link>:<Drawer key={row.id+'-'+msg} title={'Modifica '+entityLabel(modulo)+' · '+rowLabel(row,references,module)} trigger={modulo==='versioni'&&['approvato','archiviato'].includes(String(row.stato))?'Consulta versione':'Modifica'} initialOpen={msg!=='salvato'&&editId===row.id}><Editor module={module} moduleKey={modulo} record={row} references={references} admin={isAdministrator===true} personId={personId} poolId={scopedPool} laneId={scopedLane} lessonId={scopedLesson}/></Drawer>}</div></td>}
+ {!module.appendOnly&&<td role="cell" data-label="Azioni"><div className="sc-row-actions">{modulo==='anagrafiche'&&<Link href={'/gestionale/soci/'+row.id}>Apri scheda</Link>}{modulo==='corsie'&&<Link href={'/gestionale/moduli/prenotazioni?corsia_id='+row.id+'&piscina='+row.piscina_id}>Prenotazioni corsia</Link>}{modulo==='calendario'?<Link href={'/gestionale/calendario-visivo/'+row.id}>Modifica lezione e corsie</Link>:openEditorId===row.id?<Drawer key={row.id+'-'+msg} title={'Modifica '+entityLabel(modulo)+' · '+rowLabel(row,references,module)} trigger={modulo==='versioni'&&['approvato','archiviato'].includes(String(row.stato))?'Consulta versione':'Modifica'} initialOpen={msg!=='salvato'&&openEditorId===row.id}><Editor module={module} moduleKey={modulo} record={row} references={references} admin={isAdministrator===true} personId={personId} poolId={scopedPool} laneId={scopedLane} lessonId={scopedLesson}/></Drawer>:<DeferredEditorButton href={editorHref(row.id)} label={modulo==='versioni'&&['approvato','archiviato'].includes(String(row.stato))?'Consulta versione':'Modifica'}/>}</div></td>}
  </tr>)}
  {!rows.length&&<tr><td colSpan={module.columns.length+(module.appendOnly?0:1)} className="empty-cell">Nessun risultato con questi filtri.</td></tr>}
  </tbody></DataTable>}

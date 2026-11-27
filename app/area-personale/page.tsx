@@ -13,14 +13,16 @@ import {redirect} from 'next/navigation';
 import {todayRome} from '@/lib/area-soci';
 import {statoSingolo} from '@/lib/certificati';
 import Link from 'next/link';
-import {requireUser} from '@/lib/security';
+import {requireUserForRender as requireUser} from '@/lib/security';
 import {markNotification} from './actions';
 import {formatValue} from '@/lib/format';
 export default async function PersonalArea({searchParams}:{searchParams:Promise<{tab?:string;p?:string;msg?:string}>}) {
  const params=singleSearchParams(await searchParams),tab=selectedTab(personalTabs,params.tab),page=pageNumber(params.p),size=20;
  const {supabase,user}=await requireUser();
- const {data:request,error:requestError}=await supabase.from('richieste').select('id,stato').eq('utente_id',user.id).maybeSingle();
- const {data:links,error:linksError}=await tutteLePagine((da,a)=>supabase.from('collegamenti_persone').select('persona_id,relazione').eq('utente_id',user.id).order('persona_id').range(da,a));
+ const [{data:request,error:requestError},{data:links,error:linksError}]=await Promise.all([
+  supabase.from('richieste').select('id,stato').eq('utente_id',user.id).maybeSingle(),
+  tutteLePagine((da,a)=>supabase.from('collegamenti_persone').select('persona_id,relazione').eq('utente_id',user.id).order('persona_id').range(da,a))
+ ]);
  if(requestError||linksError)return <div className="container narrow"><h1>Area personale non disponibile</h1><p role="alert">Non è stato possibile verificare il profilo. Riprova prima di procedere.</p><Link href="/smista">Riprova</Link></div>;
  if(request?.stato!=='approvata'&&(!links||links.length===0))redirect('/richiesta/stato');
  const ids=[...new Set(links?.map(x=>x.persona_id)??[])];
@@ -38,18 +40,22 @@ export default async function PersonalArea({searchParams}:{searchParams:Promise<
   tab==='comunicazioni'?supabase.from('comunicazioni').select('id,titolo,contenuto,pubblicata_il',{count:'exact'}).eq('attiva',true).order('pubblicata_il',{ascending:false}).order('id').range((page-1)*size,page*size-1):emptyPage,
   overview||tab==='notifiche'?supabase.from('notifiche').select('id,titolo,messaggio,creata_il',{count:'exact'}).eq('utente_id',user.id).is('letta_il',null).order('creata_il',{ascending:false}).order('id').range(overview?0:(page-1)*size,overview?2:page*size-1):emptyPage,
  ]);
- const brevetti=overview?await Promise.all(ids.map(async id=>{const {data,count,error}=await supabase.from('brevetti_allievi').select('id,persona_id,titolo,ottenuto_il',{count:'exact'}).eq('persona_id',id).order('ottenuto_il',{ascending:false}).order('id').limit(3);return {id,count:error?null:count,data:error?[]:data??[]};})):[];
- const [cards,courseDebts,patents]=await Promise.all([
+ const [brevetti,[cards,courseDebts,patents],overviewCourses,upcomingEvents]=await Promise.all([
+  overview?Promise.all(ids.map(async id=>{const {data,count,error}=await supabase.from('brevetti_allievi').select('id,persona_id,titolo,ottenuto_il',{count:'exact'}).eq('persona_id',id).order('ottenuto_il',{ascending:false}).order('id').limit(3);return {id,count:error?null:count,data:error?[]:data??[]};})):[],
+  Promise.all([
  tab==='tessere'?readCourseChunks((memberships??[]).map(x=>x.id),(group,da,a)=>supabase.from('tesseramenti').select('id,adesione_id,ente,numero_tessera,emessa_il,scade_il,stato').in('adesione_id',group).order('id').range(da,a)):{data:[],error:null},
  tab==='quote'&&season?readCourseChunks(ids,(group,da,a)=>supabase.from('saldi_corsi').select('id,persona_id,edizione_id,importo_dovuto,versato,residuo').in('persona_id',group).eq('stagione_id',season.id).order('id').range(da,a)):{data:[],error:null},
  tab==='brevetti'?readCourseChunks(ids,(group,da,a)=>supabase.from('brevetti_allievi').select('id,persona_id,titolo,ente,numero_brevetto,ottenuto_il,scade_il').in('persona_id',group).order('ottenuto_il',{ascending:false}).order('id').range(da,a)):{data:[],error:null}
+ ]),
+  overview?Promise.all(ids.map(async id=>supabase.from('iscrizioni_corsi').select('id,persona_id,edizione_id,stato').eq('persona_id',id).in('stato',['iscritto','concluso']).order('id',{ascending:false}).limit(3))):[],
+  overview&&areaSociAccess===true?supabase.from('eventi_soci').select('id,titolo,dal,al,destinazione,stato').gte('al',todayRome()).neq('stato','annullato').order('dal').order('id').limit(3):{data:[],error:null}
  ]);
  const overviewPatents=brevetti.flatMap(b=>b.data).sort((a,b)=>(b.ottenuto_il??'').localeCompare(a.ottenuto_il??'')).slice(0,3);
- const overviewCourses=overview?await Promise.all(ids.map(async id=>supabase.from('iscrizioni_corsi').select('id,persona_id,edizione_id,stato').eq('persona_id',id).in('stato',['iscritto','concluso']).order('id',{ascending:false}).limit(3))):[];
  const overviewEnrollmentRows=overviewCourses.flatMap(r=>r.error?[]:r.data??[]);
- const overviewCourseNames=await readCourseChunks([...new Set(overviewEnrollmentRows.map(r=>r.edizione_id))],(group,da,a)=>supabase.from('edizioni_corsi').select('id,nome,inizio,fine,stato').in('id',group).order('id').range(da,a));
- const upcomingEvents=overview&&areaSociAccess===true?await supabase.from('eventi_soci').select('id,titolo,dal,al,destinazione,stato').gte('al',todayRome()).neq('stato','annullato').order('dal').order('id').limit(3):{data:[],error:null};
- const courseNames=await readCourseChunks([...new Set((courseDebts.data??[]).map(x=>x.edizione_id))],(group,da,a)=>supabase.from('edizioni_corsi').select('id,nome').in('id',group).order('id').range(da,a));
+ const [overviewCourseNames,courseNames]=await Promise.all([
+  readCourseChunks([...new Set(overviewEnrollmentRows.map(r=>r.edizione_id))],(group,da,a)=>supabase.from('edizioni_corsi').select('id,nome,inizio,fine,stato').in('id',group).order('id').range(da,a)),
+  readCourseChunks([...new Set((courseDebts.data??[]).map(x=>x.edizione_id))],(group,da,a)=>supabase.from('edizioni_corsi').select('id,nome').in('id',group).order('id').range(da,a))
+ ]);
  const money=(x:unknown)=>formatValue(Number(x),'importo');
  const fullName=(id:string)=>{const p=people?.find(x=>x.id===id);return p?p.nome+' '+p.cognome:'Profilo non disponibile';};
  const pageLink=(n:number)=>'?tab='+tab+'&p='+n;

@@ -1,6 +1,7 @@
 import {PageHeader,MetricCard,StatusBadge,Alert,ButtonLink} from '@/components/ui/Primitives';
 import {DataTable,Pagination} from '@/components/ui/DataTable';
 import SearchableSelect from '@/components/ui/SearchableSelect';
+import RemotePersonSelect from '@/components/ui/RemotePersonSelect';
 import PaymentReview from '@/components/PaymentReview';
 import {tutteLePagine} from '@/lib/pagine';
 import {balanceTotals,dateFilter,methodLabel} from '@/lib/finance-ui';
@@ -9,8 +10,9 @@ import {Drawer,ConfirmDialog} from '@/components/ui/Drawer';
 import ActionForm from '@/components/ui/ActionForm';
 import Link from 'next/link';
 import {randomUUID} from 'node:crypto';
-import {requireStaff} from '@/lib/security';
+import {requireStaffForRender as requireStaff} from '@/lib/security';
 import {recordGuidedPayment} from './actions';
+import {structuralRpc,readFinanceTotals,markStructuralRpcUsed,readPersonOptions,structuralQaEnabled} from '@/lib/structural-qa';
 
 type Balance={id:string;persona_id:string;stagione_id:string;edizione_id?:string|null;importo_dovuto:string|number;versato:string|number;residuo:string|number;stato:string;scadenza:string|null};
 type Person={id:string;nome:string;cognome:string};
@@ -38,17 +40,23 @@ function linkFor(p:{tab:string;stagione:string;stato:string;persona:string;dal:s
 }
 export default async function Incassi({searchParams}:{searchParams:Promise<{tab?:string;stagione?:string;stato?:string;persona?:string;p?:string;msg?:string;dal?:string;al?:string;debito?:string}>}){
  const {supabase}=await requireStaff();
- const {data:admin}=await supabase.rpc('is_admin');
  const p=await searchParams;
- const {data:seasons,error:seasonError}=await tutteLePagine((da,a)=>supabase.from('stagioni').select('id,nome,attiva').order('dal',{ascending:false}).order('id').range(da,a));
- const {data:allPeople,error:peopleError}=await tutteLePagine((da,a)=>supabase.from('persone').select('id,nome,cognome').order('cognome').order('nome').order('id').range(da,a));
+ const remoteOptionsPromise=structuralQaEnabled()?structuralRpc(supabase,'sc_perf_person_options',{p_query:'',p_page:1,p_selected:p.persona&&uuid.test(p.persona)?p.persona:null}).then(readPersonOptions):Promise.resolve(null);
+ const peoplePromise=remoteOptionsPromise.then(personOptions=>personOptions?{data:[],error:null}:tutteLePagine((da,a)=>supabase.from('persone').select('id,nome,cognome').order('cognome').order('nome').order('id').range(da,a)));
+ const adminPromise=Promise.resolve(supabase.rpc('is_admin'));
+ const seasonsPromise=tutteLePagine((da,a)=>supabase.from('stagioni').select('id,nome,attiva').order('dal',{ascending:false}).order('id').range(da,a));
+ // Recent payments do not depend on season selection or the person-picker payload.
  const dal=dateFilter(p.dal),al=dateFilter(p.al),debt=p.debito&&uuid.test(p.debito)?p.debito:'';
- const selectedSeason=p.stagione?((seasons??[]).find(s=>s.id===p.stagione)?.id??''):((seasons??[]).find(s=>s.attiva)?.id??(seasons??[])[0]?.id??'');
  const tab=p.tab==='corso'?'corso':'quota';
  const status=['non_pagata','parziale','pagata','residuo'].includes(p.stato??'')?p.stato!:'tutte';
  const personFilter=p.persona&&uuid.test(p.persona)?p.persona:'';
  const page=Math.max(1,Math.min(10000,Number.parseInt(p.p??'1',10)||1));
  const perPage=25;
+ let recentQuery=supabase.from('pagamenti').select('id,persona_id,quota_id,addebito_corso_id,importo,metodo,data_pagamento,riferimento').order('creato_il',{ascending:false}).limit(15);
+ if(personFilter)recentQuery=recentQuery.eq('persona_id',personFilter);
+ const recentPromise=Promise.resolve(recentQuery);
+ const {data:seasons,error:seasonError}=await seasonsPromise;
+ const selectedSeason=p.stagione?((seasons??[]).find(s=>s.id===p.stagione)?.id??''):((seasons??[]).find(s=>s.attiva)?.id??(seasons??[])[0]?.id??'');
  let balances:Balance[]=[];
  let count=0;let totals:ReturnType<typeof balanceTotals>|null=null;
  let errorMessage='';
@@ -57,26 +65,38 @@ export default async function Incassi({searchParams}:{searchParams:Promise<{tab?
   if(status==='residuo')query=query.gt('residuo',0);else if(status!=='tutte')query=query.eq('stato',status);
   if(personFilter)query=query.eq('persona_id',personFilter);
   if(debt)query=query.eq('id',debt);if(dal)query=query.gte('scadenza',dal);if(al)query=query.lte('scadenza',al);
-  const {data,error,count:total}=await query.order('sort_cognome').order('sort_nome').order('id',{ascending:true}).range((page-1)*perPage,page*perPage-1);
+  const [{data,error,count:total},aggregate]=await Promise.all([
+   query.order('sort_cognome').order('sort_nome').order('id',{ascending:true}).range((page-1)*perPage,page*perPage-1),
+   (async()=>{
+    const optimized=readFinanceTotals(await structuralRpc(supabase,'sc_perf_incassi_totals',{p_tab:tab,p_season:selectedSeason,p_status:status,p_person:personFilter||null,p_debt:debt||null,p_dal:dal||null,p_al:al||null}));
+    if(optimized){markStructuralRpcUsed('incassi-totals');return {optimized,data:null,error:null};}
+    const legacy=await tutteLePagine((da,a)=>{let q=supabase.from(tab==='quota'?'gest_elenco_saldi_quote':'gest_elenco_saldi_corsi').select('id,importo_dovuto,versato,residuo').eq('stagione_id',selectedSeason);if(status==='residuo')q=q.gt('residuo',0);else if(status!=='tutte')q=q.eq('stato',status);if(personFilter)q=q.eq('persona_id',personFilter);if(debt)q=q.eq('id',debt);if(dal)q=q.gte('scadenza',dal);if(al)q=q.lte('scadenza',al);return q.order('id').range(da,a);});
+    return {...legacy,optimized:null};
+   })()
+  ]);
   if(error||dal&&al&&dal>al)errorMessage='Impossibile leggere i saldi o intervallo di scadenza non valido.';
   else {balances=(data??[]) as unknown as Balance[];count=total??0;
-   const aggregate=await tutteLePagine((da,a)=>{let q=supabase.from(tab==='quota'?'gest_elenco_saldi_quote':'gest_elenco_saldi_corsi').select('id,importo_dovuto,versato,residuo').eq('stagione_id',selectedSeason);if(status==='residuo')q=q.gt('residuo',0);else if(status!=='tutte')q=q.eq('stato',status);if(personFilter)q=q.eq('persona_id',personFilter);if(debt)q=q.eq('id',debt);if(dal)q=q.gte('scadenza',dal);if(al)q=q.lte('scadenza',al);return q.order('id').range(da,a);});
-   if(!aggregate.error&&aggregate.data)try{totals=balanceTotals(aggregate.data as Balance[]);}catch{}
+   if(aggregate.optimized)totals=aggregate.optimized;
+   else if(!aggregate.error&&aggregate.data)try{totals=balanceTotals(aggregate.data as Balance[]);}catch{}
   }
  }
  const peopleIds=[...new Set(balances.map(b=>b.persona_id))];
  const courseIds=[...new Set(balances.map(b=>b.edizione_id).filter((v):v is string=>Boolean(v)))];
- const [{data:people},{data:courses}]=await Promise.all([
-  peopleIds.length?supabase.from('persone').select('id,nome,cognome').in('id',peopleIds):Promise.resolve({data:[]}),
+ const {data:recent,error:recentError}=await recentPromise;
+ const historyIds=[...new Set((recent??[]).map(r=>r.persona_id))];
+ const allIds=[...new Set([...peopleIds,...historyIds])];
+ const loadPeople=(ids:string[])=>ids.length?supabase.from('persone').select('id,nome,cognome').in('id',ids):Promise.resolve({data:[],error:null});
+ const [combined,{data:courses}]=await Promise.all([
+  loadPeople(allIds),
   courseIds.length?supabase.from('edizioni_corsi').select('id,nome').in('id',courseIds):Promise.resolve({data:[]}),
  ]);
- const names=new Map(((people??[]) as Person[]).map(x=>[x.id,`${x.cognome} ${x.nome}`]));
+ // Preserve independent error handling of the two historical lookups.
+ const [peopleResult,historyResult]=combined.error?await Promise.all([loadPeople(peopleIds),loadPeople(historyIds)]):[combined,combined];
+ const [{data:admin},personOptions,{data:allPeople,error:peopleError}]=await Promise.all([adminPromise,remoteOptionsPromise,peoplePromise]);
+ if(personOptions)markStructuralRpcUsed('person-options');
+ const names=new Map(((peopleResult.data??[]) as Person[]).map(x=>[x.id,`${x.cognome} ${x.nome}`]));
  const courseNames=new Map(((courses??[]) as Course[]).map(x=>[x.id,x.nome]));
- let recentQuery=supabase.from('pagamenti').select('id,persona_id,quota_id,addebito_corso_id,importo,metodo,data_pagamento,riferimento').order('creato_il',{ascending:false}).limit(15);
- if(personFilter)recentQuery=recentQuery.eq('persona_id',personFilter);
- const {data:recent,error:recentError}=await recentQuery;
- const {data:historyPeople}=recent?.length?await supabase.from('persone').select('id,nome,cognome').in('id',[...new Set(recent.map(r=>r.persona_id))]):{data:[]};
- const historyNames=new Map(((historyPeople??[]) as Person[]).map(x=>[x.id,`${x.cognome} ${x.nome}`]));
+ const historyNames=new Map(((historyResult.data??[]) as Person[]).map(x=>[x.id,`${x.cognome} ${x.nome}`]));
  const filter={tab,stagione:selectedSeason,stato:status,persona:personFilter,dal,al,debito:debt};
  const maxPage=Math.max(1,Math.ceil(count/perPage));
  return <>
@@ -88,7 +108,7 @@ export default async function Incassi({searchParams}:{searchParams:Promise<{tab?
    <input type="hidden" name="tab" value={tab}/>{debt&&<input type="hidden" name="debito" value={debt}/>} 
    <label>Stagione<select name="stagione" defaultValue={selectedSeason} required><option value="">Seleziona stagione…</option>{(seasons??[]).map(s=><option key={s.id} value={s.id}>{s.nome}{s.attiva?' (attiva)':''}</option>)}</select></label>
    <label>Stato<select name="stato" defaultValue={status}><option value="tutte">Tutti</option><option value="residuo">Con residuo da incassare</option><option value="non_pagata">Non pagate</option><option value="parziale">Parziali</option><option value="pagata">Pagate</option></select></label>
-   <div className="sc-field"><label htmlFor="payment-person">Socio</label><SearchableSelect id="payment-person" name="persona" label="Socio" value={personFilter} options={(allPeople??[]).map(p=>({value:p.id,label:p.cognome+" "+p.nome}))}/></div><label>Scadenza dal<input type="date" name="dal" defaultValue={dal}/></label><label>Scadenza al<input type="date" name="al" defaultValue={al}/></label>
+   <div className="sc-field"><label htmlFor="payment-person">Socio</label>{personOptions?<RemotePersonSelect id="payment-person" name="persona" label="Socio" value={personFilter} initial={personOptions}/>:<SearchableSelect id="payment-person" name="persona" label="Socio" value={personFilter} options={(allPeople??[]).map(p=>({value:p.id,label:p.cognome+" "+p.nome}))}/>}</div><label>Scadenza dal<input type="date" name="dal" defaultValue={dal}/></label><label>Scadenza al<input type="date" name="al" defaultValue={al}/></label>
    <button className="button" type="submit">Applica</button><ButtonLink variant="secondary" href="/gestionale/incassi">Azzera filtri</ButtonLink>
    <Link className="button ghost" href="/gestionale/moduli/quote">Gestisci quote</Link>
    <Link className="button ghost" href="/gestionale/moduli/addebiti">Gestisci addebiti corsi</Link>

@@ -2,7 +2,7 @@ import {PageHeader,Alert} from '@/components/ui/Primitives';
 import {Pagination} from '@/components/ui/DataTable';
 import {pageNumber} from '@/lib/module-ui';
 import ActionForm from '@/components/ui/ActionForm';
-import {formatDate,requireUser} from '@/lib/security';
+import {formatDate,requireUserForRender as requireUser} from '@/lib/security';
 import {markAccountNotification} from './actions';
 
 export default async function AccountNotifications({searchParams}:{searchParams:Promise<{p?:string;msg?:string}>}){

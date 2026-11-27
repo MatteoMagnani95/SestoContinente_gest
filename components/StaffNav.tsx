@@ -1,14 +1,15 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
-import { modules, type Module, type ModuleKey } from '@/lib/modules';
+import { useMemo, useState } from 'react';
+import type { ModuleKey } from '@/lib/modules';
+import { moduleNavigation } from '@/lib/module-navigation';
 import { activeItem, type NavItem } from '@/lib/navigation';
 import { Icon, type IconName } from '@/components/ui/Icon';
 export type NavGroup={id:string;label:string;icon:IconName;area:string;items:NavItem[]};
 const item=(href:string,label:string,aliases?:string[]):NavItem=>({href,label,aliases});
 function moduleItems(keys:ModuleKey[],isAdmin:boolean):NavItem[]{
- return keys.filter(key=>isAdmin||!(modules[key] as Module).adminOnly).map(key=>item('/gestionale/moduli/'+key,modules[key].label));
+ return keys.filter(key=>isAdmin||!moduleNavigation[key].adminOnly).map(key=>item('/gestionale/moduli/'+key,moduleNavigation[key].label));
 }
 export function staffGroups(isAdmin:boolean):NavGroup[]{
  return [
@@ -27,7 +28,8 @@ export function staffGroups(isAdmin:boolean):NavGroup[]{
 }
 export default function StaffNav({isAdmin=false,onNavigate,idPrefix='desktop',collapsed=false,onExpand}:{isAdmin?:boolean;onNavigate?:()=>void;idPrefix?:string;collapsed?:boolean;onExpand?:()=>void}){
  const pathname=usePathname()??'/';
- const groups=staffGroups(isAdmin),active=activeItem(pathname,groups.flatMap(g=>g.items));
+ const groups=useMemo(()=>staffGroups(isAdmin),[isAdmin]);
+ const active=useMemo(()=>activeItem(pathname,groups.flatMap(g=>g.items)),[pathname,groups]);
  const [expanded,setExpanded]=useState<{path:string;group:string}>({path:'',group:''});
  return <nav className="sc-staff-nav" aria-label="Menu gestionale">
  {groups.map(group=>{

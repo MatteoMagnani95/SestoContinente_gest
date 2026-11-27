@@ -1,11 +1,12 @@
 import {singleSearchParams} from '@/lib/module-ui';
 import Link from 'next/link';
-import {requireStaff} from '@/lib/security';
+import {requireStaffForRender as requireStaff} from '@/lib/security';
 import {PageHeader,ButtonLink,StatusBadge,Alert} from '@/components/ui/Primitives';
 import {DataTable,FilterBar,SearchBar,Pagination} from '@/components/ui/DataTable';
 import {statusTone,searchTerms,maskedFiscalCode,exactCount} from '@/lib/secretariat';
 import {SecretariatNav,PersonName} from '@/components/ui/Secretariat';
 import {MetricCard} from '@/components/ui/Primitives';
+import {structuralRpc,validCount,markStructuralRpcUsed,readMembersPage} from '@/lib/structural-qa';
 
 const statuses=['da_perfezionare','attiva','sospesa','cessata'] as const;
 type SocioRow={adesione_id:string;persona_id:string;stagione_id:string;stagione:string;stato:string;nome:string;cognome:string;codice_fiscale:string|null;email:string|null;telefono:string|null};
@@ -26,21 +27,36 @@ export default async function SociPage({searchParams}:{searchParams:Promise<{q?:
  const q=(params.q??'').trim().slice(0,80);
  const ordine=params.ordine==='desc'?'desc':'asc';
  const stato=statuses.find(s=>s===params.stato)??'';
+ const desiredPage=Math.min(10000,Math.max(1,Number.parseInt(params.p??'1',10)||1));
+ const snapshot=readMembersPage(await structuralRpc(supabase,'sc_perf_soci_page',{p_season:params.stagione??'',p_terms:searchTerms(q),p_status:stato,p_order:ordine,p_page:desiredPage}));
+ const readLegacy=async()=>{
  const {data:stagioni,error:seasonError}=await supabase.from('stagioni').select('id,nome,attiva').order('dal',{ascending:false});
  const chosen=(stagioni??[]).some(s=>s.id===params.stagione)?params.stagione??'':
   params.stagione==='tutte'?'tutte':(stagioni??[]).find(s=>s.attiva)?.id??'tutte';
- const desiredPage=Math.min(10000,Math.max(1,Number.parseInt(params.p??'1',10)||1));
  function base(head=false){
-  let query=supabase.from('schede_soci').select('*',{count:'exact',head});
+  let query=supabase.from('schede_soci').select('adesione_id,persona_id,stagione_id,stagione,stato,nome,cognome,codice_fiscale,email,telefono',{count:'exact',head});
   if(chosen!=='tutte')query=query.eq('stagione_id',chosen);
   for(const term of searchTerms(q))query=query.or(`nome.ilike.%${term}%,cognome.ilike.%${term}%,codice_fiscale.ilike.%${term}%`);
   return query;
  }
  let query=base();if(stato)query=query.eq('stato',stato);
- const [{data,error,count},total,...byStatus]=await Promise.all([
+ const readCounts=async()=>{
+  const counts=await structuralRpc(supabase,'sc_perf_soci_counts',{p_season:chosen==='tutte'?null:chosen,p_terms:searchTerms(q)});
+  if(counts&&['total',...statuses].every(key=>validCount(counts[key]))){markStructuralRpcUsed('soci-counts');return ['total',...statuses].map(key=>({count:counts[key] as number,error:null}));}
+  return Promise.all([base(true),...statuses.map(s=>base(true).eq('stato',s))]);
+ };
+ const [{data,error,count},[total,...byStatus]]=await Promise.all([
  query.order('cognome',{ascending:ordine==='asc'}).order('nome',{ascending:ordine==='asc'}).order('adesione_id').range((desiredPage-1)*perPage,desiredPage*perPage-1),
- base(true),...statuses.map(s=>base(true).eq('stato',s))
+ readCounts()
  ]);
+
+  return {stagioni,seasonError,chosen,data,error,count,total,byStatus};
+ };
+ if(snapshot)markStructuralRpcUsed('soci-page');
+ const {stagioni,seasonError,chosen,data,error,count,total,byStatus}=snapshot?{
+  stagioni:snapshot.seasons,seasonError:null,chosen:snapshot.chosen,data:snapshot.rows,error:null,count:snapshot.count,
+  total:{count:snapshot.counts.total,error:null},byStatus:statuses.map(s=>({count:snapshot.counts[s],error:null}))
+ }:await readLegacy();
  const rows=(data??[]) as unknown as SocioRow[];
  const filters={q,stagione:chosen,stato,ordine};
  const pageCount=Math.max(1,Math.ceil((count??0)/perPage));

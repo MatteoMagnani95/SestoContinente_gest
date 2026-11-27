@@ -39,13 +39,13 @@ test('Paginazione: recupera pagina inesistente e preserva filtri',()=>{
  assert.match(markup(2,60),/Precedente/);assert.match(markup(2,60),/Successiva/);
 });
 test('Messaggi URL: solo chiavi proprie e stringhe',()=>{
- const {queryMessage}=load('lib/security.ts',{'next/navigation':{},'@/lib/supabase/server':{}});
+ const {queryMessage}=load('lib/security.ts',{'next/navigation':{},'@/lib/supabase/server':{},'@/lib/structural-qa':load('lib/structural-qa.ts',{'server-only':{}})});
  for(const value of ['__proto__','constructor','toString',['account'],undefined])assert.equal(queryMessage(value),'');
  assert.match(queryMessage('account'),/Accedi/);
 });
 
 test('Date visualizzate nel fuso italiano anche in prossimità della mezzanotte',()=>{
- const {formatDate}=load('lib/security.ts',{'next/navigation':{},'@/lib/supabase/server':{}});
+ const {formatDate}=load('lib/security.ts',{'next/navigation':{},'@/lib/supabase/server':{},'@/lib/structural-qa':load('lib/structural-qa.ts',{'server-only':{}})});
  assert.equal(formatDate('2026-11-26T23:30:00Z'),'27/11/2026');
  assert.equal(formatDate('2026-07-01T22:30:00Z'),'02/07/2026');
  assert.equal(formatDate('2026-11-26'),'26/11/2026');

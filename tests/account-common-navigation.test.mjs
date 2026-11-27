@@ -22,7 +22,9 @@ test('notifications are reachable even without a linked person',()=>{
   assert.match(read(file),/access\.enabled&&<Link[^\n]*href=\{access\.personal\?'\/area-personale\?tab=notifiche':'\/notifiche'\}/);
  }
  const access=read('lib/navigation-access.ts');
- assert.match(access,/const alerts=await supabase\.from\('notifiche'\)/);
+ assert.match(access,/const \[roles,member,request,links,alerts,owners\]=await Promise\.all\(/);
+ assert.match(access,/supabase\.from\('notifiche'\)\.select\('id',\{head:true,count:'exact'\}\)\.eq\('utente_id',user\.id\)\.is\('letta_il',null\)/);
+ assert.match(access,/unread:alerts&&!alerts\.error\?alerts\.count:null/);
  const page=read('app/notifiche/page.tsx'),action=read('app/notifiche/actions.ts');
  for(const src of [page,action]){
   assert.match(src,/await requireUser\(\)/);

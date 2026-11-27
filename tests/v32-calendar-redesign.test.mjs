@@ -84,7 +84,7 @@ test('Modifica e annullamento: errori espliciti, conferma, RPC e contesto',async
 test('Struttura calendario, piscine e prenotazioni: nessun percorso generico per creare lezioni',()=>{
  const p=read('app/gestionale/calendario-visivo/page.tsx');
  assert.match(p,/calendarViews\.map/);assert.match(p,/action=\{createLesson\}/);assert.match(p,/CourseScheduleFields/);assert.match(p,/CourseLessonFields/);assert.match(p,/returnContext=\{context\}/);
- assert.match(p,/byLane\.get\(l.id\)/);assert.match(p,/days\.map\(d=>\{const bounds=dayBounds\(d\),entries=bookings\.filter/);
+ assert.match(p,/byLane\.get\(l.id\)/);assert.match(p,/boundsByDay=new Map\(days\.map\(d=>\[d,dayBounds\(d\)\]\)\)/);assert.match(p,/days\.map\(d=>\{const bounds=boundsByDay\.get\(d\)!,entries=bookings\.filter\(b=>overlaps\(b.inizio,b.fine,bounds.from,bounds.to\)\)/);
  assert.match(p,/Non prenotata nel gestionale/);assert.match(p,/L’occupazione include tutti i corsi/);assert.match(p,/occupancyFailed/);
  const m=read('app/gestionale/moduli/[modulo]/page.tsx');assert.match(m,/corsie\.piscina_id/);assert.match(m,/BookingConflictPreview/);assert.match(m,/if\(modulo==='calendario'&&nuovo==='1'\)redirect/);
  assert.match(read('app/module-actions.ts'),/key==='calendario'&&!id/);
@@ -94,7 +94,7 @@ test('Struttura calendario, piscine e prenotazioni: nessun percorso generico per
 
 test('F4B: matrice semantica, etichette certe, filtri indipendenti e mobile',()=>{
  const p=read('app/gestionale/calendario-visivo/page.tsx');
- assert.match(p,/aria-label="Occupazione corsie per giorno"/);assert.match(p,/scope="row" role="rowheader"/);assert.match(p,/scope="col" role="columnheader"/);assert.match(p,/data-day=\{dayName\(d\)\}/);
+ assert.match(p,/aria-label="Occupazione corsie per giorno"/);assert.match(p,/scope="row" role="rowheader"/);assert.match(p,/scope="col" role="columnheader"/);assert.match(p,/labelsByDay=new Map\(days\.map\(d=>\[d,dayName\(d\)\]\)\)/);assert.match(p,/labelDay=\(d:string\)=>labelsByDay\.get\(d\)\?\?dayName\(d\)/);assert.match(p,/data-day=\{labelDay\(d\)\}/);
  assert.match(p,/allBookings=\(bookingResult.data\?\?\[\]\)/);assert.match(p,/from\('prenotazioni_corsie'\).*eq\('stato','confermata'\)/);assert.match(p,/for\(const b of allBookings\)/);
  assert.match(p,/extraLessons.error&&<Alert/);assert.match(p,/aria-label="Legenda lezioni"/);assert.match(p,/vista:'agenda'/);
  assert.match(read('app/calendar-ui.css'),/\.sc-occupancy-matrix-wrap\{overflow:auto;max-width:100%/);assert.match(read('app/calendar-ui.css'),/\.sc-occupancy-matrix \.sc-lane-mobile-day\{display:block/);

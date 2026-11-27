@@ -49,7 +49,7 @@ test('Instradamento: istruttori e consiglieri non dipendono dalla richiesta di a
   await route({ruoli_utente:{data:[{ruolo}],error:null}},path,['ruoli_utente']);
 });
 test('Messaggi: chiavi arbitrarie non restituiscono proprietà del prototipo',()=>{
- const security=load('lib/security.ts',{'next/navigation':{redirect},'@/lib/supabase/server':{}});
+ const security=load('lib/security.ts',{'next/navigation':{redirect},'@/lib/supabase/server':{},'@/lib/structural-qa':load('lib/structural-qa.ts',{'server-only':{}})});
  for(const key of ['__proto__','constructor','toString','unknown'])assert.equal(security.queryMessage(key),'');
  assert.match(security.queryMessage('instradamento'),/Accesso effettuato/);
  assert.equal(security.formatDate('2026-11-26T23:30:00Z'),'27/11/2026');

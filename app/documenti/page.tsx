@@ -11,7 +11,7 @@ import {cleanSearch,pageNumber,listHref,singleSearchParams} from '@/lib/module-u
 import {Drawer,ConfirmDialog} from '@/components/ui/Drawer';
 import ActionForm from '@/components/ui/ActionForm';
 import Link from 'next/link';
-import {requireUser} from '@/lib/security';
+import {requireUserForRender as requireUser} from '@/lib/security';
 import {uploadDocument,deleteDocument,editDocumentMetadata} from './actions';
 export default async function Documenti({searchParams}:{searchParams:Promise<{msg?:string;pubblica?:string;q?:string;p?:string;ambito?:string;persona?:string;visibilita?:string;ordine?:string}>}){
  const {supabase,user}=await requireUser();

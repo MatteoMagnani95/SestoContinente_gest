@@ -7,7 +7,7 @@ import {shiftDay} from '@/lib/calendar-tools';
 import {isTestApplication} from '@/lib/application-config';
 import Link from 'next/link';
 import {SecretariatNav,PersonName} from '@/components/ui/Secretariat';
-import {requireStaff,formatDate,statoLabel,type Stato,queryMessage} from '@/lib/security';
+import {requireStaffForRender as requireStaff,formatDate,statoLabel,type Stato,queryMessage} from '@/lib/security';
 export default async function Requests({searchParams}:{searchParams:Promise<{filtro?:string;msg?:string;q?:string;p?:string;dal?:string;al?:string;ordine?:string}>}){
  const params=singleSearchParams(await searchParams);const {msg}=params,q=(params.q??'').slice(0,80),page=pageNumber(params.p),size=30,dal=dateFilter(params.dal),al=dateFilter(params.al);
  const filtro=params.filtro==='da_gestire'||requestStates.some(s=>s===params.filtro)?params.filtro:'';

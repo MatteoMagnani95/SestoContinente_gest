@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import {Icon} from '@/components/ui/Icon';
 import {redirect} from 'next/navigation';
-import {requireUser} from '@/lib/security';
+import {requireUserForRender as requireUser,readRolesForRender} from '@/lib/security';
 import {formatValue} from '@/lib/format';
 import {formatRome,UUID_RE} from '@/lib/course-tools';
 import {tutteLePagine} from '@/lib/pagine';
@@ -15,8 +15,8 @@ import {recordAttendance} from './actions';
 type Learner={edizione_id:string;persona_id:string;nome:string;cognome:string;certificato_valido:boolean};
 export default async function Instructor({searchParams}:{searchParams:Promise<{msg?:string;tab?:string;edizione?:string;lezione?:string;p?:string}>}){
  const {supabase,user}=await requireUser();
- const {data:role,error:roleError}=await supabase.from('ruoli_utente').select('ruolo').eq('utente_id',user.id).eq('ruolo','istruttore').maybeSingle();
- if(roleError||!role)redirect('/?msg=permessi');
+ const {data:roles,error:roleError}=await readRolesForRender(supabase,user.id);
+ if(roleError||!roles?.some(role=>role.ruolo==='istruttore'))redirect('/?msg=permessi');
  const params=singleSearchParams(await searchParams),tab=selectedTab(instructorTabs,params.tab??(params.msg?'presenze':undefined)),page=pageNumber(params.p),size=20;
  const {data:links,error:linkError}=await tutteLePagine((da,a)=>supabase.from('collegamenti_persone').select('persona_id').eq('utente_id',user.id).order('persona_id').range(da,a));
  const ids=links?.map(l=>l.persona_id)??[];

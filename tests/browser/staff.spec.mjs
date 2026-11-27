@@ -242,3 +242,95 @@ test('F5: tab finanziarie, archivi operativi e panoramica CdA su mobile',async({
  await expect(page.getByRole('table',{name:'Documenti'})).toBeVisible();
  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(391);
 });
+
+test('3.1: editor differito della riga, filtri conservati e bozza protetta',async({page})=>{
+ await page.goto('/gestionale/moduli/anagrafiche?q=Collaudo');
+ const table=page.getByRole('table').first();
+ const button=table.getByRole('button',{name:'Modifica',exact:true}).first();
+ await expect(button).toBeVisible();
+ await expect(page.getByRole('dialog',{name:/Modifica anagrafica/})).toHaveCount(0);
+ await button.click();
+ const editor=page.getByRole('dialog',{name:/Modifica anagrafica/});
+ await expect(editor).toBeVisible();
+ await expect(page).toHaveURL(url=>url.searchParams.get('q')==='Collaudo'&&Boolean(url.searchParams.get('editor')));
+ const name=editor.locator('input[name="nome"]');
+ const initial=await name.inputValue();
+ await name.fill(initial+' bozza');
+ await editor.getByRole('button',{name:'Chiudi pannello'}).click();
+ await page.getByRole('button',{name:'Continua a modificare'}).click();
+ await expect(name).toHaveValue(initial+' bozza');
+ await editor.getByRole('button',{name:'Chiudi pannello'}).click();
+ await page.getByRole('button',{name:'Esci senza salvare'}).click();
+ await expect(editor).toBeHidden();
+ await table.getByRole('button',{name:'Modifica',exact:true}).first().click();
+ await expect(editor).toBeVisible();
+ await expect(editor.locator('input[name="nome"]')).toHaveValue(initial);
+ await editor.getByRole('button',{name:'Chiudi pannello'}).click();
+ await expect(editor).toBeHidden();
+});
+
+test('3.1: references on demand for creating an equipment revision',async({page})=>{
+ await page.goto('/gestionale/moduli/revisioni');
+ const create=page.getByRole('button',{name:'Registra revisione',exact:true});
+ await expect(create).toBeVisible();
+ await expect(page.getByRole('dialog',{name:'Registra revisione'})).toHaveCount(0);
+ await create.click();
+ const editor=page.getByRole('dialog',{name:'Registra revisione'});
+ await expect(editor).toBeVisible();
+ await expect(page).toHaveURL(url=>url.searchParams.get('nuovo')==='1');
+ const select=editor.locator('select[name="attrezzatura_id"]');
+ await expect(select).toBeVisible();
+ await expect.poll(()=>select.locator('option').count()).toBeGreaterThan(1);
+ await editor.getByRole('button',{name:'Chiudi pannello'}).click();
+ await expect(editor).toBeHidden();
+});
+
+test('3.1: simple dynamic archive loads the full reference selector only on creation',async({page})=>{
+ await page.goto('/gestionale/moduli/quote');
+ const create=page.getByRole('button',{name:'Registra quota associativa',exact:true});
+ await expect(create).toBeVisible();
+ await expect(page.getByRole('dialog',{name:'Registra quota associativa'})).toHaveCount(0);
+ await create.click();
+ const editor=page.getByRole('dialog',{name:'Registra quota associativa'});
+ await expect(editor).toBeVisible();
+ await expect(page).toHaveURL(url=>url.searchParams.get('nuovo')==='1');
+ const select=editor.locator('select[name="persona_id"]');
+ await expect(select).toBeVisible();
+ await expect.poll(()=>select.locator('option').count()).toBeGreaterThan(1);
+ await editor.getByRole('button',{name:'Chiudi pannello'}).click();
+ await expect(editor).toBeHidden();
+});
+
+test('3.1: local remote person search preserves selection and staff authorization',async({page})=>{
+ await page.goto('/gestionale/incassi');
+ const endpoint='/gestionale/incassi/person-options';
+ const probe=await page.request.get(endpoint);
+ test.skip(probe.status()===404,'Remote selector is enabled only in structural QA');
+ expect(probe.ok()).toBeTruthy();
+ expect(probe.headers()['cache-control']).toContain('no-store');
+ const initial=await probe.json();
+ expect(initial.options.length).toBeLessThanOrEqual(50);
+ const target=initial.options[0];expect(target).toBeTruthy();
+ const select=page.locator('select[name="persona"]');
+ await select.selectOption(target.value);
+ const search=page.getByRole('searchbox',{name:'Cerca tra le opzioni: Socio'});
+ await search.fill('inesistente-qa');
+ await expect(page.getByText('0 opzioni',{exact:true})).toBeVisible();
+ await expect(select).toHaveValue(target.value);
+ const url=new URL(endpoint,page.url()).href;
+ // Playwright's browser fixture can inherit project storageState: override it explicitly.
+ const guest=await page.context().browser().newContext({storageState:{cookies:[],origins:[]}});
+ try{
+  expect(await guest.cookies()).toHaveLength(0);
+  const response=await guest.request.get(url,{maxRedirects:0});
+  expect(response.status()).toBe(401);
+  expect(await response.json()).toEqual({error:'Accedi'});
+ }finally{await guest.close();}
+ expect(process.env.QA_MEMBER_STATE).toBeTruthy();
+ const member=await page.context().browser().newContext({storageState:process.env.QA_MEMBER_STATE});
+ try{
+  const response=await member.request.get(url,{maxRedirects:0});
+  expect(response.status()).toBe(403);
+  expect(await response.json()).toEqual({error:'Accesso non autorizzato'});
+ }finally{await member.close();}
+});

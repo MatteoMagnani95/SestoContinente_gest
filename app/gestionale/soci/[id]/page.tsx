@@ -17,7 +17,7 @@ import Link from 'next/link';
 import {PersonAvatar} from '@/components/ui/Secretariat';
 import {Icon} from '@/components/ui/Icon';
 import {notFound} from 'next/navigation';
-import {requireStaff} from '@/lib/security';
+import {requireStaffForRender as requireStaff} from '@/lib/security';
 import {formatValue} from '@/lib/format';
 import CodiceFiscaleAssist from '@/components/CodiceFiscaleAssist';
 import {updateMemberProfile,createMemberAdhesion} from '../actions';
@@ -69,12 +69,14 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
  const range=(key:string,secondary=false)=>{const current=tab===key?(secondary?secondPage:page):1;return [(current-1)*size,current*size-1] as const;};
  if(!uuid.test(id))notFound();
  const {supabase}=await requireStaff();
- const {data:isAdmin}=await supabase.rpc('is_admin');
- const {data:accountLinks}=isAdmin===true&&['anagrafica','adesioni','famiglia'].includes(tab)?await supabase.from('collegamenti_persone').select('utente_id,relazione').eq('persona_id',id):{data:[]};
- const {data:personData,error:personError}=await supabase.from('persone')
-  .select('id,nome,cognome,data_nascita,luogo_nascita,codice_fiscale,indirizzo,cap,comune,email,telefono,provincia_nascita,stato_nascita,provincia_residenza,stato_residenza,sesso_cf,codice_catastale_nascita,cf_omocodia_verificata,cf_override_motivo').eq('id',id).maybeSingle();
+ const [{data:isAdmin},{data:personData,error:personError}]=await Promise.all([
+  supabase.rpc('is_admin'),
+  supabase.from('persone')
+  .select('id,nome,cognome,data_nascita,luogo_nascita,codice_fiscale,indirizzo,cap,comune,email,telefono,provincia_nascita,stato_nascita,provincia_residenza,stato_residenza,sesso_cf,codice_catastale_nascita,cf_omocodia_verificata,cf_override_motivo').eq('id',id).maybeSingle()
+ ]);
  if(personError)return <Alert tone="danger" announce>Impossibile leggere l’anagrafica. Riprova.</Alert>;
  if(!personData)notFound();
+ const {data:accountLinks}=isAdmin===true&&['anagrafica','adesioni','famiglia'].includes(tab)?await supabase.from('collegamenti_persone').select('utente_id,relazione').eq('persona_id',id):{data:[]};
  const person=personData as unknown as (Person&{provincia_nascita:string|null;stato_nascita:string|null;provincia_residenza:string|null;stato_residenza:string|null;sesso_cf:string|null;codice_catastale_nascita:string|null;cf_omocodia_verificata:boolean;cf_override_motivo:string|null});
  const [seasonsResult,allMemberships,membershipResult,balanceResult,paymentResult,enrollmentResult,certResult,patentResult,qualificationResult,assignmentResult,documentResult,guardianResult,wardResult,equipmentResult,courseBalancesResult]=await Promise.all([
   supabase.from('stagioni').select('id,nome,attiva').order('dal',{ascending:false}),
@@ -97,7 +99,7 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
  const seasons=(seasonsData??[]) as unknown as Season[];
  const memberships=(membershipsData??[]) as unknown as (Membership&{verbale_cda_id:string|null})[];
  const vIds=[...new Set(memberships.map(m=>m.verbale_cda_id).filter((v):v is string=>Boolean(v)))];
- const {data:boardMinutes,error:boardError}=vIds.length?await supabase.from('cda_verbali').select('id,data_consiglio').in('id',vIds):{data:[],error:null};
+ const boardPromise=vIds.length?Promise.resolve(supabase.from('cda_verbali').select('id,data_consiglio').in('id',vIds)):Promise.resolve({data:[],error:null});
  const balances=(balancesData??[]) as unknown as Balance[];
  const payments=(paymentsData??[]) as unknown as Payment[];
  const enrollments=(enrollmentsData??[]) as unknown as Enrollment[];
@@ -110,10 +112,12 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
  const wards=(wardData??[]) as unknown as Guardian[];
  const equipment=(equipmentData??[]) as unknown as Equipment[];
  const editionIds=[...new Set([...enrollments.map(x=>x.edizione_id),...assignments.map(x=>x.edizione_id)])];
- const [{data:editionsData,error:editionsError},cardResult,{data:equipmentNamesData,error:equipmentNamesError}]=await Promise.all([
+ const [{data:editionsData,error:editionsError},cardResult,{data:equipmentNamesData,error:equipmentNamesError},{data:boardMinutes,error:boardError}]=await Promise.all([
+  
   editionIds.length?supabase.from('edizioni_corsi').select('id,nome,corso_id,inizio,fine').in('id',editionIds):Promise.resolve({data:[],error:null}),
   (overview||tab==='tesseramenti')?supabase.from('tesseramenti').select('id,adesione_id,ente,numero_tessera,scade_il,stato,adesioni!inner(persona_id,stagione_id)',{count:'exact'}).eq('adesioni.persona_id',id).order('scade_il',{ascending:false}).order('id').range(...range('tesseramenti')):Promise.resolve(skip),
   equipment.length?supabase.from('attrezzature').select('id,codice,categoria').in('id',equipment.map(x=>x.attrezzatura_id)):Promise.resolve({data:[],error:null}),
+  boardPromise,
  ]);
  const cardsData=cardResult.data;
  const editions=(editionsData??[]) as unknown as Edition[];
