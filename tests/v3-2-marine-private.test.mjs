@@ -50,3 +50,14 @@ test('Marine operations compact layer preserves local assets and covers finance,
  assert.match(qa,/undersized control/);assert.match(qa,/clipped KPI/);
  for(const p of ['23-corsi-tabella','24-archivio-incassi','25-contabilita','26-economia','27-incassi-corsi'])assert.ok(qa.includes(p));
 });
+
+test('Marine members layer keeps timeline text readable and extends role-specific visual QA',()=>{
+ const css=read('app/marine-premium-members.css'),qa=read('scripts/qa-marine-private.mjs');
+ assert.match(read('app/layout.tsx'),/import '\.\/marine-premium-members\.css'/);
+ assert.doesNotMatch(css,/@import|:root\s*\{|url\(/i);
+ assert.ok(Buffer.byteLength(css)<8000);
+ assert.match(css,/\.timeline-item p\{font-size:15px/);
+ assert.match(css,/\.sc-notification-list \.timeline-item button\{min-height:44px/);
+ assert.match(qa,/unreadable timeline text/);
+ for(const name of ['28-profilo','29-corsi-personali','31-notifiche-personali','32-notifiche-account','35-presenze-istruttore','36-componenti-cda','37-archivio-cda','38-riepilogo-cda','39-documenti-staff','40-documenti-soci'])assert.ok(qa.includes(name));
+});

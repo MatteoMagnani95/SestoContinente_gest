@@ -24,6 +24,7 @@ import './marine-premium-tokens.css';
 import './marine-premium-public.css';
 import './marine-premium-private.css';
 import './marine-premium-operations.css';
+import './marine-premium-members.css';
 export const viewport: Viewport = {width:'device-width', initialScale:1, viewportFit:'cover'};
 export const metadata: Metadata = {
   title: { default: 'Sesto Continente | Gestionale', template: '%s | Sesto Continente' },

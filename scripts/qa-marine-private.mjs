@@ -37,6 +37,19 @@ const routes=[
  ['staff','25-contabilita','/gestionale/moduli/contabilita'],
  ['staff','26-economia','/gestionale/economia'],
  ['staff','27-incassi-corsi','/gestionale/incassi?tab=corso'],
+ ['member','28-profilo','/area-personale/profilo'],
+ ['member','29-corsi-personali','/area-personale/corsi'],
+ ['member','30-quote-personali','/area-personale?tab=quote'],
+ ['member','31-notifiche-personali','/area-personale?tab=notifiche'],
+ ['member','32-notifiche-account','/notifiche'],
+ ['member','33-certificato','/area-personale/certificato?persona='+fixtures.person],
+ ['instructor','34-lezioni-istruttore','/istruttore?tab=lezioni&edizione='+fixtures.edition],
+ ['instructor','35-presenze-istruttore','/istruttore?tab=presenze&edizione='+fixtures.edition+'&lezione='+fixtures.lesson],
+ ['board','36-componenti-cda','/organi-sociali?tab=componenti'],
+ ['board','37-archivio-cda','/organi-sociali/archivio'],
+ ['board','38-riepilogo-cda','/organi-sociali/riepilogo'],
+ ['staff','39-documenti-staff','/documenti'],
+ ['member','40-documenti-soci','/area-soci?tab=documenti'],
 ];
 const browser=await chromium.launch();
 try{
@@ -72,10 +85,12 @@ try{
      });
      assert.ok(brand.lines>0&&brand.lines<=2&&brand.width>=80,name+' header '+width+': '+JSON.stringify(brand));
     }
-    const operational=await page.locator('.sc-calendar-filter,.payment-filters,.sc-operational-filters').evaluateAll(forms=>forms.flatMap(form=>[...form.querySelectorAll('input:not([type=hidden]):not([type=checkbox]):not([type=radio]),select,button[type=submit]')].filter(el=>el.getClientRects().length).map(el=>({tag:el.tagName,width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height}))));
+    const operational=await page.locator('.sc-calendar-filter,.payment-filters,.sc-operational-filters,.sc-instructor-filter').evaluateAll(forms=>forms.flatMap(form=>[...form.querySelectorAll('input:not([type=hidden]):not([type=checkbox]):not([type=radio]),select,button[type=submit]')].filter(el=>el.getClientRects().length).map(el=>({tag:el.tagName,width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height}))));
     for(const control of operational)assert.ok(control.width>=44&&control.height>=44,name+' undersized control '+width+' '+JSON.stringify(control));
-    const metrics=await page.locator(':is(.sc-finance-kpis,.sc-equipment-kpis,.sc-loan-kpis) .sc-metric-value').evaluateAll(items=>items.map(el=>({width:el.clientWidth,scroll:el.scrollWidth})));
+    const metrics=await page.locator(':is(.sc-finance-kpis,.sc-equipment-kpis,.sc-loan-kpis,.sc-board-kpis,.sc-personal-metrics) .sc-metric-value').evaluateAll(items=>items.map(el=>({width:el.clientWidth,scroll:el.scrollWidth})));
     for(const m of metrics)assert.ok(m.scroll<=m.width+1,name+' clipped KPI '+width);
+    const textSizes=await page.locator('.sc-marine-private .timeline-item p:not(.tiny)').evaluateAll(items=>items.filter(el=>el.getClientRects().length).map(el=>parseFloat(getComputedStyle(el).fontSize)));
+    for(const size of textSizes)assert.ok(size>=14,name+' unreadable timeline text '+width+' '+size);
     if(width===390||width===1440)await page.screenshot({path:join(out,name+'-'+width+'.png'),fullPage:true,animations:'disabled',caret:'hide'});
    }
    console.log('OK visual '+name+' '+role+' (5 viewports)');
