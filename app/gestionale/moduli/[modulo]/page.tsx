@@ -141,11 +141,11 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  const missingFiltered=missingQuery&&medicalSearch?missingQuery.or(`cognome.ilike.%${medicalSearch}%,nome.ilike.%${medicalSearch}%`):missingQuery;
  if(missingFiltered)for(const term of searchTerms(q).slice(1))missingFiltered.or('cognome.ilike.%'+term+'%,nome.ilike.%'+term+'%');
  const missingPage=pageNumber((singleSearchParams(await searchParams)).pm);
- const senzaFile=missingFiltered?await missingFiltered.order('cognome').order('nome').order('id').range((missingPage-1)*perPage,missingPage*perPage-1):null;
+ const missingPagePromise=missingFiltered?Promise.resolve(missingFiltered.order('cognome').order('nome').order('id').range((missingPage-1)*perPage,missingPage*perPage-1)):Promise.resolve(null);
  const missingCountQuery=medical&&!dal&&!al?supabase.from('allievi_senza_certificato').select('id',{head:true,count:'exact'}):null;
  if(missingCountQuery&&personId)missingCountQuery.eq('id',personId);
  if(missingCountQuery)for(const term of searchTerms(q))missingCountQuery.or('cognome.ilike.%'+term+'%,nome.ilike.%'+term+'%');
- const missingTotal=missingCountQuery?await missingCountQuery:null;
+ const [senzaFile,missingTotal]=await Promise.all([missingPagePromise,missingCountQuery??Promise.resolve(null)]);
  const filtri=medical?await Promise.all(Object.entries(statiCertificato).map(async ([k,label])=>{let filterQuery=supabase.from('stato_certificati').select('id',{head:true,count:'exact'}).eq('stato_certificato',k==='in_scadenza'?'valido':k);if(k==='in_scadenza')filterQuery=filterQuery.gte('scade_il',today).lte('scade_il',shiftDay(today,30));if(k==='valido')filterQuery=filterQuery.gt('scade_il',shiftDay(today,30));if(personId)filterQuery=filterQuery.eq('persona_id',personId);if(dal)filterQuery=filterQuery.gte('scade_il',dal);if(al)filterQuery=filterQuery.lte('scade_il',al);for(const term of searchTerms(q))filterQuery=filterQuery.or('sort_cognome.ilike.%'+term+'%,sort_nome.ilike.%'+term+'%');const {count,error}=await filterQuery;return {k,label,n:error||(k==='mancante'&&missingTotal?.error)?'—':(count??0)+(k==='mancante'?(missingTotal?.count??0):0)};})):[];
  let query=supabase.from(medical?'stato_certificati':personSorted?`gest_elenco_${module.table}`:module.table).select(modulo==='prenotazioni'?'*,corsie!inner(piscina_id)':'*',{count:'exact'});
  if(!editId&&scopedPool)query=query.eq(modulo==='prenotazioni'?'corsie.piscina_id':'piscina_id',scopedPool);
@@ -225,7 +225,8 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
   let selected:Row[]=[];
   for(let offset=0;;offset+=500){const {data:batch,error:refError}=await refQuery.order('id').range(offset,offset+499);if(refError){referenceError=true;break;}selected.push(...((batch??[]) as unknown as Row[]));if((batch??[]).length<500)break;}
   const currentKeys=module.fields.filter(f=>f.ref?.table===table).map(f=>f.name);
-  const missingIds=[...new Set((data??[]).flatMap(row=>currentKeys.map(k=>String(row[k]??''))).filter(id=>id&&!selected.some(r=>r.id===id)))];
+  const selectedIds=new Set(selected.map(r=>r.id));
+  const missingIds=[...new Set((data??[]).flatMap(row=>currentKeys.map(k=>String(row[k]??''))).filter(id=>id&&!selectedIds.has(id)))];
   if(missingIds.length){const {data:extra,error:extraError}=await supabase.from(table).select(cols).in('id',missingIds);if(extraError)referenceError=true;selected.push(...((extra??[]) as unknown as Row[]));}
   selected.sort((a,b)=>labelOf(a,ref?.labels??['id']).localeCompare(labelOf(b,ref?.labels??['id']),'it'));
   if(modulo==='istruttori'&&table==='persone'){
@@ -258,12 +259,13 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  }
  const rows=(data??[]) as unknown as Row[];
  const href=(page:number)=>listHref({q,p:String(page),stato,dal,al,persona:personId,stagione:seasonId,edizione:scopedEdition,piscina:scopedPool,corsia_id:scopedLane,lezione:scopedLesson,livello:catalogLevel===null?undefined:String(catalogLevel),vista:modulo==='iscrizioni'?'elenco':undefined,filtro_modulo:selectedFilter?selectedFilter.name+':'+filterValue:undefined,ordine,dir});
+ const referenceIndex=new Map(Object.entries(references).map(([table,entries])=>[table,new Map(entries.map(row=>[row.id,row]))]));
  const numeric=(c:string)=>module.fields.some(field=>field.name===c&&field.type==='number');
  const display=(row:Row,c:string)=>{
   if(medical&&c==='documento_id')return row[c]?<Link href={'/documenti/'+row[c]}>Apri certificato</Link>:<Link href={'/area-personale/certificato?persona='+row.persona_id}>Carica certificato</Link>;
   if(medical&&c==='stato_certificato'){const value=row[c]==='valido'&&String(row.scade_il)>=today&&String(row.scade_il)<=shiftDay(today,30)?'in_scadenza':String(row[c]);return <StatusBadge tone={tone(value)}>{statoSingolo(value)}</StatusBadge>;}
   const field=module.fields.find(field=>field.name===c);
-  const reference=references[field?.ref?.table??'']?.find(x=>x.id===row[c]);
+  const reference=typeof row[c]==='string'?referenceIndex.get(field?.ref?.table??'')?.get(row[c] as string):undefined;
   if(reference&&modulo==='prenotazioni'&&c==='lezione_id')return <Link href={'/gestionale/calendario-visivo/'+reference.id}>{labelOf(reference,field?.ref?.labels??['id'])}</Link>;
   if(reference&&modulo==='prenotazioni'&&c==='corsia_id')return <Link href={'/gestionale/moduli/corsie?edit='+reference.id}>{labelOf(reference,field?.ref?.labels??['id'])}</Link>;
   if(reference&&modulo==='corsie'&&c==='piscina_id')return <Link href={'/gestionale/moduli/piscine?edit='+reference.id}>{labelOf(reference,field?.ref?.labels??['id'])}</Link>;
