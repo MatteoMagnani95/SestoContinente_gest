@@ -132,12 +132,14 @@ try{
     audit.phase('client navigation dashboard');
     await allowed(page,'/gestionale');await settled(page);
     const nav=page.locator('.sc-staff-sidebar');
-    for(const [label,destination] of [['Soci','/gestionale/soci'],['Corsi','/gestionale/corsi']]){
+    for(const [label,destination,group] of [['Soci','/gestionale/soci','Soci e segreteria'],['Corsi','/gestionale/corsi','Corsi e didattica']]){
      audit.phase('client navigation '+label);
      const link=nav.locator('a[href="'+destination+'"]').first();
      // On the mobile viewport the sidebar is hidden: exercise the desktop
      // navigation at its actual visible width, after mobile reflow assertions.
      await page.setViewportSize({width:1280,height:900});
+     const toggle=nav.getByRole('button',{name:group,exact:true});
+     if(await toggle.getAttribute('aria-expanded')!=='true')await toggle.click();
      await expect(link).toBeVisible();
      await link.click();
      await expect(page).toHaveURL(u=>u.pathname===destination);
