@@ -2,13 +2,14 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useMemo, useState } from 'react';
-import { modules, type Module, type ModuleKey } from '@/lib/modules';
+import type { ModuleKey } from '@/lib/modules';
+import { moduleNavigation } from '@/lib/module-navigation';
 import { activeItem, type NavItem } from '@/lib/navigation';
 import { Icon, type IconName } from '@/components/ui/Icon';
 export type NavGroup={id:string;label:string;icon:IconName;area:string;items:NavItem[]};
 const item=(href:string,label:string,aliases?:string[]):NavItem=>({href,label,aliases});
 function moduleItems(keys:ModuleKey[],isAdmin:boolean):NavItem[]{
- return keys.filter(key=>isAdmin||!(modules[key] as Module).adminOnly).map(key=>item('/gestionale/moduli/'+key,modules[key].label));
+ return keys.filter(key=>isAdmin||!moduleNavigation[key].adminOnly).map(key=>item('/gestionale/moduli/'+key,moduleNavigation[key].label));
 }
 export function staffGroups(isAdmin:boolean):NavGroup[]{
  return [
