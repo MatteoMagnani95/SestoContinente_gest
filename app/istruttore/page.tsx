@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import {Icon} from '@/components/ui/Icon';
 import {redirect} from 'next/navigation';
-import {requireUser} from '@/lib/security';
+import {requireUserForRender as requireUser} from '@/lib/security';
 import {formatValue} from '@/lib/format';
 import {formatRome,UUID_RE} from '@/lib/course-tools';
 import {tutteLePagine} from '@/lib/pagine';
