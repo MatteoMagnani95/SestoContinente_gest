@@ -184,10 +184,42 @@ async function main(){
    await denied(()=>inventoryRpc(query,inventoryFilters[0]),'42501');
    await denied(()=>optionsRpc(query,optionFilters[0]),'42501');
   }
+
+  const membersPageRpc=async(q,args)=>(await q('select public.sc_perf_soci_page($1,$2,$3,$4,$5) as data',args)).rows[0].data;
+  const membersPageOld=async(q,[selected,terms,status,order,page])=>{
+   const seasons=(await q('select id,nome,attiva from public.stagioni order by dal desc,id')).rows;
+   const chosen=seasons.find(s=>s.id===selected)?.id??(selected==='tutte'?'tutte':seasons.find(s=>s.attiva)?.id??'tutte');
+   const args=[chosen==='tutte'?null:chosen,terms,status];
+   const where=" where ($1::uuid is null or stagione_id=$1) and not exists(select 1 from unnest($2::text[]) t(term) where not(coalesce(nome,'') ilike '%'||term||'%' or coalesce(cognome,'') ilike '%'||term||'%' or coalesce(codice_fiscale,'') ilike '%'||term||'%')) and ($3='' or stato::text=$3)";
+   const direction=order==='desc'?'desc':'asc';
+   const [counts,count,rows]=await Promise.all([
+    memberOld(q,args[0],terms),
+    q('select count(*)::int as n from public.schede_soci'+where,args),
+    q('select to_jsonb(s) as row from (select adesione_id,persona_id,stagione_id,stagione,stato,nome,cognome,codice_fiscale,email,telefono from public.schede_soci'+where+' order by cognome '+direction+',nome '+direction+',adesione_id limit 25 offset $4) s',[...args,(page-1)*25])
+   ]);
+   return {seasons,chosen,count:count.rows[0].n,counts,rows:rows.rows.map(r=>r.row)};
+  };
+  const pageFilters=[
+   ['', [prefix], '', 'asc', 1],['tutte',[prefix],'attiva','desc',40],
+   [season,[prefix,'Sintetico'],'sospesa','asc',1],['non-valida',[prefix],'','asc',80],
+   [season,['inesistente'],'','desc',1],[season,[prefix],'','asc',999],
+   ['tutte',[],'','asc',1]
+  ];
+  for(const id of [admin,secretary]){
+   await role(id);
+   for(const args of pageFilters)assert.deepEqual(await membersPageRpc(query,args),await membersPageOld(query,args));
+   assert.equal((await membersPageRpc(query,pageFilters[0])).rows.length,25);
+   assert.equal((await membersPageRpc(query,pageFilters[0])).counts.total,2000);
+   await denied(()=>membersPageRpc(query,[season,['%'],'','asc',1]),'22023');
+  }
+  for(const id of [member,disabled,null]){
+   await role(id,id?'authenticated':'anon');
+   await denied(()=>membersPageRpc(query,pageFilters[0]),'42501');
+  }
   await role(admin);
   const results=[];
   for(const rtt of [0,40,80]){
-   for(const [name,before,after] of [['dashboard',dashboardOld,dashboardRpc],['soci-counts',q=>memberOld(q,season,[prefix]),q=>memberRpc(q,season,[prefix])],['incassi-totals',q=>financeOld(q,financialFilters[0]),q=>financeRpc(q,financialFilters[0])],['navigation-account',navOld,navRpc],['inventory-page',q=>inventoryOld(q,inventoryFilters[0]),q=>inventoryRpc(q,inventoryFilters[0])],['person-options',q=>optionsOld(q,optionFilters[0]),q=>optionsRpc(q,optionFilters[0])]]){
+   for(const [name,before,after] of [['dashboard',dashboardOld,dashboardRpc],['soci-counts',q=>memberOld(q,season,[prefix]),q=>memberRpc(q,season,[prefix])],['incassi-totals',q=>financeOld(q,financialFilters[0]),q=>financeRpc(q,financialFilters[0])],['navigation-account',navOld,navRpc],['inventory-page',q=>inventoryOld(q,inventoryFilters[0]),q=>inventoryRpc(q,inventoryFilters[0])],['person-options',q=>optionsOld(q,optionFilters[0]),q=>optionsRpc(q,optionFilters[0])],['soci-page',q=>membersPageOld(q,pageFilters[0]),q=>membersPageRpc(q,pageFilters[0])]]){
     const sample=async(fn)=>{
      let requests=0;
      const q=async(sql,args)=>{requests++;if(rtt)await delay(rtt);return db.query(sql,args);};

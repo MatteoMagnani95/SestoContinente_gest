@@ -180,3 +180,35 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.sc_perf_person_options(text,integer,uuid) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.sc_perf_person_options(text,integer,uuid) TO authenticated;
+
+
+-- Single fresh, consistent member list snapshot, with exactly the original filter semantics.
+CREATE FUNCTION public.sc_perf_soci_page(p_season text,p_terms text[],p_status text,p_order text,p_page integer)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY INVOKER SET search_path='' AS $$
+DECLARE chosen uuid; season_options jsonb; result jsonb;
+BEGIN
+ IF NOT COALESCE(public.is_staff(),false) THEN RAISE EXCEPTION 'Accesso non autorizzato' USING ERRCODE='42501'; END IF;
+ IF p_page IS NULL OR p_page NOT BETWEEN 1 AND 10000 OR p_order IS NULL OR p_order NOT IN ('asc','desc') OR p_status IS NULL OR p_status NOT IN ('','attiva','da_perfezionare','sospesa','cessata') OR cardinality(coalesce(p_terms,ARRAY[]::text[]))>6 OR EXISTS(SELECT 1 FROM unnest(p_terms) AS t(term) WHERE term IS NULL OR length(term)>80 OR strpos(term,'%')>0 OR strpos(term,'_')>0 OR strpos(term,chr(92))>0) THEN
+  RAISE EXCEPTION 'Filtro non valido' USING ERRCODE='22023';
+ END IF;
+ SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'nome',nome,'attiva',attiva) ORDER BY dal DESC,id),'[]'::jsonb) INTO season_options FROM public.stagioni;
+ SELECT id INTO chosen FROM public.stagioni WHERE id::text=p_season;
+ IF chosen IS NULL AND p_season IS DISTINCT FROM 'tutte' THEN SELECT id INTO chosen FROM public.stagioni WHERE attiva ORDER BY dal DESC,id LIMIT 1; END IF;
+ WITH matching AS MATERIALIZED (
+  SELECT adesione_id,persona_id,stagione_id,stagione,stato,nome,cognome,codice_fiscale,email,telefono FROM public.schede_soci s
+  WHERE (chosen IS NULL OR s.stagione_id=chosen)
+  AND NOT EXISTS(SELECT 1 FROM unnest(p_terms) AS t(term) WHERE NOT(coalesce(s.nome,'') ILIKE '%'||term||'%' OR coalesce(s.cognome,'') ILIKE '%'||term||'%' OR coalesce(s.codice_fiscale,'') ILIKE '%'||term||'%'))
+ ), selected AS MATERIALIZED (
+  SELECT * FROM matching WHERE p_status='' OR stato::text=p_status
+ ), page_rows AS (
+  SELECT * FROM selected ORDER BY CASE WHEN p_order='asc' THEN cognome END ASC,CASE WHEN p_order='desc' THEN cognome END DESC,CASE WHEN p_order='asc' THEN nome END ASC,CASE WHEN p_order='desc' THEN nome END DESC,adesione_id LIMIT 25 OFFSET (p_page-1)*25
+ )
+ SELECT jsonb_build_object('seasons',season_options,'chosen',coalesce(chosen::text,'tutte'),
+ 'count',(SELECT count(*) FROM selected),
+ 'counts',(SELECT jsonb_build_object('total',count(*),'attiva',count(*) FILTER(WHERE stato='attiva'),'da_perfezionare',count(*) FILTER(WHERE stato='da_perfezionare'),'sospesa',count(*) FILTER(WHERE stato='sospesa'),'cessata',count(*) FILTER(WHERE stato='cessata')) FROM matching),
+ 'rows',(SELECT coalesce(jsonb_agg(to_jsonb(r) ORDER BY CASE WHEN p_order='asc' THEN cognome END ASC,CASE WHEN p_order='desc' THEN cognome END DESC,CASE WHEN p_order='asc' THEN nome END ASC,CASE WHEN p_order='desc' THEN nome END DESC,adesione_id),'[]'::jsonb) FROM page_rows r))
+ INTO result;
+ RETURN result;
+END $$;
+REVOKE ALL ON FUNCTION public.sc_perf_soci_page(text,text[],text,text,integer) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.sc_perf_soci_page(text,text[],text,text,integer) TO authenticated;
