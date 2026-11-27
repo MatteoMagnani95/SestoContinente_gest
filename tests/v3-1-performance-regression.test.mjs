@@ -138,3 +138,13 @@ test('simple reference archives defer full option lists until an editor is reque
  assert.match(source,/initialOpen=\{nuovo==='1'&&!msg\}/);
  assert.match(source,/refQuery\(\).range\(offset,offset\+499\)/);
 });
+
+test('course candidate generation is tab-specific and preserves enrollment exclusions',()=>{
+ const source=read('app/gestionale/corsi/[id]/page.tsx');
+ assert.match(source,/const personById=new Map\(people.map/);
+ assert.match(source,/const incompatibleLearnerIds=new Set\(enrollments.filter\(e=>\['iscritto','in_attesa','concluso'\].includes\(e.stato\)\)/);
+ assert.match(source,/teacherCandidates=tab==='istruttori'\?people.filter\(person=>qualified.has\(person.id\)&&!assignedIds.has\(person.id\)&&!incompatibleLearnerIds.has\(person.id\)\)/);
+ assert.match(source,/candidateRows=tab==='allievi'\?people.map/);
+ assert.match(source,/t.id===ed.direttore_id\|\|!incompatibleLearnerIds.has\(t.id\)/);
+ assert.match(source,/if\(!certificateByPerson.has\(cert.persona_id\)\)certificateByPerson.set\(cert.persona_id,cert\)/);
+});
