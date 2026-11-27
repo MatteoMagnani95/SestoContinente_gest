@@ -199,7 +199,8 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
     active.push(...batch);if(batch.length<500)break;offset+=batch.length;
    }
    const existingIds=[...new Set((data??[]).map(row=>String(row.iscrizione_id??'')).filter(Boolean))];
-   const missing=existingIds.filter(id=>!active.some(r=>r.id===id));
+   const activeIds=new Set(active.map(r=>r.id));
+   const missing=existingIds.filter(id=>!activeIds.has(id));
    const historical=missing.length?await supabase.from('iscrizioni_corsi').select(columns).in('id',missing):{data:[],error:null};
    if(historical.error)enrollmentLoadError=true;
    const map=(r:Enroll,selectable:boolean):Row=>{
@@ -213,20 +214,27 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
    const columns='id,sort_cognome,sort_nome,stagione_id';
    const members:{id:string;sort_cognome:string|null;sort_nome:string|null;stagione_id:string}[]=[];
    const seasons:{id:string;nome:string}[]=[];
-   for(let offset=0;;offset+=500){const {data:batch,error}=await supabase.from('gest_elenco_adesioni').select(columns).order('sort_cognome').order('sort_nome').order('id').range(offset,offset+499);if(error){referenceError=true;break;}members.push(...(batch??[]));if((batch??[]).length<500)break;}
-   for(let offset=0;;offset+=500){const {data:batch,error}=await supabase.from('stagioni').select('id,nome').order('id').range(offset,offset+499);if(error){referenceError=true;break;}seasons.push(...(batch??[]));if((batch??[]).length<500)break;}
-   const missing=currentIds.filter(id=>!members.some(r=>r.id===id));
+   await Promise.all([
+    (async()=>{for(let offset=0;;offset+=500){const {data:batch,error}=await supabase.from('gest_elenco_adesioni').select(columns).order('sort_cognome').order('sort_nome').order('id').range(offset,offset+499);if(error){referenceError=true;break;}members.push(...(batch??[]));if((batch??[]).length<500)break;}})(),
+    (async()=>{for(let offset=0;;offset+=500){const {data:batch,error}=await supabase.from('stagioni').select('id,nome').order('id').range(offset,offset+499);if(error){referenceError=true;break;}seasons.push(...(batch??[]));if((batch??[]).length<500)break;}})()
+   ]);
+   const memberIds=new Set(members.map(r=>r.id));
+   const seasonNames=new Map(seasons.map(s=>[s.id,s.nome]));
+   const missing=currentIds.filter(id=>!memberIds.has(id));
    const {data:extra,error:extraError}=missing.length?await supabase.from('gest_elenco_adesioni').select(columns).in('id',missing):{data:[],error:null};if(extraError)referenceError=true;
-   for(const a of [...members,...(extra??[])])rows.push({id:a.id,etichetta:`${a.sort_cognome??''} ${a.sort_nome??''} · ${seasons.find(s=>s.id===a.stagione_id)?.nome??'Stagione'}`});
+   for(const a of [...members,...(extra??[])])rows.push({id:a.id,etichetta:`${a.sort_cognome??''} ${a.sort_nome??''} · ${seasonNames.get(a.stagione_id)??'Stagione'}`});
    references[table]=rows.sort((a,b)=>String(a.etichetta).localeCompare(String(b.etichetta),'it'));return;
   }
   const ref=module.fields.find(f=>f.ref?.table===table)?.ref;
   const cols=[...new Set(['id',...(ref?.labels??[]),...(modulo==='prenotazioni'&&table==='corsie'?['numero','piscina_id','note']:[]),...(modulo==='prenotazioni'&&table==='lezioni'?['titolo','edizione_id','inizio','fine','piscina_id','annullata_il']:[]),...(modulo==='prenotazioni'&&table==='piscine'?['nome','orari_disponibili','limitazioni']:[]),...(modulo==='iscrizioni'&&table==='edizioni_corsi'?['stagione_id','stato','direttore_id']:[])])].join(',');
   const refOrder=ref?.labels?.[0]??(table==='piscine'?'nome':'id');
-  let refQuery=supabase.from(table).select(cols).order(refOrder,{ascending:true});
-  if(table==='persone')refQuery=refQuery.order('nome',{ascending:true});
+  const refQuery=()=>{
+   let query=supabase.from(table).select(cols).order(refOrder,{ascending:true});
+   if(table==='persone')query=query.order('nome',{ascending:true});
+   return query.order('id');
+  };
   let selected:Row[]=[];
-  for(let offset=0;;offset+=500){const {data:batch,error:refError}=await refQuery.order('id').range(offset,offset+499);if(refError){referenceError=true;break;}selected.push(...((batch??[]) as unknown as Row[]));if((batch??[]).length<500)break;}
+  for(let offset=0;;offset+=500){const {data:batch,error:refError}=await refQuery().range(offset,offset+499);if(refError){referenceError=true;break;}selected.push(...((batch??[]) as unknown as Row[]));if((batch??[]).length<500)break;}
   const currentKeys=module.fields.filter(f=>f.ref?.table===table).map(f=>f.name);
   const selectedIds=new Set(selected.map(r=>r.id));
   const missingIds=[...new Set((data??[]).flatMap(row=>currentKeys.map(k=>String(row[k]??''))).filter(id=>id&&!selectedIds.has(id)))];
