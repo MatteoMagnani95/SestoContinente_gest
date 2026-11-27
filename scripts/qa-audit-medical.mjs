@@ -22,7 +22,18 @@ const login=async a=>{assert.match(a.email,/@example\.invalid$/);const c=createC
 const [owner,other,staff]=await Promise.all([login(accounts.member),login(accounts.guardian),login(accounts.staff)]);
 const db=new Client({connectionString:dbUrl.href});await db.connect();
 const browser=await chromium.launch();
+const browserContexts=new Map();
 try{
+ for(const role of ['member','guardian','staff']){
+  const ctx=await browser.newContext({baseURL:app.href});
+  browserContexts.set(role,ctx);
+  const page=await ctx.newPage();
+  await page.goto('/accedi');
+  await page.locator('input[name=email]').first().fill(accounts[role].email);
+  await page.locator('input[name=password]').fill(accounts[role].password);
+  await page.getByRole('button',{name:'Accedi',exact:true}).click();
+  await page.waitForURL(u=>!['/accedi','/smista','/'].includes(u.pathname),{timeout:30000});
+ }
  const pdf=await PDFDocument.create();pdf.addPage();const bytes=Buffer.from(await pdf.save());
  const med=randomUUID(),normal=randomUUID(),unknown=randomUUID();
  const paths={med:accounts.member.id+'/documenti/'+med+'.pdf',normal:accounts.member.id+'/documenti/'+normal+'.pdf'};
@@ -39,23 +50,22 @@ try{
   for(const c of [owner,other,staff])assert.ok((await c.storage.from('sesto-documenti').download(paths.med)).error,'direct medical storage must remain denied');
   checked(await owner.storage.from('sesto-documenti').createSignedUrl(paths.normal,60),'ordinary file signed URL');
   for(const role of ['member','guardian','staff']){
-   const ctx=await browser.newContext({baseURL:app.href,storageState:join(work,role+'.json')});
-   try{
-    const response=await ctx.request.get('/documenti/'+med+'?download=1',{maxRedirects:0});
-    if(role==='guardian')assert.equal(response.status(),404);
-    else{assert.equal(response.status(),200);assert.deepEqual(await response.body(),bytes);assert.match(response.headers()['cache-control'],/no-store/);}
-   }finally{await ctx.close();}
+   const ctx=browserContexts.get(role);
+   const response=await ctx.request.get('/documenti/'+med+'?download=1',{maxRedirects:0});
+   if(role==='guardian')assert.equal(response.status(),404);
+   else{assert.equal(response.status(),200);assert.deepEqual(await response.body(),bytes);assert.match(response.headers()['cache-control'],/no-store/);}
   }
   assert.ok((await admin.from('documenti').update({categoria:'Collaudo'}).eq('id',med)).error,'medical metadata immutable even for privileged update');
  };
- await verifyAccess();
  // Positive reproduction: the unrelated account cannot read metadata but can
  // distinguish a known medical UUID / legacy path from a normal or absent one.
  assert.equal(checked(await classify(other,med),'baseline classification'),true);
  assert.equal(checked(await classify(other,unknown),'baseline absent'),false);
  assert.equal(checked(await pathClass(other,paths.med),'baseline path classification'),true);
  assert.equal(checked(await pathClass(other,paths.normal),'baseline ordinary path'),false);
- console.log('REPRODUCED AUD-006: unauthorized classification of synthetic UUID and legacy path; content still denied');
+ assert.equal(await visibility(other,med),0);
+ console.log('REPRODUCED AUD-006: unauthorized classification of synthetic UUID and legacy path; metadata still denied');
+ await verifyAccess();
  const migration=process.argv[2];assert.ok(migration&&resolve(migration).startsWith(root+'/supabase/migrations/'));
  await db.query('begin');
  try{await db.query(await readFile(migration,'utf8'));await db.query('commit');}catch(err){await db.query('rollback');throw err;}

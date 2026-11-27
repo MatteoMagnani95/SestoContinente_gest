@@ -1,0 +1,82 @@
+name: Audit 3.2 - AUD-006 sicurezza documenti
+on:
+  pull_request:
+    branches: ['feature/gestionale-3.2-marine-premium']
+    types: [opened, synchronize, reopened]
+permissions:
+  contents: read
+concurrency:
+  group: audit-006-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+jobs:
+  medical:
+    if: github.head_ref == 'audit/3.2-functional' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      QA_ISOLATED_ENV: 'true'
+      SESTO_TEST_MODE: 'true'
+      SESTO_EMAIL_MODE: simulate
+      QA_BASE_URL: http://127.0.0.1:3314
+      NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3314
+      NEXT_TELEMETRY_DISABLED: '1'
+      SC_STRUCTURAL_RPC: 'false'
+      SC_STRUCTURAL_RPC_RELEASE: 'false'
+      QA_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 3.4.0
+      - name: Dipendenze e browser
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Avvia solo Supabase locale
+        run: |
+          set -euo pipefail
+          if [ ! -f supabase/config.toml ] && [ ! -f supabase/config.jsonc ]; then supabase init; fi
+          if [ ! -f supabase/config.toml ]; then supabase config convert --to toml; fi
+          python3 scripts/qa-local-status.py --self-test
+          python3 scripts/qa-local-config.py
+          supabase start > "$RUNNER_TEMP/sesto-supabase-start.log" 2>&1 || { echo "Avvio/migrazioni Supabase locale non riusciti"; exit 1; }
+          status=$(mktemp)
+          chmod 600 "$status"
+          trap 'rm -f "$status"' EXIT
+          supabase status --output env > "$status"
+          work=$(mktemp -d "$RUNNER_TEMP/sesto-qa.XXXXXX")
+          chmod 700 "$work"
+          python3 scripts/qa-local-status.py "$status" "$work"
+      - name: Build e avvio candidato OFF
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$QA_HEAD_SHA"
+          node scripts/qa-local-supabase.mjs seed
+          npm run build
+          npm run start -- --hostname 127.0.0.1 --port 3314 > "$RUNNER_TEMP/sesto-qa-next.log" 2>&1 &
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:3314/ >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          exit 1
+      - name: AUD-006 riproduzione e regressione SQL isolata
+        timeout-minutes: 8
+        run: |
+          set -euo pipefail
+          supabase migration new audit006_private_medical_classification
+          file=$(find supabase/migrations -maxdepth 1 -name '*_audit006_private_medical_classification.sql' -print)
+          test -f "$file"
+          cp docs/audit-3.2/AUD006_CANDIDATE.sql "$file"
+          node scripts/qa-audit-medical.mjs "$file"
+      - name: Pulizia servizi e dati sintetici
+        if: always()
+        run: |
+          if [ -n "${QA_WORK_DIR:-}" ] && [[ "$QA_WORK_DIR" == "$RUNNER_TEMP"/sesto-qa.* ]]; then rm -rf "$QA_WORK_DIR"; fi
+          supabase stop --no-backup >/dev/null 2>&1 || true
