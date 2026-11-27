@@ -1,7 +1,7 @@
 name: QA comparativa prestazioni 3.1 (locale)
 on:
   push:
-    branches: ['release/gestionale-3.1', 'perf/3.1-migration', 'perf/3.1-final-gates', 'perf/3.1-courses-calendar']
+    branches: ['release/gestionale-3.1', 'perf/3.1-migration', 'perf/3.1-final-gates', 'perf/3.1-courses-calendar', 'perf/3.1-snapshot-parity']
   workflow_dispatch:
 permissions:
   contents: read
@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   compare:
-    if: github.ref == 'refs/heads/release/gestionale-3.1' || github.ref == 'refs/heads/perf/3.1-migration' || github.ref == 'refs/heads/perf/3.1-final-gates' || github.ref == 'refs/heads/perf/3.1-courses-calendar'
+    if: github.ref == 'refs/heads/release/gestionale-3.1' || github.ref == 'refs/heads/perf/3.1-migration' || github.ref == 'refs/heads/perf/3.1-final-gates' || github.ref == 'refs/heads/perf/3.1-courses-calendar' || github.ref == 'refs/heads/perf/3.1-snapshot-parity'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -94,6 +94,7 @@ jobs:
             sleep 1
           done
           node scripts/qa-structural-disabled.mjs
+          node scripts/qa-course-calendar-parity.mjs
           if grep -q 'QA_STRUCTURAL_RPC_USED' "$RUNNER_TEMP/sesto-qa-disabled.log"; then exit 1; fi
       - name: Mutazioni e autenticazione reali, solo sintetiche
         run: |

@@ -251,3 +251,12 @@ test('course and calendar snapshots are staff-only, bounded and retain legacy fa
  assert.match(sql,/pg_column_size\(result\)>2097152/);
  assert.match(read('.github/workflows/performance-3-1.yml'),/courses-page calendar-snapshot; do grep/);
 });
+
+test('browser snapshot parity compares both staff roles and the full rendered results with activation disabled',()=>{
+ const source=read('scripts/qa-course-calendar-parity.mjs');
+ assert.match(source,/for\(const role of \['staff','secretary'\]\)/);
+ assert.match(source,/for\(const key of \['text','links','selects','progress'\]\)assert.deepEqual/);
+ assert.match(source,/edizione:fixtures.secondEdition/);
+ assert.match(source,/Prenotata\.\*Lezione sintetica/);
+ assert.match(read('.github/workflows/performance-3-1.yml'),/node scripts\/qa-course-calendar-parity\.mjs/);
+});
