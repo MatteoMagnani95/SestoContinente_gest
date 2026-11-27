@@ -1,0 +1,497 @@
+{
+  "baseline": "38e27a88aa8de7369e0d7c3578aa585542ad7cd4",
+  "tree": "d15fab8c3abdfc497ceeab2108df6c19e31024d2",
+  "truncated": false,
+  "entries": 526,
+  "routeFiles": [
+    {
+      "path": "app/accedi/page.tsx",
+      "sha": "7eb6ed7a3ab4df8bab8f37c2a35298e83cc4cdb6"
+    },
+    {
+      "path": "app/api/cron/promemoria/route.ts",
+      "sha": "4bad00e4e710ce7e87a80dd787f4c9faa9ce0b2b"
+    },
+    {
+      "path": "app/area-personale/certificato/page.tsx",
+      "sha": "89a353a04494f00004c92d33759294ffc244b46d"
+    },
+    {
+      "path": "app/area-personale/corsi/page.tsx",
+      "sha": "6a42cb16a179fbcc90b1300d6593d2c74cb53e68"
+    },
+    {
+      "path": "app/area-personale/documenti/page.tsx",
+      "sha": "85106f625ba251ff09e2499c43c9b809d0f97aaa"
+    },
+    {
+      "path": "app/area-personale/page.tsx",
+      "sha": "a9e2680fa8b57f580c9b936ac75e7edc2c7877fb"
+    },
+    {
+      "path": "app/area-personale/profilo/page.tsx",
+      "sha": "003e81244b469b87feca1fa6b68c1629ae171e4d"
+    },
+    {
+      "path": "app/area-soci/page.tsx",
+      "sha": "ff7b9ce198f46449529ee285740ab34bdad7adaf"
+    },
+    {
+      "path": "app/auth/callback/route.ts",
+      "sha": "da8431b76554d2193d627476bd4e6ddf18032ae0"
+    },
+    {
+      "path": "app/comunicazioni/corsi/[id]/page.tsx",
+      "sha": "8991a4fed8bf004cdc9aa5248caee6cdf802e0df"
+    },
+    {
+      "path": "app/comunicazioni/soci/[id]/page.tsx",
+      "sha": "cb463a7acdbc9a5e4fb269835af4405cfcba1101"
+    },
+    {
+      "path": "app/documenti/[id]/route.ts",
+      "sha": "56d207c8911d6f630ac12aed2d343b367bd134e0"
+    },
+    {
+      "path": "app/documenti/page.tsx",
+      "sha": "68f542b3b36a54134f7fdade2c681984ba9d44ed"
+    },
+    {
+      "path": "app/gestionale/amministrazione-dati/dipendenze/[tabella]/[id]/page.tsx",
+      "sha": "f801e32914181fa587e21a0d8394a16efabd215b"
+    },
+    {
+      "path": "app/gestionale/amministrazione-dati/page.tsx",
+      "sha": "7b0733ee386f64c409e6b8e5a77d18cff1046118"
+    },
+    {
+      "path": "app/gestionale/archivio-incassi/page.tsx",
+      "sha": "43d42de0845b1715348e2035f7c54fcccfb6bbba"
+    },
+    {
+      "path": "app/gestionale/attrezzature/[id]/page.tsx",
+      "sha": "a8bc1c1db5a015a7464548edd4310dc863beecfb"
+    },
+    {
+      "path": "app/gestionale/calendario-visivo/[id]/page.tsx",
+      "sha": "ce7dade859fefbe77467e3b0c456f3a25fd815c4"
+    },
+    {
+      "path": "app/gestionale/calendario-visivo/page.tsx",
+      "sha": "a50fed762d459c54d313256ee587b5cbaf1713cb"
+    },
+    {
+      "path": "app/gestionale/corsi/[id]/page.tsx",
+      "sha": "733bb1848ba654f08e843f498df4490483ecaf2c"
+    },
+    {
+      "path": "app/gestionale/corsi/[id]/stampe/route.ts",
+      "sha": "1118d7989b336d73ebe1f832395fe647e087bd70"
+    },
+    {
+      "path": "app/gestionale/corsi/nuovo/page.tsx",
+      "sha": "80ce475302efda7a22af66f29dadac19fc417109"
+    },
+    {
+      "path": "app/gestionale/corsi/page.tsx",
+      "sha": "8f0f48d196b848df6349b3455deee05127b99988"
+    },
+    {
+      "path": "app/gestionale/economia/page.tsx",
+      "sha": "e1f1b27b281c96bc9040bf2084ba2ec0c80d3449"
+    },
+    {
+      "path": "app/gestionale/esporta/[modulo]/route.ts",
+      "sha": "e300f7369c34e0b008d860dc6f5036f2aaf17742"
+    },
+    {
+      "path": "app/gestionale/importazione/modello/route.ts",
+      "sha": "b3f029359b65b3f8efc3cb5d3bc81106ea436259"
+    },
+    {
+      "path": "app/gestionale/importazione/page.tsx",
+      "sha": "41c5a2d4b88c1893d1ff8b0b8e1de134223b2a1d"
+    },
+    {
+      "path": "app/gestionale/incassi/[id]/page.tsx",
+      "sha": "bd6a949660867f6e4d34f4e26e4bf5d5d4bd3746"
+    },
+    {
+      "path": "app/gestionale/incassi/page.tsx",
+      "sha": "eb8bda4b82fa05749d36756dd404a204fd03ad75"
+    },
+    {
+      "path": "app/gestionale/incassi/person-options/route.ts",
+      "sha": "3693f141ee3c920a86ad463f71ccfefe2f9c5bb9"
+    },
+    {
+      "path": "app/gestionale/incassi/posizione/[id]/page.tsx",
+      "sha": "ff4888db614caa27747dbcc3d00a4e6450cf95aa"
+    },
+    {
+      "path": "app/gestionale/layout.tsx",
+      "sha": "851166f2a518f0c330da2ff359b6f1b0248980b5"
+    },
+    {
+      "path": "app/gestionale/moduli/[modulo]/page.tsx",
+      "sha": "39c6f1bef70c5959b1f69deb83e61e4a4376d3ee"
+    },
+    {
+      "path": "app/gestionale/moduli/attrezzature/page.tsx",
+      "sha": "66b527271146f8ecff9042c20e62c44bd39400e1"
+    },
+    {
+      "path": "app/gestionale/moduli/consegne/page.tsx",
+      "sha": "d28838f601d3632b55b317097b21cad0a6a3df1f"
+    },
+    {
+      "path": "app/gestionale/moduli/contabilita/page.tsx",
+      "sha": "a61a3fd65ac76df3170d339a2d078ee291c716e7"
+    },
+    {
+      "path": "app/gestionale/moduli/iscrizioni/page.tsx",
+      "sha": "c97a8de281da8b37e3b5bcb7dfe97bdda5e69657"
+    },
+    {
+      "path": "app/gestionale/moduli/piscine/page.tsx",
+      "sha": "5fc108b8c706e1feade349ad7d4a3b0a458f4f21"
+    },
+    {
+      "path": "app/gestionale/moduli/revisioni/page.tsx",
+      "sha": "31433977c56211fa6cfd44eb816dc1486016506c"
+    },
+    {
+      "path": "app/gestionale/page.tsx",
+      "sha": "7e561fce42dd4bebb7abf83ebb1d6a10e7ce1679"
+    },
+    {
+      "path": "app/gestionale/programmi-didattici/page.tsx",
+      "sha": "c8654c28fc3cc2256845d8150a8d17df34ecc93b"
+    },
+    {
+      "path": "app/gestionale/report/page.tsx",
+      "sha": "8a1af1cbd52ade108461cba07cc4ab06d3e269f6"
+    },
+    {
+      "path": "app/gestionale/richieste/[id]/page.tsx",
+      "sha": "e7f2594568684dab0811b84767056206046e4c2a"
+    },
+    {
+      "path": "app/gestionale/richieste/page.tsx",
+      "sha": "58f17eb59326e96b84e66ac2ac2fd194b3d98bfc"
+    },
+    {
+      "path": "app/gestionale/soci/[id]/page.tsx",
+      "sha": "7e555d1612d35f0f6dc4e2ceda3e3097f2f459c9"
+    },
+    {
+      "path": "app/gestionale/soci/page.tsx",
+      "sha": "50a6348bd7d4c936c5a435644cbfe3f18ef671c8"
+    },
+    {
+      "path": "app/gestionale/utenti/[id]/elimina/page.tsx",
+      "sha": "e842ae30df4de983d5d6434f157972aaba5e2a56"
+    },
+    {
+      "path": "app/gestionale/utenti/[id]/page.tsx",
+      "sha": "29bec84833eefcdefc5baf33fd29ba9a1adcb7d0"
+    },
+    {
+      "path": "app/gestionale/utenti/page.tsx",
+      "sha": "772dcbae26ee0065c9558e28304062bd3bc13c0d"
+    },
+    {
+      "path": "app/gestione-eventi/[id]/page.tsx",
+      "sha": "fb362687662076a7f26484ead01db6014a84da98"
+    },
+    {
+      "path": "app/gestione-eventi/page.tsx",
+      "sha": "9c79f3f8349c5b26e4df70fbe7e7e1ccd94cfa12"
+    },
+    {
+      "path": "app/istruttore/page.tsx",
+      "sha": "9d5d7e1fe21826cfce882b20e84c5faf083c488d"
+    },
+    {
+      "path": "app/layout.tsx",
+      "sha": "ee3e63f5efac8dabb37a6066683132d13416d40c"
+    },
+    {
+      "path": "app/notifiche/page.tsx",
+      "sha": "a0fcaa5938cf0c5333ba571588f0c09b15545909"
+    },
+    {
+      "path": "app/nuova-password/page.tsx",
+      "sha": "22bb1f76f319a1695d5309b7333d9830b6b0f97c"
+    },
+    {
+      "path": "app/organi-sociali/archivio/[id]/page.tsx",
+      "sha": "587d84d80037ab4df4d54ea642a3a8da14d3de5e"
+    },
+    {
+      "path": "app/organi-sociali/archivio/page.tsx",
+      "sha": "2397d6eebc2bb5b2581107ad1b8f299b8166cc97"
+    },
+    {
+      "path": "app/organi-sociali/documento/[id]/route.ts",
+      "sha": "fdb0a78dd13a3971095a20effe27daa8b72f982f"
+    },
+    {
+      "path": "app/organi-sociali/page.tsx",
+      "sha": "9efd9c48b7bbeac3d5518a417f8fc8288c0b0071"
+    },
+    {
+      "path": "app/organi-sociali/riepilogo/page.tsx",
+      "sha": "fb19a74176dc6276644aa6d418d07037b2b2ce39"
+    },
+    {
+      "path": "app/page.tsx",
+      "sha": "7b0a0aacbfd0ce654e7271c9823b929718f29400"
+    },
+    {
+      "path": "app/registrati/informativa-test/page.tsx",
+      "sha": "614a6b1c01617eb751439b72410600bf220a223e"
+    },
+    {
+      "path": "app/registrati/page.tsx",
+      "sha": "760cc022a15308dc3b6260b1ccabff104e021f2a"
+    },
+    {
+      "path": "app/richiesta/documenti-test/page.tsx",
+      "sha": "8ed6b827b539d5941d14d5f5281ccae75fa0fca1"
+    },
+    {
+      "path": "app/richiesta/nuova/page.tsx",
+      "sha": "ec10daf585f8251fe48dd73b025e9f1f0dd7b3d2"
+    },
+    {
+      "path": "app/richiesta/stato/page.tsx",
+      "sha": "164de3225052b74d306c73d9b1d52fd869a94c2c"
+    },
+    {
+      "path": "app/smista/page.tsx",
+      "sha": "00a7db7906625813ac5dcb7f674fef33202d10a2"
+    }
+  ],
+  "components": [
+    {
+      "path": "components/AppShell.tsx",
+      "sha": "352a8fd4cdb68d078b6a4145c15bb0abdc33ac0e"
+    },
+    {
+      "path": "components/ApplicationForm.tsx",
+      "sha": "7ce9794c2e314736eeff1d07334970ed87f08c0f"
+    },
+    {
+      "path": "components/ApplicationReviewForm.tsx",
+      "sha": "b15488ecbdb6cde42c9bae4e331dcce28b7639f6"
+    },
+    {
+      "path": "components/AssociationMailForm.tsx",
+      "sha": "64c51f94f8d35096e26fe37694d3339b20c8dc2a"
+    },
+    {
+      "path": "components/AuthForm.tsx",
+      "sha": "dc72e6146cf167e295df6e0072ca9e3e09f1715c"
+    },
+    {
+      "path": "components/BoardAdmissions.tsx",
+      "sha": "9d6e12cfcb14e381e3775f50319f3d460e3f3d55"
+    },
+    {
+      "path": "components/BoardDraftFields.tsx",
+      "sha": "6580ae8657e702433356c09bed0c793d8123b0a5"
+    },
+    {
+      "path": "components/BoardFile.tsx",
+      "sha": "d8146dca349cd4b3d93a53de8af48384ac065e9c"
+    },
+    {
+      "path": "components/BookingConflictPreview.tsx",
+      "sha": "cfcbe386086fb6af4c1211d52974fc50dc2d1baf"
+    },
+    {
+      "path": "components/CalendarContextFields.tsx",
+      "sha": "025935278f56a67e7932525b17c4c985a40841a7"
+    },
+    {
+      "path": "components/CancelEditButton.tsx",
+      "sha": "93fc290d823d5fc0b5ad8a129db3353e967ade39"
+    },
+    {
+      "path": "components/CertificateUploadForm.tsx",
+      "sha": "e2bf25aaa9c03128bdb56cf12d12e69dfd22c908"
+    },
+    {
+      "path": "components/CodiceFiscaleAssist.tsx",
+      "sha": "bb6e0f1d17243cf8f43bc3a1bda6af8121e486b9"
+    },
+    {
+      "path": "components/CourseEnrollmentSelect.tsx",
+      "sha": "deb4a98ada0fcf078022e20254bab53dda022001"
+    },
+    {
+      "path": "components/CourseLanePicker.tsx",
+      "sha": "2b008b313603c5abaa312159598aed7838616e13"
+    },
+    {
+      "path": "components/CourseLegacyAnchor.tsx",
+      "sha": "b666ca9d325f77fa2b033e3ae4e986c1d3a3d271"
+    },
+    {
+      "path": "components/CourseLessonFields.tsx",
+      "sha": "494ad8996faf5233b1603a9dc470da3977fcdfc7"
+    },
+    {
+      "path": "components/CourseScheduleFields.tsx",
+      "sha": "1f23c3506af3ed25a5ad8eb8844cc0553f8f0410"
+    },
+    {
+      "path": "components/CourseStudentPicker.tsx",
+      "sha": "c7cd0eb0d038a037d2a97ca50274652f8f8a86dd"
+    },
+    {
+      "path": "components/Cronologia.tsx",
+      "sha": "e1c79c23732035d517d7f001bcc38ea65b46bd27"
+    },
+    {
+      "path": "components/DeferredEditorButton.tsx",
+      "sha": "8fe5850647561feabd170091819f603226e93e27"
+    },
+    {
+      "path": "components/Dichiarazioni.tsx",
+      "sha": "6bdb7bc17591970c8b9831903cdc1f891b64b09a"
+    },
+    {
+      "path": "components/DocumentDestination.tsx",
+      "sha": "282cb281092b8b975ed24664f463a5c3f9f68046"
+    },
+    {
+      "path": "components/EditForm.tsx",
+      "sha": "f25759b008b991814851ceeaa8fce83f8ea5a10b"
+    },
+    {
+      "path": "components/EligibleEnrollmentSelect.tsx",
+      "sha": "fc9861d0df122aaaa32d125ce3e6767c2610e696"
+    },
+    {
+      "path": "components/Emergenza.tsx",
+      "sha": "59afb35f1472a3c8fafcde453f28e8afe5957798"
+    },
+    {
+      "path": "components/EquipmentEditors.tsx",
+      "sha": "8e65e14bb2a08302b75e4a556463bf0da0a2188f"
+    },
+    {
+      "path": "components/EventEditor.tsx",
+      "sha": "af4b6e8e80955b3353ca78ccd64eaa6e9825e7be"
+    },
+    {
+      "path": "components/GlobalCancelButtons.tsx",
+      "sha": "42069dcc1c3efaaf02fb90a90de5cb5a10b5c1b9"
+    },
+    {
+      "path": "components/GlobalSearch.tsx",
+      "sha": "fa719079fdc97bec6635c215838d8def54c6b0a8"
+    },
+    {
+      "path": "components/LessonComposer.tsx",
+      "sha": "2a216954a2781a300b030d3dd307a21d697b51d6"
+    },
+    {
+      "path": "components/MailContextPage.tsx",
+      "sha": "76e98372b54717d800ffeabe25a4f086622f6e27"
+    },
+    {
+      "path": "components/PasswordField.tsx",
+      "sha": "17cd578c95546ca26ccbc8d7472f1ab11f1fdfd2"
+    },
+    {
+      "path": "components/PaymentReview.tsx",
+      "sha": "bc47350263bca8ccb555fbf7dc5be6acf8754456"
+    },
+    {
+      "path": "components/RemoveRecord.tsx",
+      "sha": "541265aefa3555d6c0c9ef34712ae9bbe1c50adc"
+    },
+    {
+      "path": "components/SceltaImmagini.tsx",
+      "sha": "69c526f9dfe834e98adc7cba899d6101b65f10ba"
+    },
+    {
+      "path": "components/SiteHeader.tsx",
+      "sha": "70ba46695f77552e0173eb7721f46acc3cd7e1d7"
+    },
+    {
+      "path": "components/StaffNav.tsx",
+      "sha": "705635adbb49c900cf9f8d4062214b39a5c32acd"
+    },
+    {
+      "path": "components/ui/ActionForm.tsx",
+      "sha": "2bf4c976e72e7e5db4a1c87946bc5162d6fbb51f"
+    },
+    {
+      "path": "components/ui/AuthIdentity.tsx",
+      "sha": "b1159a20a0ee2c069f2f511bdf624a3800fffeb7"
+    },
+    {
+      "path": "components/ui/BrandLogo.tsx",
+      "sha": "789676b1b07889869e447de92f52739fccf0db66"
+    },
+    {
+      "path": "components/ui/DataTable.tsx",
+      "sha": "36f6e6d97b08c40385e44d071679c565edad0297"
+    },
+    {
+      "path": "components/ui/Drawer.tsx",
+      "sha": "402a0011b9092900f5ae6cf42a5774dc5a4fd8ba"
+    },
+    {
+      "path": "components/ui/Icon.tsx",
+      "sha": "f6259d15bda8d5e8b324d1907a1874c7946a4a07"
+    },
+    {
+      "path": "components/ui/Primitives.tsx",
+      "sha": "a508c0140a61b0002d4179c41ccf160d398ad9fa"
+    },
+    {
+      "path": "components/ui/RemotePersonSelect.tsx",
+      "sha": "1feeffd94fb631e1d0c7388be913b4f1ecef2c49"
+    },
+    {
+      "path": "components/ui/SearchableSelect.tsx",
+      "sha": "63818a65715a708e8b87ac8c694ae47d7969c474"
+    },
+    {
+      "path": "components/ui/Secretariat.tsx",
+      "sha": "28655f70df0c5058b09772daef81fd236220061e"
+    }
+  ],
+  "logos": [
+    {
+      "path": "public/brand/favicon.png",
+      "sha": "4ac372f411c532efabdf2d1ee36e9ecdb64e0335",
+      "size": 7051
+    },
+    {
+      "path": "public/brand/marine-accent.svg",
+      "sha": "ac123291893b767b3d13b1db8131f4ca39750d56",
+      "size": 1608
+    },
+    {
+      "path": "public/brand/nereia-logo.png",
+      "sha": "06d3a385b200e1c077ea53f25ff8393c1ee6a515",
+      "size": 77319
+    },
+    {
+      "path": "public/brand/sestocontinente-logo.png",
+      "sha": "2bcec4beabc0eb32262198ac281887b6d5d1b66c",
+      "size": 79804
+    },
+    {
+      "path": "public/brand/sestocontinente-mark.png",
+      "sha": "03b69edc30785d13f03aa32ff03c9876ee418b92",
+      "size": 35480
+    }
+  ]
+}

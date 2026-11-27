@@ -1,3 +1,4 @@
+import AuthIdentity from '@/components/ui/AuthIdentity';
 import {PageHeader} from '@/components/ui/Primitives';
 import {applicationLegalConfig,isTestApplication} from '@/lib/application-config';
 import {versioneImmagini} from '@/lib/scelte';
@@ -16,10 +17,11 @@ export default async function NewRequest({searchParams}:{searchParams:Promise<{m
   const {data:scelta,error:sceltaError}=await supabase.from('scelte_iscrizione').select('id,scelta,versione').eq('utente_id',user.id).eq('tipo','immagini').order('id',{ascending:false}).limit(1).maybeSingle();
   if(sceltaError)return <div className="container narrow"><h1>Scelte non disponibili</h1><p>Non è possibile leggere le dichiarazioni già registrate. Riprova prima di modificare la domanda.</p><Link href="/richiesta/stato">Torna alla domanda</Link></div>;
   if(request&&(request.versione_statuto||request.versione_privacy)&&isTestApplication(request)!==legal.testMode)return <div className="container narrow"><h1>Modalità della pratica non disponibile</h1><p>Non è possibile convertire una pratica reale in collaudo o viceversa. Contatta la segreteria.</p><Link href="/richiesta/stato">Torna alla pratica</Link></div>;
-  return <div className="container narrow sc-applicant-page"><PageHeader area="secretariat" icon="clipboard" marine eyebrow="Adesione all'associazione" title={request?.stato==='integrazione_richiesta'?'Completa la tua domanda':'Richiedi l’adesione'} description="Compila i dati richiesti. La domanda sarà esaminata dalla segreteria."/>
+  return <div className="sc-marine-applicant-shell sc-marine-preview"><div className="container narrow sc-applicant-page"><div className="sc-marine-applicant-art" aria-hidden="true"/><PageHeader area="secretariat" icon="clipboard" marine eyebrow="Adesione all'associazione" title={request?.stato==='integrazione_richiesta'?'Completa la tua domanda':'Compila la domanda'} description="Compila i dati richiesti. La domanda sarà esaminata dalla segreteria."/>
+    <ol className="sc-registration-steps" aria-label="Passaggi per l’adesione">{['Creazione account','Verifica email','Domanda di adesione','Verifica associativa'].map((step,i)=><li key={step} aria-current={i===2?'step':undefined}><span>{i+1}</span>{step}</li>)}</ol>
     
     {request?.stato==='integrazione_richiesta' && <div className="notice"><strong>Informazioni richieste dalla segreteria:</strong> {request.nota_pubblica}</div>}
     {msg && <div className="notice error" role="alert">{queryMessage(msg)}</div>}
     <ApplicationForm saved={request?{...request,flag_statuto:request.versione_statuto===legal.statutoVersion&&request.flag_statuto,flag_privacy:request.versione_privacy===legal.privacyVersion&&request.flag_privacy}:null} sceltaRegistrata={scelta?.versione===(legal.testMode?'TEST-COLLAUDO-1':versioneImmagini)?scelta.scelta:null} sceltaAttesa={scelta?String(scelta.id):null} legalConfigured={legal.configured} testMode={legal.testMode} statutoUrl={legal.configured?legal.statutoUrl:''} privacyUrl={legal.configured?legal.privacyUrl:''} statutoVersion={legal.statutoVersion} privacyVersion={legal.privacyVersion} />
-  </div>;
+  </div><AuthIdentity/></div>;
 }

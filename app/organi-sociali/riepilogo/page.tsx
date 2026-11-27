@@ -7,6 +7,6 @@ export default async function BoardSummary(){
  return <div className="container"><Link className="back-link" href="/organi-sociali">← Organi Sociali</Link>
  <PageHeader area="secretariat" icon="clipboard" marine eyebrow="Consiglio d'Amministrazione" title="Riepilogo aggregato" description="Report sintetico per le sedute. Nessun dato nominativo, sanitario o contabile."/>
  {error?<p className="notice error">Report non disponibile. Riprova.</p>:
- <div className="sc-metrics">{(data??[]).map((r:{tipo:string;totale:number})=><MetricCard key={r.tipo} label={r.tipo} value={r.totale} icon="clipboard"/>)}</div>}
+ <div className="sc-metrics sc-board-kpis">{(data??[]).map((r:{tipo:string;totale:number})=><MetricCard key={r.tipo} label={r.tipo} value={r.totale} icon="clipboard"/>)}</div>}
  </div>;
 }

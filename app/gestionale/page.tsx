@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import {NereiaProject} from '@/components/ui/BrandLogo';
-import {ButtonLink,QuickActionLink,PageHeader,SectionHeader,MetricCard,EmptyState,ErrorState,Alert,type Area} from '@/components/ui/Primitives';
+import {ButtonLink,QuickActionLink,SectionHeader,MetricCard,EmptyState,ErrorState,Alert,type Area} from '@/components/ui/Primitives';
 import {Icon,type IconName} from '@/components/ui/Icon';
 import {requireStaffForRender as requireStaff} from '@/lib/security';
 import {formatValue} from '@/lib/format';
@@ -54,7 +54,7 @@ export default async function Dashboard(){
  function metric(m:Metric){if(!season&&['Adesioni attive','Adesioni da perfezionare','Quote da incassare'].includes(m.label))return <MetricCard key={m.label} label={m.label} icon={m.icon} area={m.area} value="—" note="Stagione attiva non disponibile"/>;return <Link key={m.label} href={m.href} className={"sc-metric-link sc-dashboard-metric"+(exactCount(m.result)===0?" sc-metric-zero":"")} aria-label={m.label+': '+exactCount(m.result)+'. Apri elenco'}><MetricCard label={m.label} icon={m.icon} area={m.area} value={exactCount(m.result)} note={exactCount(m.result)==='—'?'Dato non disponibile':m.note}/><span className="sc-metric-open">Apri elenco <Icon name="chevron-right"/></span></Link>;}
  const lessonsError=lessons.error;
  return <>
- <PageHeader eyebrow="Gestione associativa" title="Centro operativo" area="secretariat" marine description={season?'Stagione attiva: '+season.nome:'Consulta la situazione associativa e le attività da gestire.'}/>
+ <header className="sc-dashboard-compact-heading"><h1>Centro operativo</h1>{season&&!seasonError&&<p>Stagione attiva: <strong>{season.nome}</strong></p>}</header>
  {(!season||seasonError)&&<Alert tone="warning" title="Stagione attiva non disponibile">I dati che dipendono dalla stagione non possono essere calcolati.</Alert>}
  <nav className="sc-dashboard-shortcuts" aria-label="Azioni principali">
  <QuickActionLink area="secretariat" href="/gestionale/moduli/anagrafiche?nuovo=1" icon="users">Nuova persona</QuickActionLink>

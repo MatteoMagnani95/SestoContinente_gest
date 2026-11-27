@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import {randomUUID,randomBytes} from 'node:crypto';
 import {setTimeout as delay} from 'node:timers/promises';
 import {chromium,expect} from '@playwright/test';
+import {mkdir} from 'node:fs/promises';
+import {resolve,join} from 'node:path';
+import {waitForBrandImages} from './qa-marine-images.mjs';
 
 export async function runAuth({app,admin}){
  assert.equal(process.env.QA_ISOLATED_ENV,'true');
@@ -39,6 +42,35 @@ export async function runAuth({app,admin}){
  const context=await browser.newContext({baseURL:app.href,viewport:{width:1280,height:800}});
  try{
   const page=await context.newPage();
+  // Optional screenshots ONLY from this synthetic local flow; never export sessions.
+  const capture=async(name)=>{
+   if(!process.env.QA_MARINE_VISUAL_DIR)return;
+   const out=resolve(process.env.QA_MARINE_VISUAL_DIR),temp=resolve(process.env.RUNNER_TEMP||'.');
+   assert.ok(out.startsWith(temp+'/')&&out!==resolve('.')&&new URL(page.url()).origin===app.origin);
+   const work=resolve(process.env.QA_WORK_DIR||'.');assert.ok(out!==work&&!out.startsWith(work+'/'));
+   await mkdir(out,{recursive:true});
+   const original=page.viewportSize();
+   try{for(const width of [320,390,768,1024,1440]){
+    await page.setViewportSize({width,height:width>=1024?900:844});
+    await page.evaluate(()=>document.fonts.ready);
+    await expect(page.getByRole('heading',{level:1}).first()).toBeVisible();
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1),name+' overflow '+width);
+    // Catch vertical letter-by-letter wrapping even when document scrollWidth is valid.
+    const brand=await page.locator('.sc-site-header .brand strong').evaluate(el=>{
+     const range=document.createRange();range.selectNodeContents(el);
+     const rects=Array.from(range.getClientRects()).filter(r=>r.width>0&&r.height>0);
+     return {lines:new Set(rects.map(r=>Math.round(r.top))).size,width:el.getBoundingClientRect().width};
+    });
+    assert.ok(brand.lines>0&&brand.lines<=2&&brand.width>=80,name+' header brand collapsed at '+width+': '+JSON.stringify(brand));
+    if((name==='05-domanda'||name==='06-verifica-associativa')&&width<=1000){
+     await expect(page.locator('.sc-site-header .sc-direct-logout button')).toBeVisible();
+     const header=await page.locator('.sc-site-header').boundingBox();
+     assert.ok(header&&header.height<=160,name+' excessive mobile header height '+width);
+    }
+    if(width===390||width===1440){await waitForBrandImages(page);await page.screenshot({path:join(out,name+'-'+width+'.png'),fullPage:true,animations:'disabled',caret:'hide'});}
+   }}finally{if(original)await page.setViewportSize(original);}
+  };
+  if(process.env.QA_MARINE_VISUAL_DIR){await page.goto('/');await capture('01-home');await page.goto('/accedi');await capture('02-login');}
   const logout=async()=>{
    await page.locator('.sc-account-menu summary').click();
    await page.locator('.sc-account-menu').getByRole('button',{name:'Esci'}).click();
@@ -50,6 +82,7 @@ export async function runAuth({app,admin}){
    catch{throw Error('Callback locale '+kind+' non ha raggiunto '+path);}
   };
   await page.goto('/registrati');
+  await capture('03-account');
   await page.locator('input[name=email]').fill(email);
   await page.locator('input[name=password]').fill(oldPassword);
   await page.locator('input[name=confirm]').fill(oldPassword);
@@ -57,10 +90,12 @@ export async function runAuth({app,admin}){
   await expect(page.locator('input[name=immagini]')).not.toBeChecked();
   await page.getByRole('button',{name:'Crea account'}).click();
   await expect(page).toHaveURL(/\/registrati\?ok=verifica/);
+  await capture('04-verifica-email');
   const users=await admin.auth.admin.listUsers({page:1,perPage:100});
   assert.ifError(users.error);const user=users.data.users.find(u=>u.email===email);
   assert.ok(user&&!user.email_confirmed_at);
   await follow('signup','/richiesta/nuova');
+  await capture('05-domanda');
   const verified=await admin.auth.admin.getUserById(user.id);
   assert.ifError(verified.error);assert.ok(verified.data.user.email_confirmed_at);
   const declarations=await admin.from('scelte_iscrizione').select('tipo,scelta,versione,origine').eq('utente_id',user.id).order('tipo');
@@ -80,6 +115,7 @@ export async function runAuth({app,admin}){
   await page.getByRole('dialog',{name:'Riepilogo della domanda'}).getByRole('button',{name:'Conferma e invia alla segreteria'}).click();
   await expect(page).toHaveURL(/msg=inviata/);
   assert.equal((await read()).stato,'inviata');
+  await capture('06-verifica-associativa');
   console.log('OK UI bozza persistente, riepilogo e invio pratica esclusivamente TEST');
   await logout();
   await page.goto('/richiesta/stato');await expect(page).toHaveURL(/\/accedi\?msg=account/);

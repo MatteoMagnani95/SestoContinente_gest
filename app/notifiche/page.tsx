@@ -14,7 +14,7 @@ export default async function AccountNotifications({searchParams}:{searchParams:
  <PageHeader area="calendar" icon="bell" marine eyebrow="Account" title="Le mie notifiche" description="Consulta le comunicazioni destinate al tuo account."/>
  {msg==='letta'&&<Alert tone="success" announce>Notifica segnata come letta.</Alert>}
  {msg==='errore'&&<Alert tone="warning" announce>Impossibile aggiornare la notifica.</Alert>}
- <section className="sc-card"><h2>Notifiche da leggere</h2>
+ <section className="sc-card sc-notification-list"><h2>Notifiche da leggere</h2>
  {error?<Alert tone="warning">Notifiche non disponibili. Riprova.</Alert>:data?.length?data.map(n=><article className="timeline-item" key={n.id}><strong>{n.titolo}</strong><p className="sc-prewrap">{n.messaggio}</p><p className="tiny muted">{formatDate(n.creata_il)}</p><ActionForm action={markAccountNotification}><input type="hidden" name="id" value={n.id}/><button type="submit" className="button ghost">Segna come letta</button></ActionForm></article>):<p>Nessuna nuova notifica.</p>}
  <Pagination page={page} size={size} count={error?null:count} href={p=>'/notifiche?p='+p} label="notifiche"/>
  </section></div>;

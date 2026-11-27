@@ -21,6 +21,8 @@ function Breadcrumb({path,access,title,contexts}:{path:string;access:NavigationA
 }
 export default function AppShell({access,children}:{access:NavigationAccess;children:ReactNode}){
  const path=usePathname()??'/',staff=staffArea(path,access),internal=path!=='/'&&path!=='/smista';
+ // Presentation only; route and account authorization are unchanged. Public approval surfaces are excluded.
+ const marinePrivate=access.enabled&&['/gestionale','/area-personale','/area-soci','/istruttore','/gestione-eventi','/organi-sociali','/documenti','/notifiche','/comunicazioni'].some(base=>path===base||path.startsWith(base+'/'));
  const [open,setOpen]=useState(false);
  const [collapsed,setCollapsed]=useState(false);
  useEffect(()=>{try{setCollapsed(localStorage.getItem('sc-sidebar-collapsed')==='1');}catch{}},[]);
@@ -87,7 +89,7 @@ export default function AppShell({access,children}:{access:NavigationAccess;chil
   </div>
  </dialog>
  <GlobalCancelButtons/>
- <main id="sc-main" tabIndex={-1} className={(staff?'sc-main sc-main-staff':'sc-main')+(mobile.length?' sc-main-has-mobile-nav':'')}>
+ <main id="sc-main" tabIndex={-1} className={(staff?'sc-main sc-main-staff':'sc-main')+(mobile.length?' sc-main-has-mobile-nav':'')+(marinePrivate?' sc-marine-private':'')}>
  {staff?<div className={'container staff-layout sc-staff-layout'+(collapsed?' sc-sidebar-collapsed':'')}><aside className="staff-sidebar sc-staff-sidebar"><div className="sc-sidebar-heading"><div className="sc-sidebar-label"><strong>{access.admin?'Amministrazione':'Segreteria'}</strong><span>Gestione associativa</span></div><button type="button" className="sc-icon-button sc-sidebar-toggle" aria-label={collapsed?'Espandi menu laterale':'Comprimi menu laterale'} aria-expanded={!collapsed} onClick={()=>collapse(!collapsed)}><Icon name={collapsed?'chevron-right':'arrow-left'}/></button></div><StaffNav isAdmin={access.admin} collapsed={collapsed} onExpand={()=>collapse(false)}/></aside><div className="staff-content sc-staff-content">{crumbs}<div ref={content} className="sc-route-content">{children}</div></div></div>:userNav.length?<div className="sc-user-layout"><aside className="sc-user-sidebar"><p className="sc-user-sidebar-title">La tua associazione</p><nav aria-label="Navigazione area utente">{userNav.map(d=><Link key={d.href} href={d.href} aria-current={userActive===d.href?'page':undefined}><Icon name={d.icon}/><span>{d.label}</span></Link>)}</nav></aside><div className="sc-user-content">{crumbs}<div ref={content} className="sc-route-content">{children}</div></div></div>:<>{crumbs&&<div className="sc-public-navigation">{crumbs}</div>}<div ref={content} className="sc-route-content">{children}</div></>}
  </main>
  {mobile.length>0&&<nav className="sc-bottom-navigation" aria-label="Navigazione rapida mobile">{mobile.map(d=><Link key={d.href} href={d.href} aria-current={mobileActive===d.href?'page':undefined}><Icon name={d.icon}/><span>{d.label}</span></Link>)}</nav>}
