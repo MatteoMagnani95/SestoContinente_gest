@@ -22,6 +22,7 @@ const work=resolve(env.QA_WORK_DIR);
 assert.ok(work!==resolve('.')&&!work.startsWith(resolve('.')+'/'));
 const fixtures=JSON.parse(await readFile(join(work,'fixtures.json'),'utf8'));
 const id=value=>{assert.match(value,/^[0-9a-f-]{36}$/i);return value;};
+const sampleCount=9;
 const routes=[
  {role:'staff',path:'/gestionale'},
  {role:'staff',path:'/gestionale/soci?q=Benchmark&p=1',rows:25},
@@ -100,18 +101,18 @@ try{
   // Warm each route once, then alternate measurement order to limit warm-cache bias.
   const warmA=await measure('baseline',baseline),warmB=await measure('candidate',candidate);
   assert.equal(warmA.heading,warmB.heading,route.path);
-  for(let i=0;i<5;i++){
+  for(let i=0;i<sampleCount;i++){
    for(const [key,origin] of i%2?[['candidate',candidate],['baseline',baseline]]:[['baseline',baseline],['candidate',candidate]]){
     const sample=await measure(key,origin);assert.equal(sample.heading,warmA.heading);samples[key].push(sample);
    }
   }
   const summary=items=>({readyMedianMs:median(items.map(x=>x.readyMs)),readyP95Ms:percentile(items.map(x=>x.readyMs),.95),contentReadyMedianMs:median(items.map(x=>x.contentReadyMs)),contentReadyMaxMs:Math.round(Math.max(...items.map(x=>x.contentReadyMs))*100)/100,ttfbMedianMs:median(items.map(x=>x.ttfbMs)),jsEncodedBytes:median(items.map(x=>x.jsEncodedBytes)),jsRequests:median(items.map(x=>x.jsRequests)),htmlBytes:median(items.map(x=>x.htmlBytes))});
-  results.push({role:route.role,path:route.path.replace(/\/[0-9a-f-]{36}/gi,'/[fixture]'),baseline:summary(samples.baseline),candidate:summary(samples.candidate),samples:5});
+  results.push({role:route.role,path:route.path.replace(/\/[0-9a-f-]{36}/gi,'/[fixture]'),baseline:summary(samples.baseline),candidate:summary(samples.candidate),samples:sampleCount});
   console.log(JSON.stringify(results.at(-1)));
  }
  // Warm dashboard, then measure client-side transitions through the real sidebar.
  const navigation={baseline:[],candidate:[]};
- for(let i=0;i<5;i++){
+ for(let i=0;i<sampleCount;i++){
   for(const [key,origin] of i%2?[['candidate',candidate],['baseline',baseline]]:[['baseline',baseline],['candidate',candidate]]){
    const ctx=await browser.newContext({baseURL:origin,storageState:join(work,'staff.json'),viewport:{width:1280,height:800}});
    try{
@@ -153,7 +154,7 @@ try{
  const navigationComparison=Object.fromEntries(Object.entries(navigation).map(([key,times])=>[key,{medianMs:median(times.map(t=>t.verifiedMs)),p95Ms:percentile(times.map(t=>t.verifiedMs),.95),contentReadyMedianMs:median(times.map(t=>t.contentReadyMs)),contentReadyMaxMs:Math.round(Math.max(...times.map(t=>t.contentReadyMs))*100)/100,samples:times.length}]));
  console.log(JSON.stringify({scenario:'client sidebar navigation dashboard to members',...navigationComparison}));
  // Measure generated static chunks separately from per-route transferred resources.
- const report={scenario:'isolated comparative browser benchmark',baselineSha:'ebe1085b6dfd7b1b5660c3326baf8d4475819c5f',candidateSha:env.GITHUB_SHA||'local',metrics:results,navigation:navigationComparison,staticChunks:{baseline:await chunks(join(env.QA_BASELINE_DIR,'.next/static/chunks')),candidate:await chunks('.next/static/chunks')},limitations:'5 alternating cold browser contexts per route; server warmed once; p95 is maximum at this sample size; content-ready measured in-browser at first animation frame with required visible DOM; not LCP/INP'};
+ const report={scenario:'isolated comparative browser benchmark',baselineSha:'ebe1085b6dfd7b1b5660c3326baf8d4475819c5f',candidateSha:env.GITHUB_SHA||'local',metrics:results,navigation:navigationComparison,staticChunks:{baseline:await chunks(join(env.QA_BASELINE_DIR,'.next/static/chunks')),candidate:await chunks('.next/static/chunks')},limitations:'9 alternating cold browser contexts per route; server warmed once; p95 is maximum at this sample size; content-ready measured in-browser at first animation frame with required visible DOM; not LCP/INP'};
  await writeFile(join(work,'performance-comparison.json'),JSON.stringify(report,null,2));
  console.log(JSON.stringify(report));
 }finally{await browser.close();}
