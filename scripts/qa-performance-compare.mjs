@@ -24,6 +24,9 @@ assert.ok(work!==resolve('.')&&!work.startsWith(resolve('.')+'/'));
 const fixtures=JSON.parse(await readFile(join(work,'fixtures.json'),'utf8'));
 const id=value=>{assert.match(value,/^[0-9a-f-]{36}$/i);return value;};
 const sampleCount=9;
+const baselineSha=env.QA_BASELINE_SHA||'ebe1085b6dfd7b1b5660c3326baf8d4475819c5f';
+assert.match(baselineSha,/^[0-9a-f]{40}$/);
+if(env.QA_RPC_MODE==='OFF/OFF'){assert.equal(env.SC_STRUCTURAL_RPC,'false');assert.equal(env.SC_STRUCTURAL_RPC_RELEASE,'false');}
 const routes=[
  {role:'staff',path:'/gestionale'},
  {role:'staff',path:'/gestionale/soci?q=Benchmark&p=1',rows:25},
@@ -40,13 +43,13 @@ const routes=[
 ];
 const median=values=>{const s=[...values].sort((a,b)=>a-b);return Math.round(s[Math.floor(s.length/2)]*100)/100;};
 const percentile=(values,p)=>{const s=[...values].sort((a,b)=>a-b);return Math.round(s[Math.ceil(p*s.length)-1]*100)/100;};
-async function chunks(dir){
+async function chunks(dir,extension='.js'){
  let bytes=0,gzip=0,count=0;
  async function visit(path){
   for(const entry of await readdir(path,{withFileTypes:true})){
    const full=join(path,entry.name);
    if(entry.isDirectory())await visit(full);
-   else if(entry.name.endsWith('.js')){const b=await readFile(full);count++;bytes+=b.length;gzip+=gzipSync(b).length;}
+   else if(entry.name.endsWith(extension)){const b=await readFile(full);count++;bytes+=b.length;gzip+=gzipSync(b).length;}
   }
  }
  await visit(dir);return {count,bytes,gzipBytes:gzip};
@@ -174,7 +177,7 @@ try{
  const navigationSummary=summarizeNavigation(navigationScenarios);
  console.log(JSON.stringify({scenario:'navigation target summary',...navigationSummary}));
  // Measure generated static chunks separately from per-route transferred resources.
- const report={simulatedRttMs:Number(env.QA_DB_LATENCY_MS||0),scenario:'isolated comparative browser benchmark',baselineSha:'ebe1085b6dfd7b1b5660c3326baf8d4475819c5f',candidateSha:env.GITHUB_SHA||'local',metrics:results,navigation:navigationComparison,navigationScenarios,navigationSummary,staticChunks:{baseline:await chunks(join(env.QA_BASELINE_DIR,'.next/static/chunks')),candidate:await chunks('.next/static/chunks')},limitations:'9 alternating cold browser contexts per route; server warmed once; p95 is maximum at this sample size; content-ready measured in-browser at first animation frame with required visible DOM; not LCP/INP'};
+ const report={simulatedRttMs:Number(env.QA_DB_LATENCY_MS||0),scenario:'isolated comparative browser benchmark',baselineSha,candidateSha:env.QA_HEAD_SHA||env.GITHUB_SHA||'local',rpcMode:env.QA_RPC_MODE||'historical comparison',metrics:results,navigation:navigationComparison,navigationScenarios,navigationSummary,staticChunks:{baseline:await chunks(join(env.QA_BASELINE_DIR,'.next/static/chunks')),candidate:await chunks('.next/static/chunks')},cssChunks:{baseline:await chunks(join(env.QA_BASELINE_DIR,'.next/static'),'.css'),candidate:await chunks('.next/static','.css')},limitations:'9 alternating cold browser contexts per route; server warmed once; p95 is maximum at this sample size; content-ready measured in-browser at first animation frame with required visible DOM; not LCP/INP'};
  await writeFile(join(work,'performance-comparison.json'),JSON.stringify(report,null,2));
  console.log(JSON.stringify(report));
 }finally{await browser.close();}
