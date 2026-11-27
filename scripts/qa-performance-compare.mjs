@@ -58,6 +58,26 @@ try{
   const measure=async(version,origin)=>{
    const ctx=await browser.newContext({baseURL:origin,storageState:join(work,route.role+'.json'),viewport:{width:1280,height:800}});
    try{
+    // Observe the actual visible content in the browser, independently of
+    // Playwright's polling cadence and of an early streamed response.
+    await ctx.addInitScript(({rows})=>{
+     window.__qaContentReady=new Promise(resolve=>{
+      let observer,done=false,frame=0;
+      const visible=element=>Boolean(element&&element.getClientRects().length&&getComputedStyle(element).visibility==='visible');
+      const check=()=>{
+       frame=0;if(done)return;
+       const root=document.querySelector('#sc-main .sc-route-content');
+       const heading=root?.querySelector('h1');
+       if(!visible(heading))return;
+       if(rows&&(!visible(root.querySelector('table'))||root.querySelectorAll('table tbody tr').length<rows))return;
+       done=true;observer.disconnect();resolve(performance.now());
+      };
+      const schedule=()=>{if(!done&&!frame)frame=requestAnimationFrame(check);};
+      observer=new MutationObserver(schedule);
+      observer.observe(document,{subtree:true,childList:true,attributes:true,characterData:true});
+      schedule();
+     });
+    },{rows:route.rows||0});
     const page=await ctx.newPage();
     const t=performance.now();
     const res=await page.goto(route.path,{waitUntil:'domcontentloaded',timeout:30000});
@@ -67,13 +87,14 @@ try{
     await expect(heading).toBeVisible();
     if(route.rows)await expect(page.locator('table').first().locator('tbody tr')).toHaveCount(route.rows);
     const readyMs=performance.now()-t;
+    const contentReadyMs=await page.evaluate(()=>Promise.race([window.__qaContentReady,new Promise((_,reject)=>setTimeout(()=>reject(Error('Visible route content not observed')),10000))]));
     await page.waitForLoadState('load');
     const data=await page.evaluate(()=>{
      const nav=performance.getEntriesByType('navigation')[0];
      const js=performance.getEntriesByType('resource').filter(r=>r.name.includes('/_next/static/')&&new URL(r.name).pathname.endsWith('.js'));
      return {ttfbMs:nav.responseStart-nav.requestStart,jsEncodedBytes:js.reduce((n,r)=>n+r.encodedBodySize,0),jsRequests:js.length,htmlBytes:nav.encodedBodySize};
     });
-    return {heading:await heading.textContent(),readyMs,...data};
+    return {heading:await heading.textContent(),readyMs,contentReadyMs,...data};
    }finally{await ctx.close();}
   };
   // Warm each route once, then alternate measurement order to limit warm-cache bias.
@@ -84,7 +105,7 @@ try{
     const sample=await measure(key,origin);assert.equal(sample.heading,warmA.heading);samples[key].push(sample);
    }
   }
-  const summary=items=>({readyMedianMs:median(items.map(x=>x.readyMs)),readyP95Ms:percentile(items.map(x=>x.readyMs),.95),ttfbMedianMs:median(items.map(x=>x.ttfbMs)),jsEncodedBytes:median(items.map(x=>x.jsEncodedBytes)),jsRequests:median(items.map(x=>x.jsRequests)),htmlBytes:median(items.map(x=>x.htmlBytes))});
+  const summary=items=>({readyMedianMs:median(items.map(x=>x.readyMs)),readyP95Ms:percentile(items.map(x=>x.readyMs),.95),contentReadyMedianMs:median(items.map(x=>x.contentReadyMs)),contentReadyMaxMs:Math.round(Math.max(...items.map(x=>x.contentReadyMs))*100)/100,ttfbMedianMs:median(items.map(x=>x.ttfbMs)),jsEncodedBytes:median(items.map(x=>x.jsEncodedBytes)),jsRequests:median(items.map(x=>x.jsRequests)),htmlBytes:median(items.map(x=>x.htmlBytes))});
   results.push({role:route.role,path:route.path.replace(/\/[0-9a-f-]{36}/gi,'/[fixture]'),baseline:summary(samples.baseline),candidate:summary(samples.candidate),samples:5});
   console.log(JSON.stringify(results.at(-1)));
  }
@@ -102,18 +123,37 @@ try{
     if(await group.getAttribute('aria-expanded')!=='true')await group.click();
     const link=sidebar.getByRole('link',{name:'Schede soci',exact:true});
     await expect(link).toBeVisible();
+    await page.evaluate(()=>{
+     window.__qaClientReady=new Promise(resolve=>{
+      let started=null,frame=0;
+      const observer=new MutationObserver(schedule);
+      function check(){
+       frame=0;
+       const table=document.querySelector('#sc-main table[aria-label="Adesioni di soci e allievi"]');
+       if(started!==null&&location.pathname==='/gestionale/soci'&&table?.getClientRects().length){
+        observer.disconnect();resolve(performance.now()-started);
+       }else if(started!==null)schedule();
+      }
+      function schedule(){if(!frame)frame=requestAnimationFrame(check);}
+      document.addEventListener('click',event=>{
+       if(event.target instanceof Element&&event.target.closest('a[href="/gestionale/soci"]')){
+        started=performance.now();observer.observe(document,{childList:true,subtree:true,attributes:true});schedule();
+       }
+      },{capture:true,once:true});
+     });
+    });
     const start=performance.now();
     await link.click();
     await expect(page).toHaveURL(url=>url.pathname==='/gestionale/soci');
     await expect(page.getByRole('table',{name:'Adesioni di soci e allievi'})).toBeVisible();
-    navigation[key].push(performance.now()-start);
+    navigation[key].push({verifiedMs:performance.now()-start,contentReadyMs:await page.evaluate(()=>Promise.race([window.__qaClientReady,new Promise((_,reject)=>setTimeout(()=>reject(Error('Client navigation content not observed')),10000))]))});
    }finally{await ctx.close();}
   }
  }
- const navigationComparison=Object.fromEntries(Object.entries(navigation).map(([key,times])=>[key,{medianMs:median(times),p95Ms:percentile(times,.95),samples:times.length}]));
+ const navigationComparison=Object.fromEntries(Object.entries(navigation).map(([key,times])=>[key,{medianMs:median(times.map(t=>t.verifiedMs)),p95Ms:percentile(times.map(t=>t.verifiedMs),.95),contentReadyMedianMs:median(times.map(t=>t.contentReadyMs)),contentReadyMaxMs:Math.round(Math.max(...times.map(t=>t.contentReadyMs))*100)/100,samples:times.length}]));
  console.log(JSON.stringify({scenario:'client sidebar navigation dashboard to members',...navigationComparison}));
  // Measure generated static chunks separately from per-route transferred resources.
- const report={scenario:'isolated comparative browser benchmark',baselineSha:'ebe1085b6dfd7b1b5660c3326baf8d4475819c5f',candidateSha:env.GITHUB_SHA||'local',metrics:results,navigation:navigationComparison,staticChunks:{baseline:await chunks(join(env.QA_BASELINE_DIR,'.next/static/chunks')),candidate:await chunks('.next/static/chunks')},limitations:'5 alternating cold browser contexts per route; server warmed once; p95 is maximum at this sample size; no field INP/LCP claim'};
+ const report={scenario:'isolated comparative browser benchmark',baselineSha:'ebe1085b6dfd7b1b5660c3326baf8d4475819c5f',candidateSha:env.GITHUB_SHA||'local',metrics:results,navigation:navigationComparison,staticChunks:{baseline:await chunks(join(env.QA_BASELINE_DIR,'.next/static/chunks')),candidate:await chunks('.next/static/chunks')},limitations:'5 alternating cold browser contexts per route; server warmed once; p95 is maximum at this sample size; content-ready measured in-browser at first animation frame with required visible DOM; not LCP/INP'};
  await writeFile(join(work,'performance-comparison.json'),JSON.stringify(report,null,2));
  console.log(JSON.stringify(report));
 }finally{await browser.close();}
