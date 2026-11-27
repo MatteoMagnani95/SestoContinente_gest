@@ -1,0 +1,152 @@
+# Audit funzionale 3.2 — registro incrementale
+Data 2026-11-27. Stato APERTO / NO-GO per una nuova release. Non certifica la produzione.
+Baseline Vercel READY `a615d3982422a881d6337089e9986097191a8209`, alias sesto-continente-gest-lime.vercel.app verificato sul deployment dpl_6aPEx8Qfj4Q6e7zy1NQcJcHxg5ba. Branch audit/3.2-functional. PR di riferimento #12 (non merge). Il precedente hotfix 38e27a88 è antenato (19 commit avanti, zero dietro); main 5444519 è 509 commit indietro. Versione package 0.3.2. Nessun deploy automatico Git in vercel.json.
+## Inventario verificato via albero Git non troncato
+464 file; 57 pagine, 8 route handler, 2 layout, 48 componenti TSX, 56 file di test statici, 29 migrazioni repository. Route dinamiche e azioni server richiedono ulteriore enumerazione; questo non è un censimento delle funzionalità esercitate.
+| File | Tipo | QA nuova | Evidenza |
+|---|---|---|---|
+| `app/accedi/page.tsx` | pagina | PENDING | inventario Git |
+| `app/area-personale/certificato/page.tsx` | pagina | PENDING | inventario Git |
+| `app/area-personale/corsi/page.tsx` | pagina | PENDING | inventario Git |
+| `app/area-personale/documenti/page.tsx` | pagina | PENDING | inventario Git |
+| `app/area-personale/page.tsx` | pagina | PENDING | inventario Git |
+| `app/area-personale/profilo/page.tsx` | pagina | PENDING | inventario Git |
+| `app/area-soci/page.tsx` | pagina | PENDING | inventario Git |
+| `app/comunicazioni/corsi/[id]/page.tsx` | pagina | PENDING | inventario Git |
+| `app/comunicazioni/soci/[id]/page.tsx` | pagina | PENDING | inventario Git |
+| `app/documenti/page.tsx` | pagina | PENDING | inventario Git |
+| `app/gestionale/amministrazione-dati/dipendenze/[tabella]/[id]/page.tsx` | pagina | PENDING | inventario Git |
+| `app/gestionale/amministrazione-dati/page.tsx` | pagina | PENDING | inventario Git |
+| `app/gestionale/archivio-incassi/page.tsx` | pagina | PENDING | inventario Git |
+| `app/gestionale/attrezzature/[id]/page.tsx` | pagina | PENDING | inventario Git |
+| `app/gestionale/calendario-visivo/[id]/page.tsx` | pagina | PENDING | inventario Git |
+| `app/gestionale/calendario-visivo/page.tsx` | pagina | PENDING | inventario Git |
+| `app/gestionale/corsi/[id]/page.tsx` | pagina | PENDING | inventario Git |
+| `app/gestionale/corsi/nuovo/page.tsx` | pagina | PENDING | inventario Git |
+| `app/gestionale/corsi/page.tsx` | pagina | PENDING | inventario Git |
+| `app/gestionale/economia/page.tsx` | pagina | PENDING | inventario Git |
+| `app/gestionale/importazione/page.tsx` | pagina | PENDING | inventario Git |
+| `app/gestionale/incassi/[id]/page.tsx` | pagina | PENDING | inventario Git |
+| `app/gestionale/incassi/page.tsx` | pagina | PENDING | inventario Git |
+| `app/gestionale/incassi/posizione/[id]/page.tsx` | pagina | PENDING | inventario Git |
+| `app/gestionale/moduli/[modulo]/page.tsx` | pagina | PENDING | inventario Git |
+| `app/gestionale/moduli/attrezzature/page.tsx` | pagina | PENDING | inventario Git |
+| `app/gestionale/moduli/consegne/page.tsx` | pagina | PENDING | inventario Git |
+| `app/gestionale/moduli/contabilita/page.tsx` | pagina | PENDING | inventario Git |
+| `app/gestionale/moduli/iscrizioni/page.tsx` | pagina | PENDING | inventario Git |
+| `app/gestionale/moduli/piscine/page.tsx` | pagina | PENDING | inventario Git |
+| `app/gestionale/moduli/revisioni/page.tsx` | pagina | PENDING | inventario Git |
+| `app/gestionale/page.tsx` | pagina | PENDING | inventario Git |
+| `app/gestionale/programmi-didattici/page.tsx` | pagina | PENDING | inventario Git |
+| `app/gestionale/report/page.tsx` | pagina | PENDING | inventario Git |
+| `app/gestionale/richieste/[id]/page.tsx` | pagina | PENDING | inventario Git |
+| `app/gestionale/richieste/page.tsx` | pagina | PENDING | inventario Git |
+| `app/gestionale/soci/[id]/page.tsx` | pagina | PENDING | inventario Git |
+| `app/gestionale/soci/page.tsx` | pagina | PENDING | inventario Git |
+| `app/gestionale/utenti/[id]/elimina/page.tsx` | pagina | PENDING | inventario Git |
+| `app/gestionale/utenti/[id]/page.tsx` | pagina | PENDING | inventario Git |
+| `app/gestionale/utenti/page.tsx` | pagina | PENDING | inventario Git |
+| `app/gestione-eventi/[id]/page.tsx` | pagina | PENDING | inventario Git |
+| `app/gestione-eventi/page.tsx` | pagina | PENDING | inventario Git |
+| `app/istruttore/page.tsx` | pagina | PENDING | inventario Git |
+| `app/notifiche/page.tsx` | pagina | PENDING | inventario Git |
+| `app/nuova-password/page.tsx` | pagina | PENDING | inventario Git |
+| `app/organi-sociali/archivio/[id]/page.tsx` | pagina | PENDING | inventario Git |
+| `app/organi-sociali/archivio/page.tsx` | pagina | PENDING | inventario Git |
+| `app/organi-sociali/page.tsx` | pagina | PENDING | inventario Git |
+| `app/organi-sociali/riepilogo/page.tsx` | pagina | PENDING | inventario Git |
+| `app/page.tsx` | pagina | PENDING | inventario Git |
+| `app/registrati/informativa-test/page.tsx` | pagina | PENDING | inventario Git |
+| `app/registrati/page.tsx` | pagina | PENDING | inventario Git |
+| `app/richiesta/documenti-test/page.tsx` | pagina | PENDING | inventario Git |
+| `app/richiesta/nuova/page.tsx` | pagina | PENDING | inventario Git |
+| `app/richiesta/stato/page.tsx` | pagina | PENDING | inventario Git |
+| `app/smista/page.tsx` | pagina | PENDING | inventario Git |
+| `app/api/cron/promemoria/route.ts` | handler | PENDING | inventario Git |
+| `app/auth/callback/route.ts` | handler | PENDING | inventario Git |
+| `app/documenti/[id]/route.ts` | handler | PENDING | inventario Git |
+| `app/gestionale/corsi/[id]/stampe/route.ts` | handler | PENDING | inventario Git |
+| `app/gestionale/esporta/[modulo]/route.ts` | handler | PENDING | inventario Git |
+| `app/gestionale/importazione/modello/route.ts` | handler | PENDING | inventario Git |
+| `app/gestionale/incassi/person-options/route.ts` | handler | PENDING | inventario Git |
+| `app/organi-sociali/documento/[id]/route.ts` | handler | PENDING | inventario Git |
+| `app/gestionale/layout.tsx` | layout | PENDING | inventario Git |
+| `app/layout.tsx` | layout | PENDING | inventario Git |
+## Matrice ruoli
+Enum produzione: amministratore, segreteria, istruttore, socio, tutore, consigliere_cda. Richiedente, anonimo, sospeso/non approvato/incompleto e ruoli combinati sono stati separati come scenari (non nuovi ruoli). I permessi esatti vanno derivati da guardie server, policy e flussi; non assumere accesso sulla base di questa tabella.
+| Scenario | Accesso consentito da verificare | Accessi negativi | Stato |
+|---|---|---|---|
+| Anonimo | pubbliche, signup, login, recupero | dati privati, API, URL protette | PENDING |
+| Richiedente | richiesta e stato | sezioni riservate ai soci/staff | PENDING |
+| Amministratore | account e amministrazione, funzioni comuni | vincoli business anche da admin | PENDING |
+| Segreteria | soci, richieste, corsi, operazioni autorizzate | azioni esclusivamente admin | PENDING |
+| Istruttore | corsi assegnati, presenze e profilo | altri corsi e dati non autorizzati | PENDING |
+| Socio | profilo, eventi, corsi e documenti propri | altri soci, staff, API | PENDING |
+| Tutore | perimetro del tutelato autorizzato | terzi e azioni oltre delega | PENDING (gap suite esistente) |
+| Consigliere CdA | organi sociali e verbali autorizzati | mutazioni riservate staff | PENDING |
+| Ruoli combinati | unione dei permessi legittimi | escalation e bypass vincoli | PENDING |
+| Sospeso / non approvato / incompleto | solo azioni previste per lo stato | sessione stale e URL dirette | PENDING |
+## Registro rilievi (non tutti sono bug confermati)
+| ID | Priorità provvisoria | Evidenza / causa da approfondire | Stato |
+|---|---|---|---|
+| AUD-001 | rischio release | main 509 commit dietro produzione | aperto, nessun merge |
+| AUD-002 | alta verifica | 29 file SQL vs 20 versioni registrate; upgrade unico e SQL hotfix possono spiegare divergenze, non applicare per differenza numerica | aperto |
+| AUD-003 | alta verifica | Supabase default branch MIGRATIONS_FAILED; progetto ACTIVE_HEALTHY; nessun branch di test visibile | aperto |
+| AUD-004 | informativo | cda_letture RLS senza policy: patch 0019 revoca accesso diretto e usa funzioni privilegiate; comportamento previsto da verificare con ACL live e test voto/lettura | triage, non aggiungere policy |
+| AUD-005 | sicurezza | 15 SECURITY DEFINER con EXECUTE anon: 14 restituiscono trigger, 1 is_board boolean; privilegio non dimostra exploit | triage ACL / guardie |
+| AUD-006 | sicurezza | 79 SECURITY DEFINER con EXECUTE authenticated; rivedere scope e guardie singole | aperto |
+| AUD-007 | bassa | btree_gist in public; valutare dipendenze, non spostare arbitrariamente | aperto |
+| AUD-008 | gap test | workflow autenticato esistente non include progetto tutore, né dimostra copertura combinazioni/stati | aperto |
+## Controlli produzione in sola lettura, nessun dato personale
+54 tabelle public, tutte RLS abilitate. Conteggi: 0 gruppi edizioni duplicate (corso/stagione/nome lower trim/inizio), 0 gruppi iscrizioni duplicate (edizione/persona), 0 join direttore/allievo. Indice unico edizione_identita su corso, stagione, inizio, fine, nome normalizzato con esclusione duplicato_storico; indice unico iscrizione edizione/persona. Non dimostrano concorrenza o assenza di duplicati secondo tutte le regole.
+### Migrazioni
+| File repository | Versione identica nello storico live |
+|---|---|
+| `20261111210100_fase1.sql` | sì |
+| `20261111210200_gestionale_completo.sql` | sì |
+| `20261111210300_schede_soci.sql` | sì |
+| `20261111210400_corsi_guidati.sql` | sì |
+| `20261111210500_calendario_economico.sql` | sì |
+| `20261111210600_incassi_controllati.sql` | sì |
+| `20261116100700_ruolo_cda.sql` | sì |
+| `20261116100800_v12_sicurezza_organi_didattica_import.sql` | sì |
+| `20261116100900_precaricamento_didattica.sql` | sì |
+| `20261116101000_v12_riepilogo_cda_certificati.sql` | sì |
+| `20261117190000_archivio_cda_anagrafica.sql` | sì |
+| `20261117201500_corsi_rimozione_quote_attive.sql` | sì |
+| `20261117210000_iscrizioni_rimozioni_ordinamento.sql` | sì |
+| `20261117223000_area_soci_eventi.sql` | sì |
+| `20261117234500_amministrazione_account_dati.sql` | sì |
+| `20261118001500_eliminazione_completa_account.sql` | sì |
+| `20261118004000_fix_ambiguita_eliminazione_account.sql` | sì |
+| `20261118090000_comunicazioni_email.sql` | sì |
+| `20261125223000_patch_0019.sql` | no — verificare oggetti e upgrade unico |
+| `20261126160000_registra_revisione.sql` | no — verificare oggetti e upgrade unico |
+| `20261126162500_proteggi_prenotazioni_parziali.sql` | no — verificare oggetti e upgrade unico |
+| `20261126163000_coerenza_lezioni_presenze.sql` | no — verificare oggetti e upgrade unico |
+| `20261126163410_dichiarazioni_verificate.sql` | no — verificare oggetti e upgrade unico |
+| `20261126163420_coerenza_direzione.sql` | no — verificare oggetti e upgrade unico |
+| `20261126171000_anteprima_importazione_atomica.sql` | no — verificare oggetti e upgrade unico |
+| `20261126172500_serializza_prenotazioni_guidate.sql` | no — verificare oggetti e upgrade unico |
+| `20261126213000_deroga_istruttori_corsi.sql` | no — verificare oggetti e upgrade unico |
+| `20261127122235_structural_read_snapshots.sql` | no — verificare oggetti e upgrade unico |
+| `20261127125108_course_calendar_read_snapshots.sql` | no — verificare oggetti e upgrade unico |
+Versioni live ulteriori: 20261127091403 deroga_istruttori_corsi; 20261127163939 elimina_edizione_annullata_vuota. Mai eseguire migrazioni mancanti basandosi sul solo nome.
+## Gate storici (non esecuzioni nuove)
+- [46062535748](https://github.com/segreteriasestocontinente/SestoContinente_gest/actions/runs/46062535748): job test e database success, inclusi lint, TS, statici, build, browser pubblico, audit dipendenze, RLS/integration, hotfix e ripristino.
+- [46062535755](https://github.com/segreteriasestocontinente/SestoContinente_gest/actions/runs/46062535755): compare success, browser autenticato, mutazioni, auth, screenshot, cleanup visuale e benchmark OFF/OFF. Artifact metadata disponibili; contenuti binari non ispezionati.
+## Matrice copertura incrementale
+| Gruppo | Gate baseline storico | Nuova esecuzione | Estensioni richieste |
+|---|---|---|---|
+| Auth / account | success | pending | session expiry, logout effettivo, tutore, combinazioni |
+| Soci / adesioni / privacy | success aggregato | pending | rinnovi, revoche, concorrenza |
+| Corsi / iscrizioni / didattica | success aggregato | pending | fine-to-end, duplicati e deroga |
+| Calendario / eventi | success aggregato | pending | fusi, conflitti, annullamento |
+| Attrezzature / revisioni / inventario | success aggregato | pending | mutazioni, restituzione, errori |
+| Economia / incassi / quote | success aggregato | pending | saldi, rettifiche, idempotenza |
+| CdA / documenti | success aggregato | pending | lettura, voto, ACL e download |
+| Notifiche / comunicazioni | success aggregato | pending | lettura, duplicati, email sink |
+| Import/export / amministrazione | success aggregato | pending | permessi, dataset, atomicità |
+| Browser / responsive / prestazioni | success aggregato | pending | OFF/OFF vs a615d39, casi limite |
+## Vincoli e ripresa
+Ramo isolato; nessun merge, deploy, reset o modifica database live, no dati reali, nessun upgrade, SC_STRUCTURAL_RPC=false e SC_STRUCTURAL_RPC_RELEASE=false. Usare Supabase locale effimero in CI, fixture sintetiche e sink email. Non creare policy/DDL senza riproduzione, non indebolire test. Prossimo: nuova QA autenticata e benchmark sulla baseline, ispezionare ACL effettive e migrazioni, estendere matrice, riprodurre bug e aggiungere test prima del fix. Ogni gate non osservato resta PENDING. Nessun bug funzionale nuovo confermato o corretto in questo avvio; nessuna idoneità alla release.
