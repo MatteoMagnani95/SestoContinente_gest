@@ -131,6 +131,9 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  const editId=edit&&UUID_RE.test(edit)?edit:null;
  const editorId=scope.editor&&UUID_RE.test(scope.editor)?scope.editor:null;
  const openEditorId=editId??editorId;
+ // Limit this first pass to modules with simple reference labels and no dependent eligibility rules.
+ const deferredReferences=['qualifiche','brevetti','certificati','revisioni','consegne','quote'].includes(modulo);
+ const fullReferenceOptions=!deferredReferences||nuovo==='1'||Boolean(openEditorId);
  if(modulo==='calendario'&&editId)redirect(`/gestionale/calendario-visivo/${editId}`);
  if(modulo==='calendario'&&nuovo==='1')redirect('/gestionale/calendario-visivo?nuovo=1'+(scopedPool?'&piscina='+scopedPool:'')+(scopedEdition?'&edizione='+scopedEdition:''));
  const page=editId?1:pageNumber(p);
@@ -227,6 +230,15 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
   }
   const ref=module.fields.find(f=>f.ref?.table===table)?.ref;
   const cols=[...new Set(['id',...(ref?.labels??[]),...(modulo==='prenotazioni'&&table==='corsie'?['numero','piscina_id','note']:[]),...(modulo==='prenotazioni'&&table==='lezioni'?['titolo','edizione_id','inizio','fine','piscina_id','annullata_il']:[]),...(modulo==='prenotazioni'&&table==='piscine'?['nome','orari_disponibili','limitazioni']:[]),...(modulo==='iscrizioni'&&table==='edizioni_corsi'?['stagione_id','stato','direttore_id']:[])])].join(',');
+  if(!fullReferenceOptions&&table!=='stagioni'){
+   // The list needs only visible row labels. Season options remain complete for filtering.
+   const keys=module.fields.filter(field=>field.ref?.table===table).map(field=>field.name);
+   const ids=[...new Set((data??[]).flatMap(row=>keys.map(key=>String(row[key]??''))).filter(id=>UUID_RE.test(id)))];
+   const result=ids.length?await supabase.from(table).select(cols).in('id',ids):{data:[],error:null};
+   if(result.error)referenceError=true;
+   references[table]=(result.data??[]) as unknown as Row[];
+   return;
+  }
   const refOrder=ref?.labels?.[0]??(table==='piscine'?'nome':'id');
   const refQuery=()=>{
    let query=supabase.from(table).select(cols).order(refOrder,{ascending:true});
@@ -270,6 +282,12 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  }
  const rows=(data??[]) as unknown as Row[];
  const href=(page:number)=>listHref({q,p:String(page),stato,dal,al,persona:personId,stagione:seasonId,edizione:scopedEdition,piscina:scopedPool,corsia_id:scopedLane,lezione:scopedLesson,livello:catalogLevel===null?undefined:String(catalogLevel),vista:modulo==='iscrizioni'?'elenco':undefined,filtro_modulo:selectedFilter?selectedFilter.name+':'+filterValue:undefined,ordine,dir});
+ const createHref=()=>{
+  const params=new URLSearchParams(href(page).slice(1));
+  params.set('nuovo','1');
+  if(medical&&missingPage>1)params.set('pm',String(missingPage));
+  return '?'+params.toString();
+ };
  const editorHref=(id:string)=>{
   const params=new URLSearchParams(href(page).slice(1));
   params.set('editor',id);
@@ -294,7 +312,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
   return formatValue(row[c],c);
  };
  return <>
- <PageHeader eyebrow={secretariatLinks.some(l=>l.href==='/gestionale/moduli/'+modulo)?'Segreteria':calendarModule?'Impianti e calendario':teachingModule?'Corsi e didattica':financeModule?'Contabilità e incassi':'Gestionale'} area={secretariatLinks.some(l=>l.href==='/gestionale/moduli/'+modulo)?'secretariat':calendarModule?'pool':teachingModule?'teaching':financeModule?'finance':'system'} icon={calendarModule?'calendar':teachingModule?'course':financeModule?'wallet':'archive'} marine title={module.label} description={module.description} actions={!editId&&(modulo==='calendario'?<ButtonLink href={'/gestionale/calendario-visivo?nuovo=1'+(scopedPool?'&piscina='+scopedPool:'')+(scopedEdition?'&edizione='+scopedEdition:'')}>Nuova lezione</ButtonLink>:<Drawer primary title={ui.create} trigger={ui.create} initialOpen={nuovo==='1'&&!msg}><Editor module={module} moduleKey={modulo} references={references} personId={personId} editionId={scopedEdition} poolId={scopedPool} laneId={scopedLane} lessonId={scopedLesson}/></Drawer>)}/>
+ <PageHeader eyebrow={secretariatLinks.some(l=>l.href==='/gestionale/moduli/'+modulo)?'Segreteria':calendarModule?'Impianti e calendario':teachingModule?'Corsi e didattica':financeModule?'Contabilità e incassi':'Gestionale'} area={secretariatLinks.some(l=>l.href==='/gestionale/moduli/'+modulo)?'secretariat':calendarModule?'pool':teachingModule?'teaching':financeModule?'finance':'system'} icon={calendarModule?'calendar':teachingModule?'course':financeModule?'wallet':'archive'} marine title={module.label} description={module.description} actions={!editId&&(modulo==='calendario'?<ButtonLink href={'/gestionale/calendario-visivo?nuovo=1'+(scopedPool?'&piscina='+scopedPool:'')+(scopedEdition?'&edizione='+scopedEdition:'')}>Nuova lezione</ButtonLink>:deferredReferences&&!fullReferenceOptions?<DeferredEditorButton primary href={createHref()} label={ui.create}/>:<Drawer primary title={ui.create} trigger={ui.create} initialOpen={nuovo==='1'&&!msg}><Editor module={module} moduleKey={modulo} references={references} personId={personId} editionId={scopedEdition} poolId={scopedPool} laneId={scopedLane} lessonId={scopedLesson}/></Drawer>)}/>
  {secretariatLinks.some(l=>l.href==='/gestionale/moduli/'+modulo)&&<SecretariatNav active={'/gestionale/moduli/'+modulo}/>}
  {personId&&memberTabForModule(modulo)&&<div className="sc-row-actions"><Link className="sc-button sc-button-secondary" href={'/gestionale/soci/'+personId+'?tab='+memberTabForModule(modulo)}>Torna alla scheda socio</Link><span className="muted">Elenco contestuale alla scheda selezionata</span></div>}
  {scopedEdition&&<p><Link href={'/gestionale/corsi/'+scopedEdition+'?tab='+(modulo==='brevetti'?'brevetti':'panoramica')}>Torna alla scheda del corso</Link> · Elenco per edizione selezionata</p>}
