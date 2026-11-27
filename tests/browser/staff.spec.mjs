@@ -242,3 +242,29 @@ test('F5: tab finanziarie, archivi operativi e panoramica CdA su mobile',async({
  await expect(page.getByRole('table',{name:'Documenti'})).toBeVisible();
  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(391);
 });
+
+test('3.1: editor differito della riga, filtri conservati e bozza protetta',async({page})=>{
+ await page.goto('/gestionale/moduli/anagrafiche?q=Collaudo');
+ const table=page.getByRole('table').first();
+ const button=table.getByRole('button',{name:'Modifica',exact:true}).first();
+ await expect(button).toBeVisible();
+ await expect(page.getByRole('dialog',{name:/Modifica anagrafica/})).toHaveCount(0);
+ await button.click();
+ const editor=page.getByRole('dialog',{name:/Modifica anagrafica/});
+ await expect(editor).toBeVisible();
+ await expect(page).toHaveURL(url=>url.searchParams.get('q')==='Collaudo'&&Boolean(url.searchParams.get('editor')));
+ const name=editor.locator('input[name="nome"]');
+ const initial=await name.inputValue();
+ await name.fill(initial+' bozza');
+ await editor.getByRole('button',{name:'Chiudi pannello'}).click();
+ await page.getByRole('button',{name:'Continua a modificare'}).click();
+ await expect(name).toHaveValue(initial+' bozza');
+ await editor.getByRole('button',{name:'Chiudi pannello'}).click();
+ await page.getByRole('button',{name:'Esci senza salvare'}).click();
+ await expect(editor).toBeHidden();
+ await table.getByRole('button',{name:'Modifica',exact:true}).first().click();
+ await expect(editor).toBeVisible();
+ await expect(editor.locator('input[name="nome"]')).toHaveValue(initial);
+ await editor.getByRole('button',{name:'Chiudi pannello'}).click();
+ await expect(editor).toBeHidden();
+});
