@@ -268,3 +268,19 @@ test('3.1: editor differito della riga, filtri conservati e bozza protetta',asyn
  await editor.getByRole('button',{name:'Chiudi pannello'}).click();
  await expect(editor).toBeHidden();
 });
+
+test('3.1: references on demand for creating an equipment revision',async({page})=>{
+ await page.goto('/gestionale/moduli/revisioni');
+ const create=page.getByRole('button',{name:'Registra revisione',exact:true});
+ await expect(create).toBeVisible();
+ await expect(page.getByRole('dialog',{name:'Registra revisione'})).toHaveCount(0);
+ await create.click();
+ const editor=page.getByRole('dialog',{name:'Registra revisione'});
+ await expect(editor).toBeVisible();
+ await expect(page).toHaveURL(url=>url.searchParams.get('nuovo')==='1');
+ const select=editor.locator('select[name="attrezzatura_id"]');
+ await expect(select).toBeVisible();
+ await expect.poll(()=>select.locator('option').count()).toBeGreaterThan(1);
+ await editor.getByRole('button',{name:'Chiudi pannello'}).click();
+ await expect(editor).toBeHidden();
+});
