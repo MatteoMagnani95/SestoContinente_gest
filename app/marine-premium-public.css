@@ -124,3 +124,10 @@
  .sc-marine-preview .sc-auth-decoration,.sc-marine-preview .sc-marine-applicant-art{height:86px;background-image:var(--sc-marine-hero)}
  .sc-marine-preview .sc-marine-applicant-art{margin:-12px -12px 12px}
 }
+
+/* Existing authenticated user sidebar remains intact; stack applicant panels where its width constrains the form. */
+@media (min-width:1001px) and (max-width:1299px){
+ .sc-user-content .sc-marine-applicant-shell{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto}
+ .sc-user-content .sc-marine-applicant-shell>.sc-auth-identity{grid-column:1;grid-row:3}
+ .sc-user-content .sc-marine-applicant-shell>.sc-marine-home-link{grid-column:1;grid-row:1}
+}
