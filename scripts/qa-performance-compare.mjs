@@ -5,6 +5,7 @@ import {readFile,readdir,writeFile} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
 import {gzipSync} from 'node:zlib';
 import {chromium,expect} from '@playwright/test';
+import {summarizeNavigation} from './qa-navigation-summary.mjs';
 
 const env=process.env;
 assert.equal(env.QA_ISOLATED_ENV,'true');
@@ -170,8 +171,10 @@ try{
   console.log(JSON.stringify({scenario:'client sidebar navigation',...navigationScenarios.at(-1)}));
  }
  const navigationComparison=navigationScenarios[0];
+ const navigationSummary=summarizeNavigation(navigationScenarios);
+ console.log(JSON.stringify({scenario:'navigation target summary',...navigationSummary}));
  // Measure generated static chunks separately from per-route transferred resources.
- const report={simulatedRttMs:Number(env.QA_DB_LATENCY_MS||0),scenario:'isolated comparative browser benchmark',baselineSha:'ebe1085b6dfd7b1b5660c3326baf8d4475819c5f',candidateSha:env.GITHUB_SHA||'local',metrics:results,navigation:navigationComparison,navigationScenarios,staticChunks:{baseline:await chunks(join(env.QA_BASELINE_DIR,'.next/static/chunks')),candidate:await chunks('.next/static/chunks')},limitations:'9 alternating cold browser contexts per route; server warmed once; p95 is maximum at this sample size; content-ready measured in-browser at first animation frame with required visible DOM; not LCP/INP'};
+ const report={simulatedRttMs:Number(env.QA_DB_LATENCY_MS||0),scenario:'isolated comparative browser benchmark',baselineSha:'ebe1085b6dfd7b1b5660c3326baf8d4475819c5f',candidateSha:env.GITHUB_SHA||'local',metrics:results,navigation:navigationComparison,navigationScenarios,navigationSummary,staticChunks:{baseline:await chunks(join(env.QA_BASELINE_DIR,'.next/static/chunks')),candidate:await chunks('.next/static/chunks')},limitations:'9 alternating cold browser contexts per route; server warmed once; p95 is maximum at this sample size; content-ready measured in-browser at first animation frame with required visible DOM; not LCP/INP'};
  await writeFile(join(work,'performance-comparison.json'),JSON.stringify(report,null,2));
  console.log(JSON.stringify(report));
 }finally{await browser.close();}
