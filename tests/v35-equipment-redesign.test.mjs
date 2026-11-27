@@ -42,3 +42,9 @@ test('Similarità revisioni: normalizza maiuscole e spazi ai bordi senza confond
  assert.notEqual(h.revisionSimilarityKey({...base,prossimo_intervento:'2027-01-01'}),key);
  assert.match(read('app/gestionale/moduli/revisioni/page.tsx'),/const key=revisionSimilarityKey/);
 });
+
+
+test('F5: icone categorie e priorità revisioni conservano la finestra effettiva',()=>{
+ assert.deepEqual(['Bombola','GAV','Erogatore','Muta','Computer','Altro'].map(h.equipmentIcon),['equipment','gav','regulator','wetsuit','computer','equipment']);
+ const p=read('app/gestionale/moduli/attrezzature/page.tsx');assert.match(p,/limit=shiftDay\(today,30\)/);assert.match(p,/\['scaduta','in_scadenza'\].includes\(revisionState/);assert.match(p,/upcoming.length/);assert.match(p,/upcoming.slice\(0,6\)/);assert.match(p,/!failed&&<section className="sc-card sc-revision-priority"/);assert.match(p,/open.has\(e.id\)/);
+});

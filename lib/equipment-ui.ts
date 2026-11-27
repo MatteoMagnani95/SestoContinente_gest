@@ -12,3 +12,8 @@ export const revisionStates:Record<string,string>={non_acquisita:'Data non acqui
 export function revisionSimilarityKey(r:Pick<Revision,'attrezzatura_id'|'data_intervento'|'tipo'|'prossimo_intervento'>){
  return JSON.stringify([r.attrezzatura_id,r.data_intervento,r.tipo.replace(/^ +| +$/g,'').toLowerCase(),r.prossimo_intervento]);
 }
+
+/** Display only: category labels in the archive remain authoritative. */
+export function equipmentIcon(category:string):'equipment'|'gav'|'regulator'|'wetsuit'|'computer'{
+ const c=category.toLocaleLowerCase('it');return /gav|jacket/.test(c)?'gav':/erogator/.test(c)?'regulator':/mut[ae]/.test(c)?'wetsuit':/computer/.test(c)?'computer':'equipment';
+}

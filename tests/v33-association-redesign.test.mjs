@@ -63,3 +63,12 @@ test('Consiglio: quorum e adesioni conservano RPC, originali e versioni',()=>{
  const next=read('supabase/migrations/20261125223000_patch_0019.sql');
  assert.match(next,/cda_letture/);assert.match(next,/sostituisci_verbale/);
 });
+
+
+test('F5: icone documentali e dimensioni senza inventare metadati',()=>{
+ assert.equal(doc.documentFileKind('application/pdf').icon,'file-pdf');assert.equal(doc.documentFileKind('image/png').icon,'file-image');assert.equal(doc.documentFileKind('application/vnd.openxmlformats-officedocument.wordprocessingml.document').icon,'file-word');assert.equal(doc.documentFileKind('text/csv').icon,'file-sheet');assert.equal(doc.documentFileKind(null).icon,'document');
+ assert.equal(doc.documentSize(null),'Non disponibile');assert.equal(doc.documentSize(-1),'Non disponibile');assert.equal(doc.documentSize(0),'0 B');assert.equal(doc.documentSize(1025),'2 KB');assert.equal(doc.documentSize(1572864),'1,5 MB');
+ const d=read('app/documenti/page.tsx');assert.match(d,/documentFileKind\(d.mime\)/);assert.match(d,/documentSize\(d.dimensione_bytes\)/);assert.match(d,/isAdmin&&<>/);assert.match(d,/prefetch=\{false\}/);
+ const b=read('app/organi-sociali/page.tsx');assert.match(b,/sc-board-overview/);assert.match(b,/!progressError&&progress&&Number\(progress.totali\)>0/);assert.match(b,/Number\(progress.approvati\)<=Number\(progress.totali\)/);assert.match(b,/!precedenti.has\(v.id\)/);assert.match(b,/isStaff&&<ButtonLink href="\?tab=sedute"/);
+ const e=read('app/gestione-eventi/page.tsx');assert.match(e,/Le richieste in attesa sono già incluse nei posti riservati/);assert.match(e,/o.occupied/);assert.match(e,/o.free/);assert.match(e,/e.stato!=='aperto'\|\|e.dal<today/);
+});

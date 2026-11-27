@@ -80,12 +80,12 @@ export default async function Incassi({searchParams}:{searchParams:Promise<{tab?
  const filter={tab,stagione:selectedSeason,stato:status,persona:personFilter,dal,al,debito:debt};
  const maxPage=Math.max(1,Math.ceil(count/perPage));
  return <>
-  <div className="page-intro"><p className="eyebrow">Segreteria · Contabilità</p><h1>Incassi e saldi</h1>
-   <p>Versamenti associativi e corsi, saldi aggiornati dal database e contabilizzazione automatica.</p></div>
+  <PageHeader area="finance" icon="wallet" marine eyebrow="Segreteria · Contabilità" title="Incassi e saldi" description="Versamenti associativi e corsi, saldi aggiornati dal database e contabilizzazione automatica." actions={admin===true?<><ButtonLink href="/gestionale/archivio-incassi" variant="secondary" icon="archive">Archivio incassi</ButtonLink><ButtonLink href="/gestionale/moduli/contabilita" variant="secondary">Contabilità</ButtonLink></>:undefined}/>
+  <nav className="sc-operation-tabs" aria-label="Tipologia incassi">{([['quota','Quote associative'],['corso','Quote corsi']] as const).map(([key,label])=><Link className={'sc-button '+(tab===key?'sc-button-primary':'sc-button-secondary')} key={key} href={linkFor({...filter,tab:key,debito:key===tab?debt:''},1)} aria-current={tab===key?'page':undefined}>{label}</Link>)}</nav>
   <div className="notice warning">Le registrazioni sono definitive e producono un movimento contabile. Verifica la ricezione del pagamento prima della conferma.</div>
   {typeof p.msg==='string'&&Object.hasOwn(feedback,p.msg)&&<p role="status" className={`notice ${p.msg==='salvato'?'success':'warning'}`}>{feedback[p.msg]}</p>}
   <form className="panel payment-filters" action="/gestionale/incassi" method="get">
-   <label>Tipologia<select name="tab" defaultValue={tab}><option value="quota">Quote associative</option><option value="corso">Quote corsi</option></select></label>
+   <input type="hidden" name="tab" value={tab}/>{debt&&<input type="hidden" name="debito" value={debt}/>} 
    <label>Stagione<select name="stagione" defaultValue={selectedSeason} required><option value="">Seleziona stagione…</option>{(seasons??[]).map(s=><option key={s.id} value={s.id}>{s.nome}{s.attiva?' (attiva)':''}</option>)}</select></label>
    <label>Stato<select name="stato" defaultValue={status}><option value="tutte">Tutti</option><option value="residuo">Con residuo da incassare</option><option value="non_pagata">Non pagate</option><option value="parziale">Parziali</option><option value="pagata">Pagate</option></select></label>
    <div className="sc-field"><label htmlFor="payment-person">Socio</label><SearchableSelect id="payment-person" name="persona" label="Socio" value={personFilter} options={(allPeople??[]).map(p=>({value:p.id,label:p.cognome+" "+p.nome}))}/></div><label>Scadenza dal<input type="date" name="dal" defaultValue={dal}/></label><label>Scadenza al<input type="date" name="al" defaultValue={al}/></label>
@@ -97,7 +97,7 @@ export default async function Incassi({searchParams}:{searchParams:Promise<{tab?
   {!selectedSeason?<p className="notice warning">{p.stagione?'La stagione selezionata non è disponibile. Scegline un’altra.':'Crea prima una stagione sportiva per registrare i versamenti.'}</p>:null}
   {errorMessage&&<p className="notice error">{errorMessage}</p>}
   {peopleError&&<Alert tone="warning">Elenco soci non disponibile.</Alert>}
-  {totals?<div className="sc-metrics"><MetricCard area="finance" icon="wallet" label="Totale dovuto" value={euros(totals.due)}/><MetricCard area="finance" icon="wallet" label="Totale incassato" value={euros(totals.paid)}/><MetricCard area="finance" icon="clock" label="Residuo complessivo" value={euros(totals.residue)}/><MetricCard area="finance" icon="check" label="Posizioni saldate" value={totals.settled}/><MetricCard area="finance" icon="clipboard" label="Da saldare" value={totals.open}/></div>:selectedSeason&&<Alert tone="warning">Totali delle posizioni filtrate non disponibili.</Alert>}
+  {totals?<div className="sc-metrics sc-finance-kpis"><MetricCard area="teaching" icon="wallet" label="Totale dovuto" value={euros(totals.due)}/><MetricCard area="finance" icon="wallet" label="Totale incassato" value={euros(totals.paid)}/><MetricCard area="equipment" icon="clock" label="Residuo complessivo" value={euros(totals.residue)}/><MetricCard area="secretariat" icon="check" label="Posizioni saldate" value={totals.settled}/><MetricCard area="event" icon="warning" label="Da saldare" value={totals.open}/></div>:selectedSeason&&<Alert tone="warning">Totali delle posizioni filtrate non disponibili.</Alert>}
   {!errorMessage&&selectedSeason&&<section className="panel">
    <h2>{tab==='quota'?'Quote associative':'Addebiti dei corsi'}</h2>
    <p className="tiny muted">{count} posizioni · Pagina {page} di {maxPage}. I totali comprendono tutte le posizioni corrispondenti ai filtri.</p>
@@ -105,7 +105,7 @@ export default async function Incassi({searchParams}:{searchParams:Promise<{tab?
     {balances.map(b=><tr key={b.id}>
      <td data-label="Socio"><Link href={`/gestionale/soci/${b.persona_id}`}>{names.get(b.persona_id)??'Nominativo non disponibile'}</Link></td>
      <td data-label="Scadenza / causale">{fmtDate(b.scadenza)}{tab==='corso'&&<p>{courseNames.get(b.edizione_id??'')??'Corso non disponibile'}</p>}</td>
-     <td data-label="Dovuto">{euros(b.importo_dovuto)}</td><td data-label="Versato">{euros(b.versato)}</td><td data-label="Residuo"><strong>{euros(b.residuo)}</strong></td><td data-label="Stato"><StatusBadge tone={b.stato==='pagata'?'success':b.stato==='parziale'?'warning':'neutral'}>{b.stato.replaceAll('_',' ')}</StatusBadge></td>
+     <td data-label="Dovuto" className="sc-money">{euros(b.importo_dovuto)}</td><td data-label="Versato" className="sc-money">{euros(b.versato)}</td><td data-label="Residuo" className="sc-money"><strong>{euros(b.residuo)}</strong></td><td data-label="Stato"><StatusBadge tone={b.stato==='pagata'?'success':b.stato==='parziale'?'warning':b.stato==='non_pagata'?'danger':'neutral'}>{b.stato.replaceAll('_',' ')}</StatusBadge></td>
      <td data-label="Azioni"><div className="sc-row-actions">{Number(b.residuo)>0?
       <Drawer title={'Registra versamento · '+(names.get(b.persona_id)??'Socio')} trigger="Registra versamento" primary><p>Causale: {tab==='quota'?'Quota associativa':courseNames.get(b.edizione_id??'')??'Quota corso'}</p><p>Dovuto: <strong>{euros(b.importo_dovuto)}</strong> · Versato: {euros(b.versato)} · Residuo: <strong>{euros(b.residuo)}</strong></p><EditForm action={recordGuidedPayment} className="payment-form">
        <input type="hidden" name="tab" value={tab}/><input type="hidden" name="debito_id" value={b.id}/>
@@ -125,10 +125,10 @@ export default async function Incassi({searchParams}:{searchParams:Promise<{tab?
     {!balances.length&&<tr><td colSpan={7}>Nessun addebito trovato per i filtri selezionati.</td></tr>}
    </tbody></DataTable><Pagination page={page} size={perPage} count={count} href={p=>linkFor(filter,p)} label="posizioni"/>
   </section>}
-  <section className="panel"><h2>Ultimi 15 versamenti {personFilter?'del socio':'registrati'}</h2>
+  <section className="panel sc-finance-recent"><h2>Ultimi 15 versamenti {personFilter?'del socio':'registrati'}</h2>
    {admin===true&&<Link href={'/gestionale/archivio-incassi'+(personFilter?'?persona='+personFilter:'')}>Storico completo dei versamenti e rettifiche</Link>}<p className="tiny muted">È un elenco delle registrazioni più recenti, non un rendiconto completo. Per il rendiconto usa l'area amministrativa.</p>
    {recentError?<p className="notice error">Impossibile leggere gli ultimi incassi.</p>:<div className="table-panel"><table><thead><tr><th>Data</th><th>Socio</th><th>Tipo</th><th>Importo</th><th>Metodo</th><th>Riferimento</th>{admin===true&&<th>Azioni</th>}</tr></thead><tbody>
-    {(recent??[]).map(r=><tr key={r.id}><td>{fmtDate(r.data_pagamento)}</td><td>{historyNames.get(r.persona_id)??'Nominativo non disponibile'}</td><td>{r.quota_id?'Quota':'Corso'}</td><td>{euros(r.importo)}</td><td>{methodLabel(r.metodo)}</td><td>{r.riferimento??'—'}</td>{admin===true&&<td><Link href={`/gestionale/incassi/${r.id}`}>Rettifica</Link></td>}</tr>)}
+    {(recent??[]).map(r=><tr key={r.id}><td>{fmtDate(r.data_pagamento)}</td><td>{historyNames.get(r.persona_id)??'Nominativo non disponibile'}</td><td>{r.quota_id?'Quota':'Corso'}</td><td className="sc-money">{euros(r.importo)}</td><td>{methodLabel(r.metodo)}</td><td>{r.riferimento??'—'}</td>{admin===true&&<td><Link href={`/gestionale/incassi/${r.id}`}>Rettifica</Link></td>}</tr>)}
     {!recent?.length&&<tr><td colSpan={6}>Nessun pagamento registrato.</td></tr>}
    </tbody></table></div>}
   </section>

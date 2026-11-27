@@ -211,3 +211,34 @@ test('F4B: occupazione reale indipendente dal filtro corso, vista settimana e mo
  await expect(page).toHaveURL(url=>url.pathname==='/gestionale/calendario-visivo/'+fixtures.lesson&&url.searchParams.get('edizione')===fixtures.secondEdition);
  await expect(page.getByRole('heading',{name:'Lezione sintetica',exact:true})).toBeVisible();
 });
+
+
+test('F5: tab finanziarie, archivi operativi e panoramica CdA su mobile',async({page})=>{
+ await page.goto('/gestionale/incassi');
+ const nav=page.getByRole('navigation',{name:'Tipologia incassi'});
+ await expect(nav.getByRole('link',{name:'Quote associative'})).toHaveAttribute('aria-current','page');
+ await nav.getByRole('link',{name:'Quote corsi'}).click();
+ await expect(page).toHaveURL(url=>url.pathname==='/gestionale/incassi'&&url.searchParams.get('tab')==='corso');
+ await expect(nav.getByRole('link',{name:'Quote corsi'})).toHaveAttribute('aria-current','page');
+ await expect(page.locator('form.payment-filters input[name="tab"][value="corso"]')).toHaveCount(1);
+ await expect(page.getByRole('heading',{name:'Addebiti dei corsi'})).toBeVisible();
+ await page.setViewportSize({width:390,height:844});
+ await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(391);
+ await page.goto('/gestionale/moduli/attrezzature');
+ await expect(page.getByRole('heading',{name:'Revisioni da programmare'})).toBeVisible();
+ await expect(page.getByRole('table',{name:'Inventario'})).toBeVisible();
+ await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(391);
+ await page.goto('/gestione-eventi');
+ await expect(page.getByText('Le richieste in attesa riservano già un posto. I posti sono assegnati in ordine di arrivo.')).toBeVisible();
+ if(fixtures.event){const card=page.locator('#evento-'+fixtures.event);await expect(card.getByRole('link',{name:'Apri evento'})).toBeVisible();await expect(card.getByRole('link',{name:'Gestisci richieste'})).toBeVisible();}
+ await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(391);
+ await page.goto('/organi-sociali');
+ await expect(page.getByRole('heading',{name:'Votazioni in corso',exact:true})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Bozze recenti'})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Documenti riservati'})).toBeVisible();
+ await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(391);
+ await page.goto('/documenti');
+ await expect(page.getByText('Archivio privato',{exact:true})).toBeVisible();
+ await expect(page.getByRole('table',{name:'Documenti'})).toBeVisible();
+ await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(391);
+});

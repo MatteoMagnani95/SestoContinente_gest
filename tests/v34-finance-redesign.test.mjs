@@ -30,3 +30,8 @@ test('Movimenti automatici protetti; export applica i filtri e conserva protezio
  assert.match(read('app/module-actions.ts'),/if\(key==='contabilita'\)update=update.is\('pagamento_id',null\)/);
  const e=read('app/gestionale/esporta/[modulo]/route.ts');assert.match(e,/movementFilter/);assert.match(e,/filter.origine==='automatico'/);assert.match(e,/escapeCSV/);
 });
+
+
+test('F5: due tab effettive, filtri persistenti e azioni amministrative protette',()=>{
+ const p=read('app/gestionale/incassi/page.tsx');assert.match(p,/aria-label="Tipologia incassi"/);assert.match(p,/aria-current=\{tab===key\?'page':undefined\}/);assert.match(p,/debito:key===tab\?debt:''/);assert.match(p,/name="tab" value=\{tab\}/);assert.match(p,/name="debito" value=\{debt\}/);assert.match(p,/admin===true\?<><ButtonLink href="\/gestionale\/archivio-incassi"/);assert.match(p,/className="sc-money"/);assert.match(p,/non un rendiconto completo/);assert.match(p,/name="conferma" required/);
+});
