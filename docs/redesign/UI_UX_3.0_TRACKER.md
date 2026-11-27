@@ -182,3 +182,6 @@ Riaperti il master definitivo §§5.12–5.14, §7 e mockup 13–16 nel pacchett
 
 ### F6 — correzione compilazione 27/11/2026
 CI 45964841996: job database superato, TypeScript TS2322 in lib/navigation.ts: il nuovo collegamento certificati usa l'icona `certificate`, già implementata in Icon.tsx ma non inclusa nel tipo MobileDestination. Estesa la union in modo esplicito, senza cast o disattivazione dei controlli. Nessun cambiamento a permessi, destinazioni o test. Gate da ripetere sul nuovo SHA; F7 non avviata prima del GO.
+
+### F6 — ripristino contratto link certificato
+CI 45965182027 su d1f3900: TypeScript e database superati; test storico v25-audit-flussi.test.mjs fallito esclusivamente sulla forma testuale del link certificato con persona specifica. Ripristinata la template literal originale `/area-personale/certificato?persona=${p.id}` nella nuova card; destinazione e ID invariati, test storico non modificato. Gate richiesto sul nuovo SHA.
