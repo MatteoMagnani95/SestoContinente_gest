@@ -84,6 +84,9 @@ jobs:
           export QA_FIXTURE_IDS=$(cat "$QA_WORK_DIR/fixtures.json")
           npm run test:browser -- --project='*-staff' --project='*-secretary' --project='*-member' --project='*-instructor' --project='*-board' --project='*-applicant'
           QA_STRUCTURAL_DISABLED_URL=http://127.0.0.1:3314 node scripts/qa-structural-disabled.mjs
+      - name: Audit esteso ruoli, revoche, API e archivi CRUD
+        timeout-minutes: 12
+        run: node scripts/qa-audit-functional.mjs
       - name: Mutazioni e sei schermate reali con email sintetica
         env:
           QA_MARINE_VISUAL_DIR: ${{ runner.temp }}/marine-public-${{ github.run_id }}

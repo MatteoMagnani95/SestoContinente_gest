@@ -150,3 +150,15 @@ Versioni live ulteriori: 20261127091403 deroga_istruttori_corsi; 20261127163939 
 | Browser / responsive / prestazioni | success aggregato | pending | OFF/OFF vs a615d39, casi limite |
 ## Vincoli e ripresa
 Ramo isolato; nessun merge, deploy, reset o modifica database live, no dati reali, nessun upgrade, SC_STRUCTURAL_RPC=false e SC_STRUCTURAL_RPC_RELEASE=false. Usare Supabase locale effimero in CI, fixture sintetiche e sink email. Non creare policy/DDL senza riproduzione, non indebolire test. Prossimo: nuova QA autenticata e benchmark sulla baseline, ispezionare ACL effettive e migrazioni, estendere matrice, riprodurre bug e aggiungere test prima del fix. Ogni gate non osservato resta PENDING. Nessun bug funzionale nuovo confermato o corretto in questo avvio; nessuna idoneità alla release.
+
+## Ciclo 2 — evidenze 27 novembre 2026
+- CI 46078537867 su 8494995: conclusione success (database, lint, TS, statici, build, browser pubblico, audit dipendenze).
+- QA 46078537950: in_progress alla verifica; nessuna conclusione attribuita.
+- AUD-001: ramo audit separato, PR #13 base esatta 3.2; main non consolidato per scelta conservativa.
+- AUD-002: 16/16 funzioni previste dall'upgrade 2.0 presenti e corpo normalizzato uguale; 5/5 trigger previsti presenti, abilitati e associati alla funzione corretta; due trigger di coerenza direzione deferrable/deferred come atteso. 0 funzioni sc_perf_% in produzione. Storico non equivale a schema mancante.
+- AUD-003: stato MIGRATIONS_FAILED della branch di default da riconciliare separatamente; non intervenire sul DB live.
+- AUD-004: ACL dirette negate a anon/authenticated su cda_letture, funzione di attestazione lettura non eseguibile da tali ruoli; accesso server documentato. Non è bug di policy; test voto/lettura rimane aperto.
+- AUD-005: 14/15 trigger; is_board controlla account abilitato e auth.uid(). Nessun exploit dimostrato.
+- AUD-006: 65 funzioni SECURITY DEFINER non-trigger eseguibili da authenticated, tutte con search_path fissato. Le 8 senza guardia sintattica diretta sono state lette: 6 usano guardie indirette; documento_sanitario e percorso_sanitario sono predicati usati per proteggere documenti/Storage, da approfondire per possibile divulgazione della classificazione di un ID/percorso noto. Nessuna prova di abuso o modifica SQL in questo ciclo.
+- AUD-007: btree_gist in public, 264 oggetti membro; hardening non necessario senza analisi dipendenze.
+- AUD-008: aggiunto scripts/qa-audit-functional.mjs, esecuzione nel workflow isolato prima delle mutazioni; tutore, selezione certificati propria/rappresentata, accessi vietati, combinazione tutore+segreteria+CdA e revoca in sessione, account sospeso con sessione stale, 28 archivi CRUD e 10 route amministrative su Chromium/WebKit, export/API negative, RPC OFF. Nessun test precedente rimosso; nuovi test da eseguire e verificare. Non equivale a copertura di ogni combinazione o mutazione.
