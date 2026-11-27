@@ -153,7 +153,7 @@ export default async function EditionDetail({params,searchParams}:{params:Promis
     <p className="tiny muted">Non è possibile ridurre la capienza sotto gli iscritti confermati. Conclusione e annullamento bloccano le nuove iscrizioni dalla scheda guidata.</p>
    </EditForm></Drawer>}
    <ConfirmDialog title={'Rimuovi edizione · '+ed.nome} trigger="Rimuovi edizione"><ActionForm action={deleteEdition} className="stack">
-    <input type="hidden" name="edizione_id" value={id}/><p>La rimozione è definitiva e possibile solo se non ci sono dati collegati. Per conservare lo storico usa lo stato Annullato.</p>
+    <input type="hidden" name="edizione_id" value={id}/><p>La rimozione è definitiva. Se l’edizione è annullata e non ha iscrizioni, lezioni, brevetti, documenti o prestiti collegati, vengono rimossi anche gli incarichi didattici della sola edizione. Negli altri casi i vincoli proteggono lo storico.</p>
     <label><input type="checkbox" name="conferma" required/> Confermo la rimozione di {ed.nome}</label><button type="submit" className="button danger">Rimuovi</button>
    </ActionForm></ConfirmDialog></Section>}
    {tab==='istruttori'&&<Section id="istruttori" title="Direttore e istruttori"><p><strong>Direttore:</strong> {ed.direttore_id?displayPerson(ed.direttore_id,personById):'Da assegnare'}</p><p className="tiny muted">Responsabile del corso e del rilascio del brevetto secondo le regole associative. Se è presente un incarico di responsabile tra gli istruttori, deve coincidere con il direttore.</p><ButtonLink href={courseViewHref(id,'configurazione')} variant="secondary">Modifica direttore</ButtonLink>

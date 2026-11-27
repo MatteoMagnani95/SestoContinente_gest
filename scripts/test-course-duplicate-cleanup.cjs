@@ -17,11 +17,19 @@ async function main(){
   const catalog=await scalar(staff,"insert into corsi(nome,tipo) values($1,'APNEA') returning id",['Hotfix '+randomUUID()]);
   const name='Duplicato '+randomUUID();
   const insert="insert into edizioni_corsi(corso_id,stagione_id,nome,inizio,fine,direttore_id,stato) values($1,$2,$3,'2026-10-01','2026-12-01',$4,$5) returning id";
-  const active=await scalar(staff,insert,[catalog,season,name,director,'attivo']);
+  const cancelled=await scalar(staff,insert,[catalog,season,name,director,'annullato']);
+  // Only on the disposable local DB: recreate the legacy duplicate preserved
+  // by the historical migration. Restore the trigger before the test begins.
+  await root.query('begin');
+  let active;
+  try{
+   await root.query('alter table public.edizioni_corsi disable trigger identita_edizione');
+   active=await scalar(root,insert.replace('direttore_id,stato)','direttore_id,stato,duplicato_storico)').replace('$4,$5)','$4,$5,true)'),[catalog,season,name,director,'attivo']);
+   await root.query('alter table public.edizioni_corsi enable trigger identita_edizione');
+   await root.query('commit');
+  }catch(e){await root.query('rollback');throw e;}
   await assert.rejects(staff.query(insert,[catalog,season,'  '+name.toUpperCase()+'  ',director,'programmato']),{code:'P3419'});
-  // Synthetic old duplicate: simulate pre-protection history with trigger/index changes
-  // avoided; test another cancelled identity and prove active edition remains untouched.
-  const cancelled=await scalar(staff,insert,[catalog,season,name+' annullato',director,'annullato']);
+  await assert.rejects(staff.query('update edizioni_corsi set duplicato_storico=false where id=$1',[active]),{code:'P3419'});
   const protectedEd=await scalar(staff,insert,[catalog,season,name+' protetto',director,'attivo']);
   await root.query("insert into qualifiche_istruttori(persona_id,titolo) values($1,'Qualifica sintetica')",[director]);
   for(const id of [active,cancelled,protectedEd])await root.query("insert into assegnazioni_istruttori(edizione_id,persona_id,ruolo) values($1,$2,'responsabile')",[id,director]);
@@ -38,6 +46,8 @@ async function main(){
   assert.equal(await scalar(root,"select count(*)::int from assegnazioni_istruttori where edizione_id=$1",[cancelled]),0);
   assert.equal(await scalar(root,"select count(*)::int from edizioni_corsi where id=$1",[active]),1);
   assert.equal(await scalar(root,"select count(*)::int from assegnazioni_istruttori where edizione_id=$1",[active]),1);
+  assert.equal(await scalar(root,"select duplicato_storico from edizioni_corsi where id=$1",[active]),false);
+  await assert.rejects(staff.query(insert,[catalog,season,name,director,'programmato']),{code:'P3419'});
   console.log('OK duplicate normalization, active responsibility protected, unauthorized deletion denied, cancelled empty edition atomically removed');
  }finally{await Promise.all([root.end(),staff.end(),member.end()]);}
 }
