@@ -104,7 +104,8 @@ test('only explicit public branding assets get public caching',()=>{
 
 test('finance loads independent reads and preserves full filtered aggregate',()=>{
  const source=read('app/gestionale/incassi/page.tsx');
- assert.match(source,/const \[\{data:admin\},p,\{data:seasons,error:seasonError\},\{data:allPeople,error:peopleError\}\]=await Promise.all/);
+ assert.match(source,/const \[\{data:admin\},\{data:seasons,error:seasonError\},personOptions\]=await Promise.all/);
+ assert.match(source,/personOptions\?\{data:\[\],error:null\}:await tutteLePagine/);
  assert.match(source,/const \[\{data,error,count:total\},aggregate\]=await Promise.all/);
  assert.match(source,/select\('id,importo_dovuto,versato,residuo'\)/);
  assert.match(source,/totals=balanceTotals\(aggregate.data/);
@@ -190,4 +191,18 @@ test('own-account RPC is gated, validates snapshot and shares it only within the
  assert.match(sql,/CREATE FUNCTION public.sc_perf_navigation\(\)[\s\S]*?SECURITY INVOKER[\s\S]*?uid uuid:=auth.uid\(\)/);
  assert.match(sql,/REVOKE ALL ON FUNCTION public.sc_perf_navigation\(\) FROM PUBLIC,anon,authenticated/);
  assert.match(read('.github/workflows/performance-3-1.yml'),/QA_STRUCTURAL_RPC_USED navigation-account/);
+});
+
+test('server-paged inventory and remote person options preserve complete counts and staff-only access',()=>{
+ const inventory=read('app/gestionale/moduli/attrezzature/page.tsx'),finance=read('app/gestionale/incassi/page.tsx'),route=read('app/gestionale/incassi/person-options/route.ts');
+ assert.match(inventory,/sc_perf_inventory/);
+ assert.match(inventory,/snapshot\.metrics/);
+ assert.match(inventory,/count=\{failed\?null:filteredCount\}/);
+ assert.match(inventory,/upcomingCount/);
+ assert.match(finance,/personOptions\?<RemotePersonSelect/);
+ assert.match(route,/await supabase.auth.getUser\(\)/);
+ assert.match(route,/await supabase.rpc\('is_staff'\)/);
+ assert.match(route,/staff!==true/);
+ assert.match(route,/private, no-store/);
+ assert.match(read('components/ui/RemotePersonSelect.tsx'),/controller.abort\(\)/);
 });

@@ -1,6 +1,7 @@
 import {PageHeader,MetricCard,StatusBadge,Alert,ButtonLink} from '@/components/ui/Primitives';
 import {DataTable,Pagination} from '@/components/ui/DataTable';
 import SearchableSelect from '@/components/ui/SearchableSelect';
+import RemotePersonSelect from '@/components/ui/RemotePersonSelect';
 import PaymentReview from '@/components/PaymentReview';
 import {tutteLePagine} from '@/lib/pagine';
 import {balanceTotals,dateFilter,methodLabel} from '@/lib/finance-ui';
@@ -11,7 +12,7 @@ import Link from 'next/link';
 import {randomUUID} from 'node:crypto';
 import {requireStaffForRender as requireStaff} from '@/lib/security';
 import {recordGuidedPayment} from './actions';
-import {structuralRpc,readFinanceTotals,markStructuralRpcUsed} from '@/lib/structural-qa';
+import {structuralRpc,readFinanceTotals,markStructuralRpcUsed,readPersonOptions,structuralQaEnabled} from '@/lib/structural-qa';
 
 type Balance={id:string;persona_id:string;stagione_id:string;edizione_id?:string|null;importo_dovuto:string|number;versato:string|number;residuo:string|number;stato:string;scadenza:string|null};
 type Person={id:string;nome:string;cognome:string};
@@ -39,12 +40,15 @@ function linkFor(p:{tab:string;stagione:string;stato:string;persona:string;dal:s
 }
 export default async function Incassi({searchParams}:{searchParams:Promise<{tab?:string;stagione?:string;stato?:string;persona?:string;p?:string;msg?:string;dal?:string;al?:string;debito?:string}>}){
  const {supabase}=await requireStaff();
- const [{data:admin},p,{data:seasons,error:seasonError},{data:allPeople,error:peopleError}]=await Promise.all([
+ const p=await searchParams;
+ const remoteOptionsPromise=structuralQaEnabled()?structuralRpc(supabase,'sc_perf_person_options',{p_query:'',p_page:1,p_selected:p.persona&&uuid.test(p.persona)?p.persona:null}).then(readPersonOptions):Promise.resolve(null);
+ const [{data:admin},{data:seasons,error:seasonError},personOptions]=await Promise.all([
   supabase.rpc('is_admin'),
-  searchParams,
   tutteLePagine((da,a)=>supabase.from('stagioni').select('id,nome,attiva').order('dal',{ascending:false}).order('id').range(da,a)),
-  tutteLePagine((da,a)=>supabase.from('persone').select('id,nome,cognome').order('cognome').order('nome').order('id').range(da,a))
+  remoteOptionsPromise
  ]);
+ if(personOptions)markStructuralRpcUsed('person-options');
+ const {data:allPeople,error:peopleError}=personOptions?{data:[],error:null}:await tutteLePagine((da,a)=>supabase.from('persone').select('id,nome,cognome').order('cognome').order('nome').order('id').range(da,a));
  const dal=dateFilter(p.dal),al=dateFilter(p.al),debt=p.debito&&uuid.test(p.debito)?p.debito:'';
  const selectedSeason=p.stagione?((seasons??[]).find(s=>s.id===p.stagione)?.id??''):((seasons??[]).find(s=>s.attiva)?.id??(seasons??[])[0]?.id??'');
  const tab=p.tab==='corso'?'corso':'quota';
@@ -100,7 +104,7 @@ export default async function Incassi({searchParams}:{searchParams:Promise<{tab?
    <input type="hidden" name="tab" value={tab}/>{debt&&<input type="hidden" name="debito" value={debt}/>} 
    <label>Stagione<select name="stagione" defaultValue={selectedSeason} required><option value="">Seleziona stagione…</option>{(seasons??[]).map(s=><option key={s.id} value={s.id}>{s.nome}{s.attiva?' (attiva)':''}</option>)}</select></label>
    <label>Stato<select name="stato" defaultValue={status}><option value="tutte">Tutti</option><option value="residuo">Con residuo da incassare</option><option value="non_pagata">Non pagate</option><option value="parziale">Parziali</option><option value="pagata">Pagate</option></select></label>
-   <div className="sc-field"><label htmlFor="payment-person">Socio</label><SearchableSelect id="payment-person" name="persona" label="Socio" value={personFilter} options={(allPeople??[]).map(p=>({value:p.id,label:p.cognome+" "+p.nome}))}/></div><label>Scadenza dal<input type="date" name="dal" defaultValue={dal}/></label><label>Scadenza al<input type="date" name="al" defaultValue={al}/></label>
+   <div className="sc-field"><label htmlFor="payment-person">Socio</label>{personOptions?<RemotePersonSelect id="payment-person" name="persona" label="Socio" value={personFilter} initial={personOptions}/>:<SearchableSelect id="payment-person" name="persona" label="Socio" value={personFilter} options={(allPeople??[]).map(p=>({value:p.id,label:p.cognome+" "+p.nome}))}/>}</div><label>Scadenza dal<input type="date" name="dal" defaultValue={dal}/></label><label>Scadenza al<input type="date" name="al" defaultValue={al}/></label>
    <button className="button" type="submit">Applica</button><ButtonLink variant="secondary" href="/gestionale/incassi">Azzera filtri</ButtonLink>
    <Link className="button ghost" href="/gestionale/moduli/quote">Gestisci quote</Link>
    <Link className="button ghost" href="/gestionale/moduli/addebiti">Gestisci addebiti corsi</Link>

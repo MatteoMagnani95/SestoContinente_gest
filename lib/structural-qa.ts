@@ -39,7 +39,7 @@ export function readDashboardSnapshot(v:Record<string,unknown>|null){
 }
 
 const used=new Set<string>();
-export function markStructuralRpcUsed(name:'dashboard'|'soci-counts'|'incassi-totals'|'navigation-account'){
+export function markStructuralRpcUsed(name:'dashboard'|'soci-counts'|'incassi-totals'|'navigation-account'|'inventory-page'|'person-options'){
  if(structuralQaEnabled()&&!used.has(name)){used.add(name);console.log('QA_STRUCTURAL_RPC_USED '+name);}
 }
 
@@ -51,4 +51,19 @@ export function readAccountSnapshot(v:Record<string,unknown>|null):AccountSnapsh
  const owner=v.owner===null?null:record(v.owner)&&str(v.owner.nome)&&(v.owner.cognome===null||str(v.owner.cognome))?{nome:v.owner.nome,cognome:v.owner.cognome}:null;
  if(v.owner!==null&&!owner)return null;
  return {enabled:true,roles:v.roles,member:v.member,personal:v.personal,unread:v.unread,owner};
+}
+
+type InventoryRow=import('@/lib/equipment-ui').Equipment&{has_loan:boolean;locked?:boolean};
+const equipment=(v:unknown):v is InventoryRow=>record(v)&&str(v.id)&&str(v.codice)&&str(v.categoria)&&str(v.stato)&&typeof v.has_loan==='boolean'&&['marca','modello','matricola','acquistata_il','ultima_revisione','prossima_revisione','note'].every(k=>v[k]===null||str(v[k]));
+export function readInventorySnapshot(v:Record<string,unknown>|null){
+ if(!v||!validCount(v.count)||typeof v.direct!=='boolean'||!validCount(v.upcomingCount)||!Array.isArray(v.categories)||!v.categories.every(str)||!record(v.metrics)||!Array.isArray(v.rows)||v.rows.length>30||!v.rows.every(equipment)||!v.rows.every(r=>typeof r.locked==='boolean')||!Array.isArray(v.upcoming)||v.upcoming.length>6||!v.upcoming.every(equipment))return null;
+ const keys=['available','loaned','maintenance','out','due','total'] as const;
+ if(!keys.every(k=>validCount(v.metrics&&record(v.metrics)?v.metrics[k]:null)))return null;
+ return {rows:v.rows as InventoryRow[],upcoming:v.upcoming as InventoryRow[],upcomingCount:v.upcomingCount,count:v.count,direct:v.direct,categories:v.categories as string[],metrics:v.metrics as Record<typeof keys[number],number>};
+}
+export type PersonOption={value:string;label:string};
+const option=(v:unknown):v is PersonOption=>record(v)&&str(v.value)&&str(v.label);
+export function readPersonOptions(v:Record<string,unknown>|null){
+ if(!v||!validCount(v.count)||!Array.isArray(v.options)||v.options.length>50||!v.options.every(option)||!(v.selected===null||option(v.selected)))return null;
+ return {count:v.count,options:v.options as PersonOption[],selected:v.selected as PersonOption|null};
 }
