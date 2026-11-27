@@ -98,6 +98,18 @@ jobs:
           path: ${{ runner.temp }}/marine-public-${{ github.run_id }}/*.png
           if-no-files-found: warn
           retention-days: 7
+      - name: Screenshot area riservata e reflow per ruolo
+        env:
+          QA_MARINE_PRIVATE_DIR: ${{ runner.temp }}/marine-private-${{ github.run_id }}
+        run: node scripts/qa-marine-private.mjs
+      - name: Conserva screenshot area riservata sintetica
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: marine-private-${{ github.event.pull_request.head.sha }}
+          path: ${{ runner.temp }}/marine-private-${{ github.run_id }}/*.png
+          if-no-files-found: warn
+          retention-days: 7
       - name: Dataset di carico
         run: node scripts/qa-local-supabase.mjs performance
       - name: Build baseline 3.1 esatta e avvio OFF
