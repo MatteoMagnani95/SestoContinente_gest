@@ -17,7 +17,7 @@ import Cronologia from '@/components/Cronologia';
 import {tutteLePagine} from '@/lib/pagine';
 import Link from 'next/link';
 import {notFound} from 'next/navigation';
-import {requireStaff} from '@/lib/security';
+import {requireStaffForRender as requireStaff} from '@/lib/security';
 import {UUID_RE,courseName,formatRome,ENROLLMENT_STATES,COURSE_STATES} from '@/lib/course-tools';
 import {formatValue} from '@/lib/format';
 import LessonComposer from '@/components/LessonComposer';
