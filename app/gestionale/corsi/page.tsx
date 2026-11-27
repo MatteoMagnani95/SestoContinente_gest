@@ -20,6 +20,8 @@ export default async function Courses({searchParams}:{searchParams:Promise<{q?:s
  const disciplina=validDiscipline(p.disciplina),livello=validLevel(p.livello),ordine=['inizio','fine','nome_desc'].includes(p.ordine??'')?p.ordine:'nome';
  const view=courseListView(p.vista_corsi);
  const requested=Math.min(10000,Math.max(1,Number.parseInt(p.p??'1',10)||1));
+ const storicoCatalogoPromise=tutteLePagine((da,a)=>supabase.from('corsi').select('id,nome').eq('duplicato_storico',true).order('id').range(da,a));
+ const storicheEdizioniPromise=tutteLePagine((da,a)=>supabase.from('edizioni_corsi').select('id,nome').eq('duplicato_storico',true).order('id').range(da,a));
  const {data:seasons,error:seasonError}=await tutteLePagine((da,a)=>supabase.from('stagioni').select('id,nome,attiva').order('dal',{ascending:false}).order('id').range(da,a));
  const stagione=(seasons??[]).some(s=>s.id===p.stagione)?p.stagione??'':'';
  let query=supabase.from('edizioni_corsi').select('id,nome,corso_id,stagione_id,inizio,fine,stato,massimo_partecipanti,direttore_id,corsi!inner(nome,tipo,livello)',{count:'exact'});
@@ -36,8 +38,8 @@ export default async function Courses({searchParams}:{searchParams:Promise<{q?:s
   ids.length?tutteLePagine((da,a)=>supabase.from('iscrizioni_corsi').select('edizione_id').in('edizione_id',ids).eq('stato','iscritto').order('id').range(da,a)):{data:[],error:null},
   directorIds.length?supabase.from('persone').select('id,nome,cognome').in('id',directorIds):{data:[],error:null},
   ids.length?tutteLePagine((da,a)=>supabase.from('gest_elenco_assegnazioni_istruttori').select('id,edizione_id,ruolo,sort_nome,sort_cognome').in('edizione_id',ids).order('sort_cognome').order('sort_nome').order('id').range(da,a)):{data:[],error:null},
-  tutteLePagine((da,a)=>supabase.from('corsi').select('id,nome').eq('duplicato_storico',true).order('id').range(da,a)),
-  tutteLePagine((da,a)=>supabase.from('edizioni_corsi').select('id,nome').eq('duplicato_storico',true).order('id').range(da,a))
+  storicoCatalogoPromise,
+  storicheEdizioniPromise
  ]);
  const staffNames=(id:string,role:string)=>staffError?'Non disponibile':(staff??[]).filter(a=>a.edizione_id===id&&a.ruolo===role).map(a=>[a.sort_cognome,a.sort_nome].filter(Boolean).join(' ')).join(', ')||'Da assegnare';
  const counts=new Map<string,number>();for(const row of enrollments??[])counts.set(row.edizione_id,(counts.get(row.edizione_id)??0)+1);

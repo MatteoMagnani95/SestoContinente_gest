@@ -105,7 +105,9 @@ test('only explicit public branding assets get public caching',()=>{
 test('finance loads independent reads and preserves full filtered aggregate',()=>{
  const source=read('app/gestionale/incassi/page.tsx');
  assert.match(source,/const \[\{data:admin\},\{data:seasons,error:seasonError\},personOptions\]=await Promise.all/);
- assert.match(source,/personOptions\?\{data:\[\],error:null\}:await tutteLePagine/);
+ assert.match(source,/peoplePromise=remoteOptionsPromise.then\(personOptions=>personOptions\?\{data:\[\],error:null\}:tutteLePagine/);
+ assert.match(source,/allIds=\[\.\.\.new Set\(\[\.\.\.peopleIds,\.\.\.historyIds\]\)\]/);
+ assert.match(source,/combined.error\?await Promise.all\(\[loadPeople\(peopleIds\),loadPeople\(historyIds\)\]\)/);
  assert.match(source,/const \[\{data,error,count:total\},aggregate\]=await Promise.all/);
  assert.match(source,/select\('id,importo_dovuto,versato,residuo'\)/);
  assert.match(source,/totals=balanceTotals\(aggregate.data/);
@@ -205,4 +207,12 @@ test('server-paged inventory and remote person options preserve complete counts 
  assert.match(route,/staff!==true/);
  assert.match(route,/private, no-store/);
  assert.match(read('components/ui/RemotePersonSelect.tsx'),/controller.abort\(\)/);
+});
+
+test('course historical duplicate checks start independently of the season and page queries',()=>{
+ const source=read('app/gestionale/corsi/page.tsx');
+ assert.ok(source.indexOf('const storicoCatalogoPromise=')<source.indexOf('const {data:seasons,error:seasonError}=await'));
+ assert.ok(source.indexOf('const storicheEdizioniPromise=')<source.indexOf('const {data:seasons,error:seasonError}=await'));
+ assert.match(source,/storicoCatalogoPromise,\s*storicheEdizioniPromise/);
+ assert.match(source,/storiciCatalogo.error\|\|storicheEdizioni.error/);
 });

@@ -42,13 +42,14 @@ export default async function Incassi({searchParams}:{searchParams:Promise<{tab?
  const {supabase}=await requireStaff();
  const p=await searchParams;
  const remoteOptionsPromise=structuralQaEnabled()?structuralRpc(supabase,'sc_perf_person_options',{p_query:'',p_page:1,p_selected:p.persona&&uuid.test(p.persona)?p.persona:null}).then(readPersonOptions):Promise.resolve(null);
+ const peoplePromise=remoteOptionsPromise.then(personOptions=>personOptions?{data:[],error:null}:tutteLePagine((da,a)=>supabase.from('persone').select('id,nome,cognome').order('cognome').order('nome').order('id').range(da,a)));
  const [{data:admin},{data:seasons,error:seasonError},personOptions]=await Promise.all([
   supabase.rpc('is_admin'),
   tutteLePagine((da,a)=>supabase.from('stagioni').select('id,nome,attiva').order('dal',{ascending:false}).order('id').range(da,a)),
   remoteOptionsPromise
  ]);
  if(personOptions)markStructuralRpcUsed('person-options');
- const {data:allPeople,error:peopleError}=personOptions?{data:[],error:null}:await tutteLePagine((da,a)=>supabase.from('persone').select('id,nome,cognome').order('cognome').order('nome').order('id').range(da,a));
+ const {data:allPeople,error:peopleError}=await peoplePromise;
  const dal=dateFilter(p.dal),al=dateFilter(p.al),debt=p.debito&&uuid.test(p.debito)?p.debito:'';
  const selectedSeason=p.stagione?((seasons??[]).find(s=>s.id===p.stagione)?.id??''):((seasons??[]).find(s=>s.attiva)?.id??(seasons??[])[0]?.id??'');
  const tab=p.tab==='corso'?'corso':'quota';
@@ -84,15 +85,19 @@ export default async function Incassi({searchParams}:{searchParams:Promise<{tab?
  }
  const peopleIds=[...new Set(balances.map(b=>b.persona_id))];
  const courseIds=[...new Set(balances.map(b=>b.edizione_id).filter((v):v is string=>Boolean(v)))];
- const [{data:people},{data:courses}]=await Promise.all([
-  peopleIds.length?supabase.from('persone').select('id,nome,cognome').in('id',peopleIds):Promise.resolve({data:[]}),
+ const {data:recent,error:recentError}=await recentPromise;
+ const historyIds=[...new Set((recent??[]).map(r=>r.persona_id))];
+ const allIds=[...new Set([...peopleIds,...historyIds])];
+ const loadPeople=(ids:string[])=>ids.length?supabase.from('persone').select('id,nome,cognome').in('id',ids):Promise.resolve({data:[],error:null});
+ const [combined,{data:courses}]=await Promise.all([
+  loadPeople(allIds),
   courseIds.length?supabase.from('edizioni_corsi').select('id,nome').in('id',courseIds):Promise.resolve({data:[]}),
  ]);
- const names=new Map(((people??[]) as Person[]).map(x=>[x.id,`${x.cognome} ${x.nome}`]));
+ // Preserve independent error handling of the two historical lookups.
+ const [peopleResult,historyResult]=combined.error?await Promise.all([loadPeople(peopleIds),loadPeople(historyIds)]):[combined,combined];
+ const names=new Map(((peopleResult.data??[]) as Person[]).map(x=>[x.id,`${x.cognome} ${x.nome}`]));
  const courseNames=new Map(((courses??[]) as Course[]).map(x=>[x.id,x.nome]));
- const {data:recent,error:recentError}=await recentPromise;
- const {data:historyPeople}=recent?.length?await supabase.from('persone').select('id,nome,cognome').in('id',[...new Set(recent.map(r=>r.persona_id))]):{data:[]};
- const historyNames=new Map(((historyPeople??[]) as Person[]).map(x=>[x.id,`${x.cognome} ${x.nome}`]));
+ const historyNames=new Map(((historyResult.data??[]) as Person[]).map(x=>[x.id,`${x.cognome} ${x.nome}`]));
  const filter={tab,stagione:selectedSeason,stato:status,persona:personFilter,dal,al,debito:debt};
  const maxPage=Math.max(1,Math.ceil(count/perPage));
  return <>
