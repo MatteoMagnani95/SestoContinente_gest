@@ -15,7 +15,7 @@ async function main(){
   await db.query("set local statement_timeout='15s'");
   await db.query(readFileSync('scripts/qa-structural-rpc.sql','utf8'));
   const admin=randomUUID(),secretary=randomUUID(),member=randomUUID(),disabled=randomUUID();
-  for(const [id,role] of [[admin,'amministratore'],[secretary,'segreteria'],[member,'socio'],[disabled,'amministratore']]){
+  for(const [id,role] of [[admin,'amministratore'],[secretary,'segreteria'],[member,'socio'],[disabled,'segreteria']]){
    await db.query('insert into auth.users(id,email,email_confirmed_at,banned_until) values($1,$2,now(),$3)',[id,id+'@example.invalid',id===disabled?'2099-12-31':null]);
    await db.query('insert into public.ruoli_utente(utente_id,ruolo) values($1,$2)',[id,role]);
   }
