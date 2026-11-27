@@ -17,7 +17,7 @@ import Link from 'next/link';
 import {PersonAvatar} from '@/components/ui/Secretariat';
 import {Icon} from '@/components/ui/Icon';
 import {notFound} from 'next/navigation';
-import {requireStaff} from '@/lib/security';
+import {requireStaffForRender as requireStaff} from '@/lib/security';
 import {formatValue} from '@/lib/format';
 import CodiceFiscaleAssist from '@/components/CodiceFiscaleAssist';
 import {updateMemberProfile,createMemberAdhesion} from '../actions';
