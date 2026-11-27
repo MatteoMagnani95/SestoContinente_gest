@@ -31,7 +31,7 @@ export default async function SociPage({searchParams}:{searchParams:Promise<{q?:
   params.stagione==='tutte'?'tutte':(stagioni??[]).find(s=>s.attiva)?.id??'tutte';
  const desiredPage=Math.min(10000,Math.max(1,Number.parseInt(params.p??'1',10)||1));
  function base(head=false){
-  let query=supabase.from('schede_soci').select('*',{count:'exact',head});
+  let query=supabase.from('schede_soci').select('adesione_id,persona_id,stagione_id,stagione,stato,nome,cognome,codice_fiscale,email,telefono',{count:'exact',head});
   if(chosen!=='tutte')query=query.eq('stagione_id',chosen);
   for(const term of searchTerms(q))query=query.or(`nome.ilike.%${term}%,cognome.ilike.%${term}%,codice_fiscale.ilike.%${term}%`);
   return query;
