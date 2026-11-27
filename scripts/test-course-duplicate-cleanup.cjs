@@ -22,17 +22,17 @@ async function main(){
   // Synthetic old duplicate: simulate pre-protection history with trigger/index changes
   // avoided; test another cancelled identity and prove active edition remains untouched.
   const cancelled=await scalar(staff,insert,[catalog,season,name+' annullato',director,'annullato']);
-  const protectedEd=await scalar(staff,insert,[catalog,season,name+' protetto',director,'annullato']);
-  await root.query("insert into qualifiche_istruttori(persona_id,disciplina) values($1,'APNEA')",[director]);
+  const protectedEd=await scalar(staff,insert,[catalog,season,name+' protetto',director,'attivo']);
+  await root.query("insert into qualifiche_istruttori(persona_id,titolo) values($1,'Qualifica sintetica')",[director]);
   for(const id of [active,cancelled,protectedEd])await root.query("insert into assegnazioni_istruttori(edizione_id,persona_id,ruolo) values($1,$2,'responsabile')",[id,director]);
   const assignment=await scalar(root,"select id from assegnazioni_istruttori where edizione_id=$1",[active]);
   await assert.rejects(staff.query("select rimuovi_record_gestionale('assegnazioni_istruttori',$1)",[assignment]),{code:'P3414'});
   await assert.rejects(member.query("select elimina_edizione_annullata_vuota($1)",[cancelled]),{code:'42501'});
   await assert.rejects(staff.query("select elimina_edizione_annullata_vuota($1)",[active]),{code:'P3414'});
-  // Use document FK without creating a real file by using existing test schema data if present;
-  // instead verify a historical lesson is a hard blocker using an existing synthetic lesson.
-  const lesson=await scalar(root,"select id from lezioni limit 1");
-  if(lesson){ /* protected test uses an independent row, not a pre-existing lesson mutation */ }
+  await root.query("insert into lezioni(edizione_id,titolo,inizio,fine) values($1,'Lezione sintetica','2026-10-10 18:00+02','2026-10-10 19:00+02')",[protectedEd]);
+  await root.query("update edizioni_corsi set stato='annullato' where id=$1",[protectedEd]);
+  await assert.rejects(staff.query("select elimina_edizione_annullata_vuota($1)",[protectedEd]),{code:'P3414'});
+  assert.equal(await scalar(root,"select count(*)::int from assegnazioni_istruttori where edizione_id=$1",[protectedEd]),1);
   await staff.query("select elimina_edizione_annullata_vuota($1)",[cancelled]);
   assert.equal(await scalar(root,"select count(*)::int from edizioni_corsi where id=$1",[cancelled]),0);
   assert.equal(await scalar(root,"select count(*)::int from assegnazioni_istruttori where edizione_id=$1",[cancelled]),0);
