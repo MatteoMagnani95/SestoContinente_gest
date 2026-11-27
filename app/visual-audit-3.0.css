@@ -1,0 +1,51 @@
+/* F7 screenshot comparison: reduce redundant whitespace without reducing text or targets. */
+.sc-page-header-marine{margin-bottom:20px;padding:20px;gap:16px;border-inline-start:4px solid var(--sc-accent,var(--sc-teal));background:linear-gradient(110deg,var(--sc-tint,var(--sc-secretariat-tint)),var(--sc-white) 75%);box-shadow:var(--sc-shadow)}
+.sc-page-header-marine .sc-page-header-text{padding:0;min-width:0;background:transparent}
+.sc-page-header-marine .sc-page-header-text h1{margin-bottom:4px}
+.sc-page-header-marine .sc-page-header-text p{line-height:1.45}
+.sc-page-header-marine::before{opacity:.14}
+.sc-page-header-marine .sc-heading-icon{background:var(--sc-white);border:1px solid var(--sc-border)}
+.sc-page-header-marine .eyebrow{font-weight:650}
+.sc-page-header-marine>.actions{align-self:center}
+.sc-page-navigation{gap:8px;margin-bottom:12px}
+.sc-page-navigation .sc-breadcrumb{min-width:0}
+.sc-personal-tabs{margin-block:8px 12px}
+.sc-route-content .sc-attendance-item :is(select,textarea,input:not([type=hidden]):not([type=checkbox]):not([type=radio])){font-size:16px;min-height:44px}
+@media(min-width:1001px){
+ .sc-staff-layout,.sc-user-layout{padding-block-start:16px}
+ .sc-page-navigation{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap}
+ .sc-page-header-marine .sc-page-header-text{flex:1 1 420px}
+ .sc-page-header-marine>.actions{flex:0 1 auto}
+ .sc-staff-content .sc-card:not(.sc-metric):not(.sc-auth-panel){padding:16px}
+ .sc-metrics{gap:12px;margin-bottom:16px}
+ .sc-metric{grid-template-columns:40px minmax(0,1fr);align-items:center;column-gap:10px;row-gap:10px;padding:16px}
+ .sc-metric-icon{grid-column:1;grid-row:1}
+ .sc-metric-label{grid-column:2;grid-row:1}
+ .sc-metric-value,.sc-metric-note{grid-column:1/-1}
+ .sc-dashboard-shortcuts{margin:12px 0 16px}
+ .sc-dashboard-shortcuts .sc-quick-action{min-height:64px;padding:14px}
+ .sc-dashboard-other,.sc-dashboard-grid,.sc-dashboard-grid+.sc-nereia-project{margin-block:12px}
+ .sc-course-card-grid,.sc-event-grid,.sc-instructor-grid{gap:12px;grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr))}
+ .sc-course-card,.sc-event-card,.sc-instructor-course{gap:8px}
+ .sc-staff-content .sc-data-table td,.sc-staff-content .sc-data-table th{padding-block:12px}
+ .sc-staff-content .payment-filters{gap:8px;margin-bottom:12px}
+}
+@media(max-width:600px){
+ .sc-page-header-marine{padding:16px;margin-bottom:16px;gap:12px}
+ .sc-page-header-marine .sc-page-header-text{padding:0}
+ .sc-page-header-marine::before{opacity:.12}
+ .sc-page-navigation{margin-bottom:10px}
+ .sc-personal-dashboard{gap:10px}
+ .sc-personal-tabs a[aria-current=page]{outline-offset:-3px}
+ .sc-route-content .sc-attendance-editor :is(select,textarea,input:not([type=hidden]):not([type=checkbox]):not([type=radio])){font-size:16px;min-height:44px}
+}
+@media print{.sc-page-header-marine::before{display:none!important}}
+
+/* F7 manifest: filter form beside its sibling CTA shrank to 28px at 320px.
+   Stack the form and CTA on narrow screens; keep labels and inputs usable. */
+@media(max-width:600px){
+ .sc-staff-content .sc-filter-bar{flex-direction:column;align-items:stretch}
+ .sc-staff-content .sc-filter-bar>.sc-search-bar{flex:0 0 auto;width:100%;min-width:0}
+ .sc-staff-content .sc-filter-bar>.sc-search-bar>label{flex:0 0 100%;width:100%;min-width:0;max-width:none}
+ .sc-staff-content .sc-filter-bar>.sc-search-bar :is(input:not([type=hidden]),select){width:100%;min-width:44px;min-height:44px}
+}

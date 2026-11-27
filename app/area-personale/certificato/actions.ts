@@ -1,11 +1,9 @@
 'use server';
 import {revalidatePath} from 'next/cache';
-import {todayRome} from '@/lib/area-soci';
-import {validPaymentDate} from '@/lib/payment-tools';
 import {randomUUID} from 'node:crypto';
 import {createAuthAdmin} from '@/lib/supabase/admin';
 import {requireUser} from '@/lib/security';
-import {UUID_RE} from '@/lib/course-tools';
+import {UUID_RE,isCalendarDate,todayRome} from '@/lib/course-tools';
 import {certificatoAmmesso,tipoCertificato} from '@/lib/file-certificato';
 
 async function contesto(persona:string){
@@ -27,7 +25,7 @@ export async function caricaCertificato(form:FormData){
  if(!ctx)return {error:'Archivio non disponibile o persona non autorizzata.'};
  const {supabase,user,storage}=ctx;
  const dal=String(form.get('rilasciato_il')??''),al=String(form.get('scade_il')??'');
- if(!validPaymentDate(dal)||!validPaymentDate(al)||al<dal||dal>todayRome())return {error:'Controlla data di rilascio e scadenza.'};
+ if(!isCalendarDate(dal)||!isCalendarDate(al)||al<dal||dal>todayRome())return {error:'Controlla data di rilascio e scadenza.'};
  let file=form.get('file');
  const staged=String(form.get('transito')??'');
  if(staged){

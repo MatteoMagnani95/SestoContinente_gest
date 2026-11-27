@@ -36,3 +36,30 @@
 @media(max-width:480px){.sc-calendar-views>a{flex:1 1 40%}.sc-calendar-period>a{flex:1 1 40%}.sc-calendar-filter{grid-template-columns:minmax(0,1fr)}}
 
 @media(min-width:1200px){.sc-calendar-settimana,.sc-calendar-mese{grid-template-columns:repeat(7,minmax(145px,1fr));overflow-x:auto;max-width:100%;padding-bottom:8px}.sc-calendar-day-head>a:first-child{min-height:44px}}
+
+/* F4B — mockup 07; actual intervals, no inferred availability. */
+.sc-calendar-legend{display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:13px}
+.sc-calendar-legend span{display:inline-flex;align-items:center;gap:5px;border-radius:8px;padding:7px 10px;font-weight:650}
+.sc-legend-pool{background:var(--sc-pool-tint);color:var(--sc-pool)}
+.sc-legend-theory{background:var(--sc-calendar-tint);color:var(--sc-calendar)}
+.sc-legend-cancelled{background:var(--sc-danger-bg);color:var(--sc-danger-fg)}
+.sc-calendar-mobile-agenda{display:none}
+.sc-calendar-event-time{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.sc-calendar-event-time .sc-icon{width:16px;height:16px;flex:none}
+.sc-calendar-pool{background:var(--sc-pool-tint);border-left-color:var(--sc-pool)}
+.sc-calendar-theory{background:var(--sc-calendar-tint);border-left-color:var(--sc-calendar)}
+.sc-calendar-cancelled{background:var(--sc-danger-bg);border-left-color:var(--sc-danger-fg)}
+.sc-calendar-weekday{background:var(--sc-pool-tint);border-radius:8px;color:var(--sc-navy)}
+.sc-occupancy-section{min-width:0}
+.sc-occupancy-matrix-wrap{overflow:auto;max-width:100%;margin-top:12px;border:1px solid var(--sc-border);border-radius:12px}
+.sc-occupancy-matrix{border-collapse:separate;border-spacing:0;width:100%;table-layout:auto;font-size:13px}
+.sc-occupancy-matrix th,.sc-occupancy-matrix td{padding:9px;min-width:130px;text-align:left;vertical-align:top;border-right:1px solid var(--sc-border);border-bottom:1px solid var(--sc-border);overflow-wrap:anywhere}
+.sc-occupancy-matrix thead th{background:var(--sc-pool-tint);color:var(--sc-navy);font-weight:700}
+.sc-occupancy-matrix tbody th{min-width:155px;background:var(--sc-surface)}
+.sc-occupancy-matrix tbody th a{display:block;min-height:44px;font-weight:400;padding:8px 0}
+.sc-occupancy-matrix .sc-lane-day{display:table-cell;border-top:0}
+.sc-occupancy-matrix .sc-lane-booking{background:var(--sc-pool-tint);border-left-color:var(--sc-pool);margin-bottom:5px;padding:7px}
+.sc-occupancy-matrix .sc-lane-state{display:block;padding:8px 0}
+.sc-lane-mobile-day{display:none}
+@media(min-width:1200px){.sc-occupancy-matrix th:first-child{position:sticky;left:0;z-index:1}.sc-occupancy-matrix thead th:first-child{z-index:2}}
+@media(max-width:900px){.sc-calendar-mobile-agenda{display:inline-flex;align-items:center;min-height:44px}.sc-occupancy-matrix-wrap{overflow:visible;border:0}.sc-occupancy-matrix,.sc-occupancy-matrix tbody,.sc-occupancy-matrix tr{display:block;width:100%}.sc-occupancy-matrix thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}.sc-occupancy-matrix tr{border:1px solid var(--sc-border);border-radius:12px;margin-bottom:12px;overflow:hidden}.sc-occupancy-matrix tbody th,.sc-occupancy-matrix .sc-lane-day{display:block;min-width:0;width:100%;border-right:0}.sc-occupancy-matrix .sc-lane-mobile-day{display:block;font-weight:700;margin-bottom:5px;color:var(--sc-navy)}.sc-occupancy-matrix tbody td:last-child{border-bottom:0}}

@@ -42,3 +42,19 @@ test('Registro e materiali per un corso selezionato, non per ogni lezione contem
  assert.doesNotMatch(p,/note_amministrative|saldi_quote|\.email\b|\.telefono\b/);
  const e=read('app/area-soci/page.tsx');assert.match(e,/eq\('utente_id',user.id\)/);assert.match(e,/area_soci_miei_profili/);assert.match(e,/ConfirmDialog/);assert.doesNotMatch(e,/historyIds.slice/);
 });
+
+
+test('F6: panoramica con profili separati, anteprime limitate e nessun pagamento online',()=>{
+ const p=read('app/area-personale/page.tsx');assert.match(p,/relazione==='tutore'/);assert.match(p,/aria-label="Persone rappresentate"/);assert.match(p,/aria-label="Profili personali"/);assert.match(p,/areaSociAccess===true&&<QuickActionLink/);assert.match(p,/overview&&areaSociAccess===true\?await supabase.from\('eventi_soci'\)/);assert.match(p,/overviewCourses=overview\?await Promise.all\(ids.map/);assert.match(p,/eq\('persona_id',id\)\.in\('stato',\['iscritto','concluso'\]\)/);assert.match(p,/\.limit\(3\)/);assert.match(p,/Nessun residuo/);assert.match(p,/<NereiaProject\/>/);assert.doesNotMatch(p,/Paga online|Paga quota/);
+ const t=read('app/istruttore/page.tsx');assert.match(t,/sc-instructor-course/);assert.match(t,/saved\?\.presente===true\?'Presente':saved\?\.presente===false\?'Assente':'Da registrare'/);assert.match(t,/defaultValue=\{saved\?\.presente===true\?"si":saved\?\.presente===false\?"no":""\}/);assert.match(t,/registerError\?<Alert/);assert.match(t,/action=\{recordAttendance\}/);assert.match(t,/a.ruolo==='responsabile'/);
+ for(const path of ['app/accedi/page.tsx','app/registrati/page.tsx','app/nuova-password/page.tsx']){const a=read(path);assert.match(a,/<AuthIdentity\/>/);assert.match(a,/sc-auth-decoration" aria-hidden="true"/);assert.match(a,/<AuthForm action=/);}
+ assert.match(read('components/ui/AuthIdentity.tsx'),/<NereiaProject\/>/);
+});
+
+test('F6: navigazione desktop con soli percorsi di ruolo',()=>{
+ const n=load('lib/navigation.ts'),enabled={...n.guestAccess,signedIn:true,enabled:true};
+ assert.deepEqual(n.userAreaDestinations('/area-personale',n.guestAccess),[]);assert.deepEqual(n.userAreaDestinations('/accedi',{...enabled,personal:true}),[]);
+ const member={...enabled,personal:true};assert.ok(n.userAreaDestinations('/area-personale',member).some(d=>d.href==='/documenti'));assert.ok(!n.userAreaDestinations('/area-personale',member).some(d=>d.href==='/area-soci'));
+ assert.ok(n.userAreaDestinations('/area-personale',{...member,member:true}).some(d=>d.href==='/area-soci'));assert.ok(!n.userAreaDestinations('/istruttore',{...enabled,instructor:true}).some(d=>d.href.startsWith('/gestionale')));
+ assert.equal(n.mobileDestinations('/area-personale',{...member,member:true}).length,5);
+});

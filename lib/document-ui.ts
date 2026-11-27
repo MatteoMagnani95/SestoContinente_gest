@@ -17,3 +17,9 @@ export function checkDocumentDestination(x:{ambito:string;visibilita:string;uten
  if(ambito==='associazione')return !utente&&!persona&&!edizione&&!versione&&(visibilita==='staff'||visibilita==='soci'&&isAdmin);
  return !utente&&!persona&&Boolean(edizione||versione)&&(visibilita==='staff'||visibilita==='istruttori'||visibilita==='soci'&&Boolean(edizione));
 }
+
+/** Format metadata, without changing file names, access paths or storage. */
+export function documentFileKind(mime:string|null|undefined):{label:string;icon:'file-pdf'|'file-image'|'file-sheet'|'file-word'|'document';style:string}{
+ const m=(mime??'').toLowerCase();if(m==='application/pdf')return {label:'PDF',icon:'file-pdf',style:'pdf'};if(m.startsWith('image/'))return {label:'Immagine',icon:'file-image',style:'image'};if(m.includes('spreadsheet')||m==='application/vnd.ms-excel'||m==='text/csv')return {label:'Foglio dati',icon:'file-sheet',style:'sheet'};if(m.includes('wordprocessing')||m==='application/msword')return {label:'Documento',icon:'file-word',style:'word'};return {label:'File',icon:'document',style:'other'};
+}
+export function documentSize(bytes:number|null|undefined):string{if(bytes==null||!Number.isFinite(bytes)||bytes<0)return 'Non disponibile';if(bytes<1024)return bytes.toLocaleString('it-IT')+' B';if(bytes<1024*1024)return Math.ceil(bytes/1024).toLocaleString('it-IT')+' KB';return (bytes/(1024*1024)).toLocaleString('it-IT',{maximumFractionDigits:2})+' MB';}

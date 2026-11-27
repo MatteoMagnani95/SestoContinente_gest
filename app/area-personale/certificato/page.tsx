@@ -1,5 +1,5 @@
 import {statoSingolo} from '@/lib/certificati';
-import {Alert,StatusBadge} from '@/components/ui/Primitives';
+import {PageHeader,Alert,StatusBadge} from '@/components/ui/Primitives';
 import Link from 'next/link';
 import {requireUser} from '@/lib/security';
 import CertificateUploadForm from '@/components/CertificateUploadForm';
@@ -11,8 +11,7 @@ export default async function CertificateUpload({searchParams}:{searchParams:Pro
  const {data:certs,error:certError}=ids.length?await supabase.from('stato_certificati').select('id,persona_id,documento_id,scade_il,stato_certificato').in('persona_id',ids).order('creato_il',{ascending:false}):{data:[],error:null};
  const {data:people,error:peopleError}=ids.length?await supabase.from('persone').select('id,nome,cognome').in('id',ids):{data:[],error:null};
  return <div className="container narrow"><Link className="back-link" href="/area-personale">← Area personale</Link>
- <div className="page-intro"><p className="eyebrow">Documenti personali</p><h1>Carica certificato medico</h1>
- <p>Il certificato resta privato. La data di scadenza e l'idoneità saranno verificate dalla segreteria: il caricamento non implica idoneità convalidata.</p></div>
+ <PageHeader area="certificate" icon="certificate" marine eyebrow="Documenti personali" title="Carica certificato medico" description="Il certificato resta privato. La data di scadenza e l'idoneità saranno verificate dalla segreteria: il caricamento non implica idoneità convalidata."/>
  {msg==='ok'&&<p className="notice success">Documento ricevuto, in attesa di verifica amministrativa.</p>}
  {msg&&msg!=='ok'&&<p className="notice error">Invio non riuscito: controlla data, documento, permessi e configurazione.</p>}
  <section className="panel"><h2>Certificati caricati</h2>{certError||linkError||peopleError?<Alert tone="warning">Certificati o profili non verificabili.</Alert>:certs?.length?certs.map(c=><article key={c.id}><strong>{people?.find(p=>p.id===c.persona_id)?.cognome} · {statoSingolo(c.stato_certificato)}</strong> · Scadenza {c.scade_il} · {c.documento_id?<a href={'/documenti/'+c.documento_id}>Apri certificato</a>:<a href="#carica">Carica certificato</a>}</article>):<p>Documento mancante</p>}</section>

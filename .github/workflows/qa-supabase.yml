@@ -1,11 +1,14 @@
 name: QA Supabase locale (isolato)
 on:
   workflow_dispatch:
+  push:
+    branches: ['release/gestionale-consolidato', 'fix/deroga-istruttori-corsi']
   pull_request:
-    branches: ['main']
+    branches: ['main', 'feature/gestionale-2.0-redesign', 'release/gestionale-consolidato']
     paths:
       - '.github/workflows/qa-supabase.yml'
       - 'scripts/qa-local-supabase.mjs'
+      - 'scripts/qa-local-visual.mjs'
       - 'scripts/qa-local-mutations.mjs'
       - 'scripts/qa-local-performance.mjs'
       - 'scripts/qa-local-auth.mjs'
@@ -17,6 +20,9 @@ on:
       - 'components/**'
       - 'lib/**'
       - 'tests/browser/**'
+      - 'docs/redesign/PAGE_REQUIREMENTS.md'
+      - 'docs/redesign/REGRESSION_TRACKER.md'
+      - 'docs/redesign/UI_UX_3.0_TRACKER.md'
       - 'playwright.config.mjs'
       - 'next.config.ts'
       - 'package.json'
@@ -27,9 +33,9 @@ permissions:
   contents: read
 jobs:
   local-qa:
-    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'feature/gestionale-2.0-redesign'
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/release/gestionale-consolidato' || github.ref == 'refs/heads/fix/deroga-istruttori-corsi' || github.head_ref == 'release/gestionale-consolidato' || github.head_ref == 'fix/deroga-istruttori-corsi' || github.head_ref == 'feature/gestionale-2.0-redesign' || github.head_ref == 'fix/password-recovery-login' || github.head_ref == 'fix/account-common-navigation' || github.head_ref == 'feature/gestionale-3.0-ui-ux'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       QA_ISOLATED_ENV: 'true'
       SESTO_TEST_MODE: 'true'
@@ -99,6 +105,21 @@ jobs:
         run: node scripts/qa-local-supabase.mjs auth
       - name: Benchmark browser autenticato su archivi sintetici
         run: node scripts/qa-local-supabase.mjs performance
+      - name: Evidenze visuali F7 in Chromium e WebKit
+        env:
+          QA_VISUAL_DIR: ${{ runner.temp }}/sesto-visual-${{ github.run_id }}
+          QA_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/qa-local-visual.mjs
+      - name: Conserva esclusivamente screenshot sintetici e manifest F7
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-f7
+          path: |
+            ${{ runner.temp }}/sesto-visual-${{ github.run_id }}/*.png
+            ${{ runner.temp }}/sesto-visual-${{ github.run_id }}/visual-manifest.json
+          if-no-files-found: warn
+          retention-days: 7
       - name: Rimuovi sessioni sintetiche e arresta servizi locali
         if: always()
         shell: bash

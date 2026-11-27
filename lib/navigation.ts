@@ -1,5 +1,5 @@
 /** Pure navigation rules. Authorization is enforced separately on the server. */
-export type NavigationAccess = { signedIn:boolean; enabled:boolean; staff:boolean; admin:boolean; instructor:boolean; board:boolean; personal:boolean; member:boolean; unread:number|null };
+export type NavigationAccess = { signedIn:boolean; enabled:boolean; staff:boolean; admin:boolean; instructor:boolean; board:boolean; personal:boolean; member:boolean; unread:number|null; firstName?:string; lastInitial?:string };
 export const guestAccess:NavigationAccess={signedIn:false,enabled:false,staff:false,admin:false,instructor:false,board:false,personal:false,member:false,unread:null};
 export type NavItem={href:string;label:string;aliases?:string[];exact?:boolean};
 export const isWithin=(path:string,base:string)=>path===base||path.startsWith(base+'/');
@@ -23,6 +23,7 @@ export function areaLabel(path:string,access:NavigationAccess){
  if(isWithin(path,'/area-personale'))return 'Area personale';
  if(isWithin(path,'/richiesta'))return 'Adesione';
  if(isWithin(path,'/documenti'))return 'Documenti';
+ if(isWithin(path,'/notifiche'))return 'Notifiche account';
  return 'Area pubblica';
 }
 export function homeFor(access:NavigationAccess){return access.staff?'/gestionale':access.board?'/organi-sociali':access.instructor?'/istruttore':access.personal?'/area-personale':access.enabled?'/smista':'/';}
@@ -67,7 +68,7 @@ export function backTarget(path:string,access:NavigationAccess):BackTarget|null{
  const home=homeFor(access);
  return home!==path?{href:home,label:'Torna alla tua area'}:{href:'/',label:'Torna alla home'};
 }
-export const filterKeys=['q','p','stagione','stato','filtro','giorno','vista','piscina','tab','persona','area','corsia','inizio','fine','tipo','anno','dal','al','filtro_modulo','ordine','dir','ambito','np','tp','pm','periodo','p2','disciplina','livello','lezione','edizione','annullate','corsia_id','richieste','visibilita','debito','attrezzatura','revisione','categoria','ruolo','collegato'] as const;
+export const filterKeys=['q','p','stagione','stato','filtro','giorno','vista','vista_corsi','piscina','tab','persona','area','corsia','inizio','fine','tipo','anno','dal','al','filtro_modulo','ordine','dir','ambito','np','tp','pm','periodo','p2','disciplina','livello','lezione','edizione','annullate','corsia_id','richieste','visibilita','debito','attrezzatura','revisione','categoria','ruolo','collegato'] as const;
 export function listContext(path:string,search:string){
  const params=new URLSearchParams(search),safe=new URLSearchParams();
  for(const key of filterKeys)for(const val of params.getAll(key))safe.append(key,val);
@@ -79,4 +80,34 @@ export function contextPath(path:string){
 export function restoredTarget(target:BackTarget,contexts:Record<string,string>){
  const saved=contexts[target.href];
  return saved&&(saved===target.href||saved.startsWith(target.href+'?'))?{...target,href:saved}:target;
+}
+
+/** Account identity is not the identity of a represented child or other person. */
+export function accountFirstName(owners:readonly {nome:unknown}[]):string|undefined{
+ if(owners.length!==1||typeof owners[0].nome!=='string')return undefined;
+ const name=owners[0].nome.trim().replace(/\s+/g,' ');
+ if(name.length>60||!/^[\p{L}\p{M}][\p{L}\p{M} '\u2019-]*$/u.test(name))return undefined;
+ return name===name.toLocaleUpperCase('it')?name.toLocaleLowerCase('it').replace(/(^|[ '\u2019-])\p{L}/gu,s=>s.toLocaleUpperCase('it')):name;
+}
+export function greeting(access:NavigationAccess){return access.enabled&&access.firstName?'Ciao, '+access.firstName:'Ciao';}
+export function initials(access:NavigationAccess){return access.enabled&&access.firstName?(Array.from(access.firstName).slice(0,1).join('')+(access.lastInitial??'')).toLocaleUpperCase('it'):'';}
+export type MobileDestination={href:string;label:string;icon:'home'|'users'|'course'|'calendar'|'document'|'user'|'clipboard'|'certificate'};
+export function mobileDestinations(path:string,access:NavigationAccess):MobileDestination[]{
+ if(!access.enabled)return [];
+ if(staffArea(path,access)||(path==='/'&&access.staff))return [{href:'/gestionale',label:'Dashboard',icon:'home'},{href:'/gestionale/soci',label:'Soci',icon:'users'},{href:'/gestionale/corsi',label:'Corsi',icon:'course'},{href:'/gestionale/calendario-visivo',label:'Calendario',icon:'calendar'}];
+ if(access.instructor&&(isWithin(path,'/istruttore')||isWithin(path,'/gestione-eventi')||(!access.personal&&!access.board)))return [{href:'/istruttore',label:'Corsi',icon:'course'},{href:'/gestione-eventi',label:'Eventi',icon:'calendar'},{href:'/documenti',label:'Documenti',icon:'document'},{href:'/area-personale/profilo',label:'Profilo',icon:'user'}];
+ if(access.board&&(isWithin(path,'/organi-sociali')||!access.personal))return [{href:'/organi-sociali',label:'Consiglio',icon:'clipboard'},{href:'/documenti',label:'Documenti',icon:'document'},{href:'/area-personale/profilo',label:'Profilo',icon:'user'}];
+ if(access.personal)return [{href:'/area-personale',label:'La mia area',icon:'home'},{href:'/area-personale/corsi',label:'Corsi',icon:'course'},...(access.member?[{href:'/area-soci',label:'Eventi',icon:'calendar' as const}]:[]),{href:'/documenti',label:'Documenti',icon:'document'},{href:'/area-personale/profilo',label:'Profilo',icon:'user'}];
+ return [{href:'/richiesta/stato',label:'Domanda',icon:'clipboard'},{href:'/documenti',label:'Documenti',icon:'document'},{href:'/area-personale/profilo',label:'Profilo',icon:'user'}];
+}
+export function searchVisible(path:string,access:NavigationAccess){
+ return access.enabled&&path!=='/'&&path!=='/smista'&&!['/accedi','/registrati','/nuova-password','/richiesta'].some(p=>isWithin(path,p));
+}
+
+/** Desktop user navigation: high-level destinations only; page tabs remain contextual. */
+export function userAreaDestinations(path:string,access:NavigationAccess):MobileDestination[]{
+ if(!access.enabled||staffArea(path,access)||!['/area-personale','/area-soci','/istruttore','/gestione-eventi','/documenti','/notifiche','/richiesta/stato','/comunicazioni/corsi'].some(base=>isWithin(path,base)))return [];
+ if(access.instructor&&(['/istruttore','/gestione-eventi','/comunicazioni/corsi'].some(base=>isWithin(path,base))||!access.personal))return [{href:'/istruttore',label:'Area istruttori',icon:'course'},{href:'/gestione-eventi',label:'Gestisci eventi soci',icon:'calendar'},{href:'/documenti',label:'Documenti',icon:'document'},...(access.personal?[{href:'/area-personale',label:'Area personale',icon:'home' as const}]:[]),{href:'/area-personale/profilo',label:'Profilo e consensi',icon:'user'}];
+ if(access.personal)return [{href:'/area-personale',label:'Area personale',icon:'home'},{href:'/area-personale/corsi',label:'Corsi e lezioni',icon:'course'},...(access.member?[{href:'/area-soci',label:'Eventi e area soci',icon:'calendar' as const}]:[]),{href:'/area-personale/certificato',label:'Certificato medico',icon:'certificate'},{href:'/documenti',label:'Documenti',icon:'document'},{href:'/richiesta/stato',label:'Stato domanda',icon:'clipboard'},{href:'/area-personale/profilo',label:'Profilo e consensi',icon:'user'},...(access.instructor?[{href:'/istruttore',label:'Area istruttori',icon:'course' as const}]:[])];
+ return [];
 }

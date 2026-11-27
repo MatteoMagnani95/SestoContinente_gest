@@ -23,6 +23,7 @@ async function main() {
   }
   try {
     const root = await session(), staffId = randomUUID(), memberId = randomUUID();
+    assert.equal(await value(root,"select to_regclass('public.deroghe_iscrizioni_corsi') is not null"),true,'Migrazione deroghe istruttori mancante nel database effimero');
     for (const [id,role] of [[staffId,'amministratore'],[memberId,'socio']]) {
       await root.query('insert into auth.users(id,email,email_confirmed_at) values($1,$2,now())',[id,id+'@example.invalid']);
       await root.query('insert into ruoli_utente(utente_id,ruolo) values($1,$2)',[id,role]);
@@ -177,6 +178,25 @@ async function main() {
     const adhesion=await value(root,'select id from adesioni where persona_id=$1 and stagione_id=$2',[learner,season]);
     await root.query("insert into tesseramenti(adesione_id,ente,stato,scade_il) values($1,'Ente','attiva',current_date+50)",[adhesion]);
     await staff.query("insert into iscrizioni_corsi(edizione_id,persona_id,stato) values($1,$2,'iscritto')",[editions[successful],learner]);
+    // Deroga didattica: ordinario consentito sopra, istruttore solo con autorizzazione staff.
+    const qualifiedLearner=participants[1], otherEdition=editions[1-successful];
+    const adhesion2=await value(root,'select id from adesioni where persona_id=$1 and stagione_id=$2',[qualifiedLearner,season]);
+    await root.query("insert into tesseramenti(adesione_id,ente,stato,scade_il) values($1,'Ente','attiva',current_date+50)",[adhesion2]);
+    await staff.query("insert into qualifiche_istruttori(persona_id,titolo) values($1,'Istruttore ARA collaudo')",[qualifiedLearner]);
+    const ordinaryEnrollment="insert into iscrizioni_corsi(edizione_id,persona_id,stato) values($1,$2,'iscritto')";
+    await assert.rejects(staff.query(ordinaryEnrollment,[editions[successful],qualifiedLearner]),{code:'P3521'});
+    const override="select iscrivi_con_deroga($1,$2,$3)";
+    await assert.rejects(member2.query(override,[editions[successful],qualifiedLearner,'ARA verso APNEA']),{code:'42501'});
+    await assert.rejects(staff.query(override,[editions[successful],qualifiedLearner,'']),{code:'P3521'});
+    await staff.query("insert into assegnazioni_istruttori(edizione_id,persona_id,ruolo) values($1,$2,'aiuto')",[otherEdition,qualifiedLearner]);
+    await assert.rejects(staff.query(override,[otherEdition,qualifiedLearner,'ARA verso APNEA']),{code:'P3520'});
+    const overrideId=await value(staff,override,[editions[successful],qualifiedLearner,'ARA verso APNEA']);
+    assert.equal(await value(staff,'select autorizzata_da=$2 from deroghe_iscrizioni_corsi where iscrizione_id=$1',[overrideId,staffId]),true);
+    assert.equal(await value(member2,'select count(*)::int from deroghe_iscrizioni_corsi where iscrizione_id=$1',[overrideId]),0);
+    await assert.rejects(staff.query("insert into assegnazioni_istruttori(edizione_id,persona_id,ruolo) values($1,$2,'aiuto')",[editions[successful],qualifiedLearner]),{code:'P3520'});
+    await assert.rejects(member2.query("select autorizza_deroga_iscrizione($1,$2,'Motivazione di prova')",[overrideId,editions[successful]]),{code:'42501'});
+    assert.equal(await value(staff,'select count(*)::int from deroghe_iscrizioni_corsi where iscrizione_id=$1',[overrideId]),1);
+    console.log('OK deroga istruttori: esclusione, permessi, audit, incompatibilità bidirezionale e disciplina diversa');
     const register="insert into presenze(lezione_id,persona_id,presente) values($1,$2,true)";
     await assert.rejects(member.query(register,[lesson,learner]),{code:'42501'});
     const fresh=await value(staff,"select crea_lezione_guidata($1,'Registro',(current_date+2+time '10:00') at time zone 'Europe/Rome',(current_date+2+time '11:00') at time zone 'Europe/Rome',null,array[]::uuid[],null,null)",[editions[successful]]);

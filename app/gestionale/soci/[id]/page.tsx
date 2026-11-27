@@ -1,7 +1,7 @@
 import {Drawer} from '@/components/ui/Drawer';
 import {PageHeader,StatusBadge,Alert,ButtonLink,MetricCard} from '@/components/ui/Primitives';
 import {Pagination} from '@/components/ui/DataTable';
-import {memberTab,memberTabs,statusTone,exactCount} from '@/lib/secretariat';
+import {memberTab,memberTabs,statusTone,exactCount,displayName,isSecondaryMemberTab} from '@/lib/secretariat';
 import {pageNumber,listHref,singleSearchParams} from '@/lib/module-ui';
 import {tutteLePagine} from '@/lib/pagine';
 import {romeDay,shiftDay} from '@/lib/calendar-tools';
@@ -14,6 +14,8 @@ import {applicationLegalConfig} from '@/lib/application-config';
 import {versioneImmagini,sceltaLabel,dataOra} from '@/lib/scelte';
 import {consentStatus} from '@/lib/application-input';
 import Link from 'next/link';
+import {PersonAvatar} from '@/components/ui/Secretariat';
+import {Icon} from '@/components/ui/Icon';
 import {notFound} from 'next/navigation';
 import {requireStaff} from '@/lib/security';
 import {formatValue} from '@/lib/format';
@@ -57,16 +59,18 @@ function Section({id,title,href,children}:{id:string;title:string;href?:string;c
 }
 function None({children='Nessun elemento registrato.'}:{children?:React.ReactNode}){return <p className="muted tiny">{children}</p>;}
 
-export default async function MemberDetail({params,searchParams}:{params:Promise<{id:string}>;searchParams:Promise<{msg?:string;tab?:string;p?:string;p2?:string}>}){
+export default async function MemberDetail({params,searchParams}:{params:Promise<{id:string}>;searchParams:Promise<{msg?:string;tab?:string;p?:string;p2?:string;modifica?:string}>}){
  const {id}=await params;
- const {msg,tab:rawTab,p,p2}=singleSearchParams(await searchParams);
+ const {msg,tab:rawTab,p,p2,modifica}=singleSearchParams(await searchParams);
  const tab=memberTab(rawTab??(msg==='salvato'?'anagrafica':msg==='adesione_creata'?'adesioni':undefined));
  const page=pageNumber(p),secondPage=pageNumber(p2),size=30;
+ const overview=tab==='panoramica';
+ const skip={data:[],error:null,count:null};
  const range=(key:string,secondary=false)=>{const current=tab===key?(secondary?secondPage:page):1;return [(current-1)*size,current*size-1] as const;};
  if(!uuid.test(id))notFound();
  const {supabase}=await requireStaff();
  const {data:isAdmin}=await supabase.rpc('is_admin');
- const {data:accountLinks}=isAdmin===true?await supabase.from('collegamenti_persone').select('utente_id,relazione').eq('persona_id',id):{data:[]};
+ const {data:accountLinks}=isAdmin===true&&['anagrafica','adesioni','famiglia'].includes(tab)?await supabase.from('collegamenti_persone').select('utente_id,relazione').eq('persona_id',id):{data:[]};
  const {data:personData,error:personError}=await supabase.from('persone')
   .select('id,nome,cognome,data_nascita,luogo_nascita,codice_fiscale,indirizzo,cap,comune,email,telefono,provincia_nascita,stato_nascita,provincia_residenza,stato_residenza,sesso_cf,codice_catastale_nascita,cf_omocodia_verificata,cf_override_motivo').eq('id',id).maybeSingle();
  if(personError)return <Alert tone="danger" announce>Impossibile leggere l’anagrafica. Riprova.</Alert>;
@@ -75,19 +79,19 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
  const [seasonsResult,allMemberships,membershipResult,balanceResult,paymentResult,enrollmentResult,certResult,patentResult,qualificationResult,assignmentResult,documentResult,guardianResult,wardResult,equipmentResult,courseBalancesResult]=await Promise.all([
   supabase.from('stagioni').select('id,nome,attiva').order('dal',{ascending:false}),
   tutteLePagine((da,a)=>supabase.from('adesioni').select('id,stagione_id,stato,data_approvazione,note,verbale_cda_id').eq('persona_id',id).order('data_approvazione',{ascending:false}).order('id').range(da,a)),
-  supabase.from('adesioni').select('id,stagione_id,stato,data_approvazione,note,verbale_cda_id',{count:'exact'}).eq('persona_id',id).order('data_approvazione',{ascending:false}).order('id').range(...range('adesioni')),
-  tutteLePagine((da,a)=>supabase.from('saldi_quote').select('id,stagione_id,importo_dovuto,versato,residuo,stato').eq('persona_id',id).order('id').range(da,a)),
-  supabase.from('pagamenti').select('id,quota_id,addebito_corso_id,importo,data_pagamento,metodo',{count:'exact'}).eq('persona_id',id).order('data_pagamento',{ascending:false}).order('id').range(...range('pagamenti')),
-  supabase.from('iscrizioni_corsi').select('id,edizione_id,stato,iscritta_il',{count:'exact'}).eq('persona_id',id).order('iscritta_il',{ascending:false}).order('id').range(...range('corsi')),
-  supabase.from('stato_certificati').select('id,rilasciato_il,scade_il,idoneita_verificata,documento_id,stato_certificato',{count:'exact'}).eq('persona_id',id).order('creato_il',{ascending:false}).order('id').range(...range('certificati')),
-  supabase.from('brevetti_allievi').select('id,titolo,ente,numero_brevetto,ottenuto_il,scade_il,rilasciato_da_nome',{count:'exact'}).eq('persona_id',id).order('ottenuto_il',{ascending:false}).order('id').range(...range('brevetti')),
-  supabase.from('qualifiche_istruttori').select('id,titolo,ente,scade_il',{count:'exact'}).eq('persona_id',id).order('id').range(...range('istruttore')),
-  supabase.from('assegnazioni_istruttori').select('id,edizione_id,ruolo',{count:'exact'}).eq('persona_id',id).order('id').range(...range('istruttore',true)),
-  supabase.from('documenti').select('id,nome,categoria,caricato_il',{count:'exact'}).eq('persona_id',id).order('caricato_il',{ascending:false}).order('id').range(...range('documenti')),
-  supabase.from('relazioni_tutori').select('minore_id,tutore_id,parentela',{count:'exact'}).eq('minore_id',id).order('tutore_id').range(...range('famiglia')),
-  supabase.from('relazioni_tutori').select('minore_id,tutore_id,parentela',{count:'exact'}).eq('tutore_id',id).order('minore_id').range(...range('famiglia',true)),
-  supabase.from('assegnazioni_attrezzature').select('id,attrezzatura_id,assegnata_il,restituita_il',{count:'exact'}).eq('persona_id',id).order('assegnata_il',{ascending:false}).order('id').range(...range('attrezzature')),
-  tutteLePagine((da,a)=>supabase.from('saldi_corsi').select('id,edizione_id,stagione_id,importo_dovuto,versato,residuo,stato').eq('persona_id',id).order('id').range(da,a)),
+  (tab==='adesioni')?supabase.from('adesioni').select('id,stagione_id,stato,data_approvazione,note,verbale_cda_id',{count:'exact'}).eq('persona_id',id).order('data_approvazione',{ascending:false}).order('id').range(...range('adesioni')):Promise.resolve(skip),
+  (overview||tab==='pagamenti')?tutteLePagine((da,a)=>supabase.from('saldi_quote').select('id,stagione_id,importo_dovuto,versato,residuo,stato').eq('persona_id',id).order('id').range(da,a)):Promise.resolve(skip),
+  (tab==='pagamenti')?supabase.from('pagamenti').select('id,quota_id,addebito_corso_id,importo,data_pagamento,metodo',{count:'exact'}).eq('persona_id',id).order('data_pagamento',{ascending:false}).order('id').range(...range('pagamenti')):Promise.resolve(skip),
+  (overview||tab==='corsi')?supabase.from('iscrizioni_corsi').select('id,edizione_id,stato,iscritta_il',{count:'exact'}).eq('persona_id',id).order('iscritta_il',{ascending:false}).order('id').range(...range('corsi')):Promise.resolve(skip),
+  (overview||tab==='certificati')?supabase.from('stato_certificati').select('id,rilasciato_il,scade_il,idoneita_verificata,documento_id,stato_certificato',{count:'exact'}).eq('persona_id',id).order('creato_il',{ascending:false}).order('id').range(...range('certificati')):Promise.resolve(skip),
+  (overview||tab==='brevetti')?supabase.from('brevetti_allievi').select('id,titolo,ente,numero_brevetto,ottenuto_il,scade_il,rilasciato_da_nome',{count:'exact'}).eq('persona_id',id).order('ottenuto_il',{ascending:false}).order('id').range(...range('brevetti')):Promise.resolve(skip),
+  (tab==='istruttore')?supabase.from('qualifiche_istruttori').select('id,titolo,ente,scade_il',{count:'exact'}).eq('persona_id',id).order('id').range(...range('istruttore')):Promise.resolve(skip),
+  (tab==='istruttore')?supabase.from('assegnazioni_istruttori').select('id,edizione_id,ruolo',{count:'exact'}).eq('persona_id',id).order('id').range(...range('istruttore',true)):Promise.resolve(skip),
+  (overview||tab==='documenti')?supabase.from('documenti').select('id,nome,categoria,caricato_il',{count:'exact'}).eq('persona_id',id).order('caricato_il',{ascending:false}).order('id').range(...range('documenti')):Promise.resolve(skip),
+  (tab==='famiglia')?supabase.from('relazioni_tutori').select('minore_id,tutore_id,parentela',{count:'exact'}).eq('minore_id',id).order('tutore_id').range(...range('famiglia')):Promise.resolve(skip),
+  (tab==='famiglia')?supabase.from('relazioni_tutori').select('minore_id,tutore_id,parentela',{count:'exact'}).eq('tutore_id',id).order('minore_id').range(...range('famiglia',true)):Promise.resolve(skip),
+  (tab==='attrezzature')?supabase.from('assegnazioni_attrezzature').select('id,attrezzatura_id,assegnata_il,restituita_il',{count:'exact'}).eq('persona_id',id).order('assegnata_il',{ascending:false}).order('id').range(...range('attrezzature')):Promise.resolve(skip),
+  (overview||tab==='pagamenti')?tutteLePagine((da,a)=>supabase.from('saldi_corsi').select('id,edizione_id,stagione_id,importo_dovuto,versato,residuo,stato').eq('persona_id',id).order('id').range(da,a)):Promise.resolve(skip),
  ]);
  const seasonsData=seasonsResult.data,membershipsData=membershipResult.data,memberError=membershipResult.error||allMemberships.error||seasonsResult.error,balancesData=balanceResult.data,balanceError=balanceResult.error,paymentsData=paymentResult.data,enrollmentsData=enrollmentResult.data,certsData=certResult.data,patentsData=patentResult.data,qualificationsData=qualificationResult.data,assignmentsData=assignmentResult.data,documentsData=documentResult.data,guardianData=guardianResult.data,wardData=wardResult.data,equipmentData=equipmentResult.data;
  const seasons=(seasonsData??[]) as unknown as Season[];
@@ -108,7 +112,7 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
  const editionIds=[...new Set([...enrollments.map(x=>x.edizione_id),...assignments.map(x=>x.edizione_id)])];
  const [{data:editionsData,error:editionsError},cardResult,{data:equipmentNamesData,error:equipmentNamesError}]=await Promise.all([
   editionIds.length?supabase.from('edizioni_corsi').select('id,nome,corso_id,inizio,fine').in('id',editionIds):Promise.resolve({data:[],error:null}),
-  supabase.from('tesseramenti').select('id,adesione_id,ente,numero_tessera,scade_il,stato,adesioni!inner(persona_id,stagione_id)',{count:'exact'}).eq('adesioni.persona_id',id).order('scade_il',{ascending:false}).order('id').range(...range('tesseramenti')),
+  (overview||tab==='tesseramenti')?supabase.from('tesseramenti').select('id,adesione_id,ente,numero_tessera,scade_il,stato,adesioni!inner(persona_id,stagione_id)',{count:'exact'}).eq('adesioni.persona_id',id).order('scade_il',{ascending:false}).order('id').range(...range('tesseramenti')):Promise.resolve(skip),
   equipment.length?supabase.from('attrezzature').select('id,codice,categoria').in('id',equipment.map(x=>x.attrezzatura_id)):Promise.resolve({data:[],error:null}),
  ]);
  const cardsData=cardResult.data;
@@ -131,9 +135,10 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
  const newSeasons=memberError?[]:seasons.filter(s=>!allMembershipRows.some(m=>m.stagione_id===s.id));
  const active=allMembershipRows.find(m=>seasons.find(s=>s.id===m.stagione_id)?.attiva);
  const currentSeason=seasons.find(s=>s.attiva);
- const {data:emergenza,error:emergencyError}=await supabase.from('contatti_emergenza').select('nominativo,telefono').eq('persona_id',id).maybeSingle();
- const {data:domanda,error:applicationError}=await supabase.from('richieste').select('id,utente_id,flag_privacy,versione_privacy,data_accettazione,immagini_scelta,immagini_versione,immagini_il,flag_immagini,versione_statuto,flag_statuto').eq('persona_id',id).order('modificato_il',{ascending:false}).limit(1).maybeSingle();
- const titolare=domanda?.utente_id??accountLinks?.find(a=>a.relazione==='titolare')?.utente_id;
+ const currentCard=overview&&!memberError&&active?await supabase.from('tesseramenti').select('id,ente,scade_il,stato').eq('adesione_id',active.id).order('scade_il',{ascending:false,nullsFirst:false}).order('id').limit(1).maybeSingle():{data:null,error:null};
+ const {data:emergenza,error:emergencyError}=tab==='anagrafica'?await supabase.from('contatti_emergenza').select('nominativo,telefono').eq('persona_id',id).maybeSingle():{data:null,error:null};
+ const {data:domanda,error:applicationError}=tab==='adesioni'?await supabase.from('richieste').select('id,utente_id,flag_privacy,versione_privacy,data_accettazione,immagini_scelta,immagini_versione,immagini_il,flag_immagini,versione_statuto,flag_statuto').eq('persona_id',id).order('modificato_il',{ascending:false}).limit(1).maybeSingle():{data:null,error:null};
+ const titolare=tab==='adesioni'?(domanda?.utente_id??accountLinks?.find(a=>a.relazione==='titolare')?.utente_id):undefined;
  const {data:ultimaScelta,error:consentError}=titolare?await supabase.from('scelte_iscrizione').select('id,scelta,versione,registrata_il,origine').eq('utente_id',titolare).eq('tipo','immagini').order('id',{ascending:false}).limit(1).maybeSingle():{data:null,error:null};
  const consenso=ultimaScelta&&titolare&&ultimaScelta.versione===(applicationLegalConfig(titolare).testMode?'TEST-COLLAUDO-1':versioneImmagini)?ultimaScelta:null;
  const previousConsent=consenso?.scelta===false&&titolare?await supabase.from('scelte_iscrizione').select('id',{head:true,count:'exact'}).eq('utente_id',titolare).eq('tipo','immagini').eq('versione',consenso.versione).eq('scelta',true).lt('id',consenso.id):null;
@@ -143,22 +148,33 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
  const courseBalances=courseBalancesResult.data??[];
  const debt=balanceError?null:balances.reduce((sum,q)=>sum+Number(q.residuo),0);
  const courseDebt=courseBalancesResult.error?null:courseBalances.reduce((sum,q)=>sum+Number(q.residuo),0);
- const partialErrors=Boolean(memberError||balanceError||paymentResult.error||enrollmentResult.error||certResult.error||patentResult.error||qualificationResult.error||assignmentResult.error||documentResult.error||guardianResult.error||wardResult.error||equipmentResult.error||cardResult.error||courseBalancesResult.error||emergencyError||applicationError||consentError||boardError||editionsError||coursesError||equipmentNamesError||familyError);
+ const partialErrors=Boolean(currentCard.error||memberError||balanceError||paymentResult.error||enrollmentResult.error||certResult.error||patentResult.error||qualificationResult.error||assignmentResult.error||documentResult.error||guardianResult.error||wardResult.error||equipmentResult.error||cardResult.error||courseBalancesResult.error||emergencyError||applicationError||consentError||boardError||editionsError||coursesError||equipmentNamesError||familyError);
  const pageLink=(next:number,secondary=false)=>listHref({tab,p:String(secondary?page:next),p2:String(secondary?next:secondPage)});
  const pager=(result:{count:number|null;error:unknown},label:string,secondary=false)=><Pagination page={secondary?secondPage:page} size={size} count={result.error?null:result.count} href={p=>pageLink(p,secondary)} label={label}/>;
  const sectionError=(error:unknown)=>error?<Alert tone="danger" announce>Informazioni non disponibili. Riprova prima di eseguire operazioni.</Alert>:null;
  return <>
- <PageHeader eyebrow="Segreteria · Scheda unificata" title={person.cognome+' '+person.nome} description={(currentSeason?.nome??'Stagione attiva non disponibile')+' · '+(person.email??person.telefono??'Recapiti non acquisiti')} actions={<><StatusBadge tone={statusTone(active?.stato??'')}>{memberError?'Stato non disponibile':active?statusLabel(active.stato):'Nessuna adesione nella stagione attiva'}</StatusBadge><ButtonLink href={`/comunicazioni/soci/${id}`} variant="secondary">Scrivi al socio</ButtonLink></>}/>
+ <header className="sc-member-hero sc-page-header-marine sc-area-secretariat">
+ <PersonAvatar nome={person.nome} cognome={person.cognome} large/>
+ <div className="sc-member-identity"><p className="eyebrow">Segreteria · Scheda unificata</p><h1>{displayName(person.cognome)} {displayName(person.nome)}</h1><p>{currentSeason?.nome??'Stagione attiva non disponibile'}</p><p>{person.email??person.telefono??'Recapiti non acquisiti'}</p><StatusBadge tone={memberError?'neutral':statusTone(active?.stato??'')}>{memberError?'Stato non disponibile':active?statusLabel(active.stato):'Nessuna adesione nella stagione attiva'}</StatusBadge></div>
+ <div className="sc-member-hero-actions"><ButtonLink href={`/comunicazioni/soci/${id}`} variant="secondary" icon="document">Scrivi al socio</ButtonLink><ButtonLink href={'/gestionale/incassi?persona='+id+'&stato=residuo'} variant="secondary" icon="wallet">Registra pagamento</ButtonLink><ButtonLink href="?tab=anagrafica&modifica=1" icon="user">Modifica anagrafica</ButtonLink></div>
+ </header>
  {msg&&Object.hasOwn(statusMessage,msg)&&<p role="status" className={`notice ${['salvato','adesione_creata','elemento_salvato'].includes(msg)?'success':'warning'}`}>{statusMessage[msg]}</p>}
  {partialErrors&&<Alert tone="warning">Una o più sezioni non sono disponibili. Non interpretare dati mancanti come assenza di registrazioni.</Alert>}
- <nav className="sc-secretariat-tabs" aria-label="Sezioni della scheda socio">{memberTabs.map(([key,label])=><Link key={key} href={listHref({tab:key})} aria-current={tab===key?'page':undefined}>{label}</Link>)}</nav>
- {tab==='panoramica'&&<section className="sc-secretariat-section"><div className="sc-metrics">
+ <nav className="sc-member-tabbar" aria-label="Sezioni della scheda socio">
+ <div className="sc-member-primary-tabs">{memberTabs.filter(([key])=>!isSecondaryMemberTab(key)).map(([key,label])=><Link key={key} href={listHref({tab:key})} aria-current={tab===key?'page':undefined}>{label}</Link>)}</div>
+ <details key={tab} open={isSecondaryMemberTab(tab)||undefined} className="sc-member-more"><summary>Altro{isSecondaryMemberTab(tab)?' · '+memberTabs.find(([key])=>key===tab)?.[1]:''}<Icon name="chevron-down"/></summary><div>{memberTabs.filter(([key])=>isSecondaryMemberTab(key)).map(([key,label])=><Link key={key} href={listHref({tab:key})} aria-current={tab===key?'page':undefined}>{label}</Link>)}</div></details>
+ </nav>
+ {tab==='panoramica'&&<section className="sc-secretariat-section sc-member-overview"><h2>Panoramica socio</h2><p className="muted">Stato associativo, attività e scadenze registrate.</p><div className="sc-metrics">
  <Link className="sc-metric-link" href="?tab=adesioni"><MetricCard label="Adesione nella stagione attiva" area="secretariat" icon="users" value={memberError?'—':active?statusLabel(active.stato):'Non presente'}/></Link>
- <Link className="sc-metric-link" href="?tab=corsi"><MetricCard label="Iscrizioni ai corsi" area="teaching" icon="course" value={exactCount(enrollmentResult)} note="Storico delle iscrizioni"/></Link>
- <Link className="sc-metric-link" href="?tab=pagamenti"><MetricCard label="Residuo quote associative" area="finance" icon="wallet" value={debt===null?'—':euro(debt)} note="Tutte le stagioni"/></Link>
- <Link className="sc-metric-link" href="?tab=pagamenti"><MetricCard label="Residuo quote corsi" area="finance" icon="wallet" value={courseDebt===null?'—':euro(courseDebt)}/></Link>
- <Link className="sc-metric-link" href="?tab=certificati"><MetricCard label="Certificato più recente" area="system" icon="certificate" value={certResult.error?'—':newestCert?statoSingolo(certLabel(newestCert)):'Non presente'}/></Link>
- </div><section className="sc-card"><h2>Azioni rapide</h2><div className="sc-quick-actions"><ButtonLink href="?tab=anagrafica" variant="secondary">Modifica anagrafica</ButtonLink><ButtonLink href={'/gestionale/incassi?persona='+id+'&stato=residuo'}>Registra pagamento</ButtonLink><ButtonLink href={'/gestionale/moduli/certificati?persona='+id+'&nuovo=1'} variant="secondary">Registra certificato</ButtonLink><ButtonLink href={'/gestionale/moduli/iscrizioni?persona='+id+'&nuovo=1'} variant="secondary">Iscrivi a un corso</ButtonLink><ButtonLink href="?tab=documenti" variant="secondary">Visualizza documenti</ButtonLink></div></section></section>}
+ <Link className="sc-metric-link" href="?tab=tesseramenti"><MetricCard label="Tesseramento della stagione attiva" area="pool" icon="document" value={memberError||currentCard.error||!currentSeason?'—':currentCard.data?statusLabel(currentCard.data.stato):'Non presente'} note={currentCard.data?'Scadenza più recente: '+formatValue(currentCard.data.scade_il):'Registrati nello storico: '+exactCount(cardResult)}/></Link>
+ <Link className="sc-metric-link" href="?tab=certificati"><MetricCard label="Certificato più recente" area="certificate" icon="certificate" value={certResult.error?'—':newestCert?statoSingolo(certLabel(newestCert)):'Non presente'} note={certResult.error||!newestCert?undefined:'Scadenza: '+formatValue(newestCert.scade_il)}/></Link>
+ <Link className="sc-metric-link" href="?tab=brevetti"><MetricCard label="Brevetti registrati" area="teaching" icon="course" value={exactCount(patentResult)}/></Link>
+ </div><div className="sc-member-overview-grid">
+ <section className="sc-card"><h2>Situazione economica</h2><div className="sc-metrics"><Link className="sc-metric-link" href="?tab=pagamenti"><MetricCard label="Residuo quote associative" area="finance" icon="wallet" value={debt===null?'—':euro(debt)} note="Tutte le stagioni"/></Link><Link className="sc-metric-link" href="?tab=pagamenti"><MetricCard label="Residuo quote corsi" area="finance" icon="wallet" value={courseDebt===null?'—':euro(courseDebt)}/></Link></div><ButtonLink href="?tab=pagamenti" variant="secondary">Vai ai pagamenti</ButtonLink></section>
+ <section className="sc-card"><h2>Corsi e attività</h2><p><strong>{exactCount(enrollmentResult)}</strong> iscrizioni nello storico</p>{enrollmentResult.error||editionsError||coursesError?<Alert tone="warning">Elenco non disponibile.</Alert>:enrollments.length?enrollments.slice(0,3).map(e=><div className="sc-member-preview" key={e.id}><Icon name="course"/><span>{editionName(e.edizione_id)}</span><StatusBadge tone={statusTone(e.stato)}>{statusLabel(e.stato)}</StatusBadge></div>):<None>Nessuna iscrizione registrata.</None>}<ButtonLink href="?tab=corsi" variant="secondary">Tutti i corsi</ButtonLink></section>
+ <section className="sc-card"><h2>Documenti recenti</h2>{documentResult.error?<Alert tone="warning">Elenco non disponibile.</Alert>:documents.length?documents.slice(0,3).map(d=><div className="sc-member-preview" key={d.id}><Icon name="document"/><span>{d.nome}<small>{formatValue(d.caricato_il)}</small></span><Link href={'/documenti/'+d.id} prefetch={false}>Apri</Link></div>):<None>Nessun documento collegato.</None>}<ButtonLink href="?tab=documenti" variant="secondary">Tutti i documenti</ButtonLink></section>
+ <section className="sc-card"><h2>Azioni rapide</h2><div className="sc-quick-actions"><ButtonLink href="?tab=anagrafica" variant="secondary">Modifica anagrafica</ButtonLink><ButtonLink href={'/gestionale/incassi?persona='+id+'&stato=residuo'}>Registra pagamento</ButtonLink><ButtonLink href={'/gestionale/moduli/certificati?persona='+id+'&nuovo=1'} variant="secondary">Registra certificato</ButtonLink><ButtonLink href={'/gestionale/moduli/iscrizioni?persona='+id+'&nuovo=1'} variant="secondary">Iscrivi a un corso</ButtonLink><ButtonLink href="?tab=cronologia" variant="secondary">Cronologia</ButtonLink></div></section>
+ </div></section>}
  <div className="member-sections sc-secretariat-section">
    {tab==='anagrafica'&&<Section id="anagrafica" title="Anagrafica e recapiti">
     <div className="detail-grid">
@@ -167,22 +183,34 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
      <div><span className="k">Indirizzo di residenza</span><strong>{[person.indirizzo,person.cap,person.comune].filter(Boolean).join(' · ')||'—'}</strong></div>
      <div><span className="k">Recapiti</span><strong>{person.email??'—'} · {person.telefono??'—'}</strong></div>
     </div>
-    <h3>Contatto di emergenza</h3><p>{emergencyError?'Non disponibile':emergenza?emergenza.nominativo+' · '+emergenza.telefono:'Non acquisito'}</p><Drawer title={'Modifica anagrafica · '+person.cognome+' '+person.nome} trigger="Modifica anagrafica e recapiti" primary>
-     <EditForm action={updateMemberProfile} className="stack"><input type="hidden" name="id" value={person.id}/>
-      <div className="form-grid">
-       {(['nome','cognome','codice_fiscale','luogo_nascita','indirizzo','cap','comune','telefono','email'] as const).map(key=>
-        <label key={key}>{({nome:'Nome',cognome:'Cognome',codice_fiscale:'Codice fiscale',luogo_nascita:'Comune di nascita (o città estera)',indirizzo:'Indirizzo di residenza',cap:'CAP',comune:'Comune di residenza',telefono:'Telefono',email:'Email di contatto'})[key]}
-         <input name={key} type={key==='email'?'email':'text'} maxLength={key==='email'?254:key==='indirizzo'?250:key==='luogo_nascita'?150:100}
-          required={key==='nome'||key==='cognome'} defaultValue={person[key]??''}/></label>)}
+    <h3>Contatto di emergenza</h3><p>{emergencyError?'Non disponibile':emergenza?emergenza.nominativo+' · '+emergenza.telefono:'Non acquisito'}</p><Drawer title={'Modifica anagrafica · '+person.cognome+' '+person.nome} trigger="Modifica anagrafica e recapiti" primary initialOpen={modifica==='1'&&!msg}>
+     <EditForm action={updateMemberProfile} className="stack sc-secretariat-form"><input type="hidden" name="id" value={person.id}/>
+      <p className="tiny muted sc-form-legend">* Campi obbligatori. Gli altri sono facoltativi.</p>
+      <fieldset><legend>Dati personali</legend><div className="form-grid">
+       <label>Nome <span aria-hidden="true" className="sc-required-star">*</span><input name="nome" required maxLength={100} defaultValue={person.nome}/></label>
+       <label>Cognome <span aria-hidden="true" className="sc-required-star">*</span><input name="cognome" required maxLength={100} defaultValue={person.cognome}/></label>
        <label>Data di nascita<input name="data_nascita" type="date" defaultValue={person.data_nascita??''}/></label>
+       <label>Comune di nascita (o città estera)<input name="luogo_nascita" maxLength={150} defaultValue={person.luogo_nascita??''}/></label>
        <label>Provincia nascita<input name="provincia_nascita" maxLength={2} defaultValue={person.provincia_nascita??''}/></label>
        <label>Stato di nascita<input name="stato_nascita" maxLength={100} defaultValue={person.stato_nascita??''}/></label>
+      </div></fieldset>
+      <fieldset><legend>Residenza e recapiti</legend><div className="form-grid">
+       <label>Indirizzo di residenza<input name="indirizzo" maxLength={250} defaultValue={person.indirizzo??''}/></label>
+       <label>CAP<input name="cap" maxLength={100} defaultValue={person.cap??''}/></label>
+       <label>Comune di residenza<input name="comune" maxLength={100} defaultValue={person.comune??''}/></label>
        <label>Provincia residenza<input name="provincia_residenza" maxLength={2} defaultValue={person.provincia_residenza??''}/></label>
        <label>Stato residenza<input name="stato_residenza" maxLength={15} defaultValue={person.stato_residenza??''}/></label>
+       <label>Telefono<input name="telefono" maxLength={100} defaultValue={person.telefono??''}/></label>
+       <label>Email di contatto<input name="email" type="email" maxLength={254} defaultValue={person.email??''}/></label>
+      </div></fieldset>
+      <fieldset><legend>Dati fiscali</legend><div className="form-grid">
+       <label>Codice fiscale<input name="codice_fiscale" maxLength={100} defaultValue={person.codice_fiscale??''}/></label>
        <label>Sesso per CF<select name="sesso_cf" defaultValue={person.sesso_cf??''}><option value="">Non indicato</option><option value="M">M</option><option value="F">F</option></select></label>
+      </div></fieldset>
+      <details className="sc-advanced-fields" open={Boolean(person.cf_omocodia_verificata||person.cf_override_motivo)||undefined}><summary>Verifiche particolari (omocodia)</summary><div className="form-grid">
        <label className="check-label"><input type="checkbox" name="cf_omocodia_verificata" defaultChecked={person.cf_omocodia_verificata}/><span>Omocodia verificata con documentazione</span></label>
        <label>Motivazione verifica documentale CF<input name="cf_override_motivo" maxLength={500} defaultValue={person.cf_override_motivo??''} placeholder="Es. omocodia attestata da tessera sanitaria"/></label>
-      </div><CodiceFiscaleAssist/><div className="form-actions"><button type="submit" className="button">Salva modifiche</button><CancelEditButton/></div>
+      </div></details><CodiceFiscaleAssist/><div className="form-actions"><button type="submit" className="button">Salva modifiche</button><CancelEditButton/></div>
       <p className="tiny muted">Le rettifiche vengono registrate nel registro operazioni, senza copiare i dati anagrafici nel log.</p>
      </EditForm><RemoveRecord moduleKey="anagrafiche" id={person.id} back="soci" label={person.cognome+' '+person.nome}/>{isAdmin===true&&Boolean(accountLinks?.length)&&<div className="stack"><p className="muted tiny">Per rimuovere l’account insieme ai dati esclusivi collegati, usa la cancellazione completa. I profili condivisi sono conservati.</p>{accountLinks?.map(a=><Link key={a.utente_id} href={`/gestionale/utenti/${a.utente_id}/elimina`} className="button danger">Elimina account e dati ({a.relazione})</Link>)}</div>}</Drawer>
    </Section>}

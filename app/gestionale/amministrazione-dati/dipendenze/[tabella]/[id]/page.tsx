@@ -15,7 +15,7 @@ export default async function Dependencies({params}:{params:Promise<{tabella:str
   const {data,error}=await supabase.rpc('admin_fk_dipendenze',{p_schema:'public',p_tabella:tabella,p_id:id});
 
   return <>
-    <PageHeader title={'Dati collegati · '+module.label}
+    <PageHeader area="system" icon="archive" marine title={'Dati collegati · '+module.label}
       description="Consulta i collegamenti prima di rimuovere un elemento. Possono applicarsi anche regole di conservazione."
       actions={<ButtonLink href={`/gestionale/moduli/${module.name}?edit=${id}`} variant="secondary">Torna alla modifica</ButtonLink>}/>
     <section className="sc-card">

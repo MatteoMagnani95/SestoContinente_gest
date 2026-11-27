@@ -3,7 +3,7 @@ Data: 2026-11-26. Base esatta: `ea97e2663a3999527b2e3f868c19dfd5b4f646eb`. Ramo:
 Nessun merge, modifica applicativa o SQL produzione in questa fase.
 
 # Censimento route
-Inventario ricavato dall'albero Git ricorsivo non troncato: 229 blob, 48 page, 7 handler, 2 layout. Le indicazioni ruolo sono preliminari e non una certificazione di accesso.
+Inventario ricavato dall'albero Git ricorsivo non troncato: 229 blob, 48 page, 7 handler, 2 layout. Le indicazioni ruolo sono preliminari e non una certificazione di accesso. Aggiornamento PR #7: aggiunta /notifiche; le cifre iniziali descrivono lo snapshot storico, mentre l'inventario corrente censisce 57 pagine, 7 handler e 2 layout.
 
 | File | URL | Perimetro | Stato |
 |---|---|---|---|
@@ -51,6 +51,7 @@ Inventario ricavato dall'albero Git ricorsivo non troncato: 229 blob, 48 page, 7
 | `app/gestione-eventi/page.tsx` | `/gestione-eventi` | staff/responsabile autorizzato | Da analizzare nel dettaglio |
 | `app/istruttore/page.tsx` | `/istruttore` | istruttore autorizzato | Da analizzare nel dettaglio |
 | `app/layout.tsx` | `/` | pubblico/auth/redirect da verificare | Da analizzare nel dettaglio |
+| `app/notifiche/page.tsx` | `/notifiche` | ogni account abilitato; requireUser, notifiche proprie (utente_id e RLS); RPC segna_notifica_letta previa verifica proprietà | Correzione account PR #7: paginazione e lettura; collaudo autenticato richiesto |
 | `app/nuova-password/page.tsx` | `/nuova-password` | pubblico/auth/redirect da verificare | Da analizzare nel dettaglio |
 | `app/organi-sociali/archivio/[id]/page.tsx` | `/organi-sociali/archivio/[id]` | board/staff; verificare download | Da analizzare nel dettaglio |
 | `app/organi-sociali/archivio/page.tsx` | `/organi-sociali/archivio` | board/staff; verificare download | Da analizzare nel dettaglio |
@@ -116,6 +117,7 @@ Sono 28 configurazioni, alcune con flussi speciali/redirect. Verificare singolar
 - app/gestionale/utenti/actions.ts
 - app/istruttore/actions.ts
 - app/module-actions.ts
+- app/notifiche/actions.ts
 - app/organi-sociali/actions.ts
 - components/ApplicationForm.tsx
 - components/ApplicationReviewForm.tsx

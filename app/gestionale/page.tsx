@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import {ButtonLink,PageHeader,SectionHeader,MetricCard,EmptyState,ErrorState,Alert,type Area} from '@/components/ui/Primitives';
+import {NereiaProject} from '@/components/ui/BrandLogo';
+import {ButtonLink,QuickActionLink,PageHeader,SectionHeader,MetricCard,EmptyState,ErrorState,Alert,type Area} from '@/components/ui/Primitives';
 import {Icon,type IconName} from '@/components/ui/Icon';
 import {requireStaff} from '@/lib/security';
 import {formatValue} from '@/lib/format';
@@ -30,33 +31,40 @@ export default async function Dashboard(){
   {label:'Adesioni attive',icon:'users',area:'secretariat',result:adhesions,href:'/gestionale/soci?stato=attiva'+seasonQuery,note:season?.nome??'Stagione attiva non disponibile'},
   {label:'Corsi attivi',icon:'course',area:'teaching',result:courses,href:'/gestionale/corsi?stato=attivo'},
   {label:'Iscrizioni allievi',icon:'users',area:'teaching',result:enrollments,href:'/gestionale/moduli/iscrizioni?vista=elenco&filtro_modulo=stato%3Aiscritto',note:'Iscrizioni, non persone uniche'},
-  {label:'Eventi imminenti',icon:'calendar',area:'calendar',result:events,href:'/gestione-eventi?periodo=prossimi&dal='+today}
+  {label:'Eventi imminenti',icon:'calendar',area:'event',result:events,href:'/gestione-eventi?periodo=prossimi&dal='+today}
  ];
  const tasks:Metric[]=[
   {label:'Domande da gestire',icon:'clipboard',area:'secretariat',result:requests,href:'/gestionale/richieste?filtro=da_gestire'},
   {label:'Adesioni da perfezionare',icon:'users',area:'secretariat',result:pendingAdhesions,href:'/gestionale/soci?stato=da_perfezionare'+seasonQuery,note:season?.nome??'Stagione attiva non disponibile'},
   {label:'Quote da incassare',icon:'wallet',area:'finance',result:quotes,href:'/gestionale/incassi?tab=quota&stato=residuo'+seasonQuery,note:'Posizioni con residuo positivo'},
   {label:'Revisioni da effettuare',icon:'equipment',area:'equipment',result:revisions,href:'/gestionale/report?categoria=Revisioni&periodo=30',note:'Entro 30 giorni (scadute nel report dedicato)'},
-  {label:'Certificati in scadenza',icon:'certificate',area:'system',result:certificates,href:'/gestionale/moduli/certificati?stato=in_scadenza&dal='+today+'&al='+cutoff,note:'Validi, in scadenza entro 30 giorni'}
+  {label:'Certificati in scadenza',icon:'certificate',area:'certificate',result:certificates,href:'/gestionale/moduli/certificati?stato=in_scadenza&dal='+today+'&al='+cutoff,note:'Validi, in scadenza entro 30 giorni'}
  ];
- function metric(m:Metric){if(!season&&['Adesioni attive','Adesioni da perfezionare','Quote da incassare'].includes(m.label))return <MetricCard key={m.label} label={m.label} icon={m.icon} area={m.area} value="—" note="Stagione attiva non disponibile"/>;return <Link key={m.label} href={m.href} className="sc-metric-link" aria-label={m.label+': '+exactCount(m.result)+'. Apri elenco'}><MetricCard label={m.label} icon={m.icon} area={m.area} value={exactCount(m.result)} note={exactCount(m.result)==='—'?'Dato non disponibile':m.note}/><span className="sc-metric-open">Apri elenco <Icon name="chevron-right"/></span></Link>;}
+ function metric(m:Metric){if(!season&&['Adesioni attive','Adesioni da perfezionare','Quote da incassare'].includes(m.label))return <MetricCard key={m.label} label={m.label} icon={m.icon} area={m.area} value="—" note="Stagione attiva non disponibile"/>;return <Link key={m.label} href={m.href} className={"sc-metric-link sc-dashboard-metric"+(exactCount(m.result)===0?" sc-metric-zero":"")} aria-label={m.label+': '+exactCount(m.result)+'. Apri elenco'}><MetricCard label={m.label} icon={m.icon} area={m.area} value={exactCount(m.result)} note={exactCount(m.result)==='—'?'Dato non disponibile':m.note}/><span className="sc-metric-open">Apri elenco <Icon name="chevron-right"/></span></Link>;}
  const lessonsError=lessons.error;
  return <>
- <PageHeader eyebrow="Segreteria · Centro operativo" title="Panoramica" description={season?'Stagione attiva: '+season.nome:'Consulta la situazione associativa e le attività da gestire.'}/>
+ <PageHeader eyebrow="Gestione associativa" title="Centro operativo" area="secretariat" marine description={season?'Stagione attiva: '+season.nome:'Consulta la situazione associativa e le attività da gestire.'}/>
  {(!season||seasonError)&&<Alert tone="warning" title="Stagione attiva non disponibile">I dati che dipendono dalla stagione non possono essere calcolati.</Alert>}
- <section className="sc-dashboard-section"><SectionHeader title="Panoramica associativa"/><div className="sc-metrics">{summary.map(metric)}</div></section>
- <section className="sc-dashboard-section"><SectionHeader title="Attività da gestire" description="Priorità operative e scadenze."/><div className="sc-metrics">{tasks.map(metric)}</div></section>
+ <nav className="sc-dashboard-shortcuts" aria-label="Azioni principali">
+ <QuickActionLink area="secretariat" href="/gestionale/moduli/anagrafiche?nuovo=1" icon="users">Nuova persona</QuickActionLink>
+ <QuickActionLink area="teaching" href="/gestionale/corsi/nuovo" icon="course">Nuova edizione corso</QuickActionLink>
+ <QuickActionLink area="event" href="/gestione-eventi?nuovo=1" icon="calendar">Nuovo evento</QuickActionLink>
+ <QuickActionLink area="finance" href="/gestionale/incassi?tab=quota&stato=residuo" icon="wallet">Incassa quota</QuickActionLink>
+ </nav>
+ <section className="sc-dashboard-section sc-dashboard-priorities"><SectionHeader title="Da gestire" description="Attività prioritarie e scadenze."/><div className="sc-metrics">{tasks.map(metric)}</div></section>
+ <section className="sc-dashboard-section sc-dashboard-summary"><SectionHeader title="Panoramica associativa" description="Situazione generale dell’associazione."/><div className="sc-metrics">{summary.map(metric)}</div></section>
  {[...summary,...tasks].some(m=>exactCount(m.result)==='—')&&<Alert tone="warning">Alcuni dati non sono disponibili: un valore mancante non equivale a zero.</Alert>}
- <section className="sc-card"><SectionHeader title="Azioni rapide"/><div className="sc-quick-actions">
- {[
- ['Cerca socio','/gestionale/soci','search'],['Esamina domande','/gestionale/richieste?filtro=da_gestire','clipboard'],['Crea corso','/gestionale/corsi/nuovo','plus'],['Programma lezione','/gestionale/moduli/calendario?nuovo=1','calendar'],['Registra incasso','/gestionale/incassi?stato=residuo','wallet'],['Registra consegna','/gestionale/moduli/consegne?nuovo=1','equipment'],['Consulta calendario','/gestionale/calendario-visivo','calendar'],['Consulta scadenze','/gestionale/report','clock']
- ].map(([label,href,icon])=><ButtonLink key={label} href={href} icon={icon as IconName} variant="secondary">{label}</ButtonLink>)}</div></section>
  <div className="sc-dashboard-grid"><section className="sc-card"><SectionHeader title="Prossime lezioni" description="Fino a 8 appuntamenti futuri."/>
  {lessonsError?<ErrorState description="Non è stato possibile caricare le lezioni."/>:lessons.data?.length?lessons.data.map(l=><Link className="sc-appointment sc-appointment-link" key={l.id} href={'/gestionale/calendario-visivo/'+l.id}><Icon name="calendar"/><div><strong>{l.titolo}</strong><p>{formatValue(l.inizio)} – {formatValue(l.fine)}</p></div><Icon name="chevron-right"/></Link>):<EmptyState title="Nessuna lezione programmata"/>}
  <ButtonLink href="/gestionale/calendario-visivo" variant="secondary">Apri calendario</ButtonLink></section>
  <section className="sc-card"><SectionHeader title="Prossimi eventi" description="Fino a 5 eventi non annullati."/>
  {events.error?<ErrorState description="Non è stato possibile caricare gli eventi."/>:events.data?.length?events.data.map(e=><Link className="sc-appointment sc-appointment-link" key={e.id} href={'/gestione-eventi/'+e.id}><Icon name="calendar"/><div><strong>{e.titolo}</strong><p>{formatValue(e.dal)} – {formatValue(e.al)}</p></div><Icon name="chevron-right"/></Link>):<EmptyState title="Nessun evento imminente"/>}
  <ButtonLink href={'/gestione-eventi?periodo=prossimi&dal='+today} variant="secondary">Apri eventi</ButtonLink></section></div>
+ <NereiaProject/>
+ <section className="sc-card sc-dashboard-other"><SectionHeader title="Altre azioni"/><div className="sc-quick-actions">
+ {[
+ ['Cerca socio','/gestionale/soci','search'],['Esamina domande','/gestionale/richieste?filtro=da_gestire','clipboard'],['Crea corso','/gestionale/corsi/nuovo','plus'],['Programma lezione','/gestionale/moduli/calendario?nuovo=1','calendar'],['Registra incasso','/gestionale/incassi?stato=residuo','wallet'],['Registra consegna','/gestionale/moduli/consegne?nuovo=1','equipment'],['Consulta calendario','/gestionale/calendario-visivo','calendar'],['Consulta scadenze','/gestionale/report','clock']
+ ].map(([label,href,icon])=><ButtonLink key={label} href={href} icon={icon as IconName} variant="secondary">{label}</ButtonLink>)}</div></section>
  {admin.data&&<section className="sc-card"><SectionHeader title="Amministrazione" description="Accesso riservato all’amministratore."/><div className="sc-quick-actions"><ButtonLink href="/gestionale/economia">Rendiconto economico</ButtonLink><ButtonLink href="/gestionale/moduli/contabilita" variant="secondary">Movimenti contabili</ButtonLink><ButtonLink href="/gestionale/utenti" variant="secondary">Gestione utenti</ButtonLink><ButtonLink href="/gestionale/amministrazione-dati" variant="secondary">Amministrazione dati</ButtonLink><ButtonLink href="/gestionale/moduli/stagioni" variant="secondary">Stagioni</ButtonLink></div></section>}
  <p className="sc-dashboard-footnote">Conteggi esatti dal database, secondo i permessi dell’account. Gli appuntamenti sono anteprime, non elenchi completi.</p>
  </>;

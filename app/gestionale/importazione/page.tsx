@@ -1,3 +1,4 @@
+import {PageHeader} from '@/components/ui/Primitives';
 import Link from 'next/link';
 import {tutteLePagine} from '@/lib/pagine';
 import {DataTable,Pagination} from '@/components/ui/DataTable';
@@ -22,8 +23,7 @@ export default async function Importazione({searchParams}:{searchParams:Promise<
  const visible=filtered.slice((page-1)*size,page*size);
  const batchHref=(n:number,onlyErrors=p.anomalie==='1')=>'?batch='+batchId+'&p='+n+(onlyErrors?'&anomalie=1':'');
  const success=p.msg==='importato'&&confirmed;
- return <><div className="page-intro"><p className="eyebrow">Documenti e Sistema · Riservato staff</p><h1>Importazione Dati</h1>
- <p>Tre passaggi: modello, caricamento, controllo in quarantena e conferma atomica. Nessuna riga viene importata prima della conferma.</p></div>
+ return <><PageHeader area="system" icon="archive" marine eyebrow="Documenti e Sistema · Riservato staff" title="Importazione Dati" description="Tre passaggi: modello, caricamento, controllo in quarantena e conferma atomica. Nessuna riga viene importata prima della conferma."/>
  {p.msg&&<p role="status" className={`notice ${success?'success':'warning'}`}>{p.msg==='importato'?(success?messages.importato+' ('+preview!.length+' righe)':messages.esito):Object.hasOwn(messages,p.msg)?messages[p.msg]:'Controlla lo stato dell’operazione.'}</p>}
  <section className="panel"><h2>1. Scarica il modello e prepara i dati</h2><p>I codici fiscali devono essere univoci; per i corsi storici si usa l’ID di un’edizione già presente, senza creare duplicati di persone.</p>
  <div className="buttons"><Link className="button ghost" href="/gestionale/importazione/modello?tipo=soci">Modello soci Excel</Link><Link className="button ghost" href="/gestionale/importazione/modello?tipo=corsi">Modello corsi Excel</Link></div></section>

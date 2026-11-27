@@ -1,3 +1,4 @@
+import {PageHeader} from '@/components/ui/Primitives';
 import {Alert,StatusBadge,ButtonLink} from '@/components/ui/Primitives';
 import Dichiarazioni from '@/components/Dichiarazioni';
 import {isTestApplication} from '@/lib/application-config';
@@ -9,7 +10,7 @@ export default async function RequestStatus({searchParams}:{searchParams:Promise
   const {data:r,error}=await supabase.from('richieste').select('*').eq('utente_id',user.id).maybeSingle();
   if (error) return <div className="container narrow"><h1>Impossibile leggere la richiesta</h1><p>Riprova o contatta la segreteria.</p></div>;
   if (!r) return <div className="container narrow"><p className="eyebrow">Area richiedente</p><h1>Nessuna domanda presentata</h1><p>Puoi compilare la domanda o salvare una bozza.</p><Link className="button" href="/richiesta/nuova">Compila domanda</Link></div>;
-  return <div className="container narrow"><div className="page-intro"><p className="eyebrow">Area richiedente</p><h1>La tua domanda</h1><p>Qui trovi lo stato della tua richiesta di adesione.</p></div>
+  return <div className="container narrow"><PageHeader area="secretariat" icon="clipboard" marine eyebrow="Area richiedente" title="La tua domanda" description="Qui trovi lo stato della tua richiesta di adesione."/>
     {isTestApplication(r)&&<div className="notice warning">COLLAUDO — domanda simulata, non valida come adesione reale.</div>}
     {msg && <Alert tone={(msg==='inviata'&&r.inviata_il)||(msg==='salvata'&&r.stato==='bozza')?'success':'info'} announce>{msg==='inviata'&&!r.inviata_il?'Invio non confermato. Controlla lo stato della domanda.':msg==='salvata'&&r.stato!=='bozza'?'Consulta lo stato attuale della domanda.':queryMessage(msg)}</Alert>}
     <div className="panel status-panel"><div className="detail-top"><div><div className="muted tiny">Riferimento domanda</div><h2>{r.nome} {r.cognome}</h2><p className="tiny muted">#{r.id.slice(0,8).toUpperCase()}</p></div><StatusBadge tone={r.stato==='approvata'?'success':r.stato==='respinta'?'danger':r.stato==='integrazione_richiesta'?'warning':'info'}>{statoLabel[r.stato as Stato]}</StatusBadge></div>

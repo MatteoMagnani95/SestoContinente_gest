@@ -5,7 +5,7 @@ import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import {resolve,join} from 'node:path';
 import {createClient} from '@supabase/supabase-js';
 import {Client} from 'pg';
-import {chromium} from '@playwright/test';
+import {chromium,webkit,expect} from '@playwright/test';
 import {PDFDocument} from 'pdf-lib';
 
 const env=process.env, work=resolve(env.QA_WORK_DIR||'.'), root=resolve('.');
@@ -73,14 +73,72 @@ async function seed(){
   await db.query('commit');
   await db.query("insert into notifiche(utente_id,tipo,riferimento,titolo,messaggio) values($1,'collaudo',$2,'Notifica sintetica','Messaggio di prova')",[accounts.staff.id,randomUUID()]);
   const notification=await value("insert into notifiche(utente_id,tipo,riferimento,titolo,messaggio) values($1,'collaudo',$2,'Notifica socio sintetica','Messaggio di prova') returning id",[accounts.member.id,randomUUID()]);
-  const fixtures={person:accounts.member.person,edition,lesson,event,equipment,payment,account:accounts.member.id,notification,openQuota,secondEdition};
+  const lessonDay=await value("select to_char(current_date+1,'YYYY-MM-DD')");
+  const fixtures={person:accounts.member.person,edition,lesson,event,equipment,payment,account:accounts.member.id,notification,openQuota,secondEdition,pool,lane,lessonDay};
   await writeFile(accountFile,JSON.stringify(accounts),{mode:0o600});
   await writeFile(join(work,'fixtures.json'),JSON.stringify(fixtures),{mode:0o600});
   console.log('OK account sintetici e fixture locali');
  }finally{await db.end();}
 }
+// Exercise actual logout, not just visibility. Fresh sessions never revoke the
+// stored sessions used by the remaining QA suite. Only synthetic local accounts.
+async function verifyAccountLogout(accounts){
+ for(const [engine,browserType] of [['chromium',chromium],['webkit',webkit]]){
+  const browser=await browserType.launch();
+  try{
+   for(const [role,a] of Object.entries(accounts)){
+    for(const viewport of [{width:1440,height:900},{width:390,height:844}]){
+     const context=await browser.newContext({baseURL:app.href,viewport});
+     try{
+      const page=await context.newPage();await page.goto('/accedi');
+      await page.locator('input[name=email]').first().fill(a.email);
+      await page.locator('input[name=password]').fill(a.password);
+      await page.getByRole('button',{name:'Accedi',exact:true}).click();
+      await page.waitForURL(u=>!['/accedi','/smista','/'].includes(u.pathname),{timeout:30000});
+      assert.equal((await page.request.get('/richiesta/stato',{maxRedirects:0})).status(),200,'sessione non valida: '+role);
+      const access=await page.request.get('/notifiche',{maxRedirects:0});
+      assert.equal(access.status(),200,'notifiche non accessibili: '+role);
+      const logout=page.getByRole('button',{name:'Esci dal gestionale',exact:true});
+      await expect(logout).toBeVisible();
+      await expect(logout).toBeInViewport({ratio:1});
+      await logout.click();
+      await page.waitForURL(u=>u.pathname==='/accedi'&&u.searchParams.get('msg')==='uscita',{timeout:30000});
+      await page.goto('/notifiche');
+      await expect(page).toHaveURL(u=>u.pathname==='/accedi');
+      await expect(logout).toHaveCount(0);
+      assert.ok([301,302,303,307,308].includes((await page.request.get('/richiesta/stato',{maxRedirects:0})).status()),'accesso ancora attivo dopo logout diretto: '+role);
+      // Verify the alternate account/mobile menu logout on a fresh session too.
+      await page.goto('/accedi');
+      await page.locator('input[name=email]').first().fill(a.email);
+      await page.locator('input[name=password]').fill(a.password);
+      await page.getByRole('button',{name:'Accedi',exact:true}).click();
+      await page.waitForURL(u=>!['/accedi','/smista','/'].includes(u.pathname),{timeout:30000});
+      assert.equal((await page.request.get('/richiesta/stato',{maxRedirects:0})).status(),200);
+      if(viewport.width>1000){
+       const menu=page.locator('.sc-account-menu');
+       await menu.locator('summary').click();
+       await menu.getByRole('button',{name:'Esci',exact:true}).click();
+      }else{
+       await page.locator('.sc-mobile-trigger').click();
+       await page.getByRole('dialog',{name:'Menu'}).getByRole('button',{name:'Esci',exact:true}).click();
+      }
+      await page.waitForURL(u=>u.pathname==='/accedi'&&u.searchParams.get('msg')==='uscita',{timeout:30000});
+      assert.ok([301,302,303,307,308].includes((await page.request.get('/richiesta/stato',{maxRedirects:0})).status()),'accesso ancora attivo dopo logout menu: '+role);
+      await page.goto('/notifiche');
+      await expect(page).toHaveURL(u=>u.pathname==='/accedi');
+      await expect(logout).toHaveCount(0);
+      console.log('OK logout menu locale '+engine+' '+role+' '+viewport.width);
+      console.log('OK logout locale '+engine+' '+role+' '+viewport.width);
+     }finally{await context.close();}
+    }
+   }
+  }finally{await browser.close();}
+ }
+}
+
 async function sessions(){
  const accounts=JSON.parse(await readFile(accountFile,'utf8'));
+ await verifyAccountLogout(accounts);
  const browser=await chromium.launch();
  try{
   for(const [role,a] of Object.entries(accounts)){

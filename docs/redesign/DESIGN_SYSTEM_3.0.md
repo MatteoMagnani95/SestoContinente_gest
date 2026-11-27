@@ -1,0 +1,24 @@
+# Design system Sesto Continente 3.0 — Fase 1
+Estende, non sostituisce le regole applicative del design system 2.0. Baseline `20ae6fcceb5307d58920aa1527a83e2d1cf938f4`.
+ 
+## Branding
+- SestoContinente: marchio primario, delfini rosso/blu e onde azzurre, diciture originali. `public/brand/sestocontinente-logo.png` (742×376, 79.804 byte); `sestocontinente-mark.png` (536×238, 35.480 byte), ritaglio del simbolo, con denominazione testuale in header; `favicon.png` (128×128, 7.051 byte), quadrato su supporto chiaro.
+- Nereia: progetto secondario, figura femminile, onde, scritta e motto. `public/brand/nereia-logo.png` (540×546, 77.319 byte). Riquadro non interattivo su homepage, richiamo compatto nel footer; dashboard e area personale da integrare nelle rispettive fasi.
+- Restauro raster da originali JPG: rimappatura dei colori caratterizzanti, rimozione bianco di fondo mediante alfa, antialias, crop e margine; niente glow. Non vengono usate le bozze generate. Il JPG SestoContinente è 242×120: l'ingrandimento non ricostruisce informazione persa. Nessuna pretesa di vettorializzazione; per stampa o schermi molto grandi richiedere sorgente vettoriale originale. Su fondo scuro usare supporto chiaro per non perdere scritte e dettagli intenzionali. Dimensioni indicative: marchio completo 180–360 px, simbolo con nome 54–76 px, Nereia completo 82–110 px, footer 44–48 px più nome in testo; margine interno minimo 4–12 px. Verificare browser e approvazione visiva dei marchi.
+- Asset decorativo originale `marine-accent.svg`, leggero, non interattivo e CSS background, non marchio; intensità moderata e mobile ridotta. Nessun screenshot pubblicato.
+ 
+## Token
+`app/design-tokens.css`: sfondo #F7FAFC, testo #102D3B, brand #073B4C, azione #007D83, link #00566A, turchese decorativo #009EAA, acqua #46C9C4; colori vividi per aree separati dagli inchiostri accessibili. Area + tint: secretariat, teaching, calendar, equipment, finance, system, pool, event, certificate, documents. Gli stati success/warning/danger/info/neutral conservano semantica, etichetta e icona. Contrast check: inchiostri per area su relativo tint ≥4.5:1; bianco su action/deep ≥4.5; bordo e focus ≥3. Valori vividi non destinati al testo piccolo su bianco.
+ 
+## Pattern e componenti
+- Font system sans-serif (nessun download remoto), base 16 px, secondario 14, titolo 28–34; KPI 30–40. Scala 4/8/12/16/20/24/32; raggio card 16, pulsanti 12; ombra contenuta. Primaria 48 px, secondaria/controlli almeno 44, scorciatoia 68; motion 180 ms e prefers-reduced-motion.
+- `Button/ButtonLink` conservano varianti, type e destinazioni; `MetricCard` mantiene gli stessi dati e colori area ora pastello; `StatusBadge/Alert` invariati; `PageHeader` accetta facoltativamente area, icon e marine; default non impone illustrazioni su tutte le route. `QuickActionLink` riceve href autorizzato dal chiamante. `BrandMark/AssociationLogo/NereiaProject` non interrogano il database.
+- `brand-ui.css` importa per ultimo gli adattamenti brand e responsive; riuso di DataTable, Drawer, FormField, FormSection, SearchableSelect, ErrorState, gestione focus e dirty forms esistenti. Layout mobile: breakpoint 1000/600/360, controlli non compressi sotto target; collaudo a 320/390/768/1024/1440/1920 e zoom 200% in F2–7. Nessun cambio a guardie, server actions, RLS o dati.
+ 
+## Gate
+Contrast test e test inventario/assets nuovi, aggiornamento del test palette 2.0 senza ridurre soglie. Test di integrazione e browser non considerati superati finché non disponibili risultati. La fase successiva aggiunge saluto dinamico e ricerca con accesso autorizzato; non simulare funzionalità.
+
+## Fase 2
+Header e sidebar: shell-3.0.css, logo primario, saluto titolare (fallback neutro), avatar iniziale, account menu nativo con Esc/click esterno, ricerca in dialog nativo e focus ripristinato, barra mobile con destinazioni autorizzate. Sidebar: una sezione espansa per percorso, toggle compatto persistito solo come booleano, nessun link soppresso per ragioni estetiche. Mobile: menu completo in header, barra rapida fino a 4 destinazioni; safe area e nascosta durante tastiera/dialog. Ricerca e limiti: vedi tracker F2. Nessun dato sensibile nei risultati; guardie e RLS restano la frontiera di sicurezza.
+## Fase 3
+`secretariat-3.0.css`: dashboard con scorciatoie a colori scuri accessibili e card pastello, metriche a zero non evidenziate come emergenza, profilo con avatar tipografico, schede di riepilogo, menu contestuale a 7 sezioni e tab secondarie Altro. `SecretariatNav/PersonAvatar/PersonName` sono componenti server presentazionali; nomi e CF mascherato non modificano i valori memorizzati. Filtri server conservati, totale riferito a adesioni. Drawer anagrafico senza wizard, gruppi logici, omocodia espandibile, legenda, controlli immutati; sticky azioni anche su mobile, disattivato con tastiera aperta o viewport bassa per evitare sovrapposizioni. Nessun uso di foto, stati o dati inventati.

@@ -3,6 +3,7 @@ import SearchableSelect from '@/components/ui/SearchableSelect';
 import {formatValue} from '@/lib/format';
 import EditForm from '@/components/EditForm';
 import Link from 'next/link';
+import {PageHeader} from '@/components/ui/Primitives';
 import {requireStaff} from '@/lib/security';
 import {createCatalogCourse,createEdition} from '../actions';
 import {courseName} from '@/lib/course-tools';
@@ -15,7 +16,7 @@ export default async function NewEdition({searchParams}:{searchParams:Promise<{m
   supabase.from('listino_corsi').select('importo').order('importo').limit(100)
  ]);
  return <><Link href="/gestionale/corsi" className="back-link">← Gestione corsi</Link>
- <div className="page-intro"><p className="eyebrow">Creazione guidata</p><h1>Nuova edizione di corso</h1><p>Seleziona un'attività del catalogo e crea l'edizione della stagione. La prima volta puoi aggiungere l'attività al catalogo qui sotto.</p></div>
+ <PageHeader area="teaching" icon="course" marine eyebrow="Creazione guidata" title="Nuova edizione di corso" description="Seleziona un’attività del catalogo e crea l’edizione della stagione. La prima volta puoi aggiungere l’attività al catalogo qui sotto."/>
  {msg==='catalogo'&&<p className="notice success">Attività aggiunta al catalogo. Ora puoi creare l'edizione.</p>}
  {msg==='errore'&&<p className="notice warning">Non è stato possibile salvare. Verifica i dati e i duplicati.</p>}
  {msg==='stagione'&&<p className="notice warning">Le date dell'edizione devono rientrare nelle date della stagione selezionata.</p>}

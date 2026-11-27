@@ -5,8 +5,9 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import SiteHeader,{AreaLinks,LogoutButton} from '@/components/SiteHeader';
 import StaffNav,{staffGroups} from '@/components/StaffNav';
 import { Icon } from '@/components/ui/Icon';
-import { activeItem, areaLabel, backTarget, contextPath, listContext, restoredTarget, staffArea, type NavigationAccess } from '@/lib/navigation';
+import { activeItem, areaLabel, backTarget, contextPath, listContext, restoredTarget, staffArea, greeting, mobileDestinations, userAreaDestinations, type NavigationAccess } from '@/lib/navigation';
 import GlobalCancelButtons from '@/components/GlobalCancelButtons';
+import { NereiaProject } from '@/components/ui/BrandLogo';
 
 function Breadcrumb({path,access,title,contexts}:{path:string;access:NavigationAccess;title:string;contexts:Record<string,string>}){
  const staff=staffArea(path,access),items=staff?staffGroups(access.admin).flatMap(g=>g.items):[];
@@ -21,6 +22,9 @@ function Breadcrumb({path,access,title,contexts}:{path:string;access:NavigationA
 export default function AppShell({access,children}:{access:NavigationAccess;children:ReactNode}){
  const path=usePathname()??'/',staff=staffArea(path,access),internal=path!=='/'&&path!=='/smista';
  const [open,setOpen]=useState(false);
+ const [collapsed,setCollapsed]=useState(false);
+ useEffect(()=>{try{setCollapsed(localStorage.getItem('sc-sidebar-collapsed')==='1');}catch{}},[]);
+ function collapse(value:boolean){setCollapsed(value);try{localStorage.setItem('sc-sidebar-collapsed',value?'1':'0');}catch{}}
  const [title,setTitle]=useState({path:'',value:''});
  const [contexts,setContexts]=useState<Record<string,string>>({});
  const menu=useRef<HTMLDialogElement>(null),content=useRef<HTMLDivElement>(null),trigger=useRef<HTMLElement|null>(null);
@@ -69,21 +73,24 @@ export default function AppShell({access,children}:{access:NavigationAccess;chil
   return()=>{viewport.removeEventListener('resize',update);viewport.removeEventListener('scroll',update);window.removeEventListener('resize',update);clear();};
  },[]);
  const back=backTarget(path,access),target=back?restoredTarget(back,contexts):null;
+ const mobile=internal?mobileDestinations(path,access):[],mobileActive=activeItem(path,mobile.map(d=>({...d,exact:d.href==='/gestionale'||d.href==='/area-personale'})));
+ const userNav=userAreaDestinations(path,access),userActive=activeItem(path,userNav.map(d=>({...d,exact:d.href==='/area-personale'})));
  const crumbs=internal&&<div className="sc-page-navigation"><Breadcrumb path={path} access={access} title={title.path===path?title.value:''} contexts={contexts}/>{target&&<Link className="sc-back-button" href={target.href}><Icon name="arrow-left"/>{target.label}</Link>}</div>;
  return <>
  <a href="#sc-main" className="sc-skip-link">Vai al contenuto</a>
  <SiteHeader access={access} onMenu={showMenu} menuOpen={open}/>
  <dialog ref={menu} id="sc-mobile-menu" className="sc-mobile-menu" aria-labelledby="sc-menu-title" onCancel={e=>{e.preventDefault();closeMenu();}} onClose={()=>setOpen(false)} onClick={e=>{if(e.target===e.currentTarget)closeMenu();}}>
   <div className="sc-mobile-menu-inner">
-   <header className="sc-mobile-menu-heading"><h2 id="sc-menu-title">Menu</h2><button type="button" className="sc-icon-button" onClick={()=>closeMenu()} aria-label="Chiudi menu" autoFocus><Icon name="close"/></button></header>
+   <header className="sc-mobile-menu-heading"><div><h2 id="sc-menu-title">Menu</h2>{access.enabled&&<span>{greeting(access)}</span>}</div><button type="button" className="sc-icon-button" onClick={()=>closeMenu()} aria-label="Chiudi menu" autoFocus><Icon name="close"/></button></header>
    {staff&&<StaffNav isAdmin={access.admin} idPrefix="mobile" onNavigate={navigateFromMenu}/>}
-   <nav className="sc-mobile-areas" aria-label="Aree e account"><AreaLinks access={access} onNavigate={navigateFromMenu}/>{access.enabled&&access.personal&&access.unread!==null&&<Link href="/area-personale?tab=notifiche" onClick={navigateFromMenu}>Notifiche ({access.unread})</Link>}{access.signedIn&&<LogoutButton/>}</nav>
+   <nav className="sc-mobile-areas" aria-label="Aree e account"><AreaLinks access={access} onNavigate={navigateFromMenu}/>{access.enabled&&<Link href="/" onClick={navigateFromMenu}>Home pubblica</Link>}{access.enabled&&<Link href={access.personal?'/area-personale?tab=notifiche':'/notifiche'} onClick={navigateFromMenu}>Notifiche ({access.unread??'—'})</Link>}{access.signedIn&&<LogoutButton/>}</nav>
   </div>
  </dialog>
  <GlobalCancelButtons/>
- <main id="sc-main" tabIndex={-1} className={staff?'sc-main sc-main-staff':'sc-main'}>
- {staff?<div className="container staff-layout sc-staff-layout"><aside className="staff-sidebar sc-staff-sidebar"><div className="sc-sidebar-heading"><strong>{access.admin?'Amministrazione':'Segreteria'}</strong><span>Gestione associativa</span></div><StaffNav isAdmin={access.admin}/></aside><div className="staff-content sc-staff-content">{crumbs}<div ref={content} className="sc-route-content">{children}</div></div></div>:<>{crumbs&&<div className="sc-public-navigation">{crumbs}</div>}<div ref={content} className="sc-route-content">{children}</div></>}
+ <main id="sc-main" tabIndex={-1} className={(staff?'sc-main sc-main-staff':'sc-main')+(mobile.length?' sc-main-has-mobile-nav':'')}>
+ {staff?<div className={'container staff-layout sc-staff-layout'+(collapsed?' sc-sidebar-collapsed':'')}><aside className="staff-sidebar sc-staff-sidebar"><div className="sc-sidebar-heading"><div className="sc-sidebar-label"><strong>{access.admin?'Amministrazione':'Segreteria'}</strong><span>Gestione associativa</span></div><button type="button" className="sc-icon-button sc-sidebar-toggle" aria-label={collapsed?'Espandi menu laterale':'Comprimi menu laterale'} aria-expanded={!collapsed} onClick={()=>collapse(!collapsed)}><Icon name={collapsed?'chevron-right':'arrow-left'}/></button></div><StaffNav isAdmin={access.admin} collapsed={collapsed} onExpand={()=>collapse(false)}/></aside><div className="staff-content sc-staff-content">{crumbs}<div ref={content} className="sc-route-content">{children}</div></div></div>:userNav.length?<div className="sc-user-layout"><aside className="sc-user-sidebar"><p className="sc-user-sidebar-title">La tua associazione</p><nav aria-label="Navigazione area utente">{userNav.map(d=><Link key={d.href} href={d.href} aria-current={userActive===d.href?'page':undefined}><Icon name={d.icon}/><span>{d.label}</span></Link>)}</nav></aside><div className="sc-user-content">{crumbs}<div ref={content} className="sc-route-content">{children}</div></div></div>:<>{crumbs&&<div className="sc-public-navigation">{crumbs}</div>}<div ref={content} className="sc-route-content">{children}</div></>}
  </main>
- <footer className="footer">Sesto Continente · Gestionale associativo</footer>
+ {mobile.length>0&&<nav className="sc-bottom-navigation" aria-label="Navigazione rapida mobile">{mobile.map(d=><Link key={d.href} href={d.href} aria-current={mobileActive===d.href?'page':undefined}><Icon name={d.icon}/><span>{d.label}</span></Link>)}</nav>}
+ <footer className={'footer sc-branded-footer'+(mobile.length?' sc-footer-has-mobile-nav':'')}><span>Sesto Continente · Gestionale associativo</span><NereiaProject compact/></footer>
  </>;
 }

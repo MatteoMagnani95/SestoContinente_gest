@@ -12,7 +12,7 @@ const redirect=path=>{throw new Error('redirect:'+path);};
 const form=(values)=>{const f=new FormData();for(const [k,v] of Object.entries(values))f.set(k,v);return f;};
 test('Autenticazione: spazi della password preservati in login e registrazione; sessione immediata instradata',async()=>{
  const received=[];
- const auth={signInWithPassword:async v=>{received.push(v);return {error:null};},signUp:async v=>{received.push(v);return {data:{session:{}},error:null};}};
+ const auth={signInWithPassword:async v=>{received.push(v);return {data:{session:{}},error:null};},signUp:async v=>{received.push(v);return {data:{session:{}},error:null};}};
  const actions=load('app/actions.ts',{
   '@/lib/registrazione':{informativaRegistrazione:()=>({url:'https://example.test/privacy',versione:'1',test:false})},
   '@/lib/scelte':{versioneImmagini:'1'},'@/lib/application-input':load('lib/application-input.ts'),'@/lib/codice-fiscale':{},'next/navigation':{redirect},'next/cache':{},
@@ -21,8 +21,8 @@ test('Autenticazione: spazi della password preservati in login e registrazione; 
  const old=process.env.NEXT_PUBLIC_SITE_URL;process.env.NEXT_PUBLIC_SITE_URL='https://example.test';
  try{
   const password='  password 123 ';
-  await assert.rejects(actions.loginAction(form({email:' user@example.test ',password})),/redirect:\/smista/);
-  await assert.rejects(actions.registerAction(form({email:'user@example.test',password,confirm:password,presa_visione:'on',privacy_versione_vista:'1',immagini_versione_vista:'1',immagini_checkbox:'1'})),/redirect:\/smista/);
+  assert.deepEqual(await actions.loginAction(form({email:' user@example.test ',password})),{next:'/smista'});
+  assert.deepEqual(await actions.registerAction(form({email:'user@example.test',password,confirm:password,presa_visione:'on',privacy_versione_vista:'1',immagini_versione_vista:'1',immagini_checkbox:'1'})),{next:'/smista'});
   assert.equal(received[0].password,password);assert.equal(received[1].password,password);
   assert.equal(received[0].email,'user@example.test');
  }finally{if(old===undefined)delete process.env.NEXT_PUBLIC_SITE_URL;else process.env.NEXT_PUBLIC_SITE_URL=old;}

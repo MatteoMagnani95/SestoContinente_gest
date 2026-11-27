@@ -20,7 +20,7 @@ export default async function Finance({searchParams}:{searchParams:Promise<{anno
  const months=fillMonths(year,report?.mesi??[]);
  const maxMonth=Math.max(1,...(report?.mesi??[]).map(m=>Math.max(Number(m.entrate),Number(m.uscite))));
  return <>
- <div className="page-intro"><p className="eyebrow">Amministrazione · Contabilità</p><h1>Rendiconto economico</h1><p>Report interno calcolato su tutti i movimenti del periodo, per l’intero periodo selezionato.</p></div>
+ <PageHeader area="finance" icon="wallet" marine eyebrow="Amministrazione · Contabilità" title="Rendiconto economico" description="Report interno calcolato su tutti i movimenti del periodo, per l’intero periodo selezionato."/>
  <form className="calendar-filter-form panel finance-year" action="/gestionale/economia" method="get">
  <label>Anno di riferimento<input type="number" name="anno" min="2015" max="2100" defaultValue={year}/></label>
  <button className="button" type="submit">Visualizza</button><Link href={'/gestionale/moduli/contabilita?dal='+year+'-01-01&al='+year+'-12-31'}>Gestisci movimenti del periodo</Link><Link href={'/gestionale/esporta/contabilita?dal='+year+'-01-01&al='+year+'-12-31'}>Esporta CSV del periodo</Link>

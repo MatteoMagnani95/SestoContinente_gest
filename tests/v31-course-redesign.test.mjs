@@ -48,8 +48,8 @@ test('Letture a blocchi: oltre 100 ID, oltre 500 righe, deduplica ed errore non 
  const failed=await h.readCourseChunks(ids,async keys=>keys.length===100?{data:[1],error:null}:{data:null,error:'errore'});assert.equal(failed.data,null);assert.equal(failed.error,'errore');
 });
 test('Azioni: direttore, contatto incompleto e requisiti mancanti non invocano RPC',async()=>{
- let director=person,eligible=true,calls=[];
- const db={from:table=>table==='edizioni_corsi'?chain({stagione_id:season,stato:'attivo',direttore_id:director}):chain(eligible?[{persona_id:person}]:[]),rpc:async(...args)=>{calls.push(args);return {error:null};}};
+ let director=person,eligible=true,qualified=false,assigned=false,calls=[];
+ const db={from:table=>table==='edizioni_corsi'?chain({stagione_id:season,stato:'attivo',direttore_id:director}):table==='gest_soci_iscrivibili'?chain(eligible?[{persona_id:person}]:[]):table==='qualifiche_istruttori'?chain(qualified?[{id:person}]:[]):table==='assegnazioni_istruttori'?chain(assigned?[{id:person}]:[]):(()=>{throw Error('Tabella mock non prevista: '+table)})(),rpc:async(...args)=>{calls.push(args);return {error:null};}};
  const a=actions(db),f=form({edizione_id:ed,persona_id:person,stato:'iscritto',emergenza_nome:'Nome'});
  assert.match((await a.addEnrollment(f)).error,/direttore/i);director=ed;
  assert.match((await a.addEnrollment(f)).error,/entrambi/);eligible=false;
@@ -57,6 +57,11 @@ test('Azioni: direttore, contatto incompleto e requisiti mancanti non invocano R
  eligible=true;f.delete('emergenza_nome');
  await assert.rejects(a.addEnrollment(f),/REDIRECT.*msg=iscritto/);
  assert.equal(calls.length,1);assert.equal(calls[0][0],'iscrivi_con_contatto');assert.equal(calls[0][1].p_nome,'');assert.equal(calls[0][1].p_telefono,'');
+ qualified=true;assert.match((await a.addEnrollment(f)).error,/deroga/i);assert.equal(calls.length,1);
+ f.set('deroga_istruttore','on');f.set('deroga_motivo','Istruttore ARA in corso APNEA');assigned=true;
+ assert.match((await a.addEnrollment(f)).error,/stessa edizione/i);assert.equal(calls.length,1);
+ assigned=false;await assert.rejects(a.addEnrollment(f),/REDIRECT.*msg=iscritto/);
+ assert.equal(calls.length,2);assert.equal(calls[1][0],'iscrivi_con_deroga');assert.equal(calls[1][1].p_motivo,'Istruttore ARA in corso APNEA');
 });
 test('Creazione lezione: orario italiano, tipo coerente, RPC atomica e messaggio conflitto',async()=>{
  const calls=[];let error=null;
@@ -82,4 +87,16 @@ test('Vincoli SQL già presenti e versioni protette; stampe complete o errore',(
  const m=read('app/gestionale/moduli/[modulo]/page.tsx');assert.match(m,/lockedVersion&&f.name!=='stato'/);assert.match(m,/!lockedVersion&&<RemoveRecord/);
  const f=read('app/gestionale/corsi/[id]/stampe/route.ts');assert.match(f,/tutteLePagine/);assert.match(f,/readCourseChunks/);assert.match(f,/Registro incompleto/);assert.match(f,/Cache-Control':'private, no-store'/);
  const l=read('components/LessonComposer.tsx');assert.match(l,/Sposta modulo in alto/);assert.match(l,/Sposta modulo in basso/);assert.match(l,/data-dirty-track/);
+});
+
+test('F4A: vista corsi validata, capienza visuale non inventata e filtri conservati',()=>{
+ assert.equal(h.courseListView(undefined),'schede');assert.equal(h.courseListView('tabella'),'tabella');assert.equal(h.courseListView('elenco'),'schede');
+ assert.equal(h.courseCapacity(0,15),0);assert.equal(h.courseCapacity(5,15),33);assert.equal(h.courseCapacity(20,15),100);assert.equal(h.courseCapacity(null,15),null);assert.equal(h.courseCapacity(3,0),null);
+ const s=read('app/gestionale/corsi/page.tsx');assert.match(s,/vista_corsi:view/);assert.match(s,/params\.set\('vista_corsi',mode\)/);assert.match(s,/name="vista_corsi" value=\{view\}/);assert.match(s,/courseCapacity\(enrollmentError\?null:n,e.massimo_partecipanti\)/);assert.match(s,/cap!==null&&<progress/);assert.match(s,/aria-label="Vista corsi"/);
+ const detail=read('app/gestionale/corsi/[id]/page.tsx');assert.match(detail,/Prossime lezioni/);assert.match(detail,/lessonError\?<Alert/);assert.match(detail,/Date.parse\(l.inizio\)>=Date.now\(\)/);
+});
+
+test('F4A: icone didattiche distinte e accesso diretto alle iscrizioni',()=>{
+ assert.deepEqual(['ARA','APNEA','NUOTO_LIBERO','altro'].map(h.courseDisciplineIcon),['ara','apnea','nuoto','course']);
+ const s=read('app/gestionale/corsi/page.tsx');assert.match(s,/courseDisciplineIcon\(e.corsi\?\.tipo\)/);assert.match(s,/href=\{href\+'\?tab=allievi'\}/);assert.match(s,/const pageHref=\(page:number\)=>base\+/);
 });

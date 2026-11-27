@@ -50,7 +50,7 @@ export function Drawer({title,trigger,children,initialOpen=false,variant='drawer
  },[path,open,mounted]);
  return <>
  <button ref={button} type="button" className={'sc-button '+(danger?'sc-button-danger':primary?'sc-button-primary':'sc-button-secondary')} aria-haspopup="dialog" onClick={()=>setOpen(true)}>{trigger}</button>
- {mounted&&open&&createPortal(<dialog ref={dialog} data-sc-panel className={'sc-editor-dialog sc-editor-'+variant} aria-labelledby={titleId} onCancel={e=>{e.preventDefault();close();}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
+ {mounted&&open&&createPortal(<dialog ref={dialog} data-sc-panel className={'sc-editor-dialog sc-editor-'+variant+(danger&&variant==='modal'?' sc-editor-confirm':'')} aria-labelledby={titleId} onCancel={e=>{e.preventDefault();close();}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
   <div className="sc-editor-inner">
    <header className="sc-editor-header"><h2 id={titleId}>{title}</h2><button ref={closeButton} type="button" className="sc-icon-button" aria-label="Chiudi pannello" onClick={close}><Icon name="close"/></button></header>
    <div className="sc-editor-body">{children}</div>

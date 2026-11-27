@@ -1,7 +1,7 @@
 import {PageHeader,StatusBadge,Alert,ButtonLink} from '@/components/ui/Primitives';
 import {Pagination} from '@/components/ui/DataTable';
 import ActionForm from '@/components/ui/ActionForm';
-import {statusTone} from '@/lib/secretariat';
+import {statusTone,displayName} from '@/lib/secretariat';
 import {pageNumber,listHref} from '@/lib/module-ui';
 import {minorAge} from '@/lib/application-input';
 import {dataOra} from '@/lib/scelte';
@@ -39,11 +39,11 @@ export default async function Review({params,searchParams}:{params:Promise<{id:s
   documentQuery=r.persona_id?documentQuery.eq('persona_id',r.persona_id):documentQuery.is('persona_id',null);
   const documents=await documentQuery.order('caricato_il',{ascending:false}).order('id').limit(20);
   return <>
-    <PageHeader eyebrow={'Pratica #'+r.id.slice(0,8).toUpperCase()} title={r.nome+' '+r.cognome} description="Valutazione della domanda di adesione" actions={<StatusBadge tone={statusTone(r.stato)}>{statoLabel[r.stato as Stato]}</StatusBadge>}/>
+    <PageHeader eyebrow={'Pratica #'+r.id.slice(0,8).toUpperCase()} title={displayName(r.nome)+' '+displayName(r.cognome)} area="secretariat" icon="clipboard" marine description="Valutazione della domanda di adesione" actions={<StatusBadge tone={statusTone(r.stato)}>{statoLabel[r.stato as Stato]}</StatusBadge>}/>
     {isTestApplication(r)&&<Alert tone="warning" title="COLLAUDO">Pratica simulata, non attestazione di documenti ufficiali. {r.stato==='approvata'?'Approvazione simulata: dati registrati nel database in uso.':''}</Alert>}
     {msg && (msg!=='approvata'||r.stato==='approvata') && <p role="status" className={`notice ${['presa','approvata','integrazione','respinta'].includes(msg)?'success':'error'}`}>{msg==='approvata'&&testMode?'Domanda di collaudo approvata. Anagrafica associata nel database: si tratta di una simulazione.':queryMessage(msg)}</p>}
     <div className="sc-review-sections">
-      <section className="sc-card sc-review-wide"><h2>Riepilogo e gestione della pratica</h2><Row label="Data invio" value={formatDate(r.inviata_il)}/><Row label="Ultimo aggiornamento" value={dataOra(r.modificato_il)}/>
+      <section className="sc-card sc-review-wide sc-review-priority"><h2>Riepilogo e gestione della pratica</h2><Row label="Data invio" value={formatDate(r.inviata_il)}/><Row label="Ultimo aggiornamento" value={dataOra(r.modificato_il)}/>
       {r.stato==='inviata'&&<ActionForm action={takeApplicationAction} className="actions"><input type="hidden" name="id" value={id}/><button type="submit" className="sc-button sc-button-primary">Prendi in carico</button></ActionForm>}
       {r.stato==='in_verifica'&&<ApplicationReviewForm key={r.id} id={r.id} testMode={testMode} checks={checks}/>}
       {r.stato==='approvata'&&r.persona_id&&<div className="sc-row-actions"><ButtonLink href={'/gestionale/soci/'+r.persona_id}>Apri scheda socio</ButtonLink><ButtonLink href={`/comunicazioni/soci/${r.persona_id}`} variant="secondary">Prepara email di benvenuto</ButtonLink></div>}

@@ -6,6 +6,9 @@ export function courseViewHref(id:string,tab:CourseTab,msg?:string,lesson?:strin
 export const disciplines=['ARA','APNEA','NUOTO_LIBERO'] as const;
 export function validDiscipline(value?:string){return disciplines.find(x=>x===value)??'';}
 export function validLevel(value?:string){return ['1','2','3','4','5'].includes(value??'')?Number(value):null;}
+export function canListCourseStudent(person:{isDirector?:boolean;assignedToEdition?:boolean;isInstructor?:boolean;alreadyEnrolled?:boolean},allowOverride=false){
+ return !person.isDirector&&!person.assignedToEdition&&!person.alreadyEnrolled&&(!person.isInstructor||allowOverride);
+}
 export function enrollmentEligibility(input:{isDirector:boolean;alreadyEnrolled:boolean;eligible:boolean;membership?:string|null;hasValidCard?:boolean;unavailable?:boolean}){
  if(input.isDirector)return 'Direttore del corso: non può essere allievo';
  if(input.alreadyEnrolled)return 'Iscrizione già registrata';
@@ -28,3 +31,12 @@ export function legacyCourseTab(hash:string):CourseTab|undefined{
  const key=hash.replace(/^#/,'');if(key==='composizione')return 'lezioni';
  return courseTabs.find(([tab])=>tab===key)?.[0];
 }
+
+export function courseListView(value?:string):'schede'|'tabella'{return value==='tabella'?'tabella':'schede';}
+/** Presentation only. Never infer availability from an unknown count. */
+export function courseCapacity(count:number|null,capacity:number):number|null{
+ if(count===null||!Number.isFinite(count)||count<0||!Number.isFinite(capacity)||capacity<=0)return null;
+ return Math.min(100,Math.round(count/capacity*100));
+}
+
+export function courseDisciplineIcon(value?:string|null):'ara'|'apnea'|'nuoto'|'course'{return value==='ARA'?'ara':value==='APNEA'?'apnea':value==='NUOTO_LIBERO'?'nuoto':'course';}

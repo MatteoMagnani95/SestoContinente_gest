@@ -236,3 +236,43 @@ test('Messaggi URL sconosciuti non provocano errori sulle pagine pubbliche',asyn
   await expect(page.getByRole('heading',{level:1})).toBeVisible();
  }
 });
+
+test('Editor condiviso: finestra centrale orizzontale su desktop, conferma compatta',async({page})=>{
+ for(const size of [{width:1024,height:768},{width:1280,height:800},{width:1600,height:900}]){
+  await page.setViewportSize(size);await page.setContent(responsiveFixture());
+  const dialog=page.getByRole('dialog',{name:'Editor sintetico',includeHidden:true});
+  await dialog.evaluate(e=>e.showModal());
+  const rect=await dialog.boundingBox();
+  expect(Math.abs(rect.x+rect.width/2-size.width/2)).toBeLessThanOrEqual(2);
+  expect(Math.abs(rect.y+rect.height/2-size.height/2)).toBeLessThanOrEqual(2);
+  expect(rect.width).toBeGreaterThanOrEqual(900);
+  expect(rect.height).toBeLessThanOrEqual(size.height-47);
+  const fields=dialog.locator('.form-grid');
+  expect(await fields.evaluate(e=>getComputedStyle(e).gridTemplateColumns.split(' ').length)).toBe(2);
+  await dialog.getByRole('button',{name:'Conferma'}).scrollIntoViewIfNeeded();
+  await expect(dialog.getByRole('button',{name:'Conferma'})).toBeInViewport();
+  await dialog.evaluate(e=>{e.close();e.className='sc-editor-dialog sc-editor-modal sc-editor-confirm';e.showModal();});
+  expect((await dialog.boundingBox()).width).toBeLessThanOrEqual(520);
+  await dialog.evaluate(e=>e.close());
+ }
+});
+
+test('La ricerca globale non è disponibile nelle pagine pubbliche',async({page})=>{
+ for(const path of ['/','/accedi','/registrati']){await page.goto(path);await expect(page.getByRole('button',{name:'Ricerca globale'})).toHaveCount(0);await expect(page.getByRole('navigation',{name:'Navigazione rapida mobile'})).toHaveCount(0);}
+});
+
+
+test('F6: pannelli di accesso e registrazione distinti, identità informativa e recupero',async({page})=>{
+ await page.goto('/accedi');
+ await expect(page.locator('.sc-auth-identity').getByRole('heading',{name:'Il mare ci unisce.'})).toBeVisible();
+ await expect(page.locator('.sc-auth-identity').getByRole('complementary',{name:'Progetto Nereia'})).toBeVisible();
+ await expect(page.getByRole('heading',{level:1,name:'Accedi'})).toBeVisible();
+ await expect(page.getByText('Password dimenticata?',{exact:true})).toBeVisible();
+ await expect(page.getByText('Non hai ricevuto l’email di verifica?',{exact:true})).toBeVisible();
+ await page.goto('/registrati');
+ await expect(page.getByRole('heading',{level:1,name:'Crea il tuo account'})).toBeVisible();
+ await expect(page.locator('.sc-registration-steps li')).toHaveCount(4);
+ const consent=page.locator('input[name="immagini"]');await expect(consent).not.toBeChecked();
+ await page.setViewportSize({width:320,height:568});
+ await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(321);
+});

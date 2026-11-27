@@ -38,6 +38,12 @@ a { color: var(--sc-teal-ink); }
 .sc-button-secondary:hover { background: var(--teal-light); color: var(--sc-teal-ink); }
 .sc-button-danger { background: var(--sc-danger-fg); border-color: var(--sc-danger-fg); }
 .sc-button-danger:hover { background: #81202D; }
+.sc-button-primary,.button:not(.ghost):not(.danger){min-height:var(--sc-primary-target)}
+.sc-button,.button,.sc-metric-link{transition:background-color var(--sc-motion),border-color var(--sc-motion),box-shadow var(--sc-motion)}
+.sc-button .sc-icon,.button .sc-icon{width:22px;height:22px}
+.sc-quick-action{display:flex;align-items:center;gap:12px;min-height:var(--sc-quick-target);padding:14px 16px;background:var(--sc-tint,var(--sc-system-tint));border:1px solid var(--sc-border);border-radius:var(--sc-radius);color:var(--sc-accent,var(--sc-system));font-weight:700;text-decoration:none}
+.sc-quick-action:hover{border-color:var(--sc-accent,var(--sc-system));text-decoration:none;color:var(--sc-accent,var(--sc-system))}
+.sc-quick-action .sc-icon{width:26px;height:26px}.sc-quick-action .sc-icon:last-child{margin-inline-start:auto;width:20px;height:20px}
 .sc-icon { width: 20px; height: 20px; flex: none; }
 .sc-page-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: var(--sc-space-4); margin-bottom: var(--sc-space-6); }
 .sc-page-header > div { min-width: 0; }
@@ -48,16 +54,21 @@ a { color: var(--sc-teal-ink); }
 .sc-section-header p { color: var(--sc-muted); margin: 4px 0 0; }
 .sc-card { background: var(--sc-white); border: 1px solid var(--sc-border); min-width: 0; }
 .sc-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 185px), 1fr)); gap: var(--sc-space-3); margin-bottom: var(--sc-space-6); }
-.sc-metric { --sc-accent: var(--sc-system); display: grid; align-content: start; gap: var(--sc-space-2); border-inline-start: 4px solid var(--sc-accent); padding: var(--sc-space-4); }
-.sc-area-secretariat { --sc-accent: var(--sc-secretariat); }
-.sc-area-teaching { --sc-accent: var(--sc-teaching); }
-.sc-area-calendar { --sc-accent: var(--sc-calendar); }
-.sc-area-equipment { --sc-accent: var(--sc-equipment); }
-.sc-area-finance { --sc-accent: var(--sc-finance); }
-.sc-area-system { --sc-accent: var(--sc-system); }
-.sc-metric-icon { color: var(--sc-accent); display: inline-flex; }
+.sc-metric { --sc-accent: var(--sc-system); --sc-tint:var(--sc-system-tint); display:grid; align-content:start; gap:var(--sc-space-2); background:var(--sc-white); padding:var(--sc-space-4); border-top:3px solid var(--sc-accent); }
+.sc-area-secretariat { --sc-accent: var(--sc-secretariat); --sc-tint:var(--sc-secretariat-tint); }
+.sc-area-teaching { --sc-accent: var(--sc-teaching); --sc-tint:var(--sc-teaching-tint); }
+.sc-area-calendar { --sc-accent: var(--sc-calendar); --sc-tint:var(--sc-calendar-tint); }
+.sc-area-equipment { --sc-accent: var(--sc-equipment); --sc-tint:var(--sc-equipment-tint); }
+.sc-area-finance { --sc-accent: var(--sc-finance); --sc-tint:var(--sc-finance-tint); }
+.sc-area-system { --sc-accent: var(--sc-system); --sc-tint:var(--sc-system-tint); }
+.sc-metric-icon { color:var(--sc-accent); background:var(--sc-tint); display:inline-flex; align-items:center; justify-content:center; width:40px; height:40px; border-radius:12px; }
+.sc-metric-icon .sc-icon { width:22px;height:22px; }
+.sc-area-pool { --sc-accent: var(--sc-pool); --sc-tint:var(--sc-pool-tint); }
+.sc-area-event { --sc-accent: var(--sc-event); --sc-tint:var(--sc-event-tint); }
+.sc-area-certificate { --sc-accent: var(--sc-certificate); --sc-tint:var(--sc-certificate-tint); }
+.sc-area-documents { --sc-accent: var(--sc-documents); --sc-tint:var(--sc-documents-tint); }
 .sc-metric-label { color: var(--sc-muted); font-size: var(--sc-text-small); margin: 0; overflow-wrap: anywhere; }
-.sc-metric-value { font-size: clamp(25px, 3vw, 32px); line-height: 1.15; font-weight: 750; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.sc-metric-value { font-size: clamp(30px, 3vw, 40px); line-height: 1.15; font-weight: 750; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .sc-metric-note { font-size: var(--sc-text-small); color: var(--sc-muted); margin: 0; }
 .sc-tone-success { --sc-tone-fg: var(--sc-success-fg); --sc-tone-bg: var(--sc-success-bg); }
 .sc-tone-warning { --sc-tone-fg: var(--sc-warning-fg); --sc-tone-bg: var(--sc-warning-bg); }

@@ -73,7 +73,7 @@ export async function addInstructor(form:FormData){
  const {data:qual}=await supabase.from('qualifiche_istruttori').select('id').eq('persona_id',persona_id).limit(1);
  if(!qual?.length)return {error:'L’istruttore non ha qualifiche registrate.'};
  const {error}=await supabase.from('assegnazioni_istruttori').insert({edizione_id:id,persona_id,ruolo});
- if(error)return {error:error.code==='P3510'?'Il responsabile deve coincidere con il direttore. Ricarica la scheda.':'Assegnazione non riuscita: controlla incarichi e duplicati.'};
+ if(error)return {error:error.code==='P3520'?'La persona è già allieva di questa edizione.':error.code==='P3510'?'Il responsabile deve coincidere con il direttore. Ricarica la scheda.':'Assegnazione non riuscita: controlla incarichi e duplicati.'};
  refresh(id);redirect(detailHref(id,'istruttore'));
 }
 
@@ -116,9 +116,28 @@ export async function addEnrollment(form:FormData){
  let nomeEmergenza:string,telefonoEmergenza:string;
  try{nomeEmergenza=valueOf(form,'emergenza_nome',160);telefonoEmergenza=valueOf(form,'emergenza_telefono',32);}catch{return {error:'Controlla il contatto di emergenza.'};}
  if(!emergencyPair(nomeEmergenza,telefonoEmergenza))return {field:'emergenza_nome',error:'Inserisci entrambi i dati del contatto oppure lascia entrambi vuoti per conservarlo.'};
- const {error}=await supabase.rpc('iscrivi_con_contatto',{p_edizione:id,p_persona:person,p_nome:nomeEmergenza,p_telefono:telefonoEmergenza,p_richiesta:false});
- if(error)return {error:error.code==='P3421'?'Il direttore non può essere allievo.':error.code==='23505'?'Iscrizione già presente.':error.code==='P3413'?'Requisiti associativi non più soddisfatti.':'Iscrizione non riuscita: verifica la capienza e aggiorna la scheda.'};
+ const [qualifica,incarico]=await Promise.all([
+  supabase.from('qualifiche_istruttori').select('id').eq('persona_id',person).limit(1),
+  supabase.from('assegnazioni_istruttori').select('id').eq('edizione_id',id).eq('persona_id',person).limit(1)
+ ]);
+ if(qualifica.error||incarico.error)return {error:'Impossibile verificare qualifiche e incarichi. Ricarica la scheda.'};
+ if(incarico.data?.length)return {field:'persona_id',error:'Un istruttore assegnato non può essere allievo nella stessa edizione.'};
+ const instructor=Boolean(qualifica.data?.length);
+ const motivo=String(form.get('deroga_motivo')??'').trim();
+ if(instructor&&(form.get('deroga_istruttore')!=='on'||motivo.length<5||motivo.length>500))return {field:'deroga_motivo',error:'Per iscrivere un istruttore autorizza esplicitamente la deroga e indica la motivazione (5–500 caratteri).'};
+ const {error}=instructor?await supabase.rpc('iscrivi_con_deroga',{p_edizione:id,p_persona:person,p_motivo:motivo,p_nome:nomeEmergenza,p_telefono:telefonoEmergenza}):await supabase.rpc('iscrivi_con_contatto',{p_edizione:id,p_persona:person,p_nome:nomeEmergenza,p_telefono:telefonoEmergenza,p_richiesta:false});
+ if(error)return {error:error.code==='P3520'?'Un istruttore assegnato non può essere allievo nella stessa edizione.':error.code==='P3521'?'Serve una deroga istruttore autorizzata.':error.code==='P3421'?'Il direttore non può essere allievo.':error.code==='23505'?'Iscrizione già presente.':error.code==='P3413'?'Requisiti associativi non più soddisfatti.':'Iscrizione non riuscita: verifica la capienza e aggiorna la scheda.'};
  refresh(id);redirect(detailHref(id,'iscritto'));
+}
+
+export async function authorizeInstructorEnrollment(form:FormData){
+ const {supabase}=await requireStaff();
+ let id='',iscrizione='',motivo='';
+ try{id=uuidValue(form,'edizione_id');iscrizione=uuidValue(form,'iscrizione_id');motivo=valueOf(form,'deroga_motivo',500).trim();}catch{return {error:'Iscrizione o motivazione non valida.'};}
+ if(form.get('deroga_istruttore')!=='on'||motivo.length<5)return {field:'deroga_motivo',error:'Conferma la deroga e indica la motivazione.'};
+ const {error}=await supabase.rpc('autorizza_deroga_iscrizione',{p_edizione:id,p_iscrizione:iscrizione,p_motivo:motivo});
+ if(error)return {error:error.code==='P3520'?'L’incarico nella stessa edizione non ammette deroghe.':'Deroga non registrata: verifica qualifica, stato e autorizzazioni.'};
+ refresh(id);redirect(courseViewHref(id,'allievi','deroga_autorizzata'));
 }
 
 export async function updateEnrollment(form:FormData){
@@ -139,7 +158,7 @@ export async function updateEnrollment(form:FormData){
  }
  if(row.stato==='concluso'&&stato!=='concluso')return {error:'L’iscrizione conclusa non può essere riaperta.'};
  const {error}=await supabase.from('iscrizioni_corsi').update({stato}).eq('id',iscrizione).eq('edizione_id',id).eq('stato',expected).select('id').single();
- if(error)return {error:error.code==='P3421'?'Il direttore non può essere allievo.':error.code==='P3413'?'Requisiti associativi non soddisfatti.':'Stato non aggiornato: controlla capienza, vincoli e modifiche concorrenti.'};
+ if(error)return {error:error.code==='P3520'?'La persona è assegnata come istruttore in questa edizione.':error.code==='P3521'?'Serve autorizzare la deroga istruttore prima di riattivare o approvare l’iscrizione.':error.code==='P3421'?'Il direttore non può essere allievo.':error.code==='P3413'?'Requisiti associativi non soddisfatti.':'Stato non aggiornato: controlla capienza, vincoli e modifiche concorrenti.'};
  refresh(id);redirect(detailHref(id,'iscritto'));
 }
 
