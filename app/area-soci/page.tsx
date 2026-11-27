@@ -6,7 +6,7 @@ import {tutteLePagine} from '@/lib/pagine';
 import {readCourseChunks} from '@/lib/course-ui';
 import {pageNumber,singleSearchParams} from '@/lib/module-ui';
 import Link from 'next/link';
-import {requireUser,formatDate} from '@/lib/security';
+import {requireUserForRender as requireUser,formatDate} from '@/lib/security';
 import {type SocioEvento,type SocioProfilo,type SocioIscrizione,messaggiEventi,euroEvento,todayRome} from '@/lib/area-soci';
 import {joinEvent,withdrawEvent} from './actions';
 export default async function AreaSoci({searchParams}:{searchParams:Promise<{msg?:string;tab?:string;p?:string}>}){
