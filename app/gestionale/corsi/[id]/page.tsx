@@ -64,19 +64,19 @@ export default async function EditionDetail({params,searchParams}:{params:Promis
   tutteLePagine((da,a)=>supabase.from('gest_elenco_assegnazioni_istruttori').select('id,persona_id,ruolo,sort_cognome,sort_nome').eq('edizione_id',id).order('sort_cognome').order('sort_nome').order('id').range(da,a)),
   tutteLePagine((da,a)=>supabase.from('lezioni').select('id,titolo,inizio,fine,piscina_id,esercizi,materiale').eq('edizione_id',id).is('annullata_il',null).order('inizio',{ascending:true}).order('id').range(da,a)),
   tutteLePagine((da,a)=>supabase.from('persone').select('id,nome,cognome').order('cognome').order('nome').order('id').range(da,a)),
-  tutteLePagine((da,a)=>supabase.from('qualifiche_istruttori').select('persona_id,titolo,scade_il').order('id').range(da,a)),
-  tutteLePagine((da,a)=>supabase.from('piscine').select('id,nome,orari_disponibili,limitazioni').order('nome').order('id').range(da,a)),
-  tutteLePagine((da,a)=>supabase.from('corsie').select('id,piscina_id,numero,note').order('id').range(da,a)),
-  tutteLePagine((da,a)=>supabase.from('gest_soci_iscrivibili').select('persona_id,nome,cognome').eq('stagione_id',ed.stagione_id).order('cognome').order('nome').order('persona_id').range(da,a)),
-  tutteLePagine((da,a)=>supabase.from('versioni_programmi').select('id,programma_id,versione,stato').eq('stato','approvato').order('id').range(da,a))
+  ['istruttori','allievi'].includes(tab)?tutteLePagine((da,a)=>supabase.from('qualifiche_istruttori').select('persona_id,titolo,scade_il').order('id').range(da,a)):{data:[],error:null},
+  tab==='lezioni'?tutteLePagine((da,a)=>supabase.from('piscine').select('id,nome,orari_disponibili,limitazioni').order('nome').order('id').range(da,a)):{data:[],error:null},
+  tab==='lezioni'?tutteLePagine((da,a)=>supabase.from('corsie').select('id,piscina_id,numero,note').order('id').range(da,a)):{data:[],error:null},
+  tab==='allievi'?tutteLePagine((da,a)=>supabase.from('gest_soci_iscrivibili').select('persona_id,nome,cognome').eq('stagione_id',ed.stagione_id).order('cognome').order('nome').order('persona_id').range(da,a)):{data:[],error:null},
+  tab==='didattica'?tutteLePagine((da,a)=>supabase.from('versioni_programmi').select('id,programma_id,versione,stato').eq('stato','approvato').order('id').range(da,a)):{data:[],error:null}
  ]);
  const enrollments=(enrollData??[]) as Enrollment[];const assignments=(teacherData??[]) as Assignment[];
  const deroghe=tab==='allievi'?await readCourseChunks(enrollments.map(x=>x.id),(ids,da,a)=>supabase.from('deroghe_iscrizioni_corsi').select('iscrizione_id,motivo,autorizzata_il').in('iscrizione_id',ids).order('iscrizione_id').range(da,a)):{data:[],error:null};
  const derogheByEnrollment=new Map((deroghe.data??[]).map(d=>[d.iscrizione_id,d]));
  const [{data:moduleCatalog,error:moduleError},{data:lessonModLinks,error:linkError},{data:prices}]=await Promise.all([
-  tutteLePagine((da,a)=>supabase.from('moduli_didattici').select('id,tipo,codice,titolo,descrizione').order('pre_id').order('id').range(da,a)),
-  readCourseChunks((lessonData??[]).map(l=>l.id),(ids,da,a)=>supabase.from('lezione_moduli').select('lezione_id,modulo_id,ordine').in('lezione_id',ids).order('lezione_id').order('ordine').order('modulo_id').range(da,a)),
-  supabase.from('listino_corsi').select('importo').order('importo')
+  tab==='lezioni'?tutteLePagine((da,a)=>supabase.from('moduli_didattici').select('id,tipo,codice,titolo,descrizione').order('pre_id').order('id').range(da,a)):{data:[],error:null},
+  tab==='lezioni'?readCourseChunks((lessonData??[]).map(l=>l.id),(ids,da,a)=>supabase.from('lezione_moduli').select('lezione_id,modulo_id,ordine').in('lezione_id',ids).order('lezione_id').order('ordine').order('modulo_id').range(da,a)):{data:[],error:null},
+  tab==='configurazione'?supabase.from('listino_corsi').select('importo').order('importo'):{data:[],error:null}
  ]);
  const lessons=(lessonData??[]) as Lesson[];const roster=[...enrollments,...assignments].map(r=>({id:r.persona_id,cognome:r.sort_cognome??'',nome:r.sort_nome??''}));
  const eligiblePeople:Person[]=(activeMemberships??[]).map(r=>({id:r.persona_id,nome:r.nome,cognome:r.cognome}));
@@ -90,14 +90,14 @@ export default async function EditionDetail({params,searchParams}:{params:Promis
  const teacherCandidates=people.filter(person=>qualified.has(person.id)&&!assignedIds.has(person.id)&&!enrollments.some(e=>e.persona_id===person.id&&['iscritto','in_attesa','concluso'].includes(e.stato)));
  const confirmed=enrollments.filter(x=>x.stato==='iscritto');
  const [certResult,membershipResult,cardResult,emergencyResult,programResult,versionDetail,patentResult,documentResult]=await Promise.all([
- readCourseChunks(enrollments.map(x=>x.persona_id),(ids,da,a)=>supabase.from('stato_certificati').select('persona_id,scade_il,idoneita_verificata,stato_certificato').in('persona_id',ids).order('creato_il',{ascending:false}).order('id').range(da,a)),
- tutteLePagine((da,a)=>supabase.from('adesioni').select('id,persona_id,stato').eq('stagione_id',ed.stagione_id).order('id').range(da,a)),
- tutteLePagine((da,a)=>supabase.from('tesseramenti').select('id,adesione_id,stato,scade_il,emessa_il,adesioni!inner(stagione_id)').eq('adesioni.stagione_id',ed.stagione_id).order('id').range(da,a)),
- readCourseChunks([...enrollments.map(x=>x.persona_id),...eligiblePeople.map(x=>x.id)],(ids,da,a)=>supabase.from('contatti_emergenza').select('persona_id,nominativo,telefono').in('persona_id',ids).order('persona_id').range(da,a)),
- tutteLePagine((da,a)=>supabase.from('programmi_didattici').select('id,titolo,tipo').order('id').range(da,a)),
- ed.programma_versione_id?supabase.from('versioni_programmi').select('id,programma_id,versione,stato,obiettivi,teoria,pratica,sequenza_lezioni,durata_ore,verifiche').eq('id',ed.programma_versione_id).maybeSingle():Promise.resolve({data:null,error:null}),
- supabase.from('brevetti_allievi').select('id,persona_id,titolo,ente,numero_brevetto,ottenuto_il,rilasciato_da_nome',{count:'exact'}).eq('edizione_id',id).order('ottenuto_il',{ascending:false}).order('id').range((page-1)*size,page*size-1),
- supabase.from('documenti').select('id,nome,categoria,caricato_il',{count:'exact'}).eq('edizione_id',id).order('caricato_il',{ascending:false}).order('id').range((page-1)*size,page*size-1),
+ tab==='allievi'?readCourseChunks(enrollments.map(x=>x.persona_id),(ids,da,a)=>supabase.from('stato_certificati').select('persona_id,scade_il,idoneita_verificata,stato_certificato').in('persona_id',ids).order('creato_il',{ascending:false}).order('id').range(da,a)):{data:[],error:null},
+ tab==='allievi'?tutteLePagine((da,a)=>supabase.from('adesioni').select('id,persona_id,stato').eq('stagione_id',ed.stagione_id).order('id').range(da,a)):{data:[],error:null},
+ tab==='allievi'?tutteLePagine((da,a)=>supabase.from('tesseramenti').select('id,adesione_id,stato,scade_il,emessa_il,adesioni!inner(stagione_id)').eq('adesioni.stagione_id',ed.stagione_id).order('id').range(da,a)):{data:[],error:null},
+ tab==='allievi'?readCourseChunks([...enrollments.map(x=>x.persona_id),...eligiblePeople.map(x=>x.id)],(ids,da,a)=>supabase.from('contatti_emergenza').select('persona_id,nominativo,telefono').in('persona_id',ids).order('persona_id').range(da,a)):{data:[],error:null},
+ tab==='didattica'?tutteLePagine((da,a)=>supabase.from('programmi_didattici').select('id,titolo,tipo').order('id').range(da,a)):{data:[],error:null},
+ tab==='didattica'&&ed.programma_versione_id?supabase.from('versioni_programmi').select('id,programma_id,versione,stato,obiettivi,teoria,pratica,sequenza_lezioni,durata_ore,verifiche').eq('id',ed.programma_versione_id).maybeSingle():Promise.resolve({data:null,error:null}),
+ tab==='brevetti'?supabase.from('brevetti_allievi').select('id,persona_id,titolo,ente,numero_brevetto,ottenuto_il,rilasciato_da_nome',{count:'exact'}).eq('edizione_id',id).order('ottenuto_il',{ascending:false}).order('id').range((page-1)*size,page*size-1):{data:[],error:null,count:null},
+ tab==='stampe'?supabase.from('documenti').select('id,nome,categoria,caricato_il',{count:'exact'}).eq('edizione_id',id).order('caricato_il',{ascending:false}).order('id').range((page-1)*size,page*size-1):{data:[],error:null,count:null},
  ]);
  const certificateList=(certResult.data??[]) as Certificate[];
  const membershipByPerson=new Map((membershipResult.data??[]).map(x=>[x.persona_id,x]));
@@ -106,7 +106,7 @@ export default async function EditionDetail({params,searchParams}:{params:Promis
  const requirementError=Boolean(eligibilityError||membershipResult.error||cardResult.error);
  const candidateRows=people.map(person=>{const membership=membershipByPerson.get(person.id),emergency=emergencyByPerson.get(person.id);return {id:person.id,name:person.cognome+' '+person.nome,membership:membership?.stato??null,hasValidCard:Boolean(membership&&validCard.has(membership.id)),eligible:activeIds.has(person.id),alreadyEnrolled:currentIds.has(person.id),isDirector:person.id===ed.direttore_id,isInstructor:qualified.has(person.id),assignedToEdition:assignedIds.has(person.id),unavailable:requirementError||Boolean(enrollError||emergencyResult.error||qualError||teacherError),emergencyLoaded:activeIds.has(person.id)||currentIds.has(person.id),emergencyName:emergency?.nominativo,emergencyPhone:emergency?.telefono};});
  const selected=p.lezione?lessons.find(l=>l.id===p.lezione):lessons[0];
- const attendanceResult=selected?await tutteLePagine((da,a)=>supabase.from('presenze').select('persona_id,presente').eq('lezione_id',selected.id).order('id').range(da,a)):{data:[],error:null};
+ const attendanceResult=tab==='presenze'&&selected?await tutteLePagine((da,a)=>supabase.from('presenze').select('persona_id,presente').eq('lezione_id',selected.id).order('id').range(da,a)):{data:[],error:null};
  const registered=new Map((attendanceResult.data??[]).map(a=>[a.persona_id,a.presente]));
  const programNames=programResult.data;
  const matchingPrograms=(programVersions??[]).filter(v=>programNames?.some(q=>q.id===v.programma_id&&q.tipo===cat?.tipo));
