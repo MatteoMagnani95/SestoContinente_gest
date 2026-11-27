@@ -129,7 +129,7 @@ test('module reference pagination retains ordering and historical values',()=>{
 
 test('simple reference archives defer full option lists until an editor is requested',()=>{
  const source=read('app/gestionale/moduli/[modulo]/page.tsx');
- assert.match(source,/const deferredReferences=\['qualifiche','brevetti','certificati','revisioni','consegne','quote'\].includes\(modulo\)/);
+ assert.match(source,/const deferredReferences=\['qualifiche','brevetti','certificati','quote'\].includes\(modulo\)/);
  assert.match(source,/const fullReferenceOptions=!deferredReferences\|\|nuovo==='1'\|\|Boolean\(openEditorId\)/);
  assert.match(source,/if\(!fullReferenceOptions&&table!=='stagioni'\)\{[\s\S]*?UUID_RE.test\(id\)[\s\S]*?\.in\('id',ids\)[\s\S]*?return;/);
  assert.match(source,/params.set\('nuovo','1'\)/);
@@ -146,4 +146,15 @@ test('course candidate generation is tab-specific and preserves enrollment exclu
  assert.match(source,/candidateRows=tab==='allievi'\?people.map/);
  assert.match(source,/t.id===ed.direttore_id\|\|!incompatibleLearnerIds.has\(t.id\)/);
  assert.match(source,/if\(!certificateByPerson.has\(cert.persona_id\)\)certificateByPerson.set\(cert.persona_id,cert\)/);
+});
+
+test('dedicated equipment routes defer real editors while keeping complete filter options',()=>{
+ const revisions=read('app/gestionale/moduli/revisioni/page.tsx'),loans=read('app/gestionale/moduli/consegne/page.tsx');
+ assert.match(revisions,/selectedEditor===r.id\?<Drawer/);
+ assert.match(revisions,/s.nuovo==='1'\?<Drawer/);
+ assert.match(revisions,/primary href=\{editorHref\(\)\} label="Registra revisione"/);
+ assert.match(revisions,/name="attrezzatura"[\s\S]*?options=\{equipment.map/);
+ assert.match(loans,/s.nuovo==='1'\?<Drawer/);
+ assert.match(loans,/primary href=\{createHref\} label="Registra consegna"/);
+ assert.match(loans,/equipment.filter\(e=>e.stato==='disponibile'&&!openIds.has\(e.id\)\)/);
 });
