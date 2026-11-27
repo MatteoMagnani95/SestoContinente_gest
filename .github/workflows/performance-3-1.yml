@@ -1,7 +1,7 @@
 name: QA comparativa prestazioni 3.1 (locale)
 on:
   push:
-    branches: ['release/gestionale-3.1', 'perf/3.1-next-pass', 'perf/3.1-structural', 'perf/3.1-navigation', 'perf/3.1-archives', 'perf/3.1-soci-page']
+    branches: ['release/gestionale-3.1', 'perf/3.1-migration']
   workflow_dispatch:
 permissions:
   contents: read
@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   compare:
-    if: github.ref == 'refs/heads/release/gestionale-3.1' || github.ref == 'refs/heads/perf/3.1-next-pass' || github.ref == 'refs/heads/perf/3.1-structural' || github.ref == 'refs/heads/perf/3.1-navigation' || github.ref == 'refs/heads/perf/3.1-archives' || github.ref == 'refs/heads/perf/3.1-soci-page'
+    if: github.ref == 'refs/heads/release/gestionale-3.1' || github.ref == 'refs/heads/perf/3.1-migration'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -51,18 +51,20 @@ jobs:
           work=$(mktemp -d "$RUNNER_TEMP/sesto-qa.XXXXXX")
           chmod 700 "$work"
           python3 scripts/qa-local-status.py "$status" "$work"
-      - name: Installa esclusivamente i prototipi SQL locali
-        if: github.ref == 'refs/heads/perf/3.1-structural' || github.ref == 'refs/heads/perf/3.1-navigation' || github.ref == 'refs/heads/perf/3.1-archives' || github.ref == 'refs/heads/perf/3.1-soci-page'
-        run: node scripts/qa-install-structural-rpc.mjs
+      - name: Verifica migrazione canonica locale
+        run: |
+          set -euo pipefail
+          supabase migration list --help
+          supabase migration list --local | tee "$RUNNER_TEMP/sesto-migrations.log"
+          grep -q '20261127122235' "$RUNNER_TEMP/sesto-migrations.log"
+          node scripts/qa-install-structural-rpc.mjs
       - name: Dataset e build del candidato
         run: |
           set -euo pipefail
           node scripts/qa-local-supabase.mjs seed
           npm run build
-          if [[ "$GITHUB_REF" == 'refs/heads/perf/3.1-structural' || "$GITHUB_REF" == 'refs/heads/perf/3.1-navigation' || "$GITHUB_REF" == 'refs/heads/perf/3.1-archives' || "$GITHUB_REF" == 'refs/heads/perf/3.1-soci-page' ]]; then
-            export SC_STRUCTURAL_RPC=true QA_DB_LATENCY_MS=40
-            export NODE_OPTIONS="${NODE_OPTIONS:-} --require=$GITHUB_WORKSPACE/scripts/qa-latency.cjs"
-          fi
+          export SC_STRUCTURAL_RPC=true QA_DB_LATENCY_MS=40
+          export NODE_OPTIONS="${NODE_OPTIONS:-} --require=$GITHUB_WORKSPACE/scripts/qa-latency.cjs"
           npm run start -- --hostname 127.0.0.1 --port 3314 > "$RUNNER_TEMP/sesto-qa-next.log" 2>&1 &
           for i in {1..30}; do
             if curl -fsS http://127.0.0.1:3314/ >/dev/null; then exit 0; fi
@@ -96,10 +98,8 @@ jobs:
           cd "$baseline"
           npm ci --no-audit --no-fund
           npm run build
-          if [[ "$GITHUB_REF" == 'refs/heads/perf/3.1-structural' || "$GITHUB_REF" == 'refs/heads/perf/3.1-navigation' || "$GITHUB_REF" == 'refs/heads/perf/3.1-archives' || "$GITHUB_REF" == 'refs/heads/perf/3.1-soci-page' ]]; then
-            export QA_DB_LATENCY_MS=40
-            export NODE_OPTIONS="${NODE_OPTIONS:-} --require=$GITHUB_WORKSPACE/scripts/qa-latency.cjs"
-          fi
+          export QA_DB_LATENCY_MS=40
+          export NODE_OPTIONS="${NODE_OPTIONS:-} --require=$GITHUB_WORKSPACE/scripts/qa-latency.cjs"
           npm run start -- --hostname 127.0.0.1 --port 3315 > "$RUNNER_TEMP/sesto-qa-baseline.log" 2>&1 &
           for i in {1..30}; do
             if curl -fsS http://127.0.0.1:3315/ >/dev/null; then exit 0; fi
@@ -108,16 +108,12 @@ jobs:
           exit 1
       - name: Benchmark comparativo delle pagine e dei bundle
         run: |
-          if [[ "$GITHUB_REF" == 'refs/heads/perf/3.1-structural' || "$GITHUB_REF" == 'refs/heads/perf/3.1-navigation' || "$GITHUB_REF" == 'refs/heads/perf/3.1-archives' || "$GITHUB_REF" == 'refs/heads/perf/3.1-soci-page' ]]; then export QA_DB_LATENCY_MS=40; fi
+          set -euo pipefail
+          export QA_DB_LATENCY_MS=40
           node scripts/qa-performance-compare.mjs
-          if [[ "$GITHUB_REF" == 'refs/heads/perf/3.1-structural' || "$GITHUB_REF" == 'refs/heads/perf/3.1-navigation' || "$GITHUB_REF" == 'refs/heads/perf/3.1-archives' || "$GITHUB_REF" == 'refs/heads/perf/3.1-soci-page' ]]; then
-            grep -q 'QA_LATENCY_ACTIVE 40ms' "$RUNNER_TEMP/sesto-qa-next.log"
-            grep -q 'QA_LATENCY_ACTIVE 40ms' "$RUNNER_TEMP/sesto-qa-baseline.log"
-            for rpc in dashboard incassi-totals; do grep -q "QA_STRUCTURAL_RPC_USED $rpc" "$RUNNER_TEMP/sesto-qa-next.log"; done
-            if [[ "$GITHUB_REF" == 'refs/heads/perf/3.1-soci-page' ]]; then grep -q 'QA_STRUCTURAL_RPC_USED soci-page' "$RUNNER_TEMP/sesto-qa-next.log"; else grep -q 'QA_STRUCTURAL_RPC_USED soci-counts' "$RUNNER_TEMP/sesto-qa-next.log"; fi
-            if [[ "$GITHUB_REF" == 'refs/heads/perf/3.1-navigation' || "$GITHUB_REF" == 'refs/heads/perf/3.1-archives' || "$GITHUB_REF" == 'refs/heads/perf/3.1-soci-page' ]]; then grep -q 'QA_STRUCTURAL_RPC_USED navigation-account' "$RUNNER_TEMP/sesto-qa-next.log"; fi
-            if [[ "$GITHUB_REF" == 'refs/heads/perf/3.1-archives' || "$GITHUB_REF" == 'refs/heads/perf/3.1-soci-page' ]]; then for rpc in inventory-page person-options; do grep -q "QA_STRUCTURAL_RPC_USED $rpc" "$RUNNER_TEMP/sesto-qa-next.log"; done; fi
-          fi
+          grep -q 'QA_LATENCY_ACTIVE 40ms' "$RUNNER_TEMP/sesto-qa-next.log"
+          grep -q 'QA_LATENCY_ACTIVE 40ms' "$RUNNER_TEMP/sesto-qa-baseline.log"
+          for rpc in dashboard incassi-totals soci-page navigation-account inventory-page person-options; do grep -q "QA_STRUCTURAL_RPC_USED $rpc" "$RUNNER_TEMP/sesto-qa-next.log"; done
       - name: Conserva esclusivamente metriche aggregate
         uses: actions/upload-artifact@v4
         with:

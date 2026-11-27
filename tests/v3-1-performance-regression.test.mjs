@@ -185,14 +185,14 @@ test('validated structural RPCs are local-QA-only and retain legacy fallbacks',(
 });
 
 test('own-account RPC is gated, validates snapshot and shares it only within the verified render',()=>{
- const s=read('lib/security.ts'),nav=read('lib/navigation-access.ts'),sql=read('scripts/qa-structural-rpc.sql');
+ const s=read('lib/security.ts'),nav=read('lib/navigation-access.ts'),sql=read('supabase/migrations/20261127122235_structural_read_snapshots.sql');
  assert.match(s,/if\(error\|\|!user\)return [^\n]*status:'guest'/);
  assert.match(s,/structuralRpc\(supabase,'sc_perf_navigation',\{\}\)/);
  assert.match(s,/account.supabase===supabase&&account.user\?\.id===userId&&account.status==='enabled'/);
  assert.match(nav,/if\(snapshot\?\.enabled\)/);
  assert.match(sql,/CREATE FUNCTION public.sc_perf_navigation\(\)[\s\S]*?SECURITY INVOKER[\s\S]*?uid uuid:=auth.uid\(\)/);
  assert.match(sql,/REVOKE ALL ON FUNCTION public.sc_perf_navigation\(\) FROM PUBLIC,anon,authenticated/);
- assert.match(read('.github/workflows/performance-3-1.yml'),/QA_STRUCTURAL_RPC_USED navigation-account/);
+ assert.match(read('.github/workflows/performance-3-1.yml'),/navigation-account inventory-page person-options/);
 });
 
 test('server-paged inventory and remote person options preserve complete counts and staff-only access',()=>{
@@ -218,12 +218,23 @@ test('course historical duplicate checks start independently of the season and p
 });
 
 test('complete fresh member snapshot keeps the original paginated path as fallback',()=>{
- const source=read('app/gestionale/soci/page.tsx'),sql=read('scripts/qa-structural-rpc.sql');
+ const source=read('app/gestionale/soci/page.tsx'),sql=read('supabase/migrations/20261127122235_structural_read_snapshots.sql');
  assert.match(source,/sc_perf_soci_page/);
  assert.match(source,/p_terms:searchTerms\(q\),p_status:stato,p_order:ordine,p_page:desiredPage/);
  assert.match(source,/if\(snapshot\)markStructuralRpcUsed\('soci-page'\)/);
  assert.match(source,/}:await readLegacy\(\)/);
  assert.match(source,/sc_perf_soci_counts/);
  assert.match(sql,/CREATE FUNCTION public.sc_perf_soci_page[\s\S]*?SECURITY INVOKER[\s\S]*?public.is_staff\(\)/);
- assert.match(read('.github/workflows/performance-3-1.yml'),/QA_STRUCTURAL_RPC_USED soci-page/);
+ assert.match(read('.github/workflows/performance-3-1.yml'),/soci-page navigation-account inventory-page/);
+});
+
+test('versioned migration is read-only and activation remains local and opt-in',()=>{
+ const sql=read('supabase/migrations/20261127122235_structural_read_snapshots.sql');
+ assert.equal((sql.match(/CREATE FUNCTION public\.sc_perf_/g)||[]).length,7);
+ assert.equal((sql.match(/STABLE SECURITY INVOKER SET search_path=''/g)||[]).length,7);
+ assert.equal((sql.match(/REVOKE ALL ON FUNCTION public\.sc_perf_/g)||[]).length,7);
+ assert.doesNotMatch(sql,/\b(?:INSERT INTO|UPDATE public\.|DELETE FROM|ALTER TABLE|DROP TABLE|SECURITY DEFINER)\b/i);
+ assert.match(read('lib/structural-qa.ts'),/SC_STRUCTURAL_RPC!=='true'/);
+ assert.match(read('.github/workflows/verify.yml'),/20261127122235_structural_read_snapshots\.sql/);
+ assert.match(read('.github/workflows/performance-3-1.yml'),/supabase migration list --local/);
 });

@@ -1,6 +1,5 @@
-// Proof of concept only: disposable PostgreSQL CI; DDL and all fixtures rolled back.
+// Versioned migration is installed in disposable PostgreSQL CI; all synthetic fixtures rolled back.
 const {Client}=require('pg');
-const {readFileSync}=require('node:fs');
 const {randomUUID}=require('node:crypto');
 const {performance}=require('node:perf_hooks');
 const {setTimeout:delay}=require('node:timers/promises');
@@ -13,7 +12,11 @@ async function main(){
  try{
   await db.query('begin');
   await db.query("set local statement_timeout='15s'");
-  await db.query(readFileSync('scripts/qa-structural-rpc.sql','utf8'));
+  // Fail closed: verify the canonical migration actually installed every function.
+  const installed=(await db.query("select proname,prosecdef,provolatile,has_function_privilege('anon',oid,'EXECUTE') as anon_exec,has_function_privilege('authenticated',oid,'EXECUTE') as authenticated_exec,proconfig from pg_proc where pronamespace='public'::regnamespace and proname=any($1::text[]) order by proname",[['sc_perf_dashboard','sc_perf_soci_counts','sc_perf_incassi_totals','sc_perf_navigation','sc_perf_inventory','sc_perf_person_options','sc_perf_soci_page']])).rows;
+  assert.equal(installed.length,7);
+  for(const f of installed){assert.equal(f.prosecdef,false);assert.equal(f.provolatile,'s');assert.equal(f.anon_exec,false);assert.equal(f.authenticated_exec,true);assert.ok(f.proconfig?.includes('search_path=""'));}
+  console.log('Versioned structural migration: 7 stable invoker RPCs, authenticated grants and anonymous denial verified');
   const admin=randomUUID(),secretary=randomUUID(),member=randomUUID(),disabled=randomUUID();
   for(const [id,role] of [[admin,'amministratore'],[secretary,'segreteria'],[member,'socio'],[disabled,'segreteria']]){
    await db.query('insert into auth.users(id,email,email_confirmed_at,banned_until) values($1,$2,now(),$3)',[id,id+'@example.invalid',id===disabled?'2099-12-31':null]);

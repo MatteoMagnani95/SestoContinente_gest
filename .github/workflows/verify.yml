@@ -12,6 +12,7 @@ on:
       - 'perf/3.1-navigation'
       - 'perf/3.1-archives'
       - 'perf/3.1-soci-page'
+      - 'perf/3.1-migration'
       - 'release/gestionale-3.1'
   workflow_dispatch:
 
@@ -112,6 +113,8 @@ jobs:
         run: psql "$TEST_0019_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f docs/redesign/F5_HISTORICAL_AUDIT.sql
       - name: Benchmark sintetico, paginazione e isolamento RLS
         run: node scripts/test-performance-ci.cjs
+      - name: Applica migrazione strutturale versionata su database effimero
+        run: psql "$TEST_0019_DATABASE_URL" -X -v ON_ERROR_STOP=1 -1 -f supabase/migrations/20261127122235_structural_read_snapshots.sql
       - name: Prototipi strutturali RPC, parità, RLS e latenza simulata
         run: node scripts/test-structural-performance-ci.cjs
       - name: Prova ripristino su secondo database effimero
