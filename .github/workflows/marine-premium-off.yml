@@ -112,6 +112,8 @@ jobs:
           path: ${{ runner.temp }}/marine-private-${{ github.run_id }}/*.png
           if-no-files-found: warn
           retention-days: 7
+      - name: Rimuovi esclusivamente fixture visuale locale
+        run: node scripts/qa-local-supabase.mjs visual-fixtures-cleanup
       - name: Dataset di carico
         run: node scripts/qa-local-supabase.mjs performance
       - name: Build baseline 3.1 esatta e avvio OFF

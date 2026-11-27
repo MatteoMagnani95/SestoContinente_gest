@@ -206,13 +206,30 @@ if(process.argv[2]==='seed')await seed();else if(process.argv[2]==='sessions')aw
  const accounts=JSON.parse(await readFile(accountFile,'utf8'));
  const db=new Client({connectionString:database.href});await db.connect();
  try{
-  await db.query("insert into notifiche(utente_id,tipo,riferimento,titolo,messaggio) values($1,'collaudo',$2,'Notifica visuale sintetica','Messaggio di collaudo: verifica il testo su più righe e il pulsante Segna come letta. Nessun dato reale.')",[accounts.member.id,randomUUID()]);
+  const reference=randomUUID();
+  await db.query("insert into notifiche(utente_id,tipo,riferimento,titolo,messaggio) values($1,'collaudo',$2,'Notifica visuale sintetica','Messaggio di collaudo: verifica il testo su più righe e il pulsante Segna come letta. Nessun dato reale.')",[accounts.member.id,reference]);
+  await writeFile(join(work,'visual-notification-reference.json'),JSON.stringify(reference),{mode:0o600});
  }finally{await db.end();}
  console.log('OK fixture notifica visuale locale');
+}else if(process.argv[2]==='visual-fixtures-cleanup'){
+ // Remove only the exact synthetic notification created for screenshot QA.
+ // Keep the 2,000-notification performance contract and all checks unchanged.
+ assert.equal(env.SC_STRUCTURAL_RPC,'false');assert.equal(env.SC_STRUCTURAL_RPC_RELEASE,'false');
+ const accounts=JSON.parse(await readFile(accountFile,'utf8'));
+ const reference=JSON.parse(await readFile(join(work,'visual-notification-reference.json'),'utf8'));
+ assert.match(reference,/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+ const db=new Client({connectionString:database.href});await db.connect();
+ try{
+  const result=await db.query("delete from notifiche where utente_id=$1 and tipo='collaudo' and riferimento=$2 and titolo='Notifica visuale sintetica' returning id",[accounts.member.id,reference]);
+  assert.equal(result.rowCount,1,'exactly one visual-only fixture must be removed');
+  const remaining=await db.query("select count(*)::int as n from notifiche where utente_id=$1 and letta_il is null",[accounts.member.id]);
+  assert.equal(remaining.rows[0].n,0,'unexpected unread notifications before benchmark');
+ }finally{await db.end();}
+ console.log('OK visual-only notification removed before load dataset');
 }else if(process.argv[2]==='performance'){
  const {runPerformance}=await import('./qa-local-performance.mjs');
  await runPerformance({app,database,accounts:JSON.parse(await readFile(accountFile,'utf8')),work});
 }else if(process.argv[2]==='auth'){
  const {runAuth}=await import('./qa-local-auth.mjs');
  await runAuth({app,admin});
-}else throw Error('Usare seed, sessions, mutations, visual-fixtures, performance o auth');
+}else throw Error('Usare seed, sessions, mutations, visual-fixtures, visual-fixtures-cleanup, performance o auth');

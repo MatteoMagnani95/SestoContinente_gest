@@ -73,3 +73,14 @@ test('Marine final review covers the real table, populated notifications, portal
  assert.match(read('scripts/qa-marine-images.mjs'),/naturalWidth/);
  assert.match(read('.github/workflows/marine-premium-off.yml'),/qa-local-supabase\.mjs visual-fixtures/);
 });
+
+test('Visual notification lifecycle cannot contaminate the exact performance dataset',()=>{
+ const script=read('scripts/qa-local-supabase.mjs'),workflow=read('.github/workflows/marine-premium-off.yml'),perf=read('scripts/qa-local-performance.mjs');
+ assert.match(script,/visual-notification-reference\.json/);
+ assert.match(script,/delete from notifiche where utente_id=\$1 and tipo='collaudo' and riferimento=\$2 and titolo='Notifica visuale sintetica'/);
+ assert.match(script,/assert\.equal\(result\.rowCount,1/);
+ assert.match(script,/assert\.equal\(remaining\.rows\[0\]\.n,0/);
+ assert.ok(workflow.indexOf('qa-local-supabase.mjs visual-fixtures-cleanup')>workflow.indexOf('qa-marine-private.mjs'));
+ assert.ok(workflow.indexOf('qa-local-supabase.mjs visual-fixtures-cleanup')<workflow.indexOf('qa-local-supabase.mjs performance'));
+ assert.match(perf,/toContainText\('2000 notifiche'\)/);
+});
