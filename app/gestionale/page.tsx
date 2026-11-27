@@ -2,7 +2,7 @@ import Link from 'next/link';
 import {NereiaProject} from '@/components/ui/BrandLogo';
 import {ButtonLink,QuickActionLink,PageHeader,SectionHeader,MetricCard,EmptyState,ErrorState,Alert,type Area} from '@/components/ui/Primitives';
 import {Icon,type IconName} from '@/components/ui/Icon';
-import {requireStaff} from '@/lib/security';
+import {requireStaffForRender as requireStaff} from '@/lib/security';
 import {formatValue} from '@/lib/format';
 import {romeDay,shiftDay} from '@/lib/calendar-tools';
 import {asRomeISO} from '@/lib/course-tools';
