@@ -72,6 +72,6 @@ BEGIN
   AND e.duplicato_storico FOR UPDATE;
   IF v_survivor IS NOT NULL THEN UPDATE public.edizioni_corsi SET duplicato_storico=false WHERE id=v_survivor; END IF;
  END IF;
-END $;
+END $$;
 REVOKE ALL ON FUNCTION public.elimina_edizione_annullata_vuota(uuid) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.elimina_edizione_annullata_vuota(uuid) TO authenticated;
