@@ -6,7 +6,7 @@ import {validDiscipline,validLevel,courseListView,courseCapacity,courseDisciplin
 import {tutteLePagine} from '@/lib/pagine';
 import Link from 'next/link';
 import {Icon} from '@/components/ui/Icon';
-import {requireStaff} from '@/lib/security';
+import {requireStaffForRender as requireStaff} from '@/lib/security';
 import {courseName,COURSE_STATES} from '@/lib/course-tools';
 import {formatValue} from '@/lib/format';
 
