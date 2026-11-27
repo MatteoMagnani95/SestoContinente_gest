@@ -39,3 +39,25 @@ test('generic module indexed lookups preserve row identity and staff boundary',(
  assert.match(source,/missingPagePromise/);
  assert.match(source,/\[senzaFile,missingTotal\]=await Promise.all/);
 });
+
+test('render-scoped authentication shares verified account and roles without caching mutation guards',()=>{
+ const security=read('lib/security.ts'),nav=read('lib/navigation-access.ts');
+ assert.match(security,/export async function requireUser\(\)[\s\S]*?await supabase\.auth\.getUser\(\)[\s\S]*?account_corrente_abilitato/);
+ assert.match(security,/export async function requireStaff\(\)[\s\S]*?await requireUser\(\)[\s\S]*?ruoli_utente/);
+ assert.match(security,/readAccountForRender=cache\(async\(\)=>\{[\s\S]*?await supabase\.auth\.getUser\(\)[\s\S]*?account_corrente_abilitato/);
+ assert.match(security,/readRolesForRender=cache\(async[\s\S]*?\.eq\('utente_id',userId\)/);
+ assert.match(security,/requireStaffForRender=cache\(async\(\)=>\{[\s\S]*?await requireUserForRender\(\)[\s\S]*?await readRolesForRender\(supabase,user.id\)[\s\S]*?\['amministratore','segreteria'\]/);
+ assert.match(nav,/await readAccountForRender\(\)/);
+ assert.match(nav,/readRolesForRender\(supabase,user.id\)/);
+ for(const path of ['app/actions.ts','app/module-actions.ts','app/gestionale/corsi/actions.ts','app/notifiche/actions.ts']){
+  assert.doesNotMatch(read(path),/require(?:Staff|User)ForRender|read(?:Account|Roles)ForRender/);
+ }
+});
+
+test('staff loading boundary and closed menu prefetch preserve accessible navigation',()=>{
+ const nav=read('components/StaffNav.tsx');
+ assert.match(nav,/prefetch=\{open\?undefined:false\}/);
+ assert.match(nav,/aria-expanded=\{open\}/);
+ assert.match(read('app/gestionale/loading.tsx'),/<LoadingState message=/);
+ assert.match(read('app/gestionale/layout.tsx'),/await requireStaff\(\)/);
+});
