@@ -6,7 +6,8 @@ const read=(path)=>readFileSync(new URL(`../${path}`,import.meta.url),'utf8');
 test('Il titolo del menu coincide con il ruolo amministratore realmente verificato',()=>{
  const layout=read('app/gestionale/layout.tsx'),access=read('lib/navigation-access.ts'),shell=read('components/AppShell.tsx');
  assert.match(layout,/await requireStaff\(\)/);
- assert.match(access,/\.from\('ruoli_utente'\)\.select\('ruolo'\)\.eq\('utente_id',user\.id\)/);
+ assert.match(access,/readRolesForRender\(supabase,user.id\)/);
+ assert.match(read('lib/security.ts'),/readRolesForRender=cache\(async[\s\S]*?\.from\('ruoli_utente'\)\.select\('ruolo'\)\.eq\('utente_id',userId\)/);
  assert.match(access,/admin=allowed\.has\('amministratore'\)/);
  assert.match(shell,/access\.admin\?'Amministrazione':'Segreteria'/);
  assert.match(shell,/<StaffNav isAdmin=\{access\.admin\}/);
