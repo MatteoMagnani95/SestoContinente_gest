@@ -17,6 +17,7 @@ on:
       - 'perf/3.1-courses-calendar'
       - 'perf/3.1-snapshot-parity'
       - 'perf/3.1-migration-courses-calendar'
+      - 'perf/3.1-migration-courses-doc'
       - 'release/gestionale-3.1'
   workflow_dispatch:
 

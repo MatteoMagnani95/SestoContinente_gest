@@ -57,3 +57,6 @@ La migrazione `20261126172500_serializza_prenotazioni_guidate.sql` aggiorna escl
 
 ## Migrazione strutturale 3.1 — solo collaudo
 `20261127122235_structural_read_snapshots.sql`: sette nuove RPC di sola lettura, SECURITY INVOKER, search_path vuoto, grant autenticati e revoke anon/PUBLIC. Nessuna modifica alle tabelle, ai dati, ai trigger o alle policy. Applicazione esclusivamente nei database effimeri CI e Supabase locale, con flag SC_STRUCTURAL_RPC=true e tutti i gate di isolamento. Fuori da QA il percorso legacy resta attivo. Nessuna autorizzazione al rilascio o all'applicazione su produzione.
+
+## Seconda migrazione strutturale 3.1 — solo collaudo
+`20261127125108_course_calendar_read_snapshots.sql`: due RPC additive di sola lettura per corsi e calendario, SECURITY INVOKER, is_staff, search_path vuoto, grant autenticati e revoke anon/PUBLIC. Nessuna modifica alle tabelle, ai dati, ai trigger o alle policy. SHA256 552dfa8bef6b616c518a195795452e0c41bc12a04c6776b1e88c4092a36acf09 verificato nella CI 46002419418; parità SQL, RLS e restore verificati. Attivazione confinata al QA loopback; fallback legacy e recupero pagine obsolete conservati. Rapporto dettagliato: docs/performance/COURSE_CALENDAR_MIGRATION_3.1.md. Nessuna autorizzazione al rilascio o all'applicazione su produzione.
