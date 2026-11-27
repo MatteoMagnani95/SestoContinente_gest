@@ -39,7 +39,7 @@ export function readDashboardSnapshot(v:Record<string,unknown>|null){
 }
 
 const used=new Set<string>();
-export function markStructuralRpcUsed(name:'dashboard'|'soci-counts'|'incassi-totals'|'navigation-account'|'inventory-page'|'person-options'){
+export function markStructuralRpcUsed(name:'dashboard'|'soci-counts'|'incassi-totals'|'navigation-account'|'inventory-page'|'person-options'|'soci-page'){
  if(structuralQaEnabled()&&!used.has(name)){used.add(name);console.log('QA_STRUCTURAL_RPC_USED '+name);}
 }
 
@@ -66,4 +66,16 @@ const option=(v:unknown):v is PersonOption=>record(v)&&str(v.value)&&str(v.label
 export function readPersonOptions(v:Record<string,unknown>|null){
  if(!v||!validCount(v.count)||!Array.isArray(v.options)||v.options.length>50||!v.options.every(option)||!(v.selected===null||option(v.selected)))return null;
  return {count:v.count,options:v.options as PersonOption[],selected:v.selected as PersonOption|null};
+}
+
+type MemberRow={adesione_id:string;persona_id:string;stagione_id:string;stagione:string;stato:string;nome:string;cognome:string;codice_fiscale:string|null;email:string|null;telefono:string|null};
+const memberRow=(v:unknown):v is MemberRow=>record(v)&&['adesione_id','persona_id','stagione_id','stagione','stato','nome','cognome'].every(k=>str(v[k]))&&['codice_fiscale','email','telefono'].every(k=>v[k]===null||str(v[k]));
+type MemberSeason={id:string;nome:string;attiva:boolean};
+const memberSeason=(v:unknown):v is MemberSeason=>record(v)&&str(v.id)&&str(v.nome)&&typeof v.attiva==='boolean';
+export function readMembersPage(v:Record<string,unknown>|null){
+ if(!v||!str(v.chosen)||!validCount(v.count)||!Array.isArray(v.seasons)||!v.seasons.every(memberSeason)||!record(v.counts)||!Array.isArray(v.rows)||v.rows.length>25||v.rows.length>v.count||!v.rows.every(memberRow))return null;
+ const counts=v.counts,keys=['total','da_perfezionare','attiva','sospesa','cessata'] as const;
+ if(!keys.every(k=>validCount(counts[k])))return null;
+ if(v.chosen!=='tutte'&&!v.seasons.some(s=>s.id===v.chosen))return null;
+ return {seasons:v.seasons as MemberSeason[],chosen:v.chosen,count:v.count,counts:counts as Record<typeof keys[number],number>,rows:v.rows as MemberRow[]};
 }

@@ -216,3 +216,14 @@ test('course historical duplicate checks start independently of the season and p
  assert.match(source,/storicoCatalogoPromise,\s*storicheEdizioniPromise/);
  assert.match(source,/storiciCatalogo.error\|\|storicheEdizioni.error/);
 });
+
+test('complete fresh member snapshot keeps the original paginated path as fallback',()=>{
+ const source=read('app/gestionale/soci/page.tsx'),sql=read('scripts/qa-structural-rpc.sql');
+ assert.match(source,/sc_perf_soci_page/);
+ assert.match(source,/p_terms:searchTerms\(q\),p_status:stato,p_order:ordine,p_page:desiredPage/);
+ assert.match(source,/if\(snapshot\)markStructuralRpcUsed\('soci-page'\)/);
+ assert.match(source,/}:await readLegacy\(\)/);
+ assert.match(source,/sc_perf_soci_counts/);
+ assert.match(sql,/CREATE FUNCTION public.sc_perf_soci_page[\s\S]*?SECURITY INVOKER[\s\S]*?public.is_staff\(\)/);
+ assert.match(read('.github/workflows/performance-3-1.yml'),/QA_STRUCTURAL_RPC_USED soci-page/);
+});
