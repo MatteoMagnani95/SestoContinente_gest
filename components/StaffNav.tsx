@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { modules, type Module, type ModuleKey } from '@/lib/modules';
 import { activeItem, type NavItem } from '@/lib/navigation';
 import { Icon, type IconName } from '@/components/ui/Icon';
@@ -27,7 +27,8 @@ export function staffGroups(isAdmin:boolean):NavGroup[]{
 }
 export default function StaffNav({isAdmin=false,onNavigate,idPrefix='desktop',collapsed=false,onExpand}:{isAdmin?:boolean;onNavigate?:()=>void;idPrefix?:string;collapsed?:boolean;onExpand?:()=>void}){
  const pathname=usePathname()??'/';
- const groups=staffGroups(isAdmin),active=activeItem(pathname,groups.flatMap(g=>g.items));
+ const groups=useMemo(()=>staffGroups(isAdmin),[isAdmin]);
+ const active=useMemo(()=>activeItem(pathname,groups.flatMap(g=>g.items)),[pathname,groups]);
  const [expanded,setExpanded]=useState<{path:string;group:string}>({path:'',group:''});
  return <nav className="sc-staff-nav" aria-label="Menu gestionale">
  {groups.map(group=>{
@@ -36,7 +37,7 @@ export default function StaffNav({isAdmin=false,onNavigate,idPrefix='desktop',co
   const id=idPrefix+'-nav-'+group.id;
   return <section key={group.id} className={'sc-nav-group sc-area-'+group.area+(current?' is-current':'')}>
    <button type="button" className="sc-nav-group-toggle" aria-expanded={open} aria-controls={id} title={group.label} onClick={()=>{if(collapsed)onExpand?.();setExpanded({path:pathname,group:open?'':group.id});}}><Icon name={group.icon}/><span>{group.label}</span><Icon name={open?'chevron-down':'chevron-right'}/></button>
-   <div id={id} hidden={!open} className="sc-nav-items">{group.items.map(i=><Link key={i.href} href={i.href} aria-current={active===i.href?(pathname===i.href?'page':'location'):undefined} className={'sc-nav-link'+(active===i.href?' is-active':'')} onClick={onNavigate}>{active===i.href&&<Icon name={group.icon}/>}<span>{i.label}</span></Link>)}</div>
+   <div id={id} hidden={!open} className="sc-nav-items">{group.items.map(i=><Link key={i.href} href={i.href} prefetch={open?undefined:false} aria-current={active===i.href?(pathname===i.href?'page':'location'):undefined} className={'sc-nav-link'+(active===i.href?' is-active':'')} onClick={onNavigate}>{active===i.href&&<Icon name={group.icon}/>}<span>{i.label}</span></Link>)}</div>
   </section>;
  })}
  </nav>;
