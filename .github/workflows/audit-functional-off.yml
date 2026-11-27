@@ -152,6 +152,18 @@ jobs:
           path: ${{ env.QA_WORK_DIR }}/performance-comparison.json
           if-no-files-found: error
           retention-days: 14
+      - name: Mutazioni aggiuntive effettive dopo benchmark
+        timeout-minutes: 8
+        run: node scripts/qa-audit-mutations.mjs
+      - name: AUD-006 riproduzione e regressione SQL isolata
+        timeout-minutes: 8
+        run: |
+          set -euo pipefail
+          supabase migration new audit006_private_medical_classification
+          file=$(find supabase/migrations -maxdepth 1 -name '*_audit006_private_medical_classification.sql' -print)
+          test -f "$file"
+          cp docs/audit-3.2/AUD006_CANDIDATE.sql "$file"
+          node scripts/qa-audit-medical.mjs "$file"
       - name: Pulizia servizi e dati sintetici
         if: always()
         run: |

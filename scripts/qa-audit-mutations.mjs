@@ -1,0 +1,75 @@
+// Extra actual browser mutations, after benchmark to keep the exact load dataset intact.
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {join,resolve} from 'node:path';
+import {randomUUID} from 'node:crypto';
+import {createClient} from '@supabase/supabase-js';
+import {chromium,expect} from '@playwright/test';
+const e=process.env,work=resolve(e.QA_WORK_DIR||'.'),root=resolve('.');
+const api=new URL(e.NEXT_PUBLIC_SUPABASE_URL||'http://invalid'),app=new URL(e.QA_BASE_URL||'http://invalid');
+const local=u=>['localhost','127.0.0.1'].includes(u.hostname);
+assert.ok(e.QA_ISOLATED_ENV==='true'&&e.SESTO_TEST_MODE==='true'&&e.SESTO_EMAIL_MODE==='simulate');
+assert.equal(e.SC_STRUCTURAL_RPC,'false');assert.equal(e.SC_STRUCTURAL_RPC_RELEASE,'false');
+assert.ok(local(api)&&api.port==='54321'&&local(app)&&app.port==='3314');
+assert.ok(e.QA_WORK_DIR&&work!==root&&!work.startsWith(root+'/'));
+const a=JSON.parse(await readFile(join(work,'accounts.json'),'utf8'));
+for(const x of Object.values(a))assert.match(x.email,/@example\.invalid$/);
+const admin=createClient(api.href,e.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
+const one=async(table,columns,filters)=>{let q=admin.from(table).select(columns);for(const [k,v] of Object.entries(filters))q=q.eq(k,v);const r=await q.single();assert.ok(!r.error,table+' '+r.error?.code);return r.data;};
+const browser=await chromium.launch();const contexts=[];
+const open=async role=>{const c=await browser.newContext({baseURL:app.href,storageState:join(work,role+'.json'),viewport:{width:390,height:844}});contexts.push(c);return c.newPage();};
+try{
+ const staff=await open('staff'),member=await open('member'),guardian=await open('guardian');
+ const title='Evento audit '+randomUUID(),day=new Date(Date.now()+14*86400000).toISOString().slice(0,10);
+ await staff.goto('/gestione-eventi');
+ await staff.getByRole('button',{name:'Nuovo evento',exact:true}).click();
+ const form=staff.getByRole('dialog',{name:'Nuovo evento'});
+ for(const [name,value] of Object.entries({titolo:title,destinazione:'Piscina sintetica',dal:day,al:day,costo:'0',posti:'4'}))await form.locator('input[name='+name+']').fill(value);
+ await form.locator('textarea[name=descrizione]').fill('Evento sintetico isolato');
+ await form.getByRole('button',{name:'Crea evento',exact:true}).click();
+ await expect(form).toBeHidden();
+ const event=await one('eventi_soci','id,stato,posti',{titolo:title});assert.equal(event.stato,'aperto');assert.equal(event.posti,4);
+ const detail='/gestione-eventi/'+event.id+'?tab=informazioni';
+ await staff.goto(detail);await expect(staff.getByRole('heading',{name:title,exact:true})).toBeVisible();
+ await staff.getByRole('button',{name:'Modifica evento'}).click();
+ const edit=staff.getByRole('dialog',{name:'Modifica '+title});await edit.locator('input[name=posti]').fill('5');
+ await edit.getByRole('button',{name:'Salva modifiche'}).click();await expect(edit).toBeHidden();
+ assert.equal((await one('eventi_soci','posti',{id:event.id})).posti,5);
+ // Direct scoped event page and explicit confirmation of cancellation.
+ await staff.goto(detail);await staff.getByRole('button',{name:'Modifica evento'}).click();
+ await edit.locator('select[name=stato]').selectOption('annullato');await edit.locator('input[name=conferma]').check();
+ await edit.getByRole('button',{name:'Salva modifiche'}).click();await expect(edit).toBeHidden();
+ assert.equal((await one('eventi_soci','stato',{id:event.id})).stato,'annullato');
+ await staff.reload();await expect(staff.getByRole('button',{name:'Modifica evento'})).toHaveCount(0);
+ console.log('OK UI event creation, edit, cancellation, persistence');
+ // Actual administrative role grant and revocation, with same guardian session.
+ await staff.goto('/gestionale/utenti/'+a.guardian.id);
+ await staff.getByRole('button',{name:'Assegna ruolo'}).click();const grant=staff.getByRole('dialog',{name:'Assegna ruolo'});
+ await grant.locator('select[name=ruolo]').selectOption('segreteria');await grant.locator('input[name=conferma]').check();
+ await grant.getByRole('button',{name:'Assegna',exact:true}).click();
+ await expect(staff).toHaveURL(/msg=ok/);
+ assert.equal((await one('ruoli_utente','ruolo',{utente_id:a.guardian.id,ruolo:'segreteria'})).ruolo,'segreteria');
+ await guardian.goto('/gestionale');await expect(guardian).toHaveURL(u=>u.pathname==='/gestionale');
+ const roleRow=staff.locator('.info-row').filter({has:staff.getByText('Segreteria',{exact:true})});
+ await roleRow.getByRole('button',{name:'Revoca ruolo'}).click();
+ const revoke=staff.getByRole('dialog',{name:'Revoca ruolo'});await revoke.locator('input[name=conferma]').check();
+ await revoke.getByRole('button',{name:'Rimuovi',exact:true}).click();await expect(staff).toHaveURL(/msg=rimosso/);
+ const removed=await admin.from('ruoli_utente').select('ruolo').eq('utente_id',a.guardian.id).eq('ruolo','segreteria');assert.ok(!removed.error);assert.equal(removed.data.length,0);
+ assert.equal((await one('ruoli_utente','ruolo',{utente_id:a.guardian.id,ruolo:'tutore'})).ruolo,'tutore');
+ await guardian.goto('/gestionale');await expect(guardian).toHaveURL(u=>u.pathname!=='/gestionale'&&u.searchParams.get('msg')==='permessi');
+ await guardian.goto('/area-personale');await expect(guardian).toHaveURL(u=>u.pathname==='/area-personale');
+ console.log('OK UI actual role grant and revocation, remaining guardian access preserved');
+ // Board nomination via real UI, check exact four-year term.
+ await staff.goto('/organi-sociali?tab=componenti');
+ await staff.getByRole('button',{name:'Aggiungi componente'}).click();
+ const board=staff.getByRole('dialog',{name:'Aggiungi componente'});
+ await board.locator('select[name=persona_id]').selectOption(a.member.person);
+ await board.locator('select[name=carica]').selectOption('Tesoriere');
+ const start=new Date().toISOString().slice(0,10);await board.locator('input[name=dal]').fill(start);
+ await board.getByRole('button',{name:'Registra componente'}).click();await expect(staff).toHaveURL(/msg=componente_ok/);
+ const row=await one('cda_componenti','carica,dal,al',{persona_id:a.member.person,carica:'Tesoriere',dal:start});
+ const end=new Date(start+'T12:00:00Z');const month=end.getUTCMonth();end.setUTCFullYear(end.getUTCFullYear()+4);if(end.getUTCMonth()!==month)end.setUTCDate(0);assert.equal(row.al,end.toISOString().slice(0,10));
+ await staff.reload();await expect(staff.getByText('Tesoriere',{exact:true}).first()).toBeVisible();
+ await member.goto('/organi-sociali');await expect(member).toHaveURL(u=>u.pathname!=='/organi-sociali'&&u.searchParams.get('msg')==='permessi');
+ console.log('OK UI board appointment, four-year term, no automatic application role escalation');
+}finally{for(const c of contexts)await c.close();await browser.close();}
