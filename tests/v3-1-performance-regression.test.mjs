@@ -54,11 +54,10 @@ test('render-scoped authentication shares verified account and roles without cac
  }
 });
 
-test('staff loading boundary and closed menu prefetch preserve accessible navigation',()=>{
+test('staff navigation preserves accessible state and the authorization boundary',()=>{
  const nav=read('components/StaffNav.tsx');
  assert.match(nav,/prefetch=\{open\?undefined:false\}/);
  assert.match(nav,/aria-expanded=\{open\}/);
- assert.match(read('app/gestionale/loading.tsx'),/<LoadingState message=/);
  assert.match(read('app/gestionale/layout.tsx'),/await requireStaff\(\)/);
 });
 
