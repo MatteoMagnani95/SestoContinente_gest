@@ -61,3 +61,36 @@ test('staff loading boundary and closed menu prefetch preserve accessible naviga
  assert.match(read('app/gestionale/loading.tsx'),/<LoadingState message=/);
  assert.match(read('app/gestionale/layout.tsx'),/await requireStaff\(\)/);
 });
+
+test('generic editors load only for a selected row, preserving legacy deep links and dirty navigation',()=>{
+ const source=read('app/gestionale/moduli/[modulo]/page.tsx');
+ const button=read('components/DeferredEditorButton.tsx');
+ assert.match(source,/const editId=edit&&UUID_RE\.test\(edit\)\?edit:null/);
+ assert.match(source,/const editorId=scope.editor&&UUID_RE\.test\(scope.editor\)\?scope.editor:null/);
+ assert.match(source,/const openEditorId=editId\?\?editorId/);
+ assert.match(source,/new URLSearchParams\(href\(page\)\.slice\(1\)\)/);
+ assert.match(source,/params.set\('editor',id\)/);
+ assert.match(source,/openEditorId===row.id\?<Drawer/);
+ assert.match(source,/initialOpen=\{msg!=='salvato'&&openEditorId===row.id\}/);
+ assert.match(source,/DeferredEditorButton href=\{editorHref\(row.id\)\}/);
+ assert.match(button,/requestDiscard\(\{trigger,proceed:/);
+ assert.match(button,/router.push\(href,\{scroll:false\}\)/);
+ assert.match(button,/aria-haspopup="dialog"/);
+});
+
+test('searchable select memoizes normalization without dropping the selected value',()=>{
+ const source=read('components/ui/SearchableSelect.tsx');
+ assert.match(source,/indexed=useMemo\(\(\)=>options.map/);
+ assert.match(source,/option.value===selected\|\|normalized.includes\(normalizedQuery\)/);
+ assert.match(source,/selected&&!options.some/);
+});
+
+test('form mutation observer still scans relevant form changes and before navigation',()=>{
+ const source=read('components/GlobalCancelButtons.tsx');
+ assert.match(source,/new MutationObserver\(records=>/);
+ assert.match(source,/records.some\(record=>affectsForms\(record.target\)/);
+ assert.match(source,/Array.from\(record.addedNodes\).some\(affectsForms\)/);
+ assert.match(source,/Array.from\(record.removedNodes\).some\(affectsForms\)/);
+ assert.match(source,/if\(!dirtyForms\(\).length\)return/);
+ assert.match(source,/beforeunload/);
+});
