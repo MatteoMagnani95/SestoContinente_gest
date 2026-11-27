@@ -7,9 +7,9 @@ import ts from 'typescript';
 const source=readFileSync(new URL('../lib/structural-qa.ts',import.meta.url),'utf8');
 const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 const enabled={SC_STRUCTURAL_RPC:'true',QA_ISOLATED_ENV:'true',SESTO_TEST_MODE:'true',SESTO_EMAIL_MODE:'simulate',NEXT_PUBLIC_SUPABASE_URL:'http://127.0.0.1:54321'};
-function load(env){
+function load(env,logs=[]){
  const exports={};
- runInNewContext(compiled,{exports,URL,process:{env},require(name){assert.equal(name,'server-only');return {};},console:{log(){}}});
+ runInNewContext(compiled,{exports,URL,process:{env},require(name){assert.equal(name,'server-only');return {};},console:{log(message){logs.push(message);}}});
  return exports;
 }
 test('disposable QA activation remains opt-in and does not authorize remote access',async()=>{
@@ -58,4 +58,12 @@ test('remote activation is separately opt-in, exact project and environment boun
   assert.equal(await module.structuralRpc({async rpc(){return {data:null,error:{message:'unavailable'}};}},'sc_perf_dashboard',{}),null);
   assert.equal(module.readDashboardSnapshot({count:1}),null);
  }
+});
+
+test('diagnostic markers are emitted only in disposable QA, never on a remote release',()=>{
+ const qaLogs=[],remoteLogs=[],offLogs=[];
+ const qa=load(enabled,qaLogs),remote=load(release,remoteLogs),off=load({...release,SC_STRUCTURAL_RPC:'false'},offLogs);
+ for(const mod of [qa,remote,off]){mod.markStructuralRpcUsed('dashboard');mod.markStructuralRpcUsed('dashboard');}
+ assert.deepEqual(qaLogs,['QA_STRUCTURAL_RPC_USED dashboard']);
+ assert.deepEqual(remoteLogs,[]);assert.deepEqual(offLogs,[]);
 });
