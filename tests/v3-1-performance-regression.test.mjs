@@ -102,3 +102,28 @@ test('only explicit public branding assets get public caching',()=>{
  assert.match(config,/public, max-age=86400, must-revalidate/);
  assert.doesNotMatch(read('components/StaffNav.tsx'),/import \{ modules/);
 });
+
+test('finance loads independent reads and preserves full filtered aggregate',()=>{
+ const source=read('app/gestionale/incassi/page.tsx');
+ assert.match(source,/const \[\{data:admin\},p,\{data:seasons,error:seasonError\},\{data:allPeople,error:peopleError\}\]=await Promise.all/);
+ assert.match(source,/const \[\{data,error,count:total\},aggregate\]=await Promise.all/);
+ assert.match(source,/select\('id,importo_dovuto,versato,residuo'\)/);
+ assert.match(source,/totals=balanceTotals\(aggregate.data/);
+ assert.match(source,/await recentPromise/);
+});
+test('account inventory retains admin authorization and complete summaries',()=>{
+ const source=read('app/gestionale/utenti/page.tsx');
+ assert.match(source,/await requireAdmin\(\)/);
+ assert.match(source,/const \[\{rows,error\},linksResult,pendingResult\]=await Promise.all/);
+ assert.match(source,/accountSummary\(rows,links\)/);
+ assert.match(source,/filterAccounts\(rows,links/);
+});
+test('module reference pagination retains ordering and historical values',()=>{
+ const source=read('app/gestionale/moduli/[modulo]/page.tsx');
+ assert.match(source,/const refQuery=\(\)=>\{/);
+ assert.match(source,/return query.order\('id'\)/);
+ assert.match(source,/await refQuery\(\).range\(offset,offset\+499\)/);
+ assert.match(source,/const memberIds=new Set\(members.map/);
+ assert.match(source,/seasonNames.get\(a.stagione_id\)/);
+ assert.match(source,/missing.length\?await supabase.from\('gest_elenco_adesioni'\)/);
+});
