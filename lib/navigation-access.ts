@@ -1,16 +1,14 @@
 import 'server-only';
 import { cache } from 'react';
-import { createClient } from '@/lib/supabase/server';
+import { readAccountForRender, readRolesForRender } from '@/lib/security';
 import { accountFirstName, guestAccess, type NavigationAccess } from '@/lib/navigation';
 /** Presentation only: never use this as a replacement for requireUser/Staff/Admin/Board or RLS. */
 export const getNavigationAccess=cache(async():Promise<NavigationAccess>=>{
- const supabase=await createClient();
- const {data:{user},error}=await supabase.auth.getUser();
- if(error||!user)return guestAccess;
- const {data:enabled,error:enableError}=await supabase.rpc('account_corrente_abilitato');
- if(enableError||enabled!==true)return {...guestAccess,signedIn:true};
+ const {supabase,user,status}=await readAccountForRender();
+ if(!user||status==='guest')return guestAccess;
+ if(status!=='enabled')return {...guestAccess,signedIn:true};
  const [roles,member,request,links,alerts,owners]=await Promise.all([
-  supabase.from('ruoli_utente').select('ruolo').eq('utente_id',user.id),
+  readRolesForRender(supabase,user.id),
   supabase.rpc('area_soci_accesso'),
   supabase.from('richieste').select('stato').eq('utente_id',user.id).maybeSingle(),
   supabase.from('collegamenti_persone').select('persona_id',{count:'exact',head:true}).eq('utente_id',user.id),
