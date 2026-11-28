@@ -162,7 +162,7 @@ try{
  check((await ok(db.from('ruoli_utente').select('ruolo').eq('utente_id',member.id))).some(x=>x.ruolo==='socio'),'Ruoli invariati dopo cambio email');
  check((await ok(db.from('collegamenti_persone').select('persona_id').eq('utente_id',member.id))).some(x=>x.persona_id===student.id),'Anagrafica invariata dopo cambio email');
  check(Boolean((await studentClient.auth.signInWithPassword({email:member.email,password})).error),'Vecchia email non accede dopo conferma');
- member.email=newEmail;await login(p,member);check(new URL(p.url()).pathname==='/area-personale','Nuovo login funzionante');
+ member.email=newEmail;const fresh=await context();await login(fresh.p,member);check(new URL(fresh.p.url()).pathname==='/area-personale','Nuovo login funzionante da sessione indipendente');await fresh.ctx.close();
  // Controllo responsivo di profilo, corsi e certificati su desktop/iPad/iPhone.
  for(const [name,engine,options] of [['desktop',browser,{viewport:{width:1440,height:1000}}],['ipad',mobile,devices['iPad (gen 7)']],['iphone',mobile,devices['iPhone 13']]]){
   for(const account of accounts){
