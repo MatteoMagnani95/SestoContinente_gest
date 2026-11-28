@@ -88,7 +88,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  const personSorted=personViews.has(module.table);
  const medical=modulo==='certificati';
  const editId=edit&&/^[0-9a-f-]{36}$/i.test(edit)?edit:null;
- const medicalSearch=q.trim().slice(0,80).replace(/[%_\\(),.]/g,' ').split(/\s+/).filter(Boolean);
+ const medicalSearch=q.trim().slice(0,80).replace(/[^\p{L}\p{M}\p{N}'’\s-]/gu,' ').split(/\s+/).filter(Boolean);
  let missingQuery=supabase.from('allievi_senza_certificato').select('id,nome,cognome',{count:'exact'});
  if(medical)for(const token of medicalSearch)missingQuery=missingQuery.or(`cognome.ilike.%${token}%,nome.ilike.%${token}%`);
  const [senzaFile,missingTotal]=medical?await Promise.all([
@@ -190,11 +190,11 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
   const grid={display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%, 180px),1fr))',gap:12};
   const rowGrid={display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%, 145px),1fr))',gap:12,alignItems:'center'};
   const nameOf=(row:Row)=>[row.sort_cognome,row.sort_nome].filter(Boolean).join(' ')||labelOf(references.persone?.find(p=>p.id===row.persona_id)??({id:''} as Row),['cognome','nome'])||'Intestatario non disponibile';
-  const upload=(id:unknown)=>'/area-personale/certificato?persona='+encodeURIComponent(String(id??''));
+  const upload=(id:unknown)=>'/area-personale/certificato?origine=gestionale&persona='+encodeURIComponent(String(id??''));
   const selected=editId?rows.find(row=>row.id===editId):undefined;
   return <>
    <div className="page-intro"><p className="eyebrow">Gestionale · Salute e idoneità</p><h1>Certificati medici</h1><p>Controlla i certificati ricevuti, verifica le scadenze e individua chi deve consegnare un documento.</p></div>
-   {feedback&&<p className={`notice ${['salvato','eliminato'].includes(msg)?'success':'warning'}`} role="status">{feedback}</p>}
+   {feedback&&<p className={`notice ${['salvato','eliminato'].includes(msg)?'success':'warning'}`} role="status">{msg==='salvato'?'Certificato aggiornato.':msg==='eliminato'?'Certificato rimosso.':feedback}</p>}
    {editId?<section className="panel stack">
     <Link className="button ghost" href={href(active,page)}>← Torna ai certificati</Link>
     {error?<p className="notice error" role="alert">Impossibile caricare il certificato. Riprova.</p>:selected?<><h2>{nameOf(selected)}</h2><p>Stato attuale: <strong>{statoSingolo(String(selected.stato_certificato))}</strong> · Scadenza {formatValue(selected.scade_il)}</p>
@@ -210,7 +210,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
     </div>
     <details className="panel module-editor"><summary><strong>+ Registra o carica un certificato</strong></summary>
      <p>Se hai il documento, scegli l’intestatario e caricalo. Se devi registrare soltanto i dati amministrativi, usa il modulo sottostante.</p>
-     <form className="search-line" action="/area-personale/certificato" method="get"><select name="persona" aria-label="Intestatario del certificato" required defaultValue=""><option value="">Scegli intestatario…</option>{(references.persone??[]).map(person=><option key={person.id} value={person.id}>{labelOf(person,['cognome','nome'])}</option>)}</select><button className="button">Carica documento</button></form>
+     <form className="search-line" action="/area-personale/certificato" method="get"><input type="hidden" name="origine" value="gestionale"/><select name="persona" aria-label="Intestatario del certificato" required defaultValue=""><option value="">Scegli intestatario…</option>{(references.persone??[]).map(person=><option key={person.id} value={person.id}>{labelOf(person,['cognome','nome'])}</option>)}</select><button className="button">Carica documento</button></form>
      <Editor module={module} moduleKey={modulo} references={references}/>
     </details>
     <section className="stack" aria-label="Elenco certificati"><h2>{active?names[active]:'Certificati registrati'}</h2>
