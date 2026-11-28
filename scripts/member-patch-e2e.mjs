@@ -5,7 +5,7 @@ import {randomUUID} from 'node:crypto';
 import {createClient} from '@supabase/supabase-js';
 import {chromium,webkit,devices} from 'playwright';
 const url=process.env.NEXT_PUBLIC_SUPABASE_URL,anon=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,service=process.env.SUPABASE_SERVICE_ROLE_KEY;
-const origin='http://127.0.0.1:3000',output='artifacts/member-patch-e2e';
+const origin='http://127.0.0.1:3314',output='artifacts/member-patch-e2e';
 if(process.env.MEMBER_QA_LOCAL_ONLY!=='1'||!url||!['localhost','127.0.0.1'].includes(new URL(url).hostname)||!anon||!service)throw Error('Solo Supabase locale con credenziali effimere');
 await mkdir(output,{recursive:true});
 const db=createClient(url,service,{auth:{persistSession:false,autoRefreshToken:false}}),password='LocalQA-'+randomUUID(),run=randomUUID().slice(0,8),report=[];
@@ -59,7 +59,7 @@ try{
  for(const a of accounts){
   const {p}=await context();await login(p,a);check(new URL(p.url()).pathname===rolePaths[a.role],a.role+' destinazione login corretta');
   await openProfile(p);check(await p.getByRole('heading',{name:'Contatto di emergenza',exact:true}).count()===1,a.role+' vede il profilo collegato');
-  check(await p.getByRole('heading',{name:'Collaudo QA '+a.role,exact:true}).count()===1,a.role+' vede il nominativo collegato');
+  check(await p.getByRole('heading',{name:'QA '+a.role+' Collaudo',exact:true}).count()===1,a.role+' vede il nominativo collegato');
   if(!['amministratore','segreteria'].includes(a.role)){
    await p.goto(origin+staffCourses);check(new URL(p.url()).pathname!==staffCourses,a.role+' non accede al corso staff');
    await openProfile(p);
@@ -91,7 +91,7 @@ try{
  await review.getByRole('button',{name:'Conferma esito'}).click();await s.getByText('Rettifica anagrafica elaborata.',{exact:true}).waitFor();
  await openProfile(p);await p.getByText(/Verificare il documento/).waitFor();
  await p.locator('input[name=nome]').fill('Collaudo approvato');await p.getByRole('button',{name:'Richiedi modifica anagrafica'}).click();await p.getByText('Rettifica anagrafica inviata alla segreteria.',{exact:true}).waitFor();
- await s.goto(origin+'/gestionale/soci/'+student.id);await s.getByRole('heading',{name:'Rettifica anagrafica in attesa'}).waitFor();
+ await s.goto(origin+'/gestionale/soci/'+student.id+'?tab=anagrafica');await s.getByRole('heading',{name:'Rettifica anagrafica in attesa'}).waitFor();
  await s.locator('select[name=esito]').selectOption('applicata');await s.getByRole('button',{name:'Conferma esito'}).click();await s.getByText('Rettifica anagrafica elaborata.',{exact:true}).waitFor();
  check((await ok(db.from('persone').select('nome').eq('id',student.id).single())).nome==='Collaudo approvato','Rettifica approvata e applicata da segreteria');
  await openProfile(p);await p.getByText('Aggiungi brevetto esterno',{exact:true}).click();
@@ -103,22 +103,24 @@ try{
  await s.waitForURL(u=>u.searchParams.get('msg')==='salvato'||!u.searchParams.has('edit'));
  check((await ok(db.from('brevetti_allievi').select('stato_verifica').eq('id',patent.id).single())).stato_verifica==='verificato','Verifica staff brevetto esterno');
  await openProfile(p);await p.getByText(/Open Water Diver/).waitFor();check(await p.getByText('Modifica brevetto',{exact:true}).count()===0,'Brevetto verificato non alterabile dal socio');
- await p.goto(origin+courses);await p.getByRole('heading',{name:'I miei corsi',exact:true}).waitFor();
+ await p.goto(origin+courses+'?tab=catalogo');await p.getByRole('heading',{name:'I miei corsi',exact:true}).waitFor();
  const courseCard=p.locator('article').filter({has:p.getByRole('heading',{name:editionName,exact:true})});await courseCard.waitFor();
- check(await courseCard.locator('[name^=emergenza_]').count()===0,'Richiesta senza contatto emergenza');
- check(await courseCard.locator('select[name=persona_id]').inputValue()===student.id,'Profilo unico preselezionato');
- await courseCard.getByRole('button',{name:'Richiedi iscrizione',exact:true}).click();await p.getByText('Richiesta d’iscrizione registrata.',{exact:true}).or(p.getByText("Richiesta d'iscrizione registrata.",{exact:true})).waitFor();
+ await courseCard.getByRole('button',{name:'Richiedi iscrizione',exact:true}).click();
+ const courseDialog=p.getByRole('dialog');
+ check(await courseDialog.locator('[name^=emergenza_]').count()===0,'Richiesta senza contatto emergenza');
+ check(await courseDialog.locator('select[name=persona_id]').inputValue()===student.id,'Profilo unico preselezionato');
+ await courseDialog.getByRole('button',{name:'Richiedi iscrizione',exact:true}).click();await p.getByText('Richiesta d’iscrizione registrata.',{exact:true}).or(p.getByText("Richiesta d'iscrizione registrata.",{exact:true})).waitFor();
  const req=await ok(db.from('iscrizioni_corsi').select('id,stato').eq('edizione_id',edition).eq('persona_id',student.id).single());
  check(req.stato==='in_attesa','Richiesta senza tessera in attesa');
- check(await courseCard.getByRole('button',{name:'Richiedi iscrizione'}).isDisabled(),'Doppia richiesta disabilitata');
- await s.goto(origin+staffCourses);await s.getByRole('heading',{name:editionName,exact:true}).waitFor();
+ await p.goto(origin+courses+'?tab=catalogo');await courseCard.waitFor();check(await courseCard.getByRole('button',{name:'Richiedi iscrizione'}).count()===0||await courseCard.getByRole('button',{name:'Richiedi iscrizione'}).isDisabled(),'Doppia richiesta disabilitata');
+ await s.goto(origin+staffCourses+'?tab=allievi');await s.getByRole('heading',{name:editionName,exact:true}).waitFor();
  check(await s.locator('[name=massimo_partecipanti]').count()===0,'Capienza assente dalla scheda corso');
- const requestRow=s.getByRole('row').filter({hasText:'Collaudo approvato'});await requestRow.waitFor();check(await requestRow.locator('option[value=iscritto]').isDisabled(),'Conferma vietata senza tessera');
+ const requestRow=s.getByRole('row').filter({hasText:'Collaudo approvato'});await requestRow.waitFor();await requestRow.getByRole('button',{name:'Cambia stato'}).click();check(await s.getByRole('dialog').locator('option[value=iscritto]').isDisabled(),'Conferma vietata senza tessera');
  const verbale=randomUUID();
  await ok(db.from('cda_verbali').insert({id:verbale,data_consiglio:date(0),oggetto:'QA delibera',tipo:'Approvazione Adesioni Soci',stato:'approvato',percorso_docx:verbale+'/bozza.docx',percorso_pdf:verbale+'/delibera.pdf',approvato_il:new Date().toISOString(),creato_da:staff.id}));
  await ok(db.from('adesioni').update({stato:'attiva',verbale_cda_id:verbale}).eq('id',adhesion));
  await ok(db.from('tesseramenti').insert({adesione_id:adhesion,ente:'QA',stato:'attiva',scade_il:date(100)}));
- await s.reload();await requestRow.locator('select[name=stato]').selectOption('iscritto');await requestRow.getByRole('button',{name:'Salva',exact:true}).click();
+ await s.reload();await requestRow.getByRole('button',{name:'Cambia stato'}).click();await s.getByRole('dialog').locator('select[name=stato]').selectOption('iscritto');await s.getByRole('dialog').getByRole('button',{name:'Salva',exact:true}).click();
  await s.waitForURL(u=>u.searchParams.has('msg'));check((await ok(db.from('iscrizioni_corsi').select('stato').eq('id',req.id).single())).stato==='iscritto','Segreteria conferma dopo tesseramento');
  await ok(db.from('iscrizioni_corsi').insert({edizione_id:edition,persona_id:child.id,stato:'iscritto'}));
  check((await ok(db.from('iscrizioni_corsi').select('id').eq('edizione_id',edition).eq('stato','iscritto'))).length===2,'Superato precedente limite senza alterarlo');
@@ -163,14 +165,16 @@ try{
  member.email=newEmail;await login(p,member);check(new URL(p.url()).pathname==='/area-personale','Nuovo login funzionante');
  // Controllo responsivo di profilo, corsi e certificati su desktop/iPad/iPhone.
  for(const [name,engine,options] of [['desktop',browser,{viewport:{width:1440,height:1000}}],['ipad',mobile,devices['iPad (gen 7)']],['iphone',mobile,devices['iPhone 13']]]){
-  const {ctx,p:vp}=await context(engine,options);await login(vp,member);
+  for(const account of accounts){
+  const {ctx,p:vp}=await context(engine,options);await login(vp,account);
   for(const [suffix,route,heading] of [['profilo',profile,'Impostazioni personali'],['corsi',courses,'I miei corsi']]){
    await vp.goto(origin+route);await vp.getByRole('heading',{name:heading,exact:true}).waitFor();
    const dimensions=await vp.evaluate(()=>({body:document.documentElement.scrollWidth,viewport:innerWidth}));
-   check(dimensions.body<=dimensions.viewport+2,name+' '+suffix+' senza overflow');
-   await vp.screenshot({path:output+'/'+name+'-'+suffix+'.png',fullPage:true});
+   check(dimensions.body<=dimensions.viewport+2,name+' '+account.role+' '+suffix+' senza overflow');
+   await vp.screenshot({path:output+'/'+name+'-'+account.role+'-'+suffix+'.png',fullPage:true});
   }
   await ctx.close();
+  }
  }
  check(errors.length===0,'Nessuna eccezione JavaScript nei flussi principali');
 }finally{

@@ -1,5 +1,6 @@
 'use client';
 import {useState,useRef,type FormEvent} from 'react';
+import {markFormSaved} from '@/lib/dirty-navigation';
 import {sendAssociationMail} from '@/app/comunicazioni/actions';
 import type {MailTemplate,MailMode} from '@/lib/email-tools';
 import type {MailResult} from '@/lib/email-service';
@@ -9,13 +10,13 @@ export default function AssociationMailForm({kind,id,nonce,fingerprint,templates
   e.preventDefault();if(busy.current||finished||!confirm||!count)return;
   busy.current=true;setPending(true);setMessage('');
   try{
-   const form=new FormData(e.currentTarget);const result=await sendAssociationMail(form);
-   if('mode' in result){const r=result as MailResult;setFailed(Boolean(r.error));setFinished(true);setMessage(r.error?`${r.error} Accettate dal provider: ${r.accepted}.`:(r.mode==='simulate'?`Simulazione completata: ${r.planned} indirizzi, nessuna email inviata.`:r.mode==='test'?'Email di prova accettata dal provider, nessun invio ai destinatari originali.':`${r.accepted}/${r.planned} email accettate dal provider. La consegna effettiva va verificata nei log Resend.`));}
+   const element=e.currentTarget;const form=new FormData(element);const result=await sendAssociationMail(form);
+   if('mode' in result){const r=result as MailResult;if(!r.error)markFormSaved(element);setFailed(Boolean(r.error));setFinished(true);setMessage(r.error?`${r.error} Accettate dal provider: ${r.accepted}.`:(r.mode==='simulate'?`Simulazione completata: ${r.planned} indirizzi, nessuna email inviata.`:r.mode==='test'?'Email di prova accettata dal provider, nessun invio ai destinatari originali.':`${r.accepted}/${r.planned} email accettate dal provider. La consegna effettiva va verificata nei log Resend.`));}
    else{setFailed(true);setMessage(result.error??'Operazione non completata.');}
   }catch{setFailed(true);setFinished(true);setMessage('Esito incerto: controlla lo storico del provider prima di ripetere.');}
   finally{busy.current=false;setPending(false);}
  }
- return <form className="panel stack" onSubmit={submit}>
+ return <form data-dirty-form className="panel stack" onSubmit={submit}>
   <h2>Scrivi email</h2><p className="notice">{mode==='simulate'?'Modalità simulazione: nessuna email reale verrà inviata.':mode==='test'?'Modalità test: una copia verrà inviata soltanto alla casella di collaudo configurata.':'Invio reale ai recapiti indicati. Usa esclusivamente comunicazioni associative di servizio.'}</p>
   <input type="hidden" name="kind" value={kind}/><input type="hidden" name="id" value={id}/><input type="hidden" name="nonce" value={nonce}/><input type="hidden" name="fingerprint" value={fingerprint}/>
   <label>Modello<select name="template" value={template} disabled={pending||finished} onChange={e=>{const t=templates.find(t=>t.id===e.target.value)!;setTemplate(t.id);setSubject(t.subject);setBody(t.body);setConfirm(false);}}>{templates.map(t=><option key={t.id} value={t.id}>{t.label}</option>)}</select></label>

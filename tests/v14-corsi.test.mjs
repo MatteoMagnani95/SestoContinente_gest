@@ -10,7 +10,12 @@ test('Eliminazione corsi: conferma, autorizzazioni staff, cancellazione mirata e
  const old=read('supabase/migrations/20261111210200_gestionale_completo.sql');
  for(const match of old.matchAll(/references public\.(edizioni_corsi|corsi)\(id\)([^,\n]*)/gi))assert.doesNotMatch(match[2],/on delete cascade/i);
  const actions=read('app/gestionale/corsi/actions.ts');
- assert.match(actions,/deleteEdition[\s\S]*requireStaff\(\)[\s\S]*form\.get\('conferma'\)[\s\S]*\.rpc\('rimuovi_record_gestionale'/);
+ assert.match(actions,/deleteEdition[\s\S]*requireStaff\(\)[\s\S]*form\.get\('conferma'\)[\s\S]*removeCourseEdition\(supabase,id\)/);
+ const removal=read('lib/course-errors.ts'),hotfix=read('docs/release/COURSE_DUPLICATE_HOTFIX.sql');
+ assert.match(removal,/data\.stato==='annullato'[\s\S]*\.rpc\('elimina_edizione_annullata_vuota'[\s\S]*\.rpc\('rimuovi_record_gestionale'/);
+ assert.match(hotfix,/auth\.uid\(\) IS NULL OR NOT coalesce\(public\.is_staff\(\),false\)/);
+ assert.match(hotfix,/FOR UPDATE/);assert.match(hotfix,/PERFORM public\.rimuovi_record_gestionale\('edizioni_corsi',p_id\)/);
+ assert.doesNotMatch(hotfix,/ON DELETE CASCADE|DISABLE TRIGGER/i);
  assert.match(moduleActions,/deleteModuleRecord[\s\S]*requireStaff\(\)[\s\S]*rimuovi_record_gestionale/);
  assert.match(page,/<RemoveRecord moduleKey=\{moduleKey\}/);assert.match(read('components/RemoveRecord.tsx'),/action=\{deleteModuleRecord\}/);
 });

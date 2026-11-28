@@ -5,7 +5,7 @@ import {createClient} from '@supabase/supabase-js';
 import {PDFDocument} from 'pdf-lib';
 import {chromium,webkit,devices} from 'playwright';
 const url=process.env.NEXT_PUBLIC_SUPABASE_URL,anon=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,service=process.env.SUPABASE_SERVICE_ROLE_KEY;
-const origin='http://127.0.0.1:3000';
+const origin='http://127.0.0.1:3314';
 if(!url||!['localhost','127.0.0.1'].includes(new URL(url).hostname)||!anon||!service)throw Error('Solo Supabase locale con credenziali effimere');
 const db=createClient(url,service,{auth:{persistSession:false,autoRefreshToken:false}});
 const password='QA-only-'+randomUUID(), report=[];
@@ -61,7 +61,7 @@ async function login(page,account){
  await page.getByRole('button',{name:'Accedi',exact:true}).click();
  await page.waitForURL(u=>!['/accedi','/smista'].includes(u.pathname),{timeout:30000});
 }
-const row=(p,label)=>p.getByRole('row').filter({has:p.getByRole('rowheader',{name:label+' Collaudo',exact:true})});
+const row=(p,label)=>p.getByRole('row').filter({hasText:label});
 async function openList(p){await p.goto(origin+list);await p.getByRole('heading',{name:'Certificati medici',exact:true}).waitFor();await row(p,'QA Mancante').waitFor();}
 await login(page,admin);await openList(page);
 check(await row(page,'QA Mancante').count()===1,'UI una riga per iscritto senza file');
@@ -95,10 +95,10 @@ const ownerContext=await browser.newContext(),ownerPage=await ownerContext.newPa
 resp=await ownerPage.request.get(origin+'/documenti/'+validCert.doc);check(resp.status()===200,'Documento accessibile al titolare');
 check((await ok(ca.from('notifiche').select('id').eq('tipo','sollecito_certificato'))).length===0,'RLS notifica invisibile ad altro socio');
 const memberContext=await browser.newContext(),memberPage=await memberContext.newPage();await login(memberPage,b);
-await memberPage.goto(origin+'/area-personale');await memberPage.getByRole('link',{name:'Carica il certificato medico richiesto'}).waitFor();check(true,'Notifica visibile in area personale del destinatario');
+await memberPage.goto(origin+'/area-personale?tab=notifiche');await memberPage.getByRole('link',{name:'Carica il certificato medico richiesto'}).waitFor();check(true,'Notifica visibile in area personale del destinatario');
 resp=await memberPage.request.get(origin+'/documenti/'+validCert.doc);check(resp.status()===404,'Route documento nega altro socio');
 await memberPage.goto(origin+list);check(new URL(memberPage.url()).pathname!==list,'Area amministrativa negata al socio');
-await memberPage.goto(origin+'/area-personale');await memberPage.getByRole('link',{name:'Carica il certificato medico richiesto'}).click();
+await memberPage.goto(origin+'/area-personale?tab=notifiche');await memberPage.getByRole('link',{name:'Carica il certificato medico richiesto'}).click();
 await memberPage.locator('input[name=rilasciato_il]').fill(date(-1));await memberPage.locator('input[name=scade_il]').fill(date(90));await memberPage.locator('input[name=file]').setInputFiles({name:'qa.pdf',mimeType:'application/pdf',buffer:bytes});await memberPage.getByRole('button',{name:'Carica certificato',exact:true}).click();await memberPage.getByText('Documento ricevuto, in attesa di verifica amministrativa.').waitFor({timeout:30000});check(true,'Caricamento PDF tramite browser riuscito');
 await openList(page);check((await row(page,'QA Mancante').innerText()).includes('In attesa di verifica'),'Documento caricato appare in verifica');
 check(await row(page,'QA Mancante').getByRole('button',{name:'Invia notifica'}).count()===0,'Sollecito non disponibile dopo caricamento');

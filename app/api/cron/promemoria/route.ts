@@ -9,6 +9,9 @@ export async function GET(request:Request){
  const secret=process.env.CRON_SECRET;
  if(!secret||request.headers.get('authorization')!==`Bearer ${secret}`)
   return new Response('Unauthorized',{status:401});
+ // Le anteprime possono ereditare configurazioni non isolate: non scrivere nel DB.
+ if((process.env.VERCEL_ENV&&process.env.VERCEL_ENV!=='production')||process.env.SESTO_TEST_MODE?.trim().toLowerCase()==='true')
+  return NextResponse.json({ok:false,error:'Promemoria automatici disabilitati in collaudo'},{status:403,headers:{'Cache-Control':'no-store'}});
  const url=process.env.NEXT_PUBLIC_SUPABASE_URL;
  const key=process.env.SUPABASE_SERVICE_ROLE_KEY;
  if(!url||!key)return new Response('Configurazione Supabase mancante',{status:503});

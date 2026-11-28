@@ -1,0 +1,96 @@
+/* Sesto Continente 3.0 — design tokens. No remote fonts. */
+:root {
+  --sc-navy: #102D3B;
+  --sc-teal: #007D83;
+  --sc-teal-ink: #00566A;
+  --sc-ocean: #285EAE;
+  --sc-aqua: #46C9C4;
+  --sc-surface: #F7FAFC;
+  --sc-white: #FFFFFF;
+  --sc-muted: #526878;
+  --sc-border: #DFE8ED;
+  --sc-control-border: #778994;
+  --sc-focus: #075985;
+  --sc-secretariat: #006D74;
+  --sc-teaching: #285EAE;
+  --sc-calendar: #6844B1;
+  --sc-equipment: #945000;
+  --sc-finance: #187344;
+  --sc-system: #475569;
+  /* Identità 3.0: i colori vividi sono decorativi, gli inchiostri sono accessibili. */
+  --sc-brand-deep: #073B4C;
+  --sc-brand-teal: #009EAA;
+  --sc-teaching-vivid: #367BD6;
+  --sc-pool-vivid: #249ED4;
+  --sc-calendar-vivid: #805AD5;
+  --sc-event-vivid: #FF6B5E;
+  --sc-finance-vivid: #249B62;
+  --sc-equipment-vivid: #F49B19;
+  --sc-pool: #086B96;
+  --sc-event: #B83B34;
+  --sc-certificate: #5147AC;
+  --sc-documents: #455B76;
+  --sc-secretariat-tint: #E3F7F5;
+  --sc-teaching-tint: #E8F1FF;
+  --sc-calendar-tint: #F0E9FC;
+  --sc-equipment-tint: #FFF1DD;
+  --sc-finance-tint: #E4F6EB;
+  --sc-system-tint: #EEF3F8;
+  --sc-pool-tint: #E0F5FC;
+  --sc-event-tint: #FDEBE8;
+  --sc-certificate-tint: #EFECFC;
+  --sc-documents-tint: #EEF2F7;
+  --sc-success-fg: #166534;
+  --sc-success-bg: #E8F5EC;
+  --sc-warning-fg: #854D0E;
+  --sc-warning-bg: #FFF4DE;
+  --sc-danger-fg: #A12637;
+  --sc-danger-bg: #FDECEF;
+  --sc-info-fg: #1D5D95;
+  --sc-info-bg: #EAF3FC;
+  --sc-neutral-fg: #475569;
+  --sc-neutral-bg: #EDF1F4;
+  --sc-font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --sc-space-1: 4px;
+  --sc-space-2: 8px;
+  --sc-space-3: 12px;
+  --sc-space-4: 16px;
+  --sc-space-5: 20px;
+  --sc-space-6: 24px;
+  --sc-space-8: 32px;
+  --sc-radius-sm: 12px;
+  --sc-radius: 16px;
+  --sc-shadow: 0 2px 4px rgb(7 59 76 / 2%), 0 8px 24px rgb(7 59 76 / 4%);
+  --sc-shadow-raised: 0 4px 8px rgb(7 59 76 / 4%), 0 12px 32px rgb(7 59 76 / 8%);
+  --sc-surface-subtle: #F1F6F8;
+  --sc-target: 44px;
+  --sc-primary-target: 48px;
+  --sc-quick-target: 68px;
+  --sc-motion: 180ms;
+  --sc-text: 16px;
+  --sc-text-small: 14px;
+  --sc-title: clamp(28px, 2.6vw, 34px);
+  --sc-section-title: clamp(20px, 1.8vw, 24px);
+  /* Compatibility bridge: existing classes keep their business semantics. */
+  --navy: var(--sc-navy);
+  --navy-dark: var(--sc-brand-deep);
+  --teal: var(--sc-teal);
+  --teal-light: var(--sc-secretariat-tint);
+  --ink: var(--sc-navy);
+  --muted: var(--sc-muted);
+  --line: var(--sc-border);
+  --bg: var(--sc-surface);
+  --white: var(--sc-white);
+  --amber: var(--sc-warning-fg);
+  --amber-bg: var(--sc-warning-bg);
+  --red: var(--sc-danger-fg);
+  --red-bg: var(--sc-danger-bg);
+  font-family: var(--sc-font);
+  color: var(--sc-navy);
+  background: var(--sc-surface);
+  font-size: var(--sc-text);
+  line-height: 1.5;
+}
+@media (max-width: 600px) {
+  :root { --sc-title: clamp(26px, 6.5vw, 30px); --sc-section-title: 21px; }
+}

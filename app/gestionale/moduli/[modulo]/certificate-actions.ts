@@ -42,6 +42,6 @@ export async function sollecitaCertificatoMancante(persona:string){
  // Notifica interna, senza dati clinici. Deduplicazione atomica per persona/account/giorno.
  const {data,error}=await admin.from('notifiche').upsert(recipients.map(utente_id=>({utente_id,tipo:'sollecito_certificato',riferimento:persona+':'+day,titolo:'Documentazione da completare',messaggio:'Accedi alla tua area personale e controlla la documentazione richiesta dalla segreteria.'})),{onConflict:'utente_id,tipo,riferimento',ignoreDuplicates:true}).select('id');
  if(error)return {error:'Notifica non registrata. Riprova.'};
- revalidatePath('/area-personale');revalidatePath(base);
+ revalidatePath('/area-personale');revalidatePath('/notifiche');revalidatePath(base);
  return {message:data?.length?'Notifica registrata nell’area personale.':'Sollecito già registrato oggi.'};
 }

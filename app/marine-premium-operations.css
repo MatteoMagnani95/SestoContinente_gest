@@ -1,0 +1,66 @@
+/* Marine Premium F4C–E. Density without hiding information, reducing targets
+   or altering filters, semantic status colors, data reads and actions. */
+@media screen{
+.sc-marine-private .sc-course-list-toolbar{gap:8px;margin-block:8px}
+.sc-marine-private .sc-course-list-toolbar>p{margin:0;color:#526878;font-size:14px}
+.sc-marine-private .sc-course-view-switch{padding:2px;gap:2px}
+.sc-marine-private .sc-course-card-grid{gap:10px;grid-template-columns:repeat(auto-fill,minmax(min(100%,265px),1fr))}
+.sc-marine-private .sc-course-card{gap:7px;padding:14px}
+.sc-marine-private .sc-course-card header{gap:6px;align-items:center}
+.sc-marine-private .sc-course-discipline{padding:4px 7px;font-size:14px}
+.sc-marine-private .sc-course-card h2{font-size:19px;line-height:1.25}
+.sc-marine-private .sc-course-capacity{gap:4px;padding-block:4px}
+.sc-marine-private .sc-course-team{gap:4px 8px;margin:0 0 4px;line-height:1.4}
+.sc-marine-private .sc-course-card-actions{gap:6px}
+.sc-marine-private .sc-course-card-actions .sc-button{padding-inline:8px}
+.sc-marine-private .sc-course-shortcuts{gap:8px}
+.sc-marine-private .sc-course-shortcuts .sc-quick-action{min-height:56px}
+.sc-marine-private .sc-calendar-controls{gap:8px;margin-block:10px;padding:12px}
+.sc-marine-private :is(.sc-calendar-views,.sc-calendar-period){gap:6px}
+.sc-marine-private .sc-calendar-period h2{font-size:clamp(18px,1.8vw,22px)}
+.sc-marine-private .sc-calendar-filter{gap:8px;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr))}
+.sc-marine-private .sc-calendar-filter label{font-size:14px}
+.sc-marine-private .sc-calendar-filter .check-label{min-height:44px}
+.sc-marine-private .sc-calendar-filter .buttons{display:flex;flex-wrap:wrap;gap:6px}
+.sc-marine-private .sc-calendar-legend{gap:6px}
+.sc-marine-private .sc-calendar-legend span{padding:4px 8px;font-size:14px}
+.sc-marine-private .sc-calendar{gap:6px;margin-block:10px}
+.sc-marine-private .sc-calendar-day{gap:5px;padding:6px}
+.sc-marine-private .sc-calendar-event{gap:3px;padding:7px;line-height:1.4}
+.sc-marine-private .sc-calendar-event small{font-size:14px}
+.sc-marine-private .sc-occupancy-matrix-wrap{margin-top:8px}
+.sc-marine-private .sc-occupancy-matrix :is(th,td){padding:8px;font-size:14px}
+.sc-marine-private .payment-filters{display:flex;gap:8px;align-items:flex-end;margin-bottom:12px;padding:12px}
+.sc-marine-private .payment-filters>label{flex:1 1 138px;min-width:0;max-width:none;font-size:14px}
+.sc-marine-private .payment-filters>.sc-field{flex:1 1 200px;min-width:0}
+.sc-marine-private .payment-filters>label :is(select,input){width:100%;min-width:0}
+.sc-marine-private .payment-filters>.button,.sc-marine-private .payment-filters>.sc-button{flex:none}
+.sc-marine-private :is(.sc-finance-kpis,.sc-equipment-kpis,.sc-loan-kpis){gap:8px;margin-block:8px 12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr))}
+.sc-marine-private :is(.sc-finance-kpis,.sc-equipment-kpis,.sc-loan-kpis) .sc-metric{grid-template-columns:28px minmax(0,1fr);grid-template-rows:auto auto;gap:4px 8px;padding:10px;align-items:center;min-height:70px}
+.sc-marine-private :is(.sc-finance-kpis,.sc-equipment-kpis,.sc-loan-kpis) .sc-metric-icon{grid-column:1;grid-row:1/3;align-self:start;width:28px;height:28px;border-radius:8px}
+.sc-marine-private :is(.sc-finance-kpis,.sc-equipment-kpis,.sc-loan-kpis) .sc-metric-icon .sc-icon{width:17px;height:17px}
+.sc-marine-private :is(.sc-finance-kpis,.sc-equipment-kpis,.sc-loan-kpis) .sc-metric-label{grid-column:2;grid-row:1;font-size:14px;line-height:1.35}
+.sc-marine-private :is(.sc-finance-kpis,.sc-equipment-kpis,.sc-loan-kpis) .sc-metric-value{grid-column:2;grid-row:2;font-size:clamp(20px,1.8vw,25px);line-height:1.2;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.sc-marine-private :is(.sc-finance-kpis,.sc-equipment-kpis,.sc-loan-kpis) .sc-metric-note{grid-column:1/-1;font-size:14px}
+.sc-marine-private .sc-operational-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr));align-items:end;gap:8px;padding:12px;margin-block:10px}
+.sc-marine-private .sc-operational-filters :is(label,.sc-field){min-width:0;font-size:14px}
+.sc-marine-private .sc-operational-filters :is(input:not([type=hidden]),select){width:100%;min-width:0}
+.sc-marine-private .sc-finance-recent,.sc-marine-private .sc-revision-priority{margin-top:12px}
+.sc-marine-private .sc-revision-tile{padding:10px;gap:8px}
+@media(min-width:1001px){
+ .sc-marine-private .sc-finance-kpis .sc-metric{grid-template-columns:1fr}
+ .sc-marine-private .sc-finance-kpis .sc-metric-icon{display:none}
+ .sc-marine-private .sc-finance-kpis :is(.sc-metric-label,.sc-metric-value){grid-column:1}
+}
+@media(max-width:600px){
+ .sc-marine-private .sc-course-card-grid{grid-template-columns:minmax(0,1fr)}
+ .sc-marine-private .sc-calendar-controls{padding:10px}
+ .sc-marine-private .sc-calendar-filter,.sc-marine-private .sc-operational-filters{grid-template-columns:minmax(0,1fr)}
+ .sc-marine-private .payment-filters>label,.sc-marine-private .payment-filters>.sc-field{flex:1 1 100%}
+ .sc-marine-private .payment-filters>.button,.sc-marine-private .payment-filters>.sc-button{flex:1 1 auto}
+ .sc-marine-private :is(.sc-finance-kpis,.sc-equipment-kpis,.sc-loan-kpis){grid-template-columns:repeat(2,minmax(0,1fr))}
+ .sc-marine-private :is(.sc-finance-kpis,.sc-equipment-kpis,.sc-loan-kpis) .sc-metric{grid-template-columns:1fr;padding:9px}
+ .sc-marine-private :is(.sc-finance-kpis,.sc-equipment-kpis,.sc-loan-kpis) .sc-metric-icon{display:none}
+ .sc-marine-private :is(.sc-finance-kpis,.sc-equipment-kpis,.sc-loan-kpis) :is(.sc-metric-label,.sc-metric-value){grid-column:1}
+}
+}

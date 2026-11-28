@@ -1,0 +1,33 @@
+import type {ModuleKey} from './modules';
+
+// Presentation-only projection; validated against the server's canonical module schema.
+export const moduleNavigation:Record<ModuleKey,{label:string;adminOnly:boolean}>={
+ anagrafiche:{label:"Persone e anagrafiche",adminOnly:false},
+ adesioni:{label:"Adesioni associative",adminOnly:false},
+ tesseramenti:{label:"Tesseramenti",adminOnly:false},
+ stagioni:{label:"Stagioni",adminOnly:true},
+ corsi:{label:"Catalogo corsi",adminOnly:false},
+ edizioni:{label:"Corsi della stagione",adminOnly:false},
+ iscrizioni:{label:"Iscrizioni ai corsi",adminOnly:false},
+ istruttori:{label:"Istruttori nei corsi",adminOnly:false},
+ qualifiche:{label:"Qualifiche istruttori",adminOnly:false},
+ brevetti:{label:"Brevetti allievi",adminOnly:false},
+ certificati:{label:"Certificati medici",adminOnly:false},
+ programmi:{label:"Programmi didattici",adminOnly:false},
+ versioni:{label:"Versioni programmi",adminOnly:false},
+ piscine:{label:"Piscine",adminOnly:false},
+ corsie:{label:"Corsie",adminOnly:false},
+ calendario:{label:"Calendario lezioni",adminOnly:false},
+ prenotazioni:{label:"Prenotazioni corsie",adminOnly:false},
+ presenze:{label:"Presenze",adminOnly:false},
+ attrezzature:{label:"Inventario attrezzature",adminOnly:false},
+ revisioni:{label:"Revisioni",adminOnly:false},
+ consegne:{label:"Consegne attrezzature",adminOnly:false},
+ quote:{label:"Quote associative",adminOnly:false},
+ addebiti:{label:"Quote corsi",adminOnly:false},
+ pagamenti:{label:"Pagamenti ricevuti",adminOnly:false},
+ listino:{label:"Listino corsi",adminOnly:true},
+ contabilita:{label:"Contabilità interna",adminOnly:true},
+ comunicazioni:{label:"Comunicazioni",adminOnly:false},
+ promemoria:{label:"Regole promemoria",adminOnly:true},
+};

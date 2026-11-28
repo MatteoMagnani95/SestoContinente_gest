@@ -1,0 +1,62 @@
+name: Registro certificati 3.2 - gate OFF/OFF
+on:
+  push:
+    branches: ['fix/3.2-certificati-registro']
+permissions:
+  contents: read
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      QA_ISOLATED_ENV: 'true'
+      SESTO_TEST_MODE: 'true'
+      SESTO_EMAIL_MODE: simulate
+      QA_BASE_URL: http://127.0.0.1:3314
+      NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3314
+      NEXT_TELEMETRY_DISABLED: '1'
+      EMAIL_AUTOMATIC_NOTIFICATIONS: 'false'
+      SC_STRUCTURAL_RPC: 'false'
+      SC_STRUCTURAL_RPC_RELEASE: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 3.4.0
+      - run: npm ci --no-audit --no-fund
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test:static
+      - run: npx playwright install --with-deps chromium webkit
+      - name: Supabase locale
+        run: |
+          set -euo pipefail
+          if [ ! -f supabase/config.toml ] && [ ! -f supabase/config.jsonc ]; then supabase init; fi
+          if [ ! -f supabase/config.toml ]; then supabase config convert --to toml; fi
+          python3 scripts/qa-local-config.py
+          supabase start > "$RUNNER_TEMP/sesto-supabase-start.log" 2>&1 || { echo "Avvio/migrazioni Supabase locale non riusciti"; exit 1; }
+          status=$(mktemp)
+          chmod 600 "$status"
+          trap 'rm -f "$status"' EXIT
+          supabase status --output env > "$status"
+          work=$(mktemp -d "$RUNNER_TEMP/sesto-qa.XXXXXX")
+          chmod 700 "$work"
+          python3 scripts/qa-local-status.py "$status" "$work"
+      - name: Build e browser
+        run: |
+          npm run build
+          npm run start -- --hostname 127.0.0.1 --port 3314 > "$RUNNER_TEMP/sesto-qa-next.log" 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:3314/ >/dev/null && break; sleep 1; done
+          node scripts/medical-e2e.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: medical-release-e2e
+          path: artifacts/medical-e2e
+          if-no-files-found: warn
+          retention-days: 7

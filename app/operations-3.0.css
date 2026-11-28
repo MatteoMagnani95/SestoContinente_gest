@@ -1,0 +1,53 @@
+/* F5 — mockups 08–12, shared operation surfaces. Existing access and form contracts remain unchanged. */
+.sc-operation-tabs{display:flex;flex-wrap:wrap;gap:8px;margin-block:16px}
+.sc-operation-tabs .sc-button{min-height:44px}
+.sc-finance-kpis,.sc-equipment-kpis,.sc-board-kpis{grid-template-columns:repeat(auto-fit,minmax(min(100%,165px),1fr));gap:12px}
+.sc-finance-kpis .sc-metric-value{font-variant-numeric:tabular-nums;white-space:normal;overflow-wrap:anywhere}
+.sc-money{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.sc-finance-recent{margin-top:16px}
+.sc-equipment-icon{display:inline-block;width:28px;height:28px;padding:4px;box-sizing:border-box;vertical-align:middle;border-radius:8px;background:var(--sc-equipment-tint);color:var(--sc-equipment)}
+.sc-operation-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:12px}
+.sc-revision-priority{margin-top:16px}
+.sc-revision-tile{display:flex;align-items:flex-start;gap:10px;padding:12px;border:1px solid var(--sc-border);border-radius:12px;min-width:0;background:var(--sc-surface)}
+.sc-revision-tile>div{min-width:0;overflow-wrap:anywhere}.sc-revision-tile>svg{flex:none}
+.sc-revision-tile p{font-size:14px;color:var(--sc-muted);margin:4px 0}
+.sc-operation-list-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:12px}
+.sc-event-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr))}
+.sc-event-card{border-top:4px solid var(--sc-event);display:flex;flex-direction:column;min-width:0}
+.sc-event-card h2{display:flex;align-items:center;gap:7px;line-height:1.3;font-size:19px;overflow-wrap:anywhere}
+.sc-event-card h2 .sc-icon{flex:none;color:var(--sc-event);background:var(--sc-event-tint);padding:4px;border-radius:8px;width:28px;height:28px}
+.sc-event-card p{margin:0;overflow-wrap:anywhere}
+.sc-event-location{font-weight:600;color:var(--sc-muted)}
+.sc-event-meta{display:flex;flex-wrap:wrap;gap:10px;color:var(--sc-muted);font-size:14px}
+.sc-event-meta span,.sc-event-counts span{display:inline-flex;align-items:center;gap:5px}
+.sc-event-meta .sc-icon,.sc-event-counts .sc-icon{width:16px;height:16px;flex:none}
+.sc-event-card .sc-capacity span{background:var(--sc-secretariat)}
+.sc-event-counts{display:flex;flex-wrap:wrap;gap:5px}
+.sc-event-counts span{padding:5px 7px;background:var(--sc-system-tint);border-radius:6px;font-size:12px;line-height:1.4}
+.sc-event-counts .sc-event-pending{background:var(--sc-warning-bg);color:var(--sc-warning-fg)}
+.sc-event-card-actions{margin-top:auto;display:flex;flex-wrap:wrap;gap:8px}
+.sc-event-card-actions .sc-button{flex:1;justify-content:center;text-align:center}
+.sc-board-overview{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:16px;align-items:start;margin-block:16px}
+.sc-board-overview>section,.sc-board-overview>aside{min-width:0}
+.sc-board-drafts{grid-column:1/-1}
+.sc-board-summary-item{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:10px;padding:12px 0;border-top:1px solid var(--sc-border)}
+.sc-board-summary-item h3{margin:0;font-size:17px;overflow-wrap:anywhere}
+.sc-board-summary-item p{margin:5px 0;overflow-wrap:anywhere}
+.sc-board-summary-item .sc-row-actions,.sc-board-progress{flex-basis:100%}
+.sc-board-progress{display:grid;gap:4px;font-size:14px}
+.sc-board-progress progress{width:100%;height:10px;accent-color:var(--sc-secretariat)}
+.sc-board-private{background:var(--sc-secretariat-tint);display:grid;gap:10px}
+.sc-board-private>.sc-icon{color:var(--sc-secretariat);width:32px;height:32px}.sc-board-private h2,.sc-board-private p{margin:0}
+.sc-document-private{display:flex;align-items:center;gap:12px;flex-wrap:wrap;border:1px solid var(--sc-border);background:var(--sc-documents-tint);border-radius:12px;padding:12px;margin:12px 0}
+.sc-document-private>.sc-icon{color:var(--sc-documents);width:24px;height:24px;flex:none}
+.sc-document-private>div{flex:1 1 200px;min-width:0}
+.sc-document-private p{margin:4px 0 0;font-size:14px;color:var(--sc-muted)}
+.sc-document-name{display:flex;align-items:flex-start;gap:8px}
+.sc-document-name>div{min-width:0;overflow-wrap:anywhere}.sc-document-name p{margin:4px 0}
+.sc-file-icon{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;background:var(--sc-system-tint);color:var(--sc-system);flex:none}
+.sc-file-pdf{background:var(--sc-event-tint);color:var(--sc-event)}
+.sc-file-word{background:var(--sc-teaching-tint);color:var(--sc-teaching)}
+.sc-file-sheet{background:var(--sc-finance-tint);color:var(--sc-finance)}
+.sc-file-image{background:var(--sc-calendar-tint);color:var(--sc-calendar)}
+@media(max-width:850px){.sc-board-overview{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:600px){.sc-finance-kpis,.sc-equipment-kpis,.sc-board-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.sc-money{white-space:normal}.sc-operation-tabs a{flex:1 1 auto;justify-content:center}.sc-event-card-actions .sc-button{flex-basis:100%}}

@@ -1,0 +1,39 @@
+name: Prepara migrazione strutturale 3.1 (solo file)
+on:
+  push:
+    branches: ['perf/3.1-migration']
+    paths: ['.github/workflows/prepare-structural-migration.yml']
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 3.4.0
+      - name: Genera file canonico senza connessione al database
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase --version
+          supabase migration new --help
+          supabase migration new structural_read_snapshots
+          files=(supabase/migrations/*_structural_read_snapshots.sql)
+          test "${#files[@]}" -eq 1
+          file="${files[0]}"
+          test -f "$file"
+          test "$(basename "$file")" \> "20261126213000_deroga_istruttori_corsi.sql"
+          { printf '%s\n' '-- 3.1: additive read-only RPCs; application activation remains off by default.'; sed '1,2d' scripts/qa-structural-rpc.sql; } > "$file"
+          printf 'GENERATED_MIGRATION=%s\n' "$file"
+          sha256sum "$file"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: structural-migration-draft
+          path: supabase/migrations/*_structural_read_snapshots.sql
+          if-no-files-found: error
+          retention-days: 7

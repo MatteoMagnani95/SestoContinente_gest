@@ -1,0 +1,166 @@
+// Local email sink only. Never opens a non-loopback verification URL.
+import assert from 'node:assert/strict';
+import {randomUUID,randomBytes} from 'node:crypto';
+import {setTimeout as delay} from 'node:timers/promises';
+import {chromium,expect} from '@playwright/test';
+import {mkdir} from 'node:fs/promises';
+import {resolve,join} from 'node:path';
+import {waitForBrandImages} from './qa-marine-images.mjs';
+
+export async function runAuth({app,admin}){
+ assert.equal(process.env.QA_ISOLATED_ENV,'true');
+ assert.ok(['127.0.0.1','localhost'].includes(app.hostname));
+ assert.ok(process.env.NEXT_PUBLIC_SITE_URL,'NEXT_PUBLIC_SITE_URL is required for local signup and recovery');
+ assert.equal(new URL(process.env.NEXT_PUBLIC_SITE_URL).origin,app.origin,'Local site origin must match the QA application');
+ const mail='http://127.0.0.1:54324',seen=new Set();
+ const email='signup-'+randomUUID()+'@example.invalid';
+ const oldPassword=' '+randomBytes(20).toString('hex')+' ',newPassword=' '+randomBytes(20).toString('hex')+' ';
+ async function emailLink(kind){
+  for(let n=0;n<40;n++){
+   const list=await fetch(mail+'/api/v1/messages');
+   assert.ok(list.ok,'Local email sink unavailable');
+   const data=await list.json();
+   for(const message of data.messages??[]){
+    if(seen.has(message.ID)||!message.To?.some(t=>t.Address.toLowerCase()===email))continue;
+    const full=await fetch(mail+'/api/v1/message/'+encodeURIComponent(message.ID));
+    assert.ok(full.ok,'Local email message unavailable');
+    const body=await full.json();
+    const links=[...(body.HTML??'').matchAll(/href=["']([^"']+)["']/gi)].map(m=>m[1].replaceAll('&amp;','&'));
+    for(const href of links){
+     let url;try{url=new URL(href);}catch{continue;}
+     if(!['127.0.0.1','localhost'].includes(url.hostname)||url.port!=='54321'||url.pathname!=='/auth/v1/verify'||url.searchParams.get('type')!==kind)continue;
+     const redirect=url.searchParams.get('redirect_to');
+     if(redirect)assert.equal(new URL(redirect).origin,app.origin,'Verification redirect must stay in local application');
+     seen.add(message.ID);return url.href;
+    }
+   }
+   await delay(500);
+  }
+  throw Error('Messaggio di '+kind+' non trovato nel sink locale');
+ }
+ const browser=await chromium.launch();
+ const context=await browser.newContext({baseURL:app.href,viewport:{width:1280,height:800}});
+ try{
+  const page=await context.newPage();
+  // Optional screenshots ONLY from this synthetic local flow; never export sessions.
+  const capture=async(name)=>{
+   if(!process.env.QA_MARINE_VISUAL_DIR)return;
+   const out=resolve(process.env.QA_MARINE_VISUAL_DIR),temp=resolve(process.env.RUNNER_TEMP||'.');
+   assert.ok(out.startsWith(temp+'/')&&out!==resolve('.')&&new URL(page.url()).origin===app.origin);
+   const work=resolve(process.env.QA_WORK_DIR||'.');assert.ok(out!==work&&!out.startsWith(work+'/'));
+   await mkdir(out,{recursive:true});
+   const original=page.viewportSize();
+   try{for(const width of [320,390,768,1024,1440]){
+    await page.setViewportSize({width,height:width>=1024?900:844});
+    await page.evaluate(()=>document.fonts.ready);
+    await expect(page.getByRole('heading',{level:1}).first()).toBeVisible();
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1),name+' overflow '+width);
+    // Catch vertical letter-by-letter wrapping even when document scrollWidth is valid.
+    const brand=await page.locator('.sc-site-header .brand strong').evaluate(el=>{
+     const range=document.createRange();range.selectNodeContents(el);
+     const rects=Array.from(range.getClientRects()).filter(r=>r.width>0&&r.height>0);
+     return {lines:new Set(rects.map(r=>Math.round(r.top))).size,width:el.getBoundingClientRect().width};
+    });
+    assert.ok(brand.lines>0&&brand.lines<=2&&brand.width>=80,name+' header brand collapsed at '+width+': '+JSON.stringify(brand));
+    if((name==='05-domanda'||name==='06-verifica-associativa')&&width<=1000){
+     await expect(page.locator('.sc-site-header .sc-direct-logout button')).toBeVisible();
+     const header=await page.locator('.sc-site-header').boundingBox();
+     assert.ok(header&&header.height<=160,name+' excessive mobile header height '+width);
+    }
+    if(width===390||width===1440){await waitForBrandImages(page);await page.screenshot({path:join(out,name+'-'+width+'.png'),fullPage:true,animations:'disabled',caret:'hide'});}
+   }}finally{if(original)await page.setViewportSize(original);}
+  };
+  if(process.env.QA_MARINE_VISUAL_DIR){await page.goto('/');await capture('01-home');await page.goto('/accedi');await capture('02-login');}
+  const logout=async()=>{
+   await page.locator('.sc-account-menu summary').click();
+   await page.locator('.sc-account-menu').getByRole('button',{name:'Esci'}).click();
+   await expect(page).toHaveURL(/\/accedi\?msg=uscita/);
+  };
+  const follow=async(kind,path)=>{
+   const link=await emailLink(kind);
+   try{await page.goto(link);await expect(page).toHaveURL(url=>url.origin===app.origin&&url.pathname===path,{timeout:15000});}
+   catch{throw Error('Callback locale '+kind+' non ha raggiunto '+path);}
+  };
+  await page.goto('/registrati');
+  await capture('03-account');
+  await page.locator('input[name=email]').fill(email);
+  await page.locator('input[name=password]').fill(oldPassword);
+  await page.locator('input[name=confirm]').fill(oldPassword);
+  await page.locator('input[name=presa_visione]').check();
+  await expect(page.locator('input[name=immagini]')).not.toBeChecked();
+  await page.getByRole('button',{name:'Crea account'}).click();
+  await expect(page).toHaveURL(/\/registrati\?ok=verifica/);
+  await capture('04-verifica-email');
+  const users=await admin.auth.admin.listUsers({page:1,perPage:100});
+  assert.ifError(users.error);const user=users.data.users.find(u=>u.email===email);
+  assert.ok(user&&!user.email_confirmed_at);
+  await follow('signup','/richiesta/nuova');
+  await capture('05-domanda');
+  const verified=await admin.auth.admin.getUserById(user.id);
+  assert.ifError(verified.error);assert.ok(verified.data.user.email_confirmed_at);
+  const declarations=await admin.from('scelte_iscrizione').select('tipo,scelta,versione,origine').eq('utente_id',user.id).order('tipo');
+  assert.ifError(declarations.error);
+  assert.deepEqual(declarations.data,[{tipo:'immagini',scelta:false,versione:'TEST-COLLAUDO-1',origine:'registrazione'},{tipo:'privacy',scelta:true,versione:'TEST-COLLAUDO-1',origine:'registrazione'}]);
+  console.log('OK UI registrazione, mail locale, verifica email e rifiuto foto facoltativo');
+  const fields={nome:'Collaudo',cognome:'Richiedente',data_nascita:'2000-01-01',luogo_nascita:'Modena',provincia_nascita:'MO',stato_nascita:'Italia',indirizzo:'Via sintetica 1',cap:'41100',comune:'Modena',telefono:'0000000000'};
+  for(const [key,value] of Object.entries(fields))await page.locator('input[name='+key+']').fill(value);
+  await page.locator('input[name=flag_statuto]').check();await page.locator('input[name=flag_privacy]').check();
+  await page.getByRole('button',{name:'Salva bozza'}).click();
+  await expect(page).toHaveURL(/msg=salvata/);
+  const read=async()=>{const r=await admin.from('richieste').select('stato,versione_statuto,versione_privacy,immagini_scelta').eq('utente_id',user.id).single();assert.ifError(r.error);return r.data;};
+  assert.deepEqual(await read(),{stato:'bozza',versione_statuto:'TEST-COLLAUDO-1',versione_privacy:'TEST-COLLAUDO-1',immagini_scelta:false});
+  await page.getByRole('link',{name:'Continua compilazione'}).click();
+  await expect(page.locator('input[name=nome]')).toHaveValue('Collaudo');
+  await page.getByRole('button',{name:'Controlla e invia'}).click();
+  await page.getByRole('dialog',{name:'Riepilogo della domanda'}).getByRole('button',{name:'Conferma e invia alla segreteria'}).click();
+  await expect(page).toHaveURL(/msg=inviata/);
+  assert.equal((await read()).stato,'inviata');
+  await capture('06-verifica-associativa');
+  console.log('OK UI bozza persistente, riepilogo e invio pratica esclusivamente TEST');
+  await logout();
+  await page.goto('/richiesta/stato');await expect(page).toHaveURL(/\/accedi\?msg=account/);
+  await page.locator('input[name=email]').first().fill(email);
+  await page.locator('input[name=password]').fill(oldPassword);
+  await page.getByRole('button',{name:'Accedi',exact:true}).click();
+  await expect(page).toHaveURL(/\/richiesta\/stato$/);await logout();
+  await page.getByText('Password dimenticata?',{exact:true}).click();
+  const recovery=page.locator('details').filter({hasText:'Password dimenticata?'});
+  await recovery.locator('input[name=email]').fill(email);
+  await recovery.getByRole('button',{name:'Invia link di recupero'}).click();
+  await expect(recovery.getByText('Se l’account esiste e l’invio va a buon fine',{exact:false})).toBeVisible();
+  await follow('recovery','/nuova-password');
+  await page.locator('input[name=password]').fill(newPassword);
+  await page.locator('input[name=confirm]').fill(newPassword);
+  await page.getByRole('button',{name:'Salva password'}).click();
+  await expect(page).toHaveURL(/\/richiesta\/stato$/);await logout();
+  await page.locator('input[name=email]').first().fill(email);
+  await page.locator('input[name=password]').fill(oldPassword);
+  await page.getByRole('button',{name:'Accedi',exact:true}).click();
+  await expect(page.getByRole('alert').filter({hasText:'Email o password non corrette'})).toBeVisible();
+  await page.locator('input[name=password]').fill(newPassword);
+  // Rileva anche eventuali messaggi transitori prima della navigazione completa.
+  const falseErrors=[];
+  await page.exposeFunction('reportLoginError',message=>falseErrors.push(message));
+  await page.evaluate(()=>{
+   const form=document.querySelector('input[name=password]')?.closest('form');
+   if(!form)throw Error('Login form missing');
+   // L'errore del tentativo precedente è lecito fino al nuovo submit.
+   form.addEventListener('submit',()=>{
+    const previousAlerts=new Set(form.querySelectorAll('[role=alert]'));
+    const observer=new MutationObserver(()=>{
+     for(const alert of form.querySelectorAll('[role=alert]')){
+      if(previousAlerts.has(alert))continue;
+      const text=alert.textContent??'';
+      if(/Email o password non corrette|Operazione non completata|Accesso temporaneamente non disponibile/.test(text))void window.reportLoginError(text);
+     }
+    });
+    observer.observe(form,{childList:true,subtree:true,characterData:true});
+   },{once:true});
+  });
+  await page.getByRole('button',{name:'Accedi',exact:true}).click();
+  await expect(page).toHaveURL(/\/richiesta\/stato$/);
+  assert.deepEqual(falseErrors,[],'Nessun errore rosso durante un login riuscito');
+  await logout();
+  console.log('OK UI login/logout, recupero via email locale, password con spazi e vecchia password rifiutata');
+ }finally{await context.close();await browser.close();}
+}

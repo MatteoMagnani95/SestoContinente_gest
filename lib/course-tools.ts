@@ -10,9 +10,19 @@ export function textValue(form:FormData,name:string,max=200):string{
 export function uuidValue(form:FormData,name:string):string{
  const v=textValue(form,name,40);if(!UUID_RE.test(v))throw new Error('Identificativo non valido');return v;
 }
+export function isCalendarDate(value:string):boolean{
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(value)||value.startsWith('0000-'))return false;
+ const parsed=new Date(`${value}T12:00:00Z`);
+ return Number.isFinite(parsed.getTime())&&parsed.toISOString().slice(0,10)===value;
+}
+export function todayRome(now:Date=new Date()):string{
+ const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Rome',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(now);
+ const part=(type:string)=>parts.find(p=>p.type===type)?.value;
+ return `${part('year')}-${part('month')}-${part('day')}`;
+}
 export function dateValue(form:FormData,name:string):string{
  const v=textValue(form,name,10);
- if(!/^\d{4}-\d{2}-\d{2}$/.test(v)||new Date(`${v}T12:00:00Z`).toISOString().slice(0,10)!==v)
+ if(!isCalendarDate(v))
   throw new Error('Data non valida');
  return v;
 }
@@ -38,3 +48,11 @@ export function formatRome(value:string|null|undefined):string{
 }
 export function courseName(type:string,level:number|null){return type==='ARA'?`ARA · Livello ${level??'—'}`:type==='APNEA'?'Apnea':'Nuoto libero';}
 export function detailHref(id:string,msg?:string){return `/gestionale/corsi/${encodeURIComponent(id)}${msg?`?msg=${encodeURIComponent(msg)}`:''}`;}
+
+/** Accept the existing combined editor or the date/time fields used by the calendar. */
+export function lessonInterval(form:FormData){
+ const local=(key:'inizio'|'fine')=>form.has('giorno_'+key)||form.has('ora_'+key)?dateValue(form,'giorno_'+key)+'T'+textValue(form,'ora_'+key,5):textValue(form,key,16);
+ const inizio=asRomeISO(local('inizio')),fine=asRomeISO(local('fine'));
+ if(fine<=inizio)throw new Error('Intervallo non valido');
+ return {inizio,fine};
+}

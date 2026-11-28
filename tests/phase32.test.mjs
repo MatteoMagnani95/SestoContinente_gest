@@ -13,7 +13,7 @@ const ui=file('app/gestionale/corsi/[id]/page.tsx');
 
 test('Sicurezza: tutte le azioni guidate richiedono ruolo di segreteria',()=>{
  const functions=[...actions.matchAll(/export async function (\w+)\(form:FormData\)\{/g)].map(x=>x[1]);
- assert.deepEqual(functions.sort(),['createCatalogCourse','createEdition','updateEdition','addInstructor','removeInstructor','replaceResponsible','addEnrollment','updateEnrollment','createLesson','recordClassAttendance','setCourseProgram','saveLessonModules','deleteEdition'].sort());
+ assert.deepEqual(functions.sort(),['createCatalogCourse','createEdition','updateEdition','addInstructor','removeInstructor','replaceResponsible','addEnrollment','authorizeInstructorEnrollment','updateEnrollment','createLesson','recordClassAttendance','setCourseProgram','saveLessonModules','deleteEdition'].sort());
  for(const [,name,body] of actions.matchAll(/export async function (\w+)\(form:FormData\)\{([\s\S]*?)(?=\nexport async function|$)/g)){
   assert.match(body,/await requireStaff\(\)/,`${name}: manca controllo staff`);
  }
@@ -26,13 +26,13 @@ test('La creazione guidata delle lezioni è atomica e applica RLS',()=>{
 });
 test('Corsi: UI per iscrizioni, istruttori, lezioni e presenze',()=>{
  for(const a of ['addEnrollment','updateEnrollment','addInstructor','replaceResponsible','createLesson','recordClassAttendance']) assert.match(ui,new RegExp(`action=\\{${a}\\}`));
- assert.match(ui,/CourseLanePicker/);
+ assert.match(ui,/CourseLessonFields/);assert.match(file('components/CourseLessonFields.tsx'),/<CourseLanePicker/);
 });
 test('Nuove rotte accessibili solo a staff e navigazione funzionante',()=>{
  for(const f of ['app/gestionale/corsi/page.tsx','app/gestionale/corsi/nuovo/page.tsx','app/gestionale/corsi/[id]/page.tsx']){
   assert.ok(existsSync(path.join(ROOT,f)));assert.match(file(f),/await requireStaff\(\)/);
  }
- assert.match(file('components/StaffNav.tsx'),/href="\/gestionale\/corsi"/);
+ assert.match(file('components/StaffNav.tsx'),/item\('\/gestionale\/corsi','Gestione corsi'/);
 });
 test('Gestione iscrizioni: stato confermato richiede adesione attiva della stessa stagione',()=>{
  assert.match(actions,/from\('gest_soci_iscrivibili'\)[^\n]+\.eq\('stagione_id',edition\.stagione_id\)/);

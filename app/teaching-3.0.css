@@ -1,0 +1,34 @@
+/* F4A — course archive, detail and capacity; no authorization or enrollment logic. */
+.sc-course-list-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:12px 0}
+.sc-course-view-switch{display:flex;gap:4px;padding:4px;background:var(--sc-system-tint);border-radius:12px}
+.sc-course-view-switch a{display:flex;min-height:44px;align-items:center;padding:8px 14px;border-radius:9px;color:var(--sc-navy);text-decoration:none;font-weight:650}
+.sc-course-view-switch a[aria-current]{background:white;color:var(--sc-teaching);box-shadow:0 1px 5px #073b4c18}
+.sc-course-card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr));gap:16px}
+.sc-course-card{--course-accent:var(--sc-teaching);--course-tint:var(--sc-teaching-tint);display:flex;flex-direction:column;gap:10px;border-top:4px solid var(--course-accent);min-width:0}
+.sc-course-card.sc-discipline-apnea{--course-accent:var(--sc-calendar);--course-tint:var(--sc-calendar-tint)}
+.sc-course-card.sc-discipline-nuoto{--course-accent:var(--sc-pool);--course-tint:var(--sc-pool-tint)}
+.sc-course-card.sc-discipline-unknown{--course-accent:var(--sc-muted);--course-tint:var(--sc-system-tint)}
+.sc-course-card header{display:flex;gap:8px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+.sc-course-discipline{display:inline-flex;align-items:center;gap:6px;color:var(--course-accent);background:var(--course-tint);padding:6px 9px;border-radius:9px;font-weight:650;font-size:13px}
+.sc-course-card h2{margin:0;line-height:1.3;font-size:19px;overflow-wrap:anywhere}
+.sc-course-card p{margin:0;overflow-wrap:anywhere}
+.sc-course-period{display:flex;align-items:center;gap:7px;font-size:14px}
+.sc-course-capacity{display:grid;gap:6px;padding:10px 0}
+.sc-course-capacity progress{width:100%;height:10px;accent-color:var(--course-accent)}
+.sc-course-team{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:8px 10px;margin:0 0 8px;font-size:14px}
+.sc-course-team dt{font-weight:650;color:var(--sc-muted)}.sc-course-team dd{margin:0;overflow-wrap:anywhere}
+.sc-course-card>.sc-button{margin-top:auto;justify-content:center}
+.sc-course-staff-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:12px}
+.sc-course-staff-summary p{margin:0;overflow-wrap:anywhere}
+.sc-course-tabs a[aria-current]{color:var(--sc-teaching);border-color:var(--sc-teaching)}
+.sc-upcoming-lessons ul{list-style:none;padding:0;margin:0 0 14px}
+.sc-upcoming-lessons li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--sc-border)}
+.sc-upcoming-lessons li p{margin:4px 0 0;color:var(--sc-muted);font-size:14px}
+.sc-upcoming-lessons li a{display:flex;align-items:center;min-height:44px;flex:none}
+@media(max-width:600px){.sc-course-card-grid{grid-template-columns:minmax(0,1fr)}.sc-upcoming-lessons li{align-items:flex-start;flex-direction:column;gap:4px}.sc-course-view-switch{width:100%}.sc-course-view-switch a{flex:1;justify-content:center}}
+
+/* Mockup 05/06: functional icons, distinct primary/secondary actions, compact shortcuts. */
+.sc-course-card-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,118px),1fr));gap:8px;margin-top:auto}.sc-course-card-actions a{justify-content:center;text-align:center}
+.sc-course-shortcuts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:12px}.sc-course-shortcuts .sc-quick-action{min-height:64px}
+.sc-course-overview-capacity{display:block;width:calc(100% - 28px);margin:0 14px 14px;height:10px;accent-color:var(--sc-teal-ink)}
+.sc-course-section-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}.sc-course-section-heading a{min-height:44px;display:inline-flex;align-items:center}

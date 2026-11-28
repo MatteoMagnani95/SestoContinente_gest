@@ -42,7 +42,7 @@ export const modules = {
   piscine:{name:'piscine',table:'piscine',label:'Piscine',description:'Sedi, disponibilità e limitazioni.',
     fields:[t('nome','Nome',true),t('indirizzo','Indirizzo'),a('orari_disponibili','Orari disponibili'),a('limitazioni','Limitazioni'),a('note','Note')],columns:['nome','indirizzo','orari_disponibili']},
   corsie:{name:'corsie',table:'corsie',label:'Corsie',description:'Corsie disponibili all’interno di ogni piscina.',
-    fields:[r('piscina_id','Piscina','piscine',['nome'],true),{name:'numero',label:'Numero corsia',type:'number',min:1,step:'1',required:true},a('note','Note')],columns:['piscina_id','numero']},
+    fields:[r('piscina_id','Piscina','piscine',['nome'],true),{name:'numero',label:'Numero corsia',type:'number',min:1,step:'1',required:true},a('note','Note')],columns:['piscina_id','numero','note']},
   calendario:{name:'calendario',table:'lezioni',label:'Calendario lezioni',description:'Lezioni teoriche e pratiche per ogni edizione del corso.',
     fields:[r('edizione_id','Edizione','edizioni_corsi',['nome'],true),t('titolo','Titolo lezione',true),dt('inizio','Inizio',true),dt('fine','Fine',true),r('piscina_id','Piscina','piscine',['nome']),a('esercizi','Esercizi programmati'),a('materiale','Materiale necessario'),a('note','Note')],columns:['titolo','edizione_id','inizio','fine','piscina_id'],order:'inizio'},
   prenotazioni:{name:'prenotazioni',table:'prenotazioni_corsie',label:'Prenotazioni corsie',description:'Il database impedisce sovrapposizioni per corsia e orario.',

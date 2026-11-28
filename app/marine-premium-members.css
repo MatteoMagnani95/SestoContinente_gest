@@ -1,0 +1,72 @@
+/* F4F–G: personal, instructor, board and document surfaces; no data or role changes.
+   Readable operational text; reduce spacing instead of type size or target size. */
+@media screen{
+.sc-marine-private .sc-personal-dashboard{gap:10px;margin-bottom:16px}
+.sc-marine-private .sc-personal-season{padding:5px 9px;font-size:14px}
+.sc-marine-private .sc-person-list{gap:8px}
+.sc-marine-private .sc-person-identity-card{gap:8px;padding:12px}
+.sc-marine-private :is(.sc-person-summary,.sc-person-status){padding:10px;gap:8px}
+.sc-marine-private :is(.sc-person-summary,.sc-person-status)>div{gap:5px}
+.sc-marine-private .sc-person-summary .eyebrow{font-size:14px}
+.sc-marine-private .sc-person-summary h2{font-size:20px}
+.sc-marine-private .sc-person-status h3{font-size:16px;line-height:1.35}
+.sc-marine-private .sc-person-status p{font-size:15px;line-height:1.45}
+.sc-marine-private .sc-person-status .sc-button{min-height:44px}
+.sc-marine-private .sc-personal-metrics{gap:8px}
+.sc-marine-private :is(.sc-personal-metrics,.sc-board-kpis) .sc-metric{grid-template-columns:30px minmax(0,1fr);grid-template-rows:auto auto;gap:4px 8px;padding:10px;align-items:center}
+.sc-marine-private :is(.sc-personal-metrics,.sc-board-kpis) .sc-metric-icon{grid-column:1;grid-row:1/3;align-self:start;width:30px;height:30px;border-radius:8px}
+.sc-marine-private :is(.sc-personal-metrics,.sc-board-kpis) .sc-metric-icon .sc-icon{width:18px;height:18px}
+.sc-marine-private :is(.sc-personal-metrics,.sc-board-kpis) .sc-metric-label{grid-column:2;grid-row:1;font-size:14px;line-height:1.35}
+.sc-marine-private :is(.sc-personal-metrics,.sc-board-kpis) .sc-metric-value{grid-column:2;grid-row:2;font-size:25px;line-height:1.15;overflow-wrap:anywhere}
+.sc-marine-private .sc-personal-quick-grid{gap:8px}
+.sc-marine-private .sc-personal-quick-grid .sc-quick-action{min-height:60px;padding:10px;gap:8px}
+.sc-marine-private .sc-personal-preview{gap:10px}
+.sc-marine-private .sc-personal-preview-row{gap:8px;padding-block:8px}
+.sc-marine-private .sc-personal-tabs{margin-block:8px 10px}
+.sc-marine-private .sc-personal-grid,.sc-marine-private .sc-event-grid{gap:10px;margin-block:10px}
+.sc-marine-private .sc-instructor-course,.sc-marine-private .sc-event-card{gap:7px;padding:14px}
+.sc-marine-private .sc-instructor-course h2{font-size:19px}
+.sc-marine-private .sc-instructor-course .sc-heading-icon{width:36px;height:36px}
+.sc-marine-private .sc-instructor-filter{gap:8px;padding:12px;margin-block:10px}
+.sc-marine-private .sc-instructor-filter>label{flex:1 1 220px;min-width:0}
+.sc-marine-private .sc-instructor-filter>label select{width:100%;min-width:0}
+.sc-marine-private .sc-attendance-list{gap:8px}
+.sc-marine-private .sc-attendance-item{padding:10px}
+.sc-marine-private .sc-attendance-item form,.sc-marine-private .sc-attendance-item .edit-fields{gap:8px}
+.sc-marine-private .sc-attendance-heading{gap:8px;margin-bottom:8px}
+.sc-marine-private .sc-board-kpis{gap:8px;margin-block:10px;grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr))}
+.sc-marine-private .sc-board-overview{gap:10px;margin-block:10px}
+.sc-marine-private .sc-board-summary-item{gap:8px;padding-block:10px}
+.sc-marine-private .sc-board-private{gap:8px}
+.sc-marine-private .sc-event-tabs{gap:6px;margin-block:10px}
+.sc-marine-private .sc-document-private{gap:8px;padding:10px;margin-block:10px}
+.sc-marine-private .sc-document-private p{margin:2px 0 0;font-size:14px;line-height:1.45}
+.sc-marine-private .sc-document-private>span{font-size:14px}
+.sc-marine-private .sc-document-name{gap:6px}
+.sc-marine-private .sc-document-name p{margin:2px 0;font-size:14px;line-height:1.4}
+.sc-marine-private .sc-file-icon{width:30px;height:30px}
+.sc-marine-private .timeline-item{padding:10px 0;overflow-wrap:anywhere}
+.sc-marine-private .timeline-item h3{font-size:17px;line-height:1.35;margin:0 0 4px}
+.sc-marine-private .timeline-item strong{font-size:15px;text-transform:none}
+/* Inline emphasis in dates, costs and remaining places must stay inline. */
+.sc-marine-private .timeline-item p strong{display:inline}
+.sc-marine-private .timeline-item p{font-size:15px;line-height:1.5;margin:4px 0}
+.sc-marine-private .timeline-item small,.sc-marine-private .timeline-item p.tiny{font-size:14px}
+.sc-marine-private .sc-notification-list .timeline-item{display:grid;gap:4px}
+.sc-marine-private .sc-notification-list .timeline-item>form{justify-self:start;margin:4px 0 0}
+.sc-marine-private .sc-notification-list .timeline-item button{min-height:44px}
+@media(min-width:1001px){
+ .sc-marine-private .sc-notification-list .timeline-item{grid-template-columns:minmax(0,1fr) auto;align-items:start}
+ .sc-marine-private .sc-notification-list .timeline-item>:not(form){grid-column:1}
+ .sc-marine-private .sc-notification-list .timeline-item>form{grid-column:2;grid-row:1/4;align-self:center;justify-self:end}
+}
+@media(max-width:600px){
+ .sc-marine-private .sc-person-identity-card{padding:10px}
+ .sc-marine-private :is(.sc-person-summary,.sc-person-status){padding:8px}
+ .sc-marine-private .sc-personal-quick-grid .sc-quick-action{min-height:64px}
+ .sc-marine-private .sc-board-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .sc-marine-private :is(.sc-personal-metrics,.sc-board-kpis) .sc-metric{grid-template-columns:1fr;padding:9px}
+ .sc-marine-private :is(.sc-personal-metrics,.sc-board-kpis) .sc-metric-icon{display:none}
+ .sc-marine-private :is(.sc-personal-metrics,.sc-board-kpis) :is(.sc-metric-label,.sc-metric-value){grid-column:1}
+}
+}

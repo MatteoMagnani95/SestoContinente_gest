@@ -1,0 +1,107 @@
+import {test,expect} from '@playwright/test';
+// Each storage state must be a synthetic, single-role account on isolated local Supabase.
+const routes={
+ secretary:['/gestionale','/gestionale/soci','/gestionale/corsi','/gestionale/calendario-visivo','/gestionale/incassi','/documenti','/organi-sociali'],
+ member:['/area-personale','/area-personale?tab=notifiche','/area-personale/corsi','/area-personale/profilo','/area-personale/certificato','/area-soci','/area-soci?tab=storico','/documenti'],
+ instructor:['/istruttore','/istruttore?tab=presenze','/gestione-eventi','/documenti'],
+ board:['/organi-sociali','/organi-sociali/archivio','/organi-sociali/riepilogo','/documenti'],
+ applicant:['/richiesta/stato','/richiesta/nuova','/area-personale/profilo']
+};
+test('Viste e navigazione per ruolo sintetico, solo lettura',async({page},info)=>{
+ const role=info.project.metadata.role,paths=routes[role];
+ expect(paths).toBeTruthy();
+ for(const path of paths){
+  await page.goto(path);
+  const target=new URL(path,'http://localhost');
+  await expect(page).toHaveURL(url=>url.pathname===target.pathname);
+  await expect(page.getByRole('heading',{level:1}).first()).toBeVisible();
+  for(const size of [{width:320,height:568},{width:390,height:844},{width:768,height:1024},{width:844,height:390},{width:1024,height:768},{width:1280,height:800},{width:1440,height:900},{width:1920,height:1080}]){
+   await page.setViewportSize(size);
+   expect(await page.evaluate(()=>document.documentElement.scrollWidth),role+' '+path+' '+size.width).toBeLessThanOrEqual(size.width+1);
+   const logout=page.getByRole('button',{name:'Esci dal gestionale',exact:true});
+   await expect(logout).toBeVisible();
+   await expect(logout).toBeInViewport({ratio:1});
+  }
+  await page.setViewportSize({width:390,height:844});
+  await page.locator('.sc-mobile-trigger').click();
+  const menu=page.getByRole('dialog',{name:'Menu'});
+  await expect(menu).toBeVisible();
+  await expect(menu.locator('a[href="/gestionale/utenti"]')).toHaveCount(0);
+  if(role!=='secretary')await expect(menu.locator('a[href="/gestionale/soci"]')).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeHidden();
+ }
+});
+test('Ruolo limitato: accesso diretto amministrativo negato',async({page},info)=>{
+ await page.goto('/gestionale/utenti');
+ await expect(page).toHaveURL(info.project.metadata.role==='secretary'?/\/gestionale\?msg=permessi/:/\/\?msg=permessi/);
+});
+
+test('Ruolo limitato: accessi incrociati e risorse amministrative negati',async({page},info)=>{
+ const role=info.project.metadata.role;
+ const paths=role==='secretary'?['/gestionale/moduli/contabilita']:
+  ['/gestionale','/gestionale/incassi','/gestionale/moduli/contabilita',...(role==='board'?[]:['/organi-sociali']),...(role==='instructor'?[]:['/istruttore'])];
+ for(const path of paths){
+  await page.goto(path);
+  // Un login scaduto non è un successo del controllo di ruolo.
+  await expect(page).toHaveURL(url=>url.pathname!==path&&url.pathname!=='/accedi'&&url.searchParams.get('msg')==='permessi');
+ }
+});
+
+test('CdA: il consigliere senza ruolo di segreteria non può aggiungere componenti',async({page},info)=>{
+ test.skip(info.project.metadata.role!=='board','Controllo riservato al ruolo consigliere sintetico');
+ await page.goto('/organi-sociali?tab=componenti');
+ await expect(page.getByRole('heading',{name:'Componenti CdA'})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Aggiungi componente'})).toHaveCount(0);
+});
+
+test('Ricerca e navigazione globale per ruolo: accesso, tastiera e chiusura',async({page},info)=>{
+ const role=info.project.metadata.role;
+ await page.goto(routes[role][0]);
+ const trigger=page.getByRole('button',{name:'Ricerca globale'});
+ if(role==='applicant'){await expect(trigger).toHaveCount(0);return;}
+ await expect(trigger).toBeVisible();
+ await trigger.click();
+ const dialog=page.getByRole('dialog',{name:'Cerca nel gestionale'});
+ await expect(dialog).toBeVisible();
+ await expect(dialog.getByRole('searchbox')).toBeFocused();
+ await dialog.getByRole('searchbox').fill('zzzz-test-nessun-dato');
+ await expect(dialog.getByRole('status')).not.toHaveText('Ricerca in corso…');
+ if(role!=='secretary')await expect(dialog.locator('a[href^="/gestionale/"]')).toHaveCount(0);
+ await page.keyboard.press('Escape');
+ await expect(dialog).toBeHidden();await expect(trigger).toBeFocused();
+ await expect(page.getByRole('navigation',{name:'Navigazione rapida mobile'})).toBeVisible();
+});
+
+
+test('F6: interfacce personali e didattiche, accessi reali e navigazione mobile',async({page},info)=>{
+ const role=info.project.metadata.role;
+ if(role==='member'){
+  await page.goto('/area-personale');
+  await expect(page.getByRole('navigation',{name:'Attività personali'}).getByRole('link',{name:'Corsi e lezioni'})).toBeVisible();
+  await expect(page.getByRole('navigation',{name:'Attività personali'}).getByRole('link',{name:'Documenti'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Le mie iscrizioni ai corsi'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'I tuoi brevetti'})).toBeVisible();
+  await expect(page.locator('.sc-personal-dashboard').getByRole('complementary',{name:'Progetto Nereia'})).toBeVisible();
+  await expect(page.getByText('Paga online',{exact:true})).toHaveCount(0);
+  await page.setViewportSize({width:390,height:844});
+  await expect(page.getByRole('navigation',{name:'Navigazione rapida mobile'}).getByRole('link',{name:'Documenti'})).toBeVisible();
+  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(391);
+ }else if(role==='instructor'){
+  await page.goto('/istruttore');
+  await expect(page.getByRole('navigation',{name:'Sezioni istruttore'}).getByRole('link')).toHaveCount(5);
+  await expect(page.locator('.sc-instructor-course').first()).toBeVisible();
+  await page.goto('/istruttore?tab=presenze');
+  await expect(page.getByRole('heading',{name:/Registro presenze/})).toBeVisible();
+  await expect(page.getByText('Nessuna assenza viene registrata automaticamente.',{exact:false})).toBeVisible();
+  await page.setViewportSize({width:390,height:844});
+  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(391);
+ }else if(role==='applicant'){
+  await page.goto('/richiesta/stato');await expect(page.getByRole('heading',{level:1})).toBeVisible();
+  await expect(page.getByRole('navigation',{name:'Attività personali'})).toHaveCount(0);
+ }else if(role==='board'){
+  await page.goto('/organi-sociali');await expect(page.getByRole('heading',{level:1})).toBeVisible();
+ }else if(role==='secretary'){
+  await page.goto('/gestionale');await expect(page.getByRole('heading',{level:1})).toBeVisible();
+ }
+});
