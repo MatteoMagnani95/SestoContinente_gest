@@ -45,7 +45,7 @@ export async function sollecitaCertificatoMancante(persona:string){
  if(!recipients.length)return {error:'Nessun account collegato: contatta la persona tramite segreteria.'};
  const day=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Rome',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
  // Contenuto generico anche se il cron email è attivo. Deduplicazione atomica per persona/account/giorno.
- const {data,error}=await admin.from('notifiche').upsert(recipients.map(utente_id=>({utente_id,tipo:'sollecito_documenti',riferimento:persona+':'+day,titolo:'Documentazione da completare',messaggio:'Accedi alla tua area personale e controlla la documentazione richiesta dalla segreteria.'})),{onConflict:'utente_id,tipo,riferimento',ignoreDuplicates:true}).select('id');
+ const {data,error}=await admin.from('notifiche').upsert(recipients.map(utente_id=>({utente_id,tipo:'sollecito_certificato',riferimento:persona+':'+day,titolo:'Documentazione da completare',messaggio:'Accedi alla tua area personale e controlla la documentazione richiesta dalla segreteria.'})),{onConflict:'utente_id,tipo,riferimento',ignoreDuplicates:true}).select('id');
  if(error)return {error:'Notifica non registrata. Riprova.'};
  revalidatePath('/area-personale');revalidatePath(base);
  return {message:data?.length?'Notifica registrata nell’area personale.':'Sollecito già registrato oggi.'};
