@@ -10,7 +10,7 @@ import {notFound} from 'next/navigation';
 import {requireStaff} from '@/lib/security';
 import {formatValue} from '@/lib/format';
 import CodiceFiscaleAssist from '@/components/CodiceFiscaleAssist';
-import {updateMemberProfile,createMemberAdhesion} from '../actions';
+import {updateMemberProfile,createMemberAdhesion,updateMemberEmergency,reviewIdentityCorrection} from '../actions';
 
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 type Person={id:string;nome:string;cognome:string;data_nascita:string|null;luogo_nascita:string|null;codice_fiscale:string|null;indirizzo:string|null;cap:string|null;comune:string|null;email:string|null;telefono:string|null};
@@ -23,14 +23,14 @@ type Enrollment={id:string;edizione_id:string;stato:string;iscritta_il:string};
 type Edition={id:string;nome:string;corso_id:string;inizio:string;fine:string};
 type Course={id:string;nome:string;tipo:string;livello:number|null};
 type Cert={id:string;documento_id:string|null;stato_certificato:string;rilasciato_il:string;scade_il:string;idoneita_verificata:boolean};
-type Patent={id:string;rilasciato_da_nome:string|null;titolo:string;ente:string|null;numero_brevetto:string|null;ottenuto_il:string|null;scade_il:string|null};
+type Patent={id:string;origine:string|null;stato_verifica:string;centro_rilascio:string|null;istruttore_esterno:string|null;edizione_id:string|null;rilasciato_da_nome:string|null;titolo:string;ente:string|null;numero_brevetto:string|null;ottenuto_il:string|null;scade_il:string|null};
 type Qualification={id:string;titolo:string;ente:string|null;scade_il:string|null};
 type Equipment={id:string;attrezzatura_id:string;assegnata_il:string;restituita_il:string|null};
 type Document={id:string;nome:string;categoria:string;caricato_il:string};
 type Guardian={minore_id:string;tutore_id:string;parentela:string};
 const euro=(n:number|string|null|undefined)=>new Intl.NumberFormat('it-IT',{style:'currency',currency:'EUR'}).format(Number(n??0));
 const statusLabel=(s:string)=>s.replaceAll('_',' ');
-const statusMessage:Record<string,string>={eliminato:'Elemento rimosso.',elimina_collegati:'Rimozione non consentita: il record è collegato ad altri dati o è protetto.',elimina_conferma:'Conferma la rimozione.',database:'Rimozione non riuscita: verifica autorizzazioni e migrazione.',salvato:'Anagrafica aggiornata. La modifica è tracciata nel registro amministrativo.',
+const statusMessage:Record<string,string>={emergenza_salvata:'Contatto di emergenza salvato.',rettifica_decisa:'Rettifica anagrafica elaborata.',eliminato:'Elemento rimosso.',elimina_collegati:'Rimozione non consentita: il record è collegato ad altri dati o è protetto.',elimina_conferma:'Conferma la rimozione.',database:'Rimozione non riuscita: verifica autorizzazioni e migrazione.',salvato:'Anagrafica aggiornata. La modifica è tracciata nel registro amministrativo.',
  adesione_creata:'Adesione registrata in stato «da perfezionare». Verificare separatamente quota e tesseramento.',
  cf:'Codice fiscale non coerente con i dati anagrafici, oppure comune/Stato di nascita non identificato. Verifica i dati e usa il CF ufficiale.', omocodia:'Omocodia: conferma la verifica documentale e indica la motivazione.', dati:'Alcuni dati non sono validi. Controlla la compilazione.',duplicato:'Esiste già un altro socio con questo codice fiscale.',
  adesione_esistente:'Per questa stagione esiste già un’adesione.',errore:'Operazione non riuscita. Controlla le autorizzazioni o i vincoli del database.'};
@@ -69,7 +69,7 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
   supabase.from('pagamenti').select('id,quota_id,addebito_corso_id,importo,data_pagamento,metodo').eq('persona_id',id).order('data_pagamento',{ascending:false}).limit(50),
   supabase.from('iscrizioni_corsi').select('id,edizione_id,stato,iscritta_il').eq('persona_id',id).order('iscritta_il',{ascending:false}).limit(100),
   supabase.from('stato_certificati').select('id,rilasciato_il,scade_il,idoneita_verificata,documento_id,stato_certificato').eq('persona_id',id).order('creato_il',{ascending:false}).limit(50),
-  supabase.from('brevetti_allievi').select('id,titolo,ente,numero_brevetto,ottenuto_il,scade_il,rilasciato_da_nome').eq('persona_id',id).order('ottenuto_il',{ascending:false}).limit(50),
+  supabase.from('brevetti_allievi').select('id,titolo,ente,numero_brevetto,ottenuto_il,scade_il,rilasciato_da_nome,origine,stato_verifica,centro_rilascio,istruttore_esterno,edizione_id').eq('persona_id',id).order('ottenuto_il',{ascending:false}).limit(50),
   supabase.from('qualifiche_istruttori').select('id,titolo,ente,scade_il').eq('persona_id',id).limit(50),
   supabase.from('assegnazioni_istruttori').select('id,edizione_id,ruolo').eq('persona_id',id).limit(100),
   supabase.from('documenti').select('id,nome,categoria,caricato_il').eq('persona_id',id).order('caricato_il',{ascending:false}).limit(50),
@@ -118,6 +118,7 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
  const equipmentNames=(equipmentNamesData??[]) as unknown as {id:string;codice:string;categoria:string}[];
  const newSeasons=seasons.filter(s=>!memberships.some(m=>m.stagione_id===s.id));
  const active=memberships.find(m=>seasons.find(s=>s.id===m.stagione_id)?.attiva)??memberships[0];
+ const {data:corrections,error:correctionError}=await supabase.from('rettifiche_anagrafiche').select('id,nome,cognome,data_nascita,luogo_nascita,provincia_nascita,stato_nascita,sesso_cf,codice_fiscale,creata_il').eq('persona_id',id).eq('stato','in_attesa');
  const {data:emergenza}=await supabase.from('contatti_emergenza').select('nominativo,telefono').eq('persona_id',id).maybeSingle();
  const {data:domanda}=await supabase.from('richieste').select('utente_id').eq('persona_id',id).order('modificato_il',{ascending:false}).limit(1).maybeSingle();
  const titolare=domanda?.utente_id??accountLinks?.find(a=>a.relazione==='titolare')?.utente_id;
@@ -146,8 +147,11 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
     .map(x=><a key={x} href={`#${x.toLowerCase()}`}>{x}</a>)}
   </nav>
   <div className="member-sections">
-   <Cronologia tipo="socio" id={id}/><section className="panel"><h2>Contatto di emergenza</h2><p>{emergenza?emergenza.nominativo+' · '+emergenza.telefono:'Non acquisito'}</p><h3>Foto e video · scelta attuale</h3><p>{sceltaLabel(consenso?.scelta)} {consenso?.versione} {dataOra(consenso?.registrata_il)}</p></section>
+   <Cronologia tipo="socio" id={id}/><section className="panel"><h2>Contatto di emergenza</h2><p>{emergenza?emergenza.nominativo+' · '+emergenza.telefono:'Non acquisito'}</p><details><summary>Modifica contatto di emergenza</summary><EditForm action={updateMemberEmergency} className="stack"><input type="hidden" name="id" value={id}/><div className="form-grid"><label>Nome e cognome<input name="emergenza_nome" required maxLength={160} defaultValue={emergenza?.nominativo??''}/></label><label>Telefono<input name="emergenza_telefono" type="tel" required maxLength={32} defaultValue={emergenza?.telefono??''}/></label></div><button className="button">Salva contatto di emergenza</button></EditForm></details><h3>Foto e video · scelta attuale</h3><p>{sceltaLabel(consenso?.scelta)} {consenso?.versione} {dataOra(consenso?.registrata_il)}</p></section>
    <Section id="anagrafica" title="Anagrafica e recapiti">
+    {correctionError&&<p role="alert">Impossibile caricare le richieste di rettifica.</p>}
+    {(corrections??[]).map(r=><div className="panel" key={r.id}><h3>Rettifica anagrafica in attesa</h3><p>Verifica i dati proposti con la documentazione e confrontali con l’anagrafica attuale.</p><div className="detail-grid"><div>Nome e cognome: <strong>{r.nome} {r.cognome}</strong></div><div>Data di nascita: {formatValue(r.data_nascita)}</div><div>Luogo: {[r.luogo_nascita,r.provincia_nascita,r.stato_nascita].filter(Boolean).join(' · ')||'—'}</div><div>Sesso CF: {r.sesso_cf??'—'}</div><div>Codice fiscale: {r.codice_fiscale??'—'}</div></div>
+    <EditForm action={reviewIdentityCorrection} className="stack"><input type="hidden" name="id" value={id}/><input type="hidden" name="rettifica_id" value={r.id}/><label>Esito<select name="esito" required defaultValue=""><option value="">Seleziona</option><option value="applicata">Approva e applica</option><option value="respinta">Respingi</option></select></label><label className="check-label"><input type="checkbox" name="cf_omocodia_verificata"/>Omocodia verificata con documentazione</label><label>Motivazione verifica documentale (se necessaria)<input name="cf_override_motivo" maxLength={500}/></label><button className="button">Conferma esito</button></EditForm></div>)}
     <div className="detail-grid">
      <div><span className="k">Data e luogo di nascita</span><strong>{formatValue(person.data_nascita)} · {person.luogo_nascita??'—'}</strong></div>
      <div><span className="k">Codice fiscale</span><strong>{person.codice_fiscale??'—'}</strong></div>
@@ -214,8 +218,8 @@ export default async function MemberDetail({params,searchParams}:{params:Promise
     </tbody></table></div>:<None>Documento mancante · <Link href={'/area-personale/certificato?persona='+id}>Carica certificato</Link></None>}
    </Section>
    <Section id="brevetti" title="Brevetti conseguiti" href="/gestionale/moduli/brevetti">
-    {patents.length?<div className="table-panel"><table><thead><tr><th>Brevetto</th><th>Rilasciato da</th><th>Ente</th><th>Conseguito</th><th>Scadenza</th><th>Azioni</th></tr></thead><tbody>
-     {patents.map(p=><tr key={p.id}><td>{p.titolo}</td><td>{p.rilasciato_da_nome??'Non acquisito'}</td><td>{p.ente??'—'}</td><td>{formatValue(p.ottenuto_il)}</td><td>{formatValue(p.scade_il)}</td><td><Link href={`/gestionale/moduli/${"brevetti"}?edit=${p.id}`}>Modifica</Link></td></tr>)}
+    {patents.length?<div className="table-panel"><table><thead><tr><th>Brevetto</th><th>Rilasciato da</th><th>Ente</th><th>Origine e verifica</th><th>Conseguito</th><th>Scadenza</th><th>Azioni</th></tr></thead><tbody>
+     {patents.map(p=><tr key={p.id}><td>{p.titolo}</td><td>{p.origine==='esterno'?[p.istruttore_esterno,p.centro_rilascio].filter(Boolean).join(' · ')||'Centro esterno':p.rilasciato_da_nome??'Non acquisito'}</td><td>{p.ente??'—'}</td><td>{p.origine==='esterno'?'Esterno':p.edizione_id?'Interno':'Storico'} · {statusLabel(p.stato_verifica)}</td><td>{formatValue(p.ottenuto_il)}</td><td>{formatValue(p.scade_il)}</td><td><Link href={`/gestionale/moduli/${"brevetti"}?edit=${p.id}`}>Modifica</Link></td></tr>)}
     </tbody></table></div>:<None>Nessun brevetto registrato.</None>}
    </Section>
    <Section id="documenti" title="Documenti collegati" href="/documenti">
