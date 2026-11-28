@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   browser-and-rls:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
       NEXT_TELEMETRY_DISABLED: '1'
@@ -22,7 +22,7 @@ jobs:
         with:
           version: 2.54.11
       - run: npm install --no-package-lock --no-audit --no-fund
-      - run: npm install --no-save --no-package-lock playwright@1.56.1
+      - run: npm install --no-save --no-package-lock --no-audit --no-fund playwright@1.56.1
       - run: npx playwright install --with-deps chromium webkit
       - name: Start disposable Supabase
         run: |
