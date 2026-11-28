@@ -5,7 +5,7 @@ import {versioneImmagini,sceltaLabel,dataOra} from '@/lib/scelte';
 import {cambiaScelta} from './immagini';
 import Link from 'next/link';
 import {requireUser} from '@/lib/security';
-import {updateContact,updateEmergencyContact,requestIdentityCorrection,saveExternalPatent} from './actions';
+import {updateContact,updateEmergencyContact,requestIdentityCorrection,saveExternalPatent,changeLoginEmail} from './actions';
 type Patent={id:string;persona_id:string;titolo:string;ente:string|null;numero_brevetto:string|null;ottenuto_il:string|null;scade_il:string|null;origine:string|null;stato_verifica:string;centro_rilascio:string|null;istruttore_esterno:string|null;edizione_id:string|null;note:string|null};
 const labels:Record<string,string>={in_attesa:'In attesa di verifica',verificato:'Verificato',respinto:'Da correggere',applicata:'Modifica approvata'};
 function PatentForm({person,record}:{person:string;record?:Patent}){
@@ -33,12 +33,12 @@ export default async function MyProfile({searchParams}:{searchParams:Promise<{ms
  ids.length?supabase.from('rettifiche_anagrafiche').select('id,persona_id,richiedente_id,nome,cognome,data_nascita,luogo_nascita,provincia_nascita,stato_nascita,sesso_cf,codice_fiscale,stato,creata_il').in('persona_id',ids).order('creata_il',{ascending:false}):Promise.resolve({data:[],error:null}),
  ids.length?supabase.from('brevetti_allievi').select('id,persona_id,titolo,ente,numero_brevetto,ottenuto_il,scade_il,origine,stato_verifica,centro_rilascio,istruttore_esterno,edizione_id,note').in('persona_id',ids).order('ottenuto_il',{ascending:false}):Promise.resolve({data:[],error:null})
  ]);
- const messages:Record<string,string>={ok:'Recapiti salvati.',emergenza_ok:'Contatto di emergenza salvato.',rettifica_ok:'Rettifica anagrafica inviata alla segreteria.',brevetto_ok:'Brevetto esterno registrato. È in attesa di verifica.'};
+ const messages:Record<string,string>={email_richiesta:'Richiesta di cambio email avviata. Segui i link di conferma ricevuti; fino al completamento usa il vecchio indirizzo.',email_verifica:'Verifica ricevuta. Controlla l’indirizzo di accesso mostrato qui e completa eventuali ulteriori conferme.',ok:'Recapiti salvati.',emergenza_ok:'Contatto di emergenza salvato.',rettifica_ok:'Rettifica anagrafica inviata alla segreteria.',brevetto_ok:'Brevetto esterno registrato. È in attesa di verifica.'};
  return <div className="container narrow"><Link className="back-link" href="/area-personale">← Area personale</Link>
  <div className="page-intro"><p className="eyebrow">Profilo</p><h1>Impostazioni personali</h1><p>Gestisci i tuoi dati, la sicurezza, i contatti di emergenza e i brevetti.</p></div>
  {msg&&messages[msg]&&<p role="status" className="notice success">{messages[msg]}</p>}
  {(linkError||peopleError)&&<p role="alert" className="notice error">Impossibile caricare il profilo. Riprova.</p>}
- <section className="panel"><h2>Account e sicurezza</h2><p>Email di accesso: <strong>{user.email??'—'}</strong></p><p className="muted">L’email di contatto è separata dall’indirizzo utilizzato per accedere.</p><Link className="button ghost" href="/nuova-password">Cambia password</Link></section>
+ <section className="panel"><h2>Account e sicurezza</h2><p>Email di accesso: <strong>{user.email??'—'}</strong></p><p className="muted">L’email di contatto è separata dall’indirizzo utilizzato per accedere.</p><Link className="button ghost" href="/nuova-password">Cambia password</Link><details><summary>Modifica email di accesso</summary><p className="muted">Per sicurezza devi confermare la password e seguire le istruzioni inviate via email. Il profilo e i ruoli non cambiano.</p>{user.new_email&&<p role="status">Cambio in attesa di conferma: {user.new_email}</p>}<EditForm action={changeLoginEmail} className="stack"><label>Nuova email<input type="email" name="nuova_email" autoComplete="email" required maxLength={254}/></label><label>Conferma nuova email<input type="email" name="conferma_email" required maxLength={254}/></label><label>Password attuale<input type="password" name="password_attuale" autoComplete="current-password" required/></label><button className="button">Richiedi cambio email</button></EditForm></details></section>
  <section className="panel"><h2>Consenso foto e video</h2><p role="status">{sceltaLabel(scelta?.scelta)} · {scelta?.versione} {dataOra(scelta?.registrata_il)}</p><EditForm action={cambiaScelta}><SceltaImmagini value={scelta?.scelta}/><button className="button">Salva scelta</button></EditForm></section>
  {people?.map(p=>{const pending=corrections?.find(c=>c.persona_id===p.id&&c.stato==='in_attesa'),latest=pending??corrections?.find(c=>c.persona_id===p.id);
  const identity=pending??p;const emergency=contacts?.find(c=>c.persona_id===p.id);
