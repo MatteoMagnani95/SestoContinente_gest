@@ -42,7 +42,7 @@ async function main(){
   await assert.rejects(ss.query(enroll,[edition,b]),{code:'23505'});
   // Delibera sintetica approvata nel database effimero: non disabilitare i vincoli.
   const verbale=randomUUID();
-  await root.query("insert into public.cda_verbali(id,data_consiglio,oggetto,tipo,stato,percorso_docx,approvato_il,creato_da) values($1,current_date,'Delibera QA','Approvazione Adesioni Soci','approvato',$2,now(),$3)",[verbale,verbale+'/bozza.docx',users[4]]);
+  await root.query("insert into public.cda_verbali(id,data_consiglio,oggetto,tipo,stato,percorso_docx,percorso_pdf,approvato_il,creato_da) values($1,current_date,'Delibera QA','Approvazione Adesioni Soci','approvato',$2,$3,now(),$4)",[verbale,verbale+'/bozza.docx',verbale+'/delibera.pdf',users[4]]);
   await root.query("update public.adesioni set stato='attiva',verbale_cda_id=$2 where id=$1",[adhesionA,verbale]);
   await root.query("insert into public.tesseramenti(adesione_id,ente,stato,scade_il) values($1,'QA','attiva',current_date+100)",[adhesionA]);
   await ss.query("update public.iscrizioni_corsi set stato='iscritto' where id=$1",[request]);
@@ -68,7 +68,11 @@ async function main(){
   await ss.query("select public.decidi_rettifica_anagrafica($1,2,'applicata',null,false,null)",[correction]);
   assert.equal(await scalar(sa,'select nome from public.persone where id=$1',[a]),'Nome aggiornato');
   assert.equal(await scalar(sa,'select stato from public.rettifiche_anagrafiche where id=$1',[correction]),'applicata');
-  console.log('OK rettifica con verifica, controllo versione e permessi');
+  const rejected=await scalar(sa,"insert into public.rettifiche_anagrafiche(persona_id,nome,cognome) values($1,'Nome da verificare','QA0') returning id",[a]);
+  await assert.rejects(ss.query("select public.decidi_rettifica_anagrafica($1,1,'respinta',null,false,null)",[rejected]),{code:'22023'});
+  await ss.query("select public.decidi_rettifica_anagrafica($1,1,'respinta',null,false,null,'Verifica documento')",[rejected]);
+  assert.equal(await scalar(sa,'select motivazione_esito from public.rettifiche_anagrafiche where id=$1',[rejected]),'Verifica documento');
+  console.log('OK rettifica con verifica, controllo versione, motivazione rifiuto e permessi');
   const external=await scalar(sa,"insert into public.brevetti_allievi(persona_id,origine,stato_verifica,titolo,ente,numero_brevetto) values($1,'esterno','in_attesa','Open Water','PADI','QA123') returning id",[a]);
   assert.equal(await scalar(sb,'select count(*)::int from public.brevetti_allievi where id=$1',[external]),0);
   await assert.rejects(sa.query("update public.brevetti_allievi set stato_verifica='verificato' where id=$1",[external]),{code:'42501'});
