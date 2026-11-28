@@ -1,4 +1,4 @@
-import {medicalRoster,MEDICAL_FILTERS,type MedicalRow} from '@/lib/medical-roster';
+import {medicalRoster,medicalDates,MEDICAL_FILTERS,type MedicalRow} from '@/lib/medical-roster';
 import {EsitoCertificato,SollecitoCertificato} from '@/components/CertificateRowActions';
 import {statiCertificato,statoSingolo} from '@/lib/certificati';
 import Cronologia from '@/components/Cronologia';
@@ -189,6 +189,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
   };
   const names:Record<string,string>={in_scadenza:'In scadenza',in_attesa:'Da verificare',scaduto:'Scaduti',mancante:'Mancanti',non_valido:'Non validi',valido:'Validi'};
   const totalPages=count??0;
+  const {today,limit}=medicalDates();
   const grid={display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%, 180px),1fr))',gap:12};
   const nameOf=(row:Row)=>[row.sort_cognome,row.sort_nome].filter(Boolean).join(' ')||labelOf(references.persone?.find(p=>p.id===row.persona_id)??({id:''} as Row),['cognome','nome'])||'Intestatario non disponibile';
   const upload=(id:unknown)=>'/area-personale/certificato?origine=gestionale&persona='+encodeURIComponent(String(id??''));
@@ -224,7 +225,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
       return <tr key={row.id}><th scope="row" style={{textAlign:'left',whiteSpace:'nowrap'}}>{nome}</th>
        <td><span style={{display:'inline-block',background:t.bg,color:t.fg,padding:'5px 10px',borderRadius:20,fontSize:13,fontWeight:700}}>{key==='in_scadenza'?'In scadenza':statoSingolo(key)}</span></td>
        <td>{doc?<Link className="button ghost" href={'/documenti/'+doc}>Visualizza certificato</Link>:<Link className="button ghost" href={upload(row.persona_id)}>Carica certificato</Link>}</td>
-       <td style={{whiteSpace:'nowrap'}}>{formatValue(row.scade_il)}</td>
+       <td style={{whiteSpace:'nowrap'}}><strong style={{color:typeof row.scade_il==='string'?(row.scade_il<today?'#a62d40':row.scade_il<=limit?'#80520b':undefined):undefined}}>{formatValue(row.scade_il)}</strong>{doc&&typeof row.scade_il==='string'&&row.scade_il>=today&&row.scade_il<=limit&&<span className="hint" style={{display:'block',color:'#80520b'}}>Entro 30 giorni</span>}</td>
        <td>{doc?<EsitoCertificato key={row.id+':'+doc+':'+previous} id={row.id} documento={doc} precedente={previous} iniziale={initial} nome={nome}/>:<span className="hint">Documento mancante</span>}</td>
        <td><div className="buttons">{!doc&&<SollecitoCertificato persona={String(row.persona_id)} nome={nome}/>}{!row.senza_registrazione&&<Link href={href(active,page,row.id)}>Altri dati e storico</Link>}</div></td>
       </tr>;
