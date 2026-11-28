@@ -75,6 +75,7 @@ create table public.rettifiche_anagrafiche (
  codice_fiscale text check(codice_fiscale is null or length(codice_fiscale)<=16),
  base_dati jsonb not null,
  stato text not null default 'in_attesa' check(stato in ('in_attesa','applicata','respinta')),
+ revisione integer not null default 1 check(revisione>0),
  creata_il timestamptz not null default now(),
  decisa_il timestamptz,
  decisa_da uuid
@@ -103,18 +104,19 @@ begin
   select jsonb_build_array(p.nome,p.cognome,p.data_nascita,p.luogo_nascita,p.provincia_nascita,p.stato_nascita,p.sesso_cf,p.codice_fiscale,p.codice_catastale_nascita,p.cf_omocodia_verificata,p.cf_override_motivo)
   into new.base_dati from public.persone p where p.id=new.persona_id;
   if not found then raise exception 'Profilo non disponibile' using errcode='42501'; end if;
-  new.creata_il:=now();
+  new.creata_il:=now(); new.revisione:=1;
  else
   if (new.id,new.persona_id,new.richiedente_id,new.creata_il,new.base_dati) is distinct from (old.id,old.persona_id,old.richiedente_id,old.creata_il,old.base_dati) then
    raise exception 'Identità della rettifica non modificabile' using errcode='42501';
   end if;
   if old.stato<>'in_attesa' then raise exception 'Rettifica già decisa' using errcode='22023'; end if;
+  new.revisione:=old.revisione+1;
  end if;
  return new;
 end $$;
 create trigger prepara_rettifica_anagrafica before insert or update on public.rettifiche_anagrafiche for each row execute function public.prepara_rettifica_anagrafica();
 
-create or replace function public.decidi_rettifica_anagrafica(p_id uuid,p_esito text,p_codice_catastale text,p_omocodia boolean,p_motivo text)
+create or replace function public.decidi_rettifica_anagrafica(p_id uuid,p_revisione integer,p_esito text,p_codice_catastale text,p_omocodia boolean,p_motivo text)
 returns void language plpgsql security invoker set search_path to '' as $$
 declare r public.rettifiche_anagrafiche%rowtype; attuale jsonb;
 begin
@@ -122,6 +124,7 @@ begin
  if p_esito not in ('applicata','respinta') or p_esito is null then raise exception 'Esito non valido' using errcode='22023'; end if;
  select * into r from public.rettifiche_anagrafiche where id=p_id and stato='in_attesa' for update;
  if not found then raise exception 'Rettifica non disponibile' using errcode='22023'; end if;
+ if r.revisione is distinct from p_revisione then raise exception 'Rettifica modificata nel frattempo' using errcode='40001'; end if;
  if p_esito='applicata' then
   select jsonb_build_array(p.nome,p.cognome,p.data_nascita,p.luogo_nascita,p.provincia_nascita,p.stato_nascita,p.sesso_cf,p.codice_fiscale,p.codice_catastale_nascita,p.cf_omocodia_verificata,p.cf_override_motivo)
   into attuale from public.persone p where p.id=r.persona_id for update;
@@ -135,8 +138,8 @@ begin
  end if;
  update public.rettifiche_anagrafiche set stato=p_esito,decisa_il=now(),decisa_da=auth.uid() where id=p_id;
 end $$;
-revoke all on function public.decidi_rettifica_anagrafica(uuid,text,text,boolean,text) from public,anon;
-grant execute on function public.decidi_rettifica_anagrafica(uuid,text,text,boolean,text) to authenticated;
+revoke all on function public.decidi_rettifica_anagrafica(uuid,integer,text,text,boolean,text) from public,anon;
+grant execute on function public.decidi_rettifica_anagrafica(uuid,integer,text,text,boolean,text) to authenticated;
 
 -- Brevetti esterni: l'origine è esplicita, distinta dalla firma interna.
 -- I record storici conservano la provenienza preesistente (origine NULL).
