@@ -39,6 +39,10 @@ const catalog=(await ok(db.from('corsi').insert({nome:'QA Apnea '+run,tipo:'APNE
 const editionName='QA Corso '+run;
 const edition=(await ok(db.from('edizioni_corsi').insert({corso_id:catalog,stagione_id:season,nome:editionName,inizio:date(0),fine:date(30),direttore_id:director.id,massimo_partecipanti:1,costo_corso:0}).select('id').single())).id;
 const studentClient=await session(member),otherClient=await session(other);
+// PostgREST reale, non solo SQL diretto: un socio separato prova la stessa payload del form.
+const apiProbe=await otherClient.from('rettifiche_anagrafiche').insert({persona_id:unrelated.id,richiedente_id:other.id,nome:'Collaudo API',cognome:unrelated.label,data_nascita:null,luogo_nascita:null,provincia_nascita:null,stato_nascita:null,sesso_cf:null,codice_fiscale:null},{defaultToNull:false}).select('id').single();
+if(apiProbe.error)throw Error('Rettifica PostgREST: '+apiProbe.error.code+' '+apiProbe.error.message);
+check(Boolean(apiProbe.data?.id),'Rettifica PostgREST con JWT autentico');
 const profile='/area-personale/profilo',courses='/area-personale/corsi',staffCourses='/gestionale/corsi/'+edition;
 const browser=await chromium.launch(),mobile=await webkit.launch();
 const contexts=[];
@@ -68,6 +72,15 @@ try{
  }
  const p=rolePages.get('socio'),s=rolePages.get('segreteria'),ad=rolePages.get('amministratore');
  const errors=[];for(const x of [p,s,ad])x.on('pageerror',e=>errors.push(e.message));
+ async function submitCorrection(value){
+  const form=p.locator('form').filter({has:p.locator('input[name=nome]')});
+  await form.locator('input[name=nome]').fill(value);
+  await form.getByRole('button',{name:'Richiedi modifica anagrafica',exact:true}).click();
+  const success=p.getByText('Rettifica anagrafica inviata alla segreteria.',{exact:true});
+  const failure=form.getByRole('alert');
+  try{await success.or(failure).first().waitFor({timeout:15000});assert.ok(await success.isVisible(),'Rettifica UI: '+(await failure.allTextContents()).join(' | '));}
+  catch(err){await p.screenshot({path:output+'/rettifica-failure.png',fullPage:true});const probe=await studentClient.from('rettifiche_anagrafiche').select('id,stato,revisione').eq('persona_id',student.id);console.error('QA rettifica: URL',new URL(p.url()).pathname+new URL(p.url()).search,'RLS API',probe.error?.code??'OK','righe',probe.data?.length??0,'alert',await form.getByRole('alert').allTextContents());throw err;}
+ }
  const emergency=p.locator('section').filter({has:p.getByRole('heading',{name:'Contatto di emergenza',exact:true})});
  await emergency.locator('input[name=emergenza_nome]').fill('Contatto di prova');
  await emergency.locator('input[name=emergenza_telefono]').fill('+39 3331234567');
@@ -80,7 +93,7 @@ try{
  check((await ok(db.from('contatti_emergenza').select('nominativo').eq('persona_id',child.id).single())).nominativo==='Tutore QA','Tutore aggiorna persona rappresentata');
  await p.locator('input[name=telefono]').fill('3331234569');await p.locator('input[name=email]').fill('recapito@example.invalid');await p.getByRole('button',{name:'Salva recapiti'}).click();await p.getByText('Recapiti salvati.',{exact:true}).waitFor();
  check((await ok(db.from('persone').select('email').eq('id',student.id).single())).email==='recapito@example.invalid','Recapiti salvati');
- await p.locator('input[name=nome]').fill('Collaudo rettificato');await p.getByRole('button',{name:'Richiedi modifica anagrafica'}).click();await p.getByText('Rettifica anagrafica inviata alla segreteria.',{exact:true}).waitFor();
+ await submitCorrection('Collaudo rettificato');
  check((await ok(db.from('persone').select('nome').eq('id',student.id).single())).nome==='Collaudo','Rettifica non modifica direttamente anagrafica');
  await s.goto(origin+'/gestionale/soci');await s.getByRole('heading',{name:/Rettifiche anagrafiche da verificare/}).waitFor();
  await s.getByRole('link',{name:'QA socio Collaudo rettificato',exact:true}).click();
@@ -90,7 +103,7 @@ try{
  await review.locator('textarea[name=motivazione_esito]').fill('Verificare il documento');
  await review.getByRole('button',{name:'Conferma esito'}).click();await s.getByText('Rettifica anagrafica elaborata.',{exact:true}).waitFor();
  await openProfile(p);await p.getByText(/Verificare il documento/).waitFor();
- await p.locator('input[name=nome]').fill('Collaudo approvato');await p.getByRole('button',{name:'Richiedi modifica anagrafica'}).click();await p.getByText('Rettifica anagrafica inviata alla segreteria.',{exact:true}).waitFor();
+ await submitCorrection('Collaudo approvato');
  await s.goto(origin+'/gestionale/soci/'+student.id+'?tab=anagrafica');await s.getByRole('heading',{name:'Rettifica anagrafica in attesa'}).waitFor();
  await s.locator('select[name=esito]').selectOption('applicata');await s.getByRole('button',{name:'Conferma esito'}).click();await s.getByText('Rettifica anagrafica elaborata.',{exact:true}).waitFor();
  check((await ok(db.from('persone').select('nome').eq('id',student.id).single())).nome==='Collaudo approvato','Rettifica approvata e applicata da segreteria');
