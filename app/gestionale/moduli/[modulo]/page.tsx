@@ -1,3 +1,4 @@
+import {medicalRoster,MEDICAL_FILTERS,type MedicalRow} from '@/lib/medical-roster';
 import {EsitoCertificato,SollecitoCertificato} from '@/components/CertificateRowActions';
 import {statiCertificato,statoSingolo} from '@/lib/certificati';
 import Cronologia from '@/components/Cronologia';
@@ -70,7 +71,7 @@ function bookingConflictText(corsia?:string,inizio?:string,fine?:string):string{
  const fascia=dal&&al?` dalle ${dal} alle ${al}`:' nell’intervallo richiesto';
  return `Corsia${numero} già prenotata${fascia}. Scegli un’altra corsia o modifica l’orario.`;
 }
-export default async function ModulePage({params,searchParams}:{params:Promise<{modulo:string}>;searchParams:Promise<{q?:string;msg?:string;p?:string;corsia?:string;inizio?:string;fine?:string;edit?:string;stato?:string}>}){
+export default async function ModulePage({params,searchParams}:{params:Promise<{modulo:string}>;searchParams:Promise<{q?:string;msg?:string;p?:string;corsia?:string;inizio?:string;fine?:string;edit?:string;stato?:string;archivio?:string}>}){
  const {modulo}=await params;
  if(!isModuleKey(modulo))notFound();
  if(modulo==='pagamenti')redirect('/gestionale/incassi');
@@ -81,7 +82,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
   const {data}=await supabase.from('ruoli_utente').select('ruolo').eq('utente_id',user.id).eq('ruolo','amministratore').maybeSingle();
   if(!data)redirect('/gestionale?msg=permessi');
  }
- const {q='',msg='',p='1',corsia,inizio,fine,edit,stato}=await searchParams;
+ const {q='',msg='',p='1',corsia,inizio,fine,edit,stato,archivio}=await searchParams;
  const feedback=msg==='corsia_occupata'&&modulo==='prenotazioni'?bookingConflictText(corsia,inizio,fine):status[msg];
  const page=Math.min(100,Math.max(1,Number.parseInt(p,10)||1));
  const perPage=30;
@@ -90,13 +91,12 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  const medical=modulo==='certificati';
  const editId=edit&&/^[0-9a-f-]{36}$/i.test(edit)?edit:null;
  const medicalSearch=q.trim().slice(0,80).replace(/[^\p{L}\p{M}\p{N}'’\s-]/gu,' ').split(/\s+/).filter(Boolean);
- let missingQuery=supabase.from('allievi_senza_certificato').select('id,nome,cognome',{count:'exact'});
- if(medical)for(const token of medicalSearch)missingQuery=missingQuery.or(`cognome.ilike.%${token}%,nome.ilike.%${token}%`);
- const [senzaFile,missingTotal]=medical?await Promise.all([
-  missingQuery.order('cognome').order('nome').order('id').range((page-1)*perPage,page*perPage-1),
-  supabase.from('allievi_senza_certificato').select('id',{head:true,count:'exact'})
- ]):[null,null];
- const filtri=medical?await Promise.all(Object.entries(statiCertificato).map(async ([k,label])=>{const {count,error}=await supabase.from('stato_certificati').select('id',{head:true,count:'exact'}).eq('stato_certificato',k);return {k,label,n:error||(k==='mancante'&&missingTotal?.error)?'—':(count??0)+(k==='mancante'?(missingTotal?.count??0):0)};})):[];
+ const archive=medical&&archivio==='1';
+ let roster:MedicalRow[]|null=null,rosterError=false;
+ if(medical&&!archive&&!editId){try{roster=await medicalRoster(supabase);}catch{rosterError=true;roster=[];}}
+ const rosterState=stato&&MEDICAL_FILTERS.some(k=>k===stato)?stato:'';
+ const filteredRoster=roster?.filter(row=>(!rosterState||row.stato_certificato===rosterState)&&medicalSearch.every(token=>(row.sort_nome+' '+row.sort_cognome).toLocaleLowerCase('it').includes(token.toLocaleLowerCase('it'))));
+ const filtri=roster!==null?MEDICAL_FILTERS.map(k=>({k,label:k,n:rosterError?'—':roster!.filter(row=>row.stato_certificato===k).length})):medical&&archive?await Promise.all(Object.entries(statiCertificato).map(async ([k,label])=>{const {count,error}=await supabase.from('stato_certificati').select('id',{head:true,count:'exact'}).eq('stato_certificato',k);return {k,label,n:error?'—':count??0};})):[];
  let query=supabase.from(medical?'stato_certificati':personSorted?`gest_elenco_${module.table}`:module.table).select('*',{count:'exact'});
  if(medical&&!editId&&stato&&Object.hasOwn(statiCertificato,stato))query=query.eq('stato_certificato',stato);
  const searchField=module.fields.find(f=>f.type==='text' || (!f.type&&f.name!=='codice_fiscale'));
@@ -108,7 +108,8 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  const primary=personSorted?'sort_cognome':module.table==='persone'?'cognome':module.fields.find(f=>['nome','titolo','codice','tipo'].includes(f.name))?.name??module.order??'id';
  query=query.order(primary,{ascending:true,nullsFirst:false});
  if(personSorted||module.table==='persone')query=query.order(personSorted?'sort_nome':'nome',{ascending:true});
- const {data,error,count}=await query.order('id',{ascending:true}).range(medical&&editId?0:(page-1)*perPage,medical&&editId?perPage-1:page*perPage-1);
+ const result=filteredRoster!==undefined?{data:filteredRoster.slice((page-1)*perPage,page*perPage),error:rosterError?{message:'Elenco iscritti non disponibile'}:null,count:filteredRoster.length}:await query.order('id',{ascending:true}).range(medical&&editId?0:(page-1)*perPage,medical&&editId?perPage-1:page*perPage-1);
+ const {data,error,count}=result;
  const refs=[...new Set(module.fields.map(f=>f.ref?.table).filter((v):v is string=>Boolean(v)))];
  const references:Record<string,Row[]>={};
  let enrollmentLoadError=false;
@@ -176,18 +177,18 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
 
  if(medical){
   const base='/gestionale/moduli/certificati';
-  const active=stato&&Object.hasOwn(statiCertificato,stato)?stato:'';
-  const href=(filter:string,pn=1,selected?:string)=>{const sp=new URLSearchParams();if(filter)sp.set('stato',filter);if(q)sp.set('q',q);if(pn>1)sp.set('p',String(pn));if(selected)sp.set('edit',selected);return base+(sp.size?'?'+sp.toString():'');};
+  const active=archive?(stato&&Object.hasOwn(statiCertificato,stato)?stato:''):rosterState;
+  const href=(filter:string,pn=1,selected?:string)=>{const sp=new URLSearchParams();if(archive)sp.set('archivio','1');if(filter)sp.set('stato',filter);if(q)sp.set('q',q);if(pn>1)sp.set('p',String(pn));if(selected)sp.set('edit',selected);return base+(sp.size?'?'+sp.toString():'');};
   const tones:Record<string,{bg:string;fg:string;hint:string}>={
+   in_scadenza:{bg:'#fff3dd',fg:'#80520b',hint:'Entro 30 giorni'},
    in_attesa:{bg:'#fff3dd',fg:'#80520b',hint:'Controlla i documenti ricevuti'},
    scaduto:{bg:'#ffeaec',fg:'#a62d40',hint:'Da rinnovare'},
    mancante:{bg:'#fff3dd',fg:'#80520b',hint:'Da acquisire'},
    non_valido:{bg:'#ffeaec',fg:'#a62d40',hint:'Da regolarizzare'},
    valido:{bg:'#e5f4eb',fg:'#246d43',hint:'In regola'}
   };
-  const names:Record<string,string>={in_attesa:'Da verificare',scaduto:'Scaduti',mancante:'Mancanti',non_valido:'Non validi',valido:'Validi'};
-  const showMissing=!active||active==='mancante';
-  const totalPages=Math.max(count??0,showMissing?senzaFile?.count??0:0);
+  const names:Record<string,string>={in_scadenza:'In scadenza',in_attesa:'Da verificare',scaduto:'Scaduti',mancante:'Mancanti',non_valido:'Non validi',valido:'Validi'};
+  const totalPages=count??0;
   const grid={display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%, 180px),1fr))',gap:12};
   const nameOf=(row:Row)=>[row.sort_cognome,row.sort_nome].filter(Boolean).join(' ')||labelOf(references.persone?.find(p=>p.id===row.persona_id)??({id:''} as Row),['cognome','nome'])||'Intestatario non disponibile';
   const upload=(id:unknown)=>'/area-personale/certificato?origine=gestionale&persona='+encodeURIComponent(String(id??''));
@@ -202,39 +203,37 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
      <Editor module={module} moduleKey={modulo} record={selected} references={references} admin={isAdministrator===true}/></>:<p>Certificato non trovato o non accessibile.</p>}
    </section>:<>
     <nav aria-label="Situazione certificati" style={grid}>
-     {['in_attesa','scaduto','mancante','non_valido','valido'].map(k=>{const f=filtri.find(item=>item.k===k),t=tones[k];return <Link key={k} href={href(k)} aria-current={active===k?'page':undefined} className="panel" style={{padding:18,textDecoration:'none',borderColor:active===k?t.fg:undefined,boxShadow:active===k?`inset 0 0 0 1px ${t.fg}`:undefined}}><span style={{color:t.fg,fontWeight:700}}>{names[k]}</span><strong style={{display:'block',fontSize:30,color:t.fg,margin:'6px 0'}}>{f?.n??'—'}</strong><span style={{fontSize:13,color:'var(--muted)'}}>{t.hint}</span></Link>;})}
+     {(archive?['in_attesa','scaduto','mancante','non_valido','valido']:MEDICAL_FILTERS).map(k=>{const f=filtri.find(item=>item.k===k),t=tones[k];return <Link key={k} href={href(k)} aria-current={active===k?'page':undefined} className="panel" style={{padding:18,textDecoration:'none',borderColor:active===k?t.fg:undefined,boxShadow:active===k?`inset 0 0 0 1px ${t.fg}`:undefined}}><span style={{color:t.fg,fontWeight:700}}>{names[k]}</span><strong style={{display:'block',fontSize:30,color:t.fg,margin:'6px 0'}}>{f?.n??'—'}</strong><span style={{fontSize:13,color:'var(--muted)'}}>{t.hint}</span></Link>;})}
     </nav>
     <div className="module-toolbar">
-     <form method="get" className="search-line">{active&&<input type="hidden" name="stato" value={active}/>}<input name="q" aria-label="Cerca per nome o cognome" placeholder="Cerca nome o cognome" defaultValue={q}/><button className="button ghost">Cerca</button></form>
-     <div className="buttons"><Link className="button ghost" aria-current={!active?'page':undefined} href={href('')}>Tutti i certificati</Link>{q&&<Link className="button ghost" href={base+(active?'?stato='+active:'')}>Azzera ricerca</Link>}<Link className="button ghost" href="/gestionale/esporta/certificati">Esporta CSV</Link></div>
+     <form method="get" className="search-line">{archive&&<input type="hidden" name="archivio" value="1"/>}{active&&<input type="hidden" name="stato" value={active}/>}<input name="q" aria-label="Cerca per nome o cognome" placeholder="Cerca nome o cognome" defaultValue={q}/><button className="button ghost">Cerca</button></form>
+     <div className="buttons"><Link className="button ghost" aria-current={!active?'page':undefined} href={href('')}>Tutti i certificati</Link>{q&&<Link className="button ghost" href={base+(archive?'?archivio=1'+(active?'&stato='+active:''):(active?'?stato='+active:''))}>Azzera ricerca</Link>}<Link className="button ghost" href={archive?base:base+'?archivio=1'}>{archive?'Torna agli iscritti':'Archivio storico'}</Link><Link className="button ghost" href="/gestionale/esporta/certificati">Esporta CSV</Link></div>
     </div>
     <details className="panel module-editor"><summary><strong>+ Registra o carica un certificato</strong></summary>
      <p>Se hai il documento, scegli l’intestatario e caricalo. Se devi registrare soltanto i dati amministrativi, usa il modulo sottostante.</p>
      <form className="search-line" action="/area-personale/certificato" method="get"><input type="hidden" name="origine" value="gestionale"/><select name="persona" aria-label="Intestatario del certificato" required defaultValue=""><option value="">Scegli intestatario…</option>{(references.persone??[]).map(person=><option key={person.id} value={person.id}>{labelOf(person,['cognome','nome'])}</option>)}</select><button className="button">Carica documento</button></form>
      <Editor module={module} moduleKey={modulo} references={references}/>
     </details>
-    <section className="stack" aria-label="Elenco certificati"><h2>{active?names[active]:'Certificati medici'}</h2>
+    <section className="stack" aria-label="Elenco certificati"><h2>{active?names[active]:archive?'Archivio certificati':'Tutte le persone iscritte'}</h2><p>{archive?'Tutti i certificati registrati, incluse le edizioni precedenti.':'Soci e allievi della stagione attiva, una riga per persona. Scadenza imminente: entro 30 giorni.'}</p>
      {error&&<p className="notice error" role="alert">Impossibile leggere i certificati. Riprova o verifica i permessi.</p>}
-     {showMissing&&senzaFile?.error&&<p className="notice error" role="alert">Impossibile caricare gli allievi senza certificato.</p>}
      <div className="panel table-panel"><table style={{minWidth:940}}><thead><tr><th scope="col">Nome e cognome</th><th scope="col">Certificato</th><th scope="col">Documento</th><th scope="col">Scadenza</th><th scope="col">Cambia esito</th><th scope="col">Azioni</th></tr></thead><tbody>
      {!error&&rows.map(row=>{
       const key=String(row.stato_certificato),t=tones[key]??{bg:'#edf1f4',fg:'#47606d',hint:''};
       const nome=nameOf(row),doc=String(row.documento_id??''),previous=String(row.esito_verifica??'');
       const initial=previous|| (row.idoneita_verificata===true?'valido':'in_attesa');
       return <tr key={row.id}><th scope="row" style={{textAlign:'left',whiteSpace:'nowrap'}}>{nome}</th>
-       <td><span style={{display:'inline-block',background:t.bg,color:t.fg,padding:'5px 10px',borderRadius:20,fontSize:13,fontWeight:700}}>{statoSingolo(key)}</span></td>
+       <td><span style={{display:'inline-block',background:t.bg,color:t.fg,padding:'5px 10px',borderRadius:20,fontSize:13,fontWeight:700}}>{key==='in_scadenza'?'In scadenza':statoSingolo(key)}</span></td>
        <td>{doc?<Link className="button ghost" href={'/documenti/'+doc}>Visualizza certificato</Link>:<Link className="button ghost" href={upload(row.persona_id)}>Carica certificato</Link>}</td>
        <td style={{whiteSpace:'nowrap'}}>{formatValue(row.scade_il)}</td>
        <td>{doc?<EsitoCertificato key={row.id+':'+doc+':'+previous} id={row.id} documento={doc} precedente={previous} iniziale={initial} nome={nome}/>:<span className="hint">Documento mancante</span>}</td>
-       <td><div className="buttons">{!doc&&<SollecitoCertificato persona={String(row.persona_id)} nome={nome}/>}<Link href={href(active,page,row.id)}>Altri dati e storico</Link></div></td>
+       <td><div className="buttons">{!doc&&<SollecitoCertificato persona={String(row.persona_id)} nome={nome}/>}{!row.senza_registrazione&&<Link href={href(active,page,row.id)}>Altri dati e storico</Link>}</div></td>
       </tr>;
      })}
-     {showMissing&&!senzaFile?.error&&senzaFile?.data?.map(person=>{const nome=person.cognome+' '+person.nome;return <tr key={'missing-'+person.id}><th scope="row" style={{textAlign:'left',whiteSpace:'nowrap'}}>{nome}</th><td><span style={{background:tones.mancante.bg,color:tones.mancante.fg,padding:'5px 10px',borderRadius:20,fontWeight:700}}>Documento mancante</span></td><td><Link className="button ghost" href={upload(person.id)}>Carica certificato</Link></td><td>—</td><td><span className="hint">Non disponibile</span></td><td><SollecitoCertificato persona={person.id} nome={nome}/></td></tr>;})}
-     {!error&&!rows.length&&!(showMissing&&senzaFile?.data?.length)&&<tr><td colSpan={6} className="empty-cell">Nessun certificato corrisponde alla ricerca.</td></tr>}
+     {!error&&!rows.length&&<tr><td colSpan={6} className="empty-cell">Nessun certificato corrisponde alla ricerca.</td></tr>}
      </tbody></table></div>
      <p className="hint">Lo stato Scaduto dipende automaticamente dalla data di scadenza. La notifica viene registrata nell’area personale degli account collegati; è consentito un sollecito al giorno per persona.</p>
     </section>
-    <div className="pager"><span>{count??0} certificati registrati{showMissing?' · '+(senzaFile?.count??0)+' allievi senza registrazione':''} · Pagina {page}</span><div className="buttons">{page>1&&<Link className="button ghost" href={href(active,page-1)}>Precedente</Link>}{page*perPage<totalPages&&<Link className="button ghost" href={href(active,page+1)}>Successiva</Link>}</div></div>
+    <div className="pager"><span>{error?'—':count??0} {archive?'certificati registrati':'persone'} · Pagina {page}</span><div className="buttons">{page>1&&<Link className="button ghost" href={href(active,page-1)}>Precedente</Link>}{page*perPage<totalPages&&<Link className="button ghost" href={href(active,page+1)}>Successiva</Link>}</div></div>
     <p className="hint">Dati sanitari riservati: registra solo informazioni amministrative, senza diagnosi o informazioni cliniche.</p>
    </>}
   </>;
@@ -244,8 +243,6 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  <div className="page-intro"><p className="eyebrow">Gestionale · {module.label}</p><h1>{module.label}</h1><p>{module.description}</p></div>
  {feedback&&<p className={`notice ${['salvato','eliminato'].includes(msg)?'success': 'warning'}`} role="status">{feedback}</p>}
  {enrollmentLoadError&&<p className="notice error">Impossibile caricare tutte le iscrizioni dei corsi. Riprova o verifica i permessi.</p>}
- {medical&&<nav className="buttons" aria-label="Filtri certificati"><Link className="button ghost" href="?">Tutti</Link>{filtri.map(f=><Link key={f.k} aria-current={stato===f.k?'page':undefined} className={stato===f.k?'button':'button ghost'} href={'?stato='+f.k}>{f.label} ({f.n})</Link>)}</nav>}
- {medical&&(!stato||stato==='mancante')&&!!senzaFile?.data?.length&&<section className="panel"><h3>Allievi senza certificato registrato</h3><ul>{senzaFile.data.map(p=><li key={p.id}>{p.cognome} {p.nome} · Documento mancante · <Link href={'/area-personale/certificato?persona='+p.id}>Carica certificato</Link></li>)}</ul></section>}
  <div className="module-toolbar">
   <form method="get" className="search-line">{medical&&stato&&<input type="hidden" name="stato" value={stato}/>}<input name="q" aria-label="Cerca" placeholder="Cerca nel campo principale" defaultValue={q}/><button className="button ghost">Cerca</button></form>
   <Link className="button ghost" href={`/gestionale/esporta/${modulo}`}>Esporta CSV</Link>
@@ -266,7 +263,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  </tbody></table></div>}
  <div className="pager"><span>{count??0} record · Pagina {page}</span><div className="buttons">
  {page>1&&<Link className="button ghost" href={`?p=${page-1}&q=${encodeURIComponent(q)}&stato=${encodeURIComponent(stato??'')}`}>Precedente</Link>}
- {page*perPage<Math.max(count??0,medical&&(!stato||stato==='mancante')?senzaFile?.count??0:0)&&<Link className="button ghost" href={`?p=${page+1}&q=${encodeURIComponent(q)}&stato=${encodeURIComponent(stato??'')}`}>Successiva</Link>}
+ {page*perPage<(count??0)&&<Link className="button ghost" href={`?p=${page+1}&q=${encodeURIComponent(q)}&stato=${encodeURIComponent(stato??'')}`}>Successiva</Link>}
  </div></div>
  </>;
 }
