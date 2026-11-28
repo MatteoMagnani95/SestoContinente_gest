@@ -201,17 +201,25 @@ export async function runMutations({app,admin,accounts,fixtures,work}){
   const pdf=await PDFDocument.create();pdf.addPage();
   await pdf.attach(randomBytes(4*1024*1024),'fixture.bin',{mimeType:'application/octet-stream'});
   const bytes=Buffer.from(await pdf.save());assert.ok(bytes.length>3*1024*1024&&bytes.length<10*1024*1024);
-  const before=await count('certificati_medici',{persona_id:accounts.member.person});
+  const existing=await admin.from('certificati_medici').select('id,documento_id,rilasciato_il,scade_il,idoneita_verificata').eq('persona_id',accounts.member.person).order('id');
+   assert.ifError(existing.error);assert.ok(existing.data.length>0,'session fixture certificate is required');
+   const previousIds=new Set(existing.data.map(c=>c.id)),before=existing.data.length;
   await member.goto('/area-personale/certificato');
   await member.locator('select[name=persona_id]').selectOption(accounts.member.person);
-  const date=new Date(Date.now()-86400000).toISOString().slice(0,10),expiry=new Date(Date.now()+60*86400000).toISOString().slice(0,10);
+  // Deliberately reuse the issue date of a previously registered certificate:
+   // issue date is not a unique identifier, including across UTC midnight.
+   const date=existing.data[0].rilasciato_il,expiry=new Date(Date.now()+60*86400000).toISOString().slice(0,10);
   await member.locator('input[name=rilasciato_il]').fill(date);
   await member.locator('input[name=scade_il]').fill(expiry);
   await member.locator('input[name=file]').setInputFiles({name:'certificato-sintetico.pdf',mimeType:'application/pdf',buffer:bytes});
   await member.getByRole('button',{name:'Carica certificato',exact:true}).click();
   await expect(member).toHaveURL(/msg=ok/,{timeout:60000});
   assert.equal(await count('certificati_medici',{persona_id:accounts.member.person}),before+1);
-  const cert=await one('certificati_medici','documento_id,idoneita_verificata',{persona_id:accounts.member.person,rilasciato_il:date});
+  const after=await admin.from('certificati_medici').select('id,documento_id,rilasciato_il,scade_il,idoneita_verificata').eq('persona_id',accounts.member.person).order('id');
+   assert.ifError(after.error);assert.equal(after.data.length,before+1);
+   const added=after.data.filter(c=>!previousIds.has(c.id));assert.equal(added.length,1);
+   assert.deepEqual(after.data.filter(c=>previousIds.has(c.id)),existing.data,'existing certificates preserved');
+   const cert=added[0];assert.equal(cert.rilasciato_il,date);assert.equal(cert.scade_il,expiry);assert.ok(cert.documento_id);
   assert.equal(cert.idoneita_verificata,false);
   const download=await member.request.get('/documenti/'+cert.documento_id+'?download=1');
   assert.equal(download.status(),200);assert.deepEqual(await download.body(),bytes);
