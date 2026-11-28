@@ -96,3 +96,22 @@ export async function saveExternalPatent(form:FormData){
  }catch{return {error:'Controlla i dati del brevetto.'};}
  refresh(person);redirect(profile+'?msg=brevetto_ok');
 }
+
+export async function changeLoginEmail(form:FormData){
+ const {supabase,user}=await requireUser();
+ const email=read(form,'nuova_email').toLowerCase(),confirm=read(form,'conferma_email').toLowerCase();
+ const password=String(form.get('password_attuale')??'');
+ if(!user.email||!user.email_confirmed_at)return {error:'Conferma prima l’indirizzo email attuale.'};
+ if(email.length>254||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email===user.email.toLowerCase())return {error:'Inserisci un nuovo indirizzo email valido.',field:'nuova_email'};
+ if(email!==confirm)return {error:'Gli indirizzi non coincidono.',field:'conferma_email'};
+ if(!password||password.length>1024)return {error:'Inserisci la password attuale.',field:'password_attuale'};
+ const origin=process.env.NEXT_PUBLIC_SITE_URL;
+ if(!origin)return {error:'Cambio email temporaneamente non disponibile.'};
+ let target:string;
+ try{const parsed=new URL(origin);if(parsed.protocol!=='https:'&&!(parsed.protocol==='http:'&&['127.0.0.1','localhost'].includes(parsed.hostname)))throw Error();target=new URL('/auth/callback?next=%2Farea-personale%2Fprofilo%3Fmsg%3Demail_verifica',parsed.origin).toString();}catch{return {error:'Cambio email temporaneamente non disponibile.'};}
+ const {data:verified,error:authError}=await supabase.auth.signInWithPassword({email:user.email,password});
+ if(authError||verified.user?.id!==user.id)return {error:'Password attuale non corretta o verifica non disponibile.',field:'password_attuale'};
+ const {error}=await supabase.auth.updateUser({email},{emailRedirectTo:target});
+ if(error)return {error:'Non è stato possibile avviare il cambio email. Controlla l’indirizzo o riprova più tardi.'};
+ revalidatePath(profile);redirect(profile+'?msg=email_richiesta');
+}
