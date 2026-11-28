@@ -16,12 +16,30 @@ function validatedHeaders(raw:unknown[],needed:string[]){
  return columns.map(name=>needed.includes(name)?name:false);
 }
 
+// Match a complete, validated header before choosing a delimiter. Never split
+// records manually: quoted separators and multiline fields remain CSV syntax.
+function csvDelimiter(bytes:Buffer,needed:string[]){
+ const valid:string[]=[];let readableHeader=false;
+ for(const delimiter of [',',';']){
+  try{
+   const records=parseCsv(bytes,{delimiter,bom:true,trim:true,skip_empty_lines:true,max_record_size:2_000_000,to:1}) as string[][];
+   if(!records.length)continue;
+   readableHeader=true;
+   validatedHeaders(records[0],needed);
+   valid.push(delimiter);
+  }catch{ /* The other delimiter may be the correct one. */ }
+ }
+ if(valid.length===1)return valid[0];
+ if(readableHeader)throw new HeaderError('Intestazione assente, duplicata o ambigua');
+ throw new Error('CSV non leggibile');
+}
+
 export async function parseHistoricalFile(bytes:Buffer,filename:string,needed:string[]):Promise<ImportFileResult>{
  if(bytes.length<2||bytes.length>2_000_000)return {rows:null,error:'formato'};
  let rows:Record<string,unknown>[]=[];
  try{
   if(filename.toLowerCase().endsWith('.csv')){
-   rows=parseCsv(bytes,{columns:(header:string[])=>validatedHeaders(header,needed),skip_empty_lines:true,trim:true,bom:true,max_record_size:2_000_000,to:1001}) as Record<string,unknown>[];
+   rows=parseCsv(bytes,{delimiter:csvDelimiter(bytes,needed),columns:(header:string[])=>validatedHeaders(header,needed),skip_empty_lines:true,trim:true,bom:true,max_record_size:2_000_000,to:1001}) as Record<string,unknown>[];
   }else if(filename.toLowerCase().endsWith('.xlsx')){
    const book=new ExcelJS.Workbook();
    await book.xlsx.load(bytes as unknown as Parameters<typeof book.xlsx.load>[0]);
