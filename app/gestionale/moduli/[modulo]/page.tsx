@@ -84,7 +84,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  }
  const {q='',msg='',p='1',corsia,inizio,fine,edit,stato,archivio}=await searchParams;
  const feedback=msg==='corsia_occupata'&&modulo==='prenotazioni'?bookingConflictText(corsia,inizio,fine):status[msg];
- const page=Math.min(100,Math.max(1,Number.parseInt(p,10)||1));
+ const page=Math.min(10000,Math.max(1,Number.parseInt(p,10)||1));
  const perPage=30;
  const personViews=new Set(['adesioni', 'iscrizioni_corsi', 'assegnazioni_istruttori', 'qualifiche_istruttori', 'brevetti_allievi', 'certificati_medici', 'presenze', 'assegnazioni_attrezzature', 'quote_associative', 'saldi_quote', 'saldi_corsi', 'tesseramenti', 'addebiti_corsi']);
  const personSorted=personViews.has(module.table);
@@ -183,9 +183,9 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
   const href=(filter:string,pn=1,selected?:string)=>{const sp=new URLSearchParams();if(archive)sp.set('archivio','1');if(filter)sp.set('stato',filter);if(q)sp.set('q',q);if(pn>1)sp.set('p',String(pn));if(selected)sp.set('edit',selected);return base+(sp.size?'?'+sp.toString():'');};
   const tones:Record<string,{bg:string;fg:string;hint:string}>={
    in_scadenza:{bg:'#fff3dd',fg:'#80520b',hint:'Entro 30 giorni'},
-   in_attesa:{bg:'#fff3dd',fg:'#80520b',hint:'Controlla i documenti ricevuti'},
+   in_attesa:{bg:'#eaf3ff',fg:'#216ba5',hint:'Controlla i documenti ricevuti'},
    scaduto:{bg:'#ffeaec',fg:'#a62d40',hint:'Da rinnovare'},
-   mancante:{bg:'#fff3dd',fg:'#80520b',hint:'Da acquisire'},
+   mancante:{bg:'#ffeaec',fg:'#a62d40',hint:'Da acquisire'},
    non_valido:{bg:'#ffeaec',fg:'#a62d40',hint:'Da regolarizzare'},
    valido:{bg:'#e5f4eb',fg:'#246d43',hint:'In regola'}
   };
@@ -210,7 +210,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
     </nav>
     <div className="module-toolbar">
      <form method="get" className="search-line">{archive&&<input type="hidden" name="archivio" value="1"/>}{active&&<input type="hidden" name="stato" value={active}/>}<input name="q" aria-label="Cerca per nome o cognome" placeholder="Cerca nome o cognome" defaultValue={q}/><button className="button ghost">Cerca</button></form>
-     <div className="buttons"><Link className="button ghost" aria-current={!active?'page':undefined} href={href('')}>Tutti i certificati</Link>{q&&<Link className="button ghost" href={base+(archive?'?archivio=1'+(active?'&stato='+active:''):(active?'?stato='+active:''))}>Azzera ricerca</Link>}<Link className="button ghost" href={archive?base:base+'?archivio=1'}>{archive?'Torna agli iscritti':'Archivio storico'}</Link><Link className="button ghost" href="/gestionale/esporta/certificati">Esporta CSV</Link></div>
+     <div className="buttons"><Link className="button ghost" aria-current={!active?'page':undefined} href={href('')}>{archive?'Tutti i certificati':'Tutti gli iscritti'}</Link>{q&&<Link className="button ghost" href={base+(archive?'?archivio=1'+(active?'&stato='+active:''):(active?'?stato='+active:''))}>Azzera ricerca</Link>}<Link className="button ghost" href={archive?base:base+'?archivio=1'}>{archive?'Torna agli iscritti':'Archivio storico'}</Link><Link className="button ghost" href="/gestionale/esporta/certificati">Esporta archivio CSV</Link></div>
     </div>
     <details className="panel module-editor"><summary><strong>+ Registra o carica un certificato</strong></summary>
      <p>Se hai il documento, scegli l’intestatario e caricalo. Se devi registrare soltanto i dati amministrativi, usa il modulo sottostante.</p>
@@ -229,7 +229,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
        <td>{doc?<Link className="button ghost" href={'/documenti/'+doc}>Visualizza certificato</Link>:<Link className="button ghost" href={upload(row.persona_id)}>Carica certificato</Link>}</td>
        <td style={{whiteSpace:'nowrap'}}><strong style={{color:typeof row.scade_il==='string'?(row.scade_il<today?'#a62d40':row.scade_il<=limit?'#80520b':undefined):undefined}}>{formatValue(row.scade_il)}</strong>{doc&&typeof row.scade_il==='string'&&row.scade_il>=today&&row.scade_il<=limit&&<span className="hint" style={{display:'block',color:'#80520b'}}>Entro 30 giorni</span>}</td>
        <td>{doc?<EsitoCertificato key={row.id+':'+doc+':'+previous} id={row.id} documento={doc} precedente={previous} iniziale={initial} nome={nome}/>:<span className="hint">Documento mancante</span>}</td>
-       <td><div className="buttons">{!doc&&<SollecitoCertificato persona={String(row.persona_id)} nome={nome}/>}{!row.senza_registrazione&&<Link href={href(active,page,row.id)}>Altri dati e storico</Link>}</div></td>
+       <td><div className="buttons">{!archive&&!doc&&<SollecitoCertificato persona={String(row.persona_id)} nome={nome}/>}{!row.senza_registrazione&&<Link href={href(active,page,row.id)}>Altri dati e storico</Link>}</div></td>
       </tr>;
      })}
      {!error&&!rows.length&&<tr><td colSpan={6} className="empty-cell">Nessun certificato corrisponde alla ricerca.</td></tr>}
