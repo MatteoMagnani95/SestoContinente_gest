@@ -25,7 +25,7 @@ export async function saveModuleRecord(form:FormData) {
  const changes:Record<string,unknown>={};
  for(const field of module.fields) {
   const raw=text(form,field.name);
-  if(!id&&!raw&&((key==='edizioni'&&field.name==='direttore_id')||(key==='brevetti'&&field.name==='edizione_id')))return {field:field.name,error:'Seleziona '+field.label.toLowerCase()+'.'};
+  if(!id&&!raw&&(key==='edizioni'&&field.name==='direttore_id'))return {field:field.name,error:'Seleziona '+field.label.toLowerCase()+'.'};
   if(field.type==='checkbox') {changes[field.name]=form.get(field.name)==='on';continue;}
   if(field.required&&!raw) return {error:'Controlla il campo '+field.label+'.',field:field.name};
   if(!raw){changes[field.name]=null;continue;}
@@ -77,6 +77,16 @@ export async function saveModuleRecord(form:FormData) {
   changes.cf_override_motivo=check.reason;
   changes.codice_fiscale=String(changes.codice_fiscale??'').toUpperCase()||null;
  }
+ if(key==='brevetti'){
+  if(!id&&!['interno','esterno'].includes(String(changes.origine??'')))return {error:'Seleziona l’origine del brevetto.',field:'origine'};
+  if(!id&&changes.origine==='interno'&&!changes.edizione_id)return {error:'Seleziona l’edizione interna frequentata.',field:'edizione_id'};
+  if(changes.origine==='esterno'){
+   if(changes.edizione_id)return {error:'Un brevetto esterno non è collegato a un corso interno.',field:'edizione_id'};
+   if(!changes.ente)return {error:'Indica la didattica esterna.',field:'ente'};
+   if(!changes.stato_verifica)changes.stato_verifica='in_attesa';
+  }else if(!id){changes.stato_verifica='verificato';changes.centro_rilascio=null;changes.istruttore_esterno=null;}
+  else if(!changes.stato_verifica)changes.stato_verifica='verificato';
+ }
  if(key==='iscrizioni'&&!id&&changes.stato!=='iscritto')redirect(errorPath(key,'socio_non_iscrivibile'));
  if(key==='istruttori'){
   const person=String(changes.persona_id??'');
@@ -112,7 +122,7 @@ export async function saveModuleRecord(form:FormData) {
  if(error) {
   if(key==='edizioni'||key==='corsi'){const dup=await courseDuplicate(supabase,module.table,changes,error);if(dup)return dup;}
   if(error.code==='P3421')return {error:'Il direttore non può essere allievo della stessa edizione.',field:key==='edizioni'?'direttore_id':'persona_id'};
-  if(error.code==='P3422')return {error:'Seleziona un’edizione frequentata dall’allievo con direttore assegnato.',field:'edizione_id'};
+  if(error.code==='P3422')return {error:'Controlla l’origine del brevetto e, per i brevetti interni, l’edizione frequentata con direttore assegnato.',field:'edizione_id'};
   if(key==='certificati')return {error:'Verifica documento, stato e date del certificato.',field:'esito_verifica'};
   // 23P01: violazione del vincolo PostgreSQL EXCLUDE sull'occupazione corsie.
   // Mostrare un'indicazione comprensibile senza esporre dettagli SQL.
