@@ -3,7 +3,7 @@ import {useRef,useState,type ReactNode,type FormEvent} from 'react';
 import {useRouter} from 'next/navigation';
 import {createBrowserClient} from '@supabase/ssr';
 import {caricaCertificato,preparaCaricamento} from '@/app/area-personale/certificato/actions';
-export default function CertificateUploadForm({children}:{children:ReactNode}){
+export default function CertificateUploadForm({children,fromManagement=false}:{children:ReactNode;fromManagement?:boolean}){
  const lock=useRef(false),router=useRouter();
  const [pending,setPending]=useState(false),[error,setError]=useState('');
  async function submit(e:FormEvent<HTMLFormElement>){
@@ -23,7 +23,7 @@ export default function CertificateUploadForm({children}:{children:ReactNode}){
    }
    const result=await caricaCertificato(values);
    if(result.error){setError(result.error);return;}
-   form.reset();router.replace('/area-personale/certificato?msg=ok&persona='+values.get('persona_id'));router.refresh();
+   form.reset();router.replace('/area-personale/certificato?msg=ok&persona='+encodeURIComponent(String(values.get('persona_id')??''))+(fromManagement?'&origine=gestionale':''));router.refresh();
   }catch{setError('Invio non riuscito. Riprova.');}
   finally{lock.current=false;setPending(false);}
  }
