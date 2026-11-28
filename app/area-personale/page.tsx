@@ -15,7 +15,7 @@ export default async function PersonalArea() {
   ids.length?supabase.from('persone').select('id,nome,cognome,email,telefono').in('id',ids):Promise.resolve({data:[]}),
   ids.length?supabase.from('adesioni').select('persona_id,stato').in('persona_id',ids):Promise.resolve({data:[]}),
   ids.length?supabase.from('stato_certificati').select('persona_id,scade_il,idoneita_verificata,stato_certificato,documento_id').in('persona_id',ids).order('creato_il',{ascending:false}):Promise.resolve({data:[]}),
-  ids.length?supabase.from('brevetti_allievi').select('persona_id,titolo,scade_il').in('persona_id',ids).limit(50):Promise.resolve({data:[]}),
+  ids.length?supabase.from('brevetti_allievi').select('persona_id,titolo,scade_il,stato_verifica').in('persona_id',ids).limit(50):Promise.resolve({data:[]}),
   ids.length?supabase.from('quote_associative').select('id,persona_id,importo_dovuto,scadenza').in('persona_id',ids).limit(50):Promise.resolve({data:[]}),
   ids.length?supabase.from('pagamenti').select('quota_id,importo').in('persona_id',ids).limit(100):Promise.resolve({data:[]}),
   supabase.from('comunicazioni').select('id,titolo,contenuto,pubblicata_il').eq('attiva',true).order('pubblicata_il',{ascending:false}).limit(10),
@@ -32,7 +32,7 @@ export default async function PersonalArea() {
  <p>Adesione: <strong>{memberships?.find(a=>a.persona_id===p.id)?.stato.replaceAll('_',' ')??'Non presente'}</strong></p>
  <p>Certificato: <strong>{cert?`${cert.scade_il} · ${statoSingolo(cert.stato_certificato)}`:'Documento mancante'}</strong> · {cert?.documento_id?<Link href={'/documenti/'+cert.documento_id}>Apri certificato</Link>:<Link href="/area-personale/certificato">Carica certificato</Link>}</p>
  <p>Quota: <strong>{quota?`${formatValue(paid,'importo')} versati su ${formatValue(quota.importo_dovuto,'importo')}`:'Non registrata'}</strong></p>
- <p>Brevetti registrati: <strong>{brevetti?.filter(b=>b.persona_id===p.id).length??0}</strong></p>
+ <p>Brevetti verificati: <strong>{brevetti?.filter(b=>b.persona_id===p.id&&b.stato_verifica==='verificato').length??0}</strong> · In attesa: <strong>{brevetti?.filter(b=>b.persona_id===p.id&&b.stato_verifica==='in_attesa').length??0}</strong> · <Link href="/area-personale/profilo">Gestisci brevetti</Link></p>
  </article>})}</div>
  <div className="cards">
  <section className="panel"><h2>Notifiche</h2>{alerts?.length?alerts.map(n=><div className="timeline-item" key={n.id}><strong>{n.titolo}</strong><p>{n.messaggio}</p><form action={markNotification}><input type="hidden" name="id" value={n.id}/><button className="button ghost">Segna come letta</button></form></div>):<p className="muted">Nessuna nuova notifica.</p>}</section>
