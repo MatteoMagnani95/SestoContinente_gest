@@ -40,7 +40,10 @@ async function main(){
   assert.equal(await scalar(ss,"select count(*)::int from public.iscrizioni_corsi where edizione_id=$1 and stato='iscritto'",[edition]),2);
   await assert.rejects(ss.query(enroll,[edition,dir]),{code:'P3421'});
   await assert.rejects(ss.query(enroll,[edition,b]),{code:'23505'});
-  await root.query("update public.adesioni set stato='attiva' where id=$1",[adhesionA]);
+  // Delibera sintetica approvata nel database effimero: non disabilitare i vincoli.
+  const verbale=randomUUID();
+  await root.query("insert into public.cda_verbali(id,data_consiglio,oggetto,tipo,stato,percorso_docx,approvato_il,creato_da) values($1,current_date,'Delibera QA','Approvazione Adesioni Soci','approvato',$2,now(),$3)",[verbale,verbale+'/bozza.docx',users[4]]);
+  await root.query("update public.adesioni set stato='attiva',verbale_cda_id=$2 where id=$1",[adhesionA,verbale]);
   await root.query("insert into public.tesseramenti(adesione_id,ente,stato,scade_il) values($1,'QA','attiva',current_date+100)",[adhesionA]);
   await ss.query("update public.iscrizioni_corsi set stato='iscritto' where id=$1",[request]);
   assert.equal(await scalar(ss,"select count(*)::int from public.iscrizioni_corsi where edizione_id=$1 and stato='iscritto'",[edition]),3);
