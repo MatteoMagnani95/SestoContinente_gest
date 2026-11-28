@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/ui/PrivateLink';
 import {UUID_RE} from '@/lib/course-tools';
 import ModulePage from '../[modulo]/page';
 import {requireStaff} from '@/lib/security';

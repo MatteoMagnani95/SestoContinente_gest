@@ -14,7 +14,7 @@ import {statiCertificato,statoSingolo} from '@/lib/certificati';
 import Cronologia from '@/components/Cronologia';
 import EditForm from '@/components/EditForm';
 import CancelEditButton from '@/components/CancelEditButton';
-import Link from 'next/link';
+import Link from '@/components/ui/PrivateLink';
 import {notFound,redirect} from 'next/navigation';
 import {requireStaffForRender as requireStaff} from '@/lib/security';
 import {modules,isModuleKey,type Module,type Field,type ModuleKey} from '@/lib/modules';
@@ -334,7 +334,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  <label>Ordina per<select name="ordine" defaultValue={selectedSort??''}><option value="">Ordine predefinito</option>{sortable.map(field=><option key={field.name} value={field.name}>{field.label}</option>)}</select></label>
  <label>Direzione<select name="dir" defaultValue={dir==='desc'?'desc':'asc'}><option value="asc">Crescente</option><option value="desc">Decrescente</option></select></label>
  </SearchBar>
- <Link className="button ghost" href={'/gestionale/esporta/'+modulo}>Esporta archivio CSV</Link>
+ <a className="button ghost" href={'/gestionale/esporta/'+modulo}>Esporta archivio CSV</a>
  </FilterBar>
  {editId&&<p><Link href={href(1)}>Torna all’elenco completo</Link></p>}
  {error||scopeError?<div className="notice error" role="alert">Impossibile leggere i dati. Riprova o contatta l’amministratore.</div>:<DataTable label={module.label} mobileCards><thead role="rowgroup"><tr role="row">

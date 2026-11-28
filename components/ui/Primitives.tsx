@@ -6,13 +6,17 @@ export type Tone = 'success' | 'warning' | 'danger' | 'info' | 'neutral';
 export type Area = 'secretariat' | 'teaching' | 'calendar' | 'equipment' | 'finance' | 'system' | 'pool' | 'event' | 'certificate' | 'documents';
 type ButtonVariant = 'primary' | 'secondary' | 'danger';
 const toneIcon: Record<Tone, IconName> = { success: 'check', warning: 'warning', danger: 'error', info: 'info', neutral: 'archive' };
+// Speculative RSC on authenticated archives can be cancelled by document navigation in WebKit.
+const privateNavigation=(href:string)=>/^(?:\?|\/(?:gestionale|gestione-eventi|area-personale|area-soci|istruttore|organi-sociali|documenti|notifiche|comunicazioni)(?:[/?#]|$))/.test(href);
 const buttonClass = (variant: ButtonVariant, extra = '') => `sc-button sc-button-${variant} ${extra}`.trim();
 
 export function Button({ variant = 'primary', icon, children, className = '', type = 'button', ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant; icon?: IconName }) {
   return <button {...props} type={type} className={buttonClass(variant, className)}>{icon && <Icon name={icon}/>} {children}</button>;
 }
 export function ButtonLink({ href, children, icon, variant = 'primary', className = '' }: { href: string; children: ReactNode; icon?: IconName; variant?: ButtonVariant; className?: string }) {
-  return <Link href={href} className={buttonClass(variant, className)}>{icon && <Icon name={icon}/>} {children}</Link>;
+  // Download endpoints are not React Server Component pages.
+  if(/^\/gestionale\/(?:esporta\/|importazione\/modello(?:\?|$)|corsi\/[^/]+\/stampe(?:\?|$))/.test(href))return <a href={href} className={buttonClass(variant,className)}>{icon && <Icon name={icon}/>} {children}</a>;
+  return <Link href={href} prefetch={privateNavigation(href)?false:undefined} className={buttonClass(variant, className)}>{icon && <Icon name={icon}/>} {children}</Link>;
 }
 export function PageHeader({ title, description, eyebrow, actions, area, icon, marine = false }: { title: string; description?: string; eyebrow?: string; actions?: ReactNode; area?: Area; icon?: IconName; marine?: boolean }) {
   return <header className={`sc-page-header${area ? ' sc-area-'+area : ''}${marine ? ' sc-page-header-marine' : ''}`}>
@@ -22,7 +26,7 @@ export function PageHeader({ title, description, eyebrow, actions, area, icon, m
 }
 /** Navigation only: callers supply a real, authorized destination. */
 export function QuickActionLink({href, children, icon, area='system'}:{href:string;children:ReactNode;icon:IconName;area?:Area}){
-  return <Link href={href} className={`sc-quick-action sc-area-${area}`}><Icon name={icon}/><span>{children}</span><Icon name="chevron-right"/></Link>;
+  return <Link href={href} prefetch={privateNavigation(href)?false:undefined} className={`sc-quick-action sc-area-${area}`}><Icon name={icon}/><span>{children}</span><Icon name="chevron-right"/></Link>;
 }
 export function SectionHeader({ title, description, actions, id }: { title: string; description?: string; actions?: ReactNode; id?: string }) {
   return <header className="sc-section-header"><div><h2 id={id}>{title}</h2>{description && <p>{description}</p>}</div>{actions && <div className="actions">{actions}</div>}</header>;

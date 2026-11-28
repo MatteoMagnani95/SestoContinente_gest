@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/ui/PrivateLink';
 import {Icon} from '@/components/ui/Icon';
 import {requireStaffForRender as requireStaff,formatDate} from '@/lib/security';
 import {tutteLePagine} from '@/lib/pagine';

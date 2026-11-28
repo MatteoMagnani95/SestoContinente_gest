@@ -13,10 +13,10 @@ function Breadcrumb({path,access,title,contexts}:{path:string;access:NavigationA
  const staff=staffArea(path,access),items=staff?staffGroups(access.admin).flatMap(g=>g.items):[];
  const active=activeItem(path,items),item=items.find(i=>i.href===active),back=backTarget(path,access);
  const leaf=title||item?.label||areaLabel(path,access);
- return <nav aria-label="Percorso di navigazione" className="sc-breadcrumb"><ol><li><Link href="/">Home</Link></li>
- {staff&&path!=='/gestionale'&&<li><Link href="/gestionale">Gestionale</Link></li>}
- {item&&active!==path&&active!=='/gestionale'&&<li><Link href={restoredTarget({href:item.href,label:item.label},contexts).href}>{item.label}</Link></li>}
- {!staff&&back&&back.href!=='/'&&back.href!==path&&<li><Link href={restoredTarget(back,contexts).href}>{back.label.replace(/^Torna (?:alla |agli |ai |al |all’)/,'')}</Link></li>}
+ return <nav aria-label="Percorso di navigazione" className="sc-breadcrumb"><ol><li><Link prefetch={access.signedIn?false:undefined} href="/">Home</Link></li>
+ {staff&&path!=='/gestionale'&&<li><Link prefetch={access.signedIn?false:undefined} href="/gestionale">Gestionale</Link></li>}
+ {item&&active!==path&&active!=='/gestionale'&&<li><Link prefetch={access.signedIn?false:undefined} href={restoredTarget({href:item.href,label:item.label},contexts).href}>{item.label}</Link></li>}
+ {!staff&&back&&back.href!=='/'&&back.href!==path&&<li><Link prefetch={access.signedIn?false:undefined} href={restoredTarget(back,contexts).href}>{back.label.replace(/^Torna (?:alla |agli |ai |al |all’)/,'')}</Link></li>}
  <li aria-current="page">{leaf}</li></ol></nav>;
 }
 export default function AppShell({access,children}:{access:NavigationAccess;children:ReactNode}){
@@ -77,7 +77,7 @@ export default function AppShell({access,children}:{access:NavigationAccess;chil
  const back=backTarget(path,access),target=back?restoredTarget(back,contexts):null;
  const mobile=internal?mobileDestinations(path,access):[],mobileActive=activeItem(path,mobile.map(d=>({...d,exact:d.href==='/gestionale'||d.href==='/area-personale'})));
  const userNav=userAreaDestinations(path,access),userActive=activeItem(path,userNav.map(d=>({...d,exact:d.href==='/area-personale'})));
- const crumbs=internal&&<div className="sc-page-navigation"><Breadcrumb path={path} access={access} title={title.path===path?title.value:''} contexts={contexts}/>{target&&<Link className="sc-back-button" href={target.href}><Icon name="arrow-left"/>{target.label}</Link>}</div>;
+ const crumbs=internal&&<div className="sc-page-navigation"><Breadcrumb path={path} access={access} title={title.path===path?title.value:''} contexts={contexts}/>{target&&<Link prefetch={access.signedIn?false:undefined} className="sc-back-button" href={target.href}><Icon name="arrow-left"/>{target.label}</Link>}</div>;
  return <>
  <a href="#sc-main" className="sc-skip-link">Vai al contenuto</a>
  <SiteHeader access={access} onMenu={showMenu} menuOpen={open}/>
@@ -85,14 +85,14 @@ export default function AppShell({access,children}:{access:NavigationAccess;chil
   <div className="sc-mobile-menu-inner">
    <header className="sc-mobile-menu-heading"><div><h2 id="sc-menu-title">Menu</h2>{access.enabled&&<span>{greeting(access)}</span>}</div><button type="button" className="sc-icon-button" onClick={()=>closeMenu()} aria-label="Chiudi menu" autoFocus><Icon name="close"/></button></header>
    {staff&&<StaffNav isAdmin={access.admin} idPrefix="mobile" onNavigate={navigateFromMenu}/>}
-   <nav className="sc-mobile-areas" aria-label="Aree e account"><AreaLinks access={access} onNavigate={navigateFromMenu}/>{access.enabled&&<Link href="/" onClick={navigateFromMenu}>Home pubblica</Link>}{access.enabled&&<Link href={access.personal?'/area-personale?tab=notifiche':'/notifiche'} onClick={navigateFromMenu}>Notifiche ({access.unread??'—'})</Link>}{access.signedIn&&<LogoutButton/>}</nav>
+   <nav className="sc-mobile-areas" aria-label="Aree e account"><AreaLinks access={access} onNavigate={navigateFromMenu}/>{access.enabled&&<Link prefetch={access.signedIn?false:undefined} href="/" onClick={navigateFromMenu}>Home pubblica</Link>}{access.enabled&&<Link prefetch={access.signedIn?false:undefined} href={access.personal?'/area-personale?tab=notifiche':'/notifiche'} onClick={navigateFromMenu}>Notifiche ({access.unread??'—'})</Link>}{access.signedIn&&<LogoutButton/>}</nav>
   </div>
  </dialog>
  <GlobalCancelButtons/>
  <main id="sc-main" tabIndex={-1} className={(staff?'sc-main sc-main-staff':'sc-main')+(mobile.length?' sc-main-has-mobile-nav':'')+(marinePrivate?' sc-marine-private':'')}>
- {staff?<div className={'container staff-layout sc-staff-layout'+(collapsed?' sc-sidebar-collapsed':'')}><aside className="staff-sidebar sc-staff-sidebar"><div className="sc-sidebar-heading"><div className="sc-sidebar-label"><strong>{access.admin?'Amministrazione':'Segreteria'}</strong><span>Gestione associativa</span></div><button type="button" className="sc-icon-button sc-sidebar-toggle" aria-label={collapsed?'Espandi menu laterale':'Comprimi menu laterale'} aria-expanded={!collapsed} onClick={()=>collapse(!collapsed)}><Icon name={collapsed?'chevron-right':'arrow-left'}/></button></div><StaffNav isAdmin={access.admin} collapsed={collapsed} onExpand={()=>collapse(false)}/></aside><div className="staff-content sc-staff-content">{crumbs}<div ref={content} className="sc-route-content">{children}</div></div></div>:userNav.length?<div className="sc-user-layout"><aside className="sc-user-sidebar"><p className="sc-user-sidebar-title">La tua associazione</p><nav aria-label="Navigazione area utente">{userNav.map(d=><Link key={d.href} href={d.href} aria-current={userActive===d.href?'page':undefined}><Icon name={d.icon}/><span>{d.label}</span></Link>)}</nav></aside><div className="sc-user-content">{crumbs}<div ref={content} className="sc-route-content">{children}</div></div></div>:<>{crumbs&&<div className="sc-public-navigation">{crumbs}</div>}<div ref={content} className="sc-route-content">{children}</div></>}
+ {staff?<div className={'container staff-layout sc-staff-layout'+(collapsed?' sc-sidebar-collapsed':'')}><aside className="staff-sidebar sc-staff-sidebar"><div className="sc-sidebar-heading"><div className="sc-sidebar-label"><strong>{access.admin?'Amministrazione':'Segreteria'}</strong><span>Gestione associativa</span></div><button type="button" className="sc-icon-button sc-sidebar-toggle" aria-label={collapsed?'Espandi menu laterale':'Comprimi menu laterale'} aria-expanded={!collapsed} onClick={()=>collapse(!collapsed)}><Icon name={collapsed?'chevron-right':'arrow-left'}/></button></div><StaffNav isAdmin={access.admin} collapsed={collapsed} onExpand={()=>collapse(false)}/></aside><div className="staff-content sc-staff-content">{crumbs}<div ref={content} className="sc-route-content">{children}</div></div></div>:userNav.length?<div className="sc-user-layout"><aside className="sc-user-sidebar"><p className="sc-user-sidebar-title">La tua associazione</p><nav aria-label="Navigazione area utente">{userNav.map(d=><Link prefetch={access.signedIn?false:undefined} key={d.href} href={d.href} aria-current={userActive===d.href?'page':undefined}><Icon name={d.icon}/><span>{d.label}</span></Link>)}</nav></aside><div className="sc-user-content">{crumbs}<div ref={content} className="sc-route-content">{children}</div></div></div>:<>{crumbs&&<div className="sc-public-navigation">{crumbs}</div>}<div ref={content} className="sc-route-content">{children}</div></>}
  </main>
- {mobile.length>0&&<nav className="sc-bottom-navigation" aria-label="Navigazione rapida mobile">{mobile.map(d=><Link key={d.href} href={d.href} aria-current={mobileActive===d.href?'page':undefined}><Icon name={d.icon}/><span>{d.label}</span></Link>)}</nav>}
+ {mobile.length>0&&<nav className="sc-bottom-navigation" aria-label="Navigazione rapida mobile">{mobile.map(d=><Link prefetch={access.signedIn?false:undefined} key={d.href} href={d.href} aria-current={mobileActive===d.href?'page':undefined}><Icon name={d.icon}/><span>{d.label}</span></Link>)}</nav>}
  <footer className={'footer sc-branded-footer'+(mobile.length?' sc-footer-has-mobile-nav':'')}><span>Sesto Continente · Gestionale associativo</span><NereiaProject compact/></footer>
  </>;
 }

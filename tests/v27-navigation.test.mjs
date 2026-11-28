@@ -10,7 +10,16 @@ function load(file,imports={}){
 }
 const nav=load('lib/navigation.ts'),modules=load('lib/modules.ts');
 const menu=load('lib/module-navigation.ts');
-const groups=load('components/StaffNav.tsx',{'next/link':{},'next/navigation':{},react:{},'react/jsx-runtime':{},'@/lib/module-navigation':menu,'@/lib/navigation':nav,'@/components/ui/Icon':{}}).staffGroups;
+const privateLink=load('components/ui/PrivateLink.tsx',{'next/link':{default:'NextLink',__esModule:true},'react/jsx-runtime':{jsx:(type,props)=>({type,props})}});
+const groups=load('components/StaffNav.tsx',{'@/components/ui/PrivateLink':privateLink,'next/navigation':{},react:{},'react/jsx-runtime':{},'@/lib/module-navigation':menu,'@/lib/navigation':nav,'@/components/ui/Icon':{}}).staffGroups;
+test('PrivateLink preserves client Link and disables speculative requests by default',()=>{
+ const onClick=()=>{},href='/gestionale/soci?q=Test';
+ const rendered=privateLink.default({href,onClick,children:'Soci','aria-current':'page'});
+ assert.equal(rendered.type,'NextLink');assert.equal(rendered.props.href,href);
+ assert.equal(rendered.props.onClick,onClick);assert.equal(rendered.props['aria-current'],'page');
+ assert.equal(rendered.props.prefetch,false);
+ assert.equal(privateLink.default({href,prefetch:true}).props.prefetch,true);
+});
 test('Lightweight module navigation exactly matches canonical module labels and roles',()=>{
  assert.deepEqual(Object.keys(menu.moduleNavigation).sort(),Object.keys(modules.modules).sort());
  for(const [key,value] of Object.entries(modules.modules))assert.deepEqual(menu.moduleNavigation[key],{label:value.label,adminOnly:Boolean(value.adminOnly)},key);

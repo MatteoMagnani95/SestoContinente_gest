@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/ui/PrivateLink';
 import {requireAdmin} from '@/lib/security';
 import {createAccount} from './actions';
 import {accountMessages,accountState,accountRoles,type AccountRow} from '@/lib/admin-accounts';

@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/ui/PrivateLink';
 import {secretariatLinks,displayName,personInitials} from '@/lib/secretariat';
 import {Icon} from './Icon';
 export function SecretariatNav({active}:{active:string}){
