@@ -19,7 +19,7 @@ export default async function PersonalArea() {
   ids.length?supabase.from('quote_associative').select('id,persona_id,importo_dovuto,scadenza').in('persona_id',ids).limit(50):Promise.resolve({data:[]}),
   ids.length?supabase.from('pagamenti').select('quota_id,importo').in('persona_id',ids).limit(100):Promise.resolve({data:[]}),
   supabase.from('comunicazioni').select('id,titolo,contenuto,pubblicata_il').eq('attiva',true).order('pubblicata_il',{ascending:false}).limit(10),
-  supabase.from('notifiche').select('id,titolo,messaggio,creata_il').eq('utente_id',user.id).is('letta_il',null).order('creata_il',{ascending:false}).limit(20),
+  supabase.from('notifiche').select('id,tipo,titolo,messaggio,creata_il').eq('utente_id',user.id).is('letta_il',null).order('creata_il',{ascending:false}).limit(20),
  ]);
  return <div className="container"><div className="page-intro"><p className="eyebrow">Area personale</p><h1>La tua associazione</h1><p>Adesioni, corsi, brevetti, documenti e comunicazioni in un unico posto.</p></div>
  <div className="buttons" style={{marginBottom:25}}>{areaSociAccess===true&&<Link className="button" href="/area-soci">Area soci</Link>}<Link className="button" href="/area-personale/corsi">I miei corsi e iscrizioni</Link><Link className="button ghost" href="/documenti">Documenti personali</Link><Link className="button ghost" href="/area-personale/certificato">Carica certificato medico</Link><Link className="button ghost" href="/area-personale/profilo">Impostazioni personali</Link><Link className="button ghost" href="/richiesta/stato">Domanda di adesione</Link></div>
@@ -35,7 +35,7 @@ export default async function PersonalArea() {
  <p>Brevetti verificati: <strong>{brevetti?.filter(b=>b.persona_id===p.id&&b.stato_verifica==='verificato').length??0}</strong> · In attesa: <strong>{brevetti?.filter(b=>b.persona_id===p.id&&b.stato_verifica==='in_attesa').length??0}</strong> · <Link href="/area-personale/profilo">Gestisci brevetti</Link></p>
  </article>})}</div>
  <div className="cards">
- <section className="panel"><h2>Notifiche</h2>{alerts?.length?alerts.map(n=><div className="timeline-item" key={n.id}><strong>{n.titolo}</strong><p>{n.messaggio}</p><form action={markNotification}><input type="hidden" name="id" value={n.id}/><button className="button ghost">Segna come letta</button></form></div>):<p className="muted">Nessuna nuova notifica.</p>}</section>
+ <section className="panel"><h2>Notifiche</h2>{alerts?.length?alerts.map(n=><div className="timeline-item" key={n.id}><strong>{n.titolo}</strong><p>{n.messaggio}</p>{n.tipo==='sollecito_certificato'&&<p><Link href="/area-personale/certificato">Carica il certificato medico richiesto</Link></p>}<form action={markNotification}><input type="hidden" name="id" value={n.id}/><button className="button ghost">Segna come letta</button></form></div>):<p className="muted">Nessuna nuova notifica.</p>}</section>
  <section className="panel"><h2>Comunicazioni</h2>{news?.length?news.map(n=><div className="timeline-item" key={n.id}><strong>{n.titolo}</strong><p>{n.contenuto}</p><small>{formatValue(n.pubblicata_il)}</small></div>):<p className="muted">Nessuna comunicazione recente.</p>}</section>
  </div><div className="notice warning"><strong>Attenzione:</strong> l'approvazione della domanda non certifica il pagamento della quota o il tesseramento. La segreteria completerà le verifiche.</div>
  </div>;
