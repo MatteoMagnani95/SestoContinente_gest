@@ -1,23 +1,98 @@
 'use server';
 import {redirect} from 'next/navigation';
+import {revalidatePath} from 'next/cache';
 import {requireUser} from '@/lib/security';
-export async function updateContact(form:FormData){
- const {supabase}=await requireUser();
- const person=String(form.get('persona_id')??'');
- if(!/^[0-9a-f-]{36}$/i.test(person))redirect('/area-personale/profilo?msg=errore');
- const read=(key:string)=>String(form.get(key)??'').trim();
- const {error}=await supabase.rpc('aggiorna_recapiti_personali',{p_persona:person,p_telefono:read('telefono'),p_indirizzo:read('indirizzo'),p_cap:read('cap'),p_comune:read('comune')});
- redirect(`/area-personale/profilo?msg=${error?'errore':'ok'}`);
-}
 
-export async function updateEmergencyContact(form:FormData){
+const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const read=(form:FormData,key:string)=>String(form.get(key)??'').trim();
+const profile='/area-personale/profilo';
+function optional(form:FormData,key:string,max:number){
+ const value=read(form,key);
+ if(value.length>max)throw new Error('Campo troppo lungo.');
+ return value||null;
+}
+function dateValue(form:FormData,key:string){
+ const value=read(form,key);
+ if(!value)return null;
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(value))throw new Error('Data non valida.');
+ const date=new Date(value+'T12:00:00Z');
+ if(!Number.isFinite(date.getTime())||date.toISOString().slice(0,10)!==value)throw new Error('Data non valida.');
+ return value;
+}
+async function ownProfile(form:FormData){
  const {supabase,user}=await requireUser();
- const person=String(form.get('persona_id')??'');
- const name=String(form.get('emergenza_nome')??'').trim();
- const phone=String(form.get('emergenza_telefono')??'').trim();
- if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(person)||name.length<2||name.length>160||phone.length<5||phone.length>32||!/^\+?[\d\s().-]+$/.test(phone)||phone.replace(/\D/g,'').length<5)redirect('/area-personale/profilo?msg=emergenza_dati');
- const {data:link,error:linkError}=await supabase.from('collegamenti_persone').select('persona_id').eq('utente_id',user.id).eq('persona_id',person).maybeSingle();
- if(linkError||!link)redirect('/area-personale/profilo?msg=emergenza_errore');
+ const person=read(form,'persona_id');
+ if(!uuid.test(person))return null;
+ const {data:link,error}=await supabase.from('collegamenti_persone').select('persona_id').eq('utente_id',user.id).eq('persona_id',person).maybeSingle();
+ if(error||!link)return null;
+ return {supabase,user,person};
+}
+function refresh(person:string){
+ revalidatePath(profile);revalidatePath('/area-personale');revalidatePath('/gestionale/soci/'+person);
+}
+export async function updateContact(form:FormData){
+ const owned=await ownProfile(form);
+ if(!owned)return {error:'Profilo non autorizzato.'};
+ const {supabase,person}=owned;
+ try{
+  const email=optional(form,'email',254);
+  if(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return {error:'Email di contatto non valida.',field:'email'};
+  const province=read(form,'provincia_residenza').toUpperCase();
+  if(province&&!/^[A-Z]{2}$/.test(province))return {error:'Usa una sigla provinciale di due lettere.',field:'provincia_residenza'};
+  const changes={telefono:optional(form,'telefono',30),indirizzo:optional(form,'indirizzo',250),cap:optional(form,'cap',10),comune:optional(form,'comune',100),provincia_residenza:province||null,stato_residenza:optional(form,'stato_residenza',15),email};
+  const {error}=await supabase.from('persone').update(changes).eq('id',person).select('id').single();
+  if(error)return {error:'Impossibile salvare i recapiti. Riprova.'};
+ }catch{return {error:'Controlla lunghezza e formato dei recapiti.'};}
+ refresh(person);redirect(profile+'?msg=ok');
+}
+export async function updateEmergencyContact(form:FormData){
+ const owned=await ownProfile(form);
+ if(!owned)return {error:'Profilo non autorizzato.'};
+ const {supabase,person}=owned;
+ const name=read(form,'emergenza_nome'),phone=read(form,'emergenza_telefono');
+ if(name.length<2||name.length>160)return {error:'Inserisci un nome valido.',field:'emergenza_nome'};
+ if(!/^[+0-9() ./-]{5,32}$/.test(phone)||phone.replace(/\D/g,'').length<5)return {error:'Inserisci un numero di telefono valido.',field:'emergenza_telefono'};
  const {error}=await supabase.from('contatti_emergenza').upsert({persona_id:person,nominativo:name,telefono:phone},{onConflict:'persona_id'});
- redirect('/area-personale/profilo?msg='+ (error?'emergenza_errore':'emergenza_ok'));
+ if(error)return {error:'Impossibile salvare il contatto di emergenza.'};
+ refresh(person);redirect(profile+'?msg=emergenza_ok');
+}
+export async function requestIdentityCorrection(form:FormData){
+ const owned=await ownProfile(form);
+ if(!owned)return {error:'Profilo non autorizzato.'};
+ const {supabase,person,user}=owned;
+ try{
+  const nome=read(form,'nome'),cognome=read(form,'cognome'),data_nascita=dateValue(form,'data_nascita');
+  if(!nome||!cognome||nome.length>100||cognome.length>100)return {error:'Inserisci nome e cognome validi.'};
+  if(data_nascita&&data_nascita>new Date().toISOString().slice(0,10))return {error:'Data di nascita futura.',field:'data_nascita'};
+  const provincia=read(form,'provincia_nascita').toUpperCase(),sesso=read(form,'sesso_cf'),cf=read(form,'codice_fiscale').toUpperCase();
+  if(provincia&&!/^[A-Z]{2}$/.test(provincia))return {error:'Provincia non valida.',field:'provincia_nascita'};
+  if(sesso&&!['M','F'].includes(sesso))return {error:'Valore non valido.',field:'sesso_cf'};
+  if(cf&&!/^[A-Z0-9]{16}$/.test(cf))return {error:'Inserisci il codice fiscale ufficiale di 16 caratteri.',field:'codice_fiscale'};
+  const changes={nome,cognome,data_nascita,luogo_nascita:optional(form,'luogo_nascita',150),provincia_nascita:provincia||null,stato_nascita:optional(form,'stato_nascita',100),sesso_cf:sesso||null,codice_fiscale:cf||null};
+  const {data:pending,error:lookupError}=await supabase.from('rettifiche_anagrafiche').select('id,richiedente_id').eq('persona_id',person).eq('stato','in_attesa').maybeSingle();
+  if(lookupError)return {error:'Impossibile verificare le rettifiche esistenti.'};
+  if(pending&&pending.richiedente_id!==user.id)return {error:'Una rettifica è già in attesa, presentata da un altro account collegato.'};
+  const result=pending?await supabase.from('rettifiche_anagrafiche').update(changes).eq('id',pending.id).eq('persona_id',person).eq('stato','in_attesa').select('id').single():await supabase.from('rettifiche_anagrafiche').insert({persona_id:person,...changes}).select('id').single();
+  if(result.error)return {error:'Impossibile registrare la rettifica. Verifica eventuali richieste già presenti.'};
+ }catch{return {error:'Controlla i dati anagrafici.'};}
+ refresh(person);redirect(profile+'?msg=rettifica_ok');
+}
+export async function saveExternalPatent(form:FormData){
+ const owned=await ownProfile(form);
+ if(!owned)return {error:'Profilo non autorizzato.'};
+ const {supabase,person}=owned;
+ const id=read(form,'brevetto_id');
+ if(id&&!uuid.test(id))return {error:'Brevetto non valido.'};
+ try{
+  const titolo=read(form,'titolo'),ente=read(form,'ente');
+  if(!titolo||titolo.length>200)return {error:'Indica il titolo del brevetto.',field:'titolo'};
+  if(!ente||ente.length>120)return {error:'Indica la didattica o ente di rilascio.',field:'ente'};
+  const ottenuto_il=dateValue(form,'ottenuto_il'),scade_il=dateValue(form,'scade_il');
+  if(ottenuto_il&&ottenuto_il>new Date().toISOString().slice(0,10))return {error:'La data di conseguimento non può essere futura.',field:'ottenuto_il'};
+  if(ottenuto_il&&scade_il&&scade_il<ottenuto_il)return {error:'La scadenza precede la data di conseguimento.',field:'scade_il'};
+  const changes={titolo,ente,numero_brevetto:optional(form,'numero_brevetto',100),ottenuto_il,scade_il,centro_rilascio:optional(form,'centro_rilascio',200),istruttore_esterno:optional(form,'istruttore_esterno',160),note:optional(form,'note',1000),stato_verifica:'in_attesa'};
+  const result=id?await supabase.from('brevetti_allievi').update(changes).eq('id',id).eq('persona_id',person).eq('origine','esterno').in('stato_verifica',['in_attesa','respinto']).select('id').single():await supabase.from('brevetti_allievi').insert({persona_id:person,origine:'esterno',...changes}).select('id').single();
+  if(result.error)return {error:result.error.code==='23505'?'Un brevetto con lo stesso ente e numero è già registrato.':'Impossibile salvare il brevetto esterno. Verifica che non sia già stato approvato.'};
+ }catch{return {error:'Controlla i dati del brevetto.'};}
+ refresh(person);redirect(profile+'?msg=brevetto_ok');
 }
