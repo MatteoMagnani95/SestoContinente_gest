@@ -30,7 +30,12 @@ export async function sollecitaCertificatoMancante(persona:string){
  if(records?.length)return {error:'Un documento è già presente. Aggiorna la pagina.'};
  if(!missing){
   const {data,error}=await supabase.from('stato_certificati').select('id').eq('persona_id',persona).eq('stato_certificato','mancante').limit(1);
-  if(error||!data?.length)return {error:'La persona non risulta nell’elenco dei certificati mancanti.'};
+  if(error)return {error:'Impossibile verificare il certificato.'};
+  if(!data?.length){
+   const {data:membership,error:membershipError}=await supabase.from('schede_soci').select('adesione_id,stagione_id').eq('persona_id',persona).in('stato',['attiva','da_perfezionare','sospesa']);
+   const {data:seasons,error:seasonError}=await supabase.from('stagioni').select('id').eq('attiva',true);
+   if(membershipError||seasonError||!membership?.some(m=>seasons?.some(s=>s.id===m.stagione_id)))return {error:'La persona non risulta nell’elenco dei certificati mancanti.'};
+  }
  }
  const admin=createAuthAdmin();
  if(!admin)return {error:'Servizio notifiche non disponibile.'};
