@@ -8,8 +8,8 @@ export async function askForCourse(form:FormData){
  const p_persona=String(form.get('persona_id')??'');
  const p_edizione=String(form.get('edizione_id')??'');
  if(!uuid.test(p_persona)||!uuid.test(p_edizione))redirect('/area-personale/corsi?msg=errore');
- const {error}=await supabase.rpc('iscrivi_con_contatto',{p_persona,p_edizione,p_nome:String(form.get('emergenza_nome')??''),p_telefono:String(form.get('emergenza_telefono')??''),p_richiesta:true});
- if(error)redirect('/area-personale/corsi?msg='+(error.code==='P3421'?'direttore':error.code==='23505'||error.message.includes('già presente')?'duplicata':'errore'));
+ const {error}=await supabase.rpc('richiedi_iscrizione_corso',{p_persona,p_edizione});
+ if(error)redirect('/area-personale/corsi?msg='+(error.code==='P3421'?'direttore':error.code==='23505'||error.message.includes('già presente')?'duplicata':error.code==='P3413'?'requisiti':error.code==='P3520'||error.code==='P3521'?'istruttore':'errore'));
  revalidatePath('/area-personale/corsi');redirect('/area-personale/corsi?msg=inviata');
 }
 export async function markNotification(form:FormData){
