@@ -1,3 +1,4 @@
+import {EsitoCertificato,SollecitoCertificato} from '@/components/CertificateRowActions';
 import {statiCertificato,statoSingolo} from '@/lib/certificati';
 import Cronologia from '@/components/Cronologia';
 import EditForm from '@/components/EditForm';
@@ -188,7 +189,6 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
   const showMissing=!active||active==='mancante';
   const totalPages=Math.max(count??0,showMissing?senzaFile?.count??0:0);
   const grid={display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%, 180px),1fr))',gap:12};
-  const rowGrid={display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%, 145px),1fr))',gap:12,alignItems:'center'};
   const nameOf=(row:Row)=>[row.sort_cognome,row.sort_nome].filter(Boolean).join(' ')||labelOf(references.persone?.find(p=>p.id===row.persona_id)??({id:''} as Row),['cognome','nome'])||'Intestatario non disponibile';
   const upload=(id:unknown)=>'/area-personale/certificato?origine=gestionale&persona='+encodeURIComponent(String(id??''));
   const selected=editId?rows.find(row=>row.id===editId):undefined;
@@ -199,7 +199,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
     <Link className="button ghost" href={href(active,page)}>← Torna ai certificati</Link>
     {error?<p className="notice error" role="alert">Impossibile caricare il certificato. Riprova.</p>:selected?<><h2>{nameOf(selected)}</h2><p>Stato attuale: <strong>{statoSingolo(String(selected.stato_certificato))}</strong> · Scadenza {formatValue(selected.scade_il)}</p>
      <div className="buttons">{selected.documento_id?<Link className="button" href={'/documenti/'+selected.documento_id}>Apri documento da controllare</Link>:<Link className="button" href={upload(selected.persona_id)}>Carica certificato</Link>}{!!selected.documento_id&&<Link className="button ghost" href={upload(selected.persona_id)}>Carica un nuovo documento</Link>}</div>
-     <details open={msg!=='salvato'} className="module-editor"><summary>Verifica, date e note amministrative</summary><Editor module={module} moduleKey={modulo} record={selected} references={references} admin={isAdministrator===true}/></details></>:<p>Certificato non trovato o non accessibile.</p>}
+     <Editor module={module} moduleKey={modulo} record={selected} references={references} admin={isAdministrator===true}/></>:<p>Certificato non trovato o non accessibile.</p>}
    </section>:<>
     <nav aria-label="Situazione certificati" style={grid}>
      {['in_attesa','scaduto','mancante','non_valido','valido'].map(k=>{const f=filtri.find(item=>item.k===k),t=tones[k];return <Link key={k} href={href(k)} aria-current={active===k?'page':undefined} className="panel" style={{padding:18,textDecoration:'none',borderColor:active===k?t.fg:undefined,boxShadow:active===k?`inset 0 0 0 1px ${t.fg}`:undefined}}><span style={{color:t.fg,fontWeight:700}}>{names[k]}</span><strong style={{display:'block',fontSize:30,color:t.fg,margin:'6px 0'}}>{f?.n??'—'}</strong><span style={{fontSize:13,color:'var(--muted)'}}>{t.hint}</span></Link>;})}
@@ -213,21 +213,27 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
      <form className="search-line" action="/area-personale/certificato" method="get"><input type="hidden" name="origine" value="gestionale"/><select name="persona" aria-label="Intestatario del certificato" required defaultValue=""><option value="">Scegli intestatario…</option>{(references.persone??[]).map(person=><option key={person.id} value={person.id}>{labelOf(person,['cognome','nome'])}</option>)}</select><button className="button">Carica documento</button></form>
      <Editor module={module} moduleKey={modulo} references={references}/>
     </details>
-    <section className="stack" aria-label="Elenco certificati"><h2>{active?names[active]:'Certificati registrati'}</h2>
-     {error?<p className="notice error" role="alert">Impossibile leggere i certificati. Riprova o verifica i permessi.</p>:rows.length?rows.map(row=>{
+    <section className="stack" aria-label="Elenco certificati"><h2>{active?names[active]:'Certificati medici'}</h2>
+     {error&&<p className="notice error" role="alert">Impossibile leggere i certificati. Riprova o verifica i permessi.</p>}
+     {showMissing&&senzaFile?.error&&<p className="notice error" role="alert">Impossibile caricare gli allievi senza certificato.</p>}
+     <div className="panel table-panel"><table style={{minWidth:940}}><thead><tr><th scope="col">Nome e cognome</th><th scope="col">Certificato</th><th scope="col">Documento</th><th scope="col">Scadenza</th><th scope="col">Cambia esito</th><th scope="col">Azioni</th></tr></thead><tbody>
+     {!error&&rows.map(row=>{
       const key=String(row.stato_certificato),t=tones[key]??{bg:'#edf1f4',fg:'#47606d',hint:''};
-      return <article className="panel" key={row.id} style={{padding:18}}><div style={rowGrid}>
-       <div><h3 style={{margin:0}}>{nameOf(row)}</h3><span style={{display:'inline-block',background:t.bg,color:t.fg,padding:'5px 10px',borderRadius:20,marginTop:8,fontSize:13,fontWeight:700}}>{statoSingolo(key)}</span></div>
-       <div><span className="hint">Scadenza</span><strong style={{display:'block'}}>{formatValue(row.scade_il)}</strong><span className="hint">Rilasciato: {formatValue(row.rilasciato_il)}</span></div>
-       <div><span className="hint">Documento</span><strong style={{display:'block'}}>{row.documento_id?'Presente':'Non caricato'}</strong></div>
-       <div className="buttons">{key==='in_attesa'&&row.documento_id?<Link className="button" href={href(active,page,row.id)}>Verifica certificato</Link>:!row.documento_id?<Link className="button" href={upload(row.persona_id)}>Carica certificato</Link>:<Link className="button ghost" href={'/documenti/'+row.documento_id}>Apri documento</Link>}
-       {!(key==='in_attesa'&&row.documento_id)&&<Link className="button ghost" href={href(active,page,row.id)}>Gestisci</Link>}</div>
-      </div></article>;
-     }):<p className="panel">Nessun certificato registrato corrisponde alla ricerca.</p>}
+      const nome=nameOf(row),doc=String(row.documento_id??''),previous=String(row.esito_verifica??'');
+      const initial=previous|| (row.idoneita_verificata===true?'valido':'in_attesa');
+      return <tr key={row.id}><th scope="row" style={{textAlign:'left',whiteSpace:'nowrap'}}>{nome}</th>
+       <td><span style={{display:'inline-block',background:t.bg,color:t.fg,padding:'5px 10px',borderRadius:20,fontSize:13,fontWeight:700}}>{statoSingolo(key)}</span></td>
+       <td>{doc?<Link className="button ghost" href={'/documenti/'+doc}>Visualizza certificato</Link>:<Link className="button ghost" href={upload(row.persona_id)}>Carica certificato</Link>}</td>
+       <td style={{whiteSpace:'nowrap'}}>{formatValue(row.scade_il)}</td>
+       <td>{doc?<EsitoCertificato key={row.id+':'+doc+':'+previous} id={row.id} documento={doc} precedente={previous} iniziale={initial} nome={nome}/>:<span className="hint">Documento mancante</span>}</td>
+       <td><div className="buttons">{!doc&&<SollecitoCertificato persona={String(row.persona_id)} nome={nome}/>}<Link href={href(active,page,row.id)}>Altri dati e storico</Link></div></td>
+      </tr>;
+     })}
+     {showMissing&&!senzaFile?.error&&senzaFile?.data?.map(person=>{const nome=person.cognome+' '+person.nome;return <tr key={'missing-'+person.id}><th scope="row" style={{textAlign:'left',whiteSpace:'nowrap'}}>{nome}</th><td><span style={{background:tones.mancante.bg,color:tones.mancante.fg,padding:'5px 10px',borderRadius:20,fontWeight:700}}>Documento mancante</span></td><td><Link className="button ghost" href={upload(person.id)}>Carica certificato</Link></td><td>—</td><td><span className="hint">Non disponibile</span></td><td><SollecitoCertificato persona={person.id} nome={nome}/></td></tr>;})}
+     {!error&&!rows.length&&!(showMissing&&senzaFile?.data?.length)&&<tr><td colSpan={6} className="empty-cell">Nessun certificato corrisponde alla ricerca.</td></tr>}
+     </tbody></table></div>
+     <p className="hint">Lo stato Scaduto dipende automaticamente dalla data di scadenza. La notifica viene registrata nell’area personale degli account collegati; è consentito un sollecito al giorno per persona.</p>
     </section>
-    {showMissing&&<section className="stack" style={{marginTop:24}}><h2>Allievi senza certificato registrato</h2><p>Questi allievi non hanno ancora una registrazione nell’archivio.</p>
-     {senzaFile?.error?<p className="notice error" role="alert">Impossibile caricare gli allievi senza certificato.</p>:senzaFile?.data?.length?senzaFile.data.map(person=><article key={person.id} className="panel" style={{padding:18,display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}><div><h3 style={{margin:0}}>{person.cognome} {person.nome}</h3><span className="hint">Documento mancante</span></div><Link className="button" href={upload(person.id)}>Carica certificato</Link></article>):<p className="panel">Nessun allievo senza certificato in questa selezione.</p>}
-    </section>}
     <div className="pager"><span>{count??0} certificati registrati{showMissing?' · '+(senzaFile?.count??0)+' allievi senza registrazione':''} · Pagina {page}</span><div className="buttons">{page>1&&<Link className="button ghost" href={href(active,page-1)}>Precedente</Link>}{page*perPage<totalPages&&<Link className="button ghost" href={href(active,page+1)}>Successiva</Link>}</div></div>
     <p className="hint">Dati sanitari riservati: registra solo informazioni amministrative, senza diagnosi o informazioni cliniche.</p>
    </>}
