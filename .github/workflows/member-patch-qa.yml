@@ -53,16 +53,91 @@ jobs:
           if-no-files-found: error
           retention-days: 7
       - run: npm install --no-package-lock --no-audit --no-fund
+      - run: npm install --no-save --no-package-lock --no-audit --no-fund playwright@1.56.1
+      - run: npx playwright install --with-deps chromium webkit
       - run: npm run check:source
       - run: npm run typecheck
       - run: npm run test:static
-      - run: npm run build
       - name: Database Supabase locale usa-e-getta
+        id: local
         shell: bash
         run: |
           set -euo pipefail
           test -f supabase/config.toml || supabase init
-          supabase start -x studio,imgproxy,realtime,edge-runtime,logflare,vector,supavisor,postgres-meta,mailpit
+          # Abilita conferme reali solo nell'Auth locale e conserva la doppia verifica.
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('supabase/config.toml')
+          s=p.read_text()
+          def section(name,values):
+              global s
+              pattern=r'(?ms)(^\['+re.escape(name)+r'\][^\n]*\n)(.*?)(?=^\[|\Z)'
+              m=re.search(pattern,s)
+              if not m: raise RuntimeError('Missing config section '+name)
+              body=m.group(2)
+              for key,value in values.items():
+                  rx=r'(?m)^'+re.escape(key)+r'\s*=.*
+          supabase status -o env > /tmp/member-local.env
+          set -a
+          source /tmp/member-local.env
+          set +a
+          [[ "$API_URL" == http://127.0.0.1:* || "$API_URL" == http://localhost:* ]]
+          [[ "$DB_URL" == *"@127.0.0.1:"* || "$DB_URL" == *"@localhost:"* ]]
+          test -n "$ANON_KEY"
+          test -n "$SERVICE_ROLE_KEY"
+          echo "::add-mask::$DB_URL"
+          echo "::add-mask::$ANON_KEY"
+          echo "::add-mask::$SERVICE_ROLE_KEY"
+          echo "MEMBER_QA_DATABASE_URL=$DB_URL" >> "$GITHUB_ENV"
+          echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL" >> "$GITHUB_ENV"
+          echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY" >> "$GITHUB_ENV"
+          echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
+      - name: PostgreSQL e RLS
+        run: node scripts/test-area-personale-iscrizioni-brevetti.cjs
+      - name: Build Next.js con endpoint locale
+        if: ${{ !cancelled() && steps.local.outcome == 'success' }}
+        id: build
+        run: npm run build
+      - name: Avvia app locale
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        id: app
+        run: |
+          npm run start -- --hostname 127.0.0.1 > /tmp/member-next.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3000/accedi >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          exit 1
+      - name: Collaudo PR 15 certificati, notifiche e schermi
+        if: ${{ !cancelled() && steps.app.outcome == 'success' }}
+        run: node scripts/medical-e2e.mjs
+      - name: Collaudo PR 16 profilo, sei ruoli, corsi, brevetti, email e schermi
+        if: ${{ !cancelled() && steps.app.outcome == 'success' }}
+        run: node scripts/member-patch-e2e.mjs
+      - name: Acquisisci risultati e screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integrated-member-medical-e2e
+          path: |
+            artifacts/member-patch-e2e
+            artifacts/medical-e2e
+            /tmp/member-next.log
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Arresta il database locale
+        if: always()
+        run: supabase stop --no-backup || true
+
+                  if re.search(rx,body): body=re.sub(rx,lambda _:key+' = '+value,body)
+                  else: body+='\n'+key+' = '+value+'\n'
+              s=s[:m.start(2)]+body+s[m.end(2):]
+          section('auth',{'site_url':'"http://127.0.0.1:3000"','additional_redirect_urls':'["http://127.0.0.1:3000/auth/callback", "http://127.0.0.1:3000/auth/callback?next=%2Farea-personale%2Fprofilo%3Fmsg%3Demail_verifica"]'})
+          section('auth.email',{'enable_confirmations':'true','double_confirm_changes':'true','max_frequency':'"1s"'})
+          p.write_text(s)
+          PY
+          supabase start -x studio,imgproxy,realtime,edge-runtime,logflare,vector,supavisor,postgres-meta
           supabase status -o env > /tmp/member-local.env
           set -a
           source /tmp/member-local.env
