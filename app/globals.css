@@ -258,3 +258,18 @@ td strong{color:#1c3441}
 .edit-fields .notice.error {display:block}
 @media(max-width:640px){.row-editor-pop{max-width:calc(100vw - 2rem);width:100%;position:static}.form-actions{display:flex;flex-wrap:wrap;gap:.5rem}.edit-fields .form-grid{grid-template-columns:1fr}}
 @media print {header,nav,.form-actions,form button,.back-link,.global-cancel {display:none!important}.panel,dl{break-inside:avoid}}
+
+/* Registro certificati, un nominativo per riga. */
+.medical-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.medical-metrics>a{padding:16px;min-width:0;text-decoration:none;overflow-wrap:anywhere}
+.medical-metrics strong{display:block;font-size:26px;margin-top:5px}
+.medical-table-scroll{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain}
+.medical-table{min-width:940px;width:100%;border-collapse:collapse}
+.medical-table th[scope="row"]{position:sticky;left:0;z-index:1;background:#fff;box-shadow:1px 0 0 var(--line);font-size:14px;color:var(--navy);font-weight:650;text-transform:none;letter-spacing:normal;border-top:1px solid var(--line)}
+.medical-table thead th:first-child{position:sticky;left:0;z-index:2;background:#f3f7f8}
+.medical-table-scroll:focus-visible{outline:2px solid var(--teal);outline-offset:3px}
+.medical-table-scroll .button:disabled{opacity:.55;cursor:not-allowed}
+.medical-scroll-hint{display:none}
+@media(max-width:1250px){.medical-scroll-hint{display:block}}
+@media(max-width:700px){.medical-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.medical-metrics>a{padding:12px}.medical-register .search-line{min-width:0;max-width:100%;flex-wrap:wrap}.medical-register .search-line>input{min-width:0}}
+@media(max-width:560px){.medical-table th[scope="row"]{white-space:normal!important;min-width:120px;max-width:140px;overflow-wrap:anywhere}}

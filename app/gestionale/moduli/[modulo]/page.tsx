@@ -1,3 +1,4 @@
+import MedicalRegister from '@/components/MedicalRegister';
 import BookingConflictPreview from '@/components/BookingConflictPreview';
 import {Drawer} from '@/components/ui/Drawer';
 import DeferredEditorButton from '@/components/DeferredEditorButton';
@@ -5,7 +6,7 @@ import {SecretariatNav} from '@/components/ui/Secretariat';
 import {DataTable,FilterBar,SearchBar,Pagination} from '@/components/ui/DataTable';
 import SearchableSelect from '@/components/ui/SearchableSelect';
 import {StatusBadge,PageHeader,ButtonLink,Alert} from '@/components/ui/Primitives';
-import {moduleUi,cleanSearch,pageNumber,listHref,entityLabel,singleSearchParams} from '@/lib/module-ui';
+import {moduleUi,cleanSearch,pageNumber,listHref as moduleListHref,entityLabel,singleSearchParams} from '@/lib/module-ui';
 import {tutteLePagine} from '@/lib/pagine';
 import {validLevel} from '@/lib/course-ui';
 import {dateFilter,searchTerms,memberTabForModule,secretariatLinks,maskedFiscalCode,displayName} from '@/lib/secretariat';
@@ -99,7 +100,7 @@ function bookingConflictText(corsia?:string,inizio?:string,fine?:string):string{
  const fascia=dal&&al?` dalle ${dal} alle ${al}`:' nell’intervallo richiesto';
  return `Corsia${numero} già prenotata${fascia}. Scegli un’altra corsia o modifica l’orario.`;
 }
-export default async function ModulePage({params,searchParams}:{params:Promise<{modulo:string}>;searchParams:Promise<{q?:string;msg?:string;p?:string;corsia?:string;inizio?:string;fine?:string;edit?:string;editor?:string;stato?:string;f?:string;v?:string;ordine?:string;dir?:string;filtro_modulo?:string;dal?:string;al?:string;persona?:string;nuovo?:string;pm?:string;stagione?:string;edizione?:string;livello?:string;piscina?:string;corsia_id?:string;lezione?:string}>}){
+export default async function ModulePage({params,searchParams}:{params:Promise<{modulo:string}>;searchParams:Promise<{q?:string;msg?:string;p?:string;corsia?:string;inizio?:string;fine?:string;edit?:string;editor?:string;stato?:string;f?:string;v?:string;ordine?:string;dir?:string;filtro_modulo?:string;dal?:string;al?:string;persona?:string;nuovo?:string;pm?:string;stagione?:string;edizione?:string;livello?:string;piscina?:string;corsia_id?:string;lezione?:string;archivio?:string}>}){
  const {modulo}=await params;
  if(!isModuleKey(modulo))notFound();
  if(modulo==='pagamenti')redirect('/gestionale/incassi');
@@ -118,6 +119,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  const editionId=(singleSearchParams(await searchParams)).edizione;
  const catalogLevel=modulo==='corsi'?validLevel((singleSearchParams(await searchParams)).livello):null;
  const scope=singleSearchParams(await searchParams);
+ const listHref=(filters:Parameters<typeof moduleListHref>[0])=>moduleListHref(modulo==='certificati'&&scope.archivio==='1'?{...filters,archivio:'1'}:filters);
  const calendarModule=['corsie','prenotazioni','calendario'].includes(modulo);
  const teachingModule=['corsi','edizioni','programmi','versioni','istruttori','qualifiche','brevetti','presenze'].includes(modulo);
  const financeModule=['quote','addebiti','pagamenti','listino','contabilita'].includes(modulo);
@@ -136,6 +138,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  const fullReferenceOptions=!deferredReferences||nuovo==='1'||Boolean(openEditorId);
  if(modulo==='calendario'&&editId)redirect(`/gestionale/calendario-visivo/${editId}`);
  if(modulo==='calendario'&&nuovo==='1')redirect('/gestionale/calendario-visivo?nuovo=1'+(scopedPool?'&piscina='+scopedPool:'')+(scopedEdition?'&edizione='+scopedEdition:''));
+ if(modulo==='certificati'&&scope.archivio!=='1'&&!openEditorId&&nuovo!=='1'&&!personId)return <MedicalRegister supabase={supabase} params={scope}/>;
  const page=editId?1:pageNumber(p);
  const perPage=30;
  const personViews=new Set(['adesioni', 'iscrizioni_corsi', 'assegnazioni_istruttori', 'qualifiche_istruttori', 'brevetti_allievi', 'certificati_medici', 'presenze', 'assegnazioni_attrezzature', 'quote_associative', 'saldi_quote', 'saldi_corsi', 'tesseramenti', 'addebiti_corsi']);
@@ -323,11 +326,12 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  {feedback&&<p className={'notice '+(['salvato','eliminato'].includes(msg)?'success':'warning')} role="status">{feedback}</p>}
  {enrollmentLoadError&&<p className="notice error">Impossibile caricare tutte le iscrizioni dei corsi. Riprova o verifica i permessi.</p>}
  {referenceError&&<p className="notice warning" role="alert">Alcuni elenchi di scelta non sono completi. Ricarica la pagina prima di modificare i collegamenti.</p>}
+ {medical&&<p><Link className="button ghost" href="/gestionale/moduli/certificati">Torna al registro iscritti</Link></p>}
  {medical&&<nav className="buttons" aria-label="Filtri certificati"><Link className="button ghost" href={listHref({q,ordine,dir,persona:personId,dal,al})}>Tutti</Link>{filtri.map(item=><Link key={item.k} aria-current={stato===item.k?'page':undefined} className={stato===item.k?'button':'button ghost'} href={listHref({q,stato:item.k,ordine,dir,persona:personId,dal,al})}>{item.label} ({item.n})</Link>)}</nav>}
  {missingQuery&&<section className="panel"><h3>Allievi senza certificato registrato</h3>{senzaFile?.error?<p role="alert">Elenco non disponibile.</p>:<><p>{senzaFile?.count??0} allievi senza certificato con questi filtri</p><ul>{senzaFile?.data?.map(p=><li key={p.id}>{p.cognome} {p.nome} · Documento mancante · <Link href={'/area-personale/certificato?persona='+p.id}>Carica certificato</Link></li>)}</ul><Pagination page={missingPage} size={perPage} count={senzaFile?.count??null} label="allievi" href={pm=>listHref({q,stato,persona:personId,p:String(page),pm:String(pm),ordine,dir})}/></>}</section>}
  <FilterBar>
  <SearchBar query={q} placeholder={ui.search||'Filtri e ordinamento'} resetHref={'/gestionale/moduli/'+modulo} hideSearch={!ui.search}>
- {scopedEdition&&<input type="hidden" name="edizione" value={scopedEdition}/>} {modulo==='corsi'&&<label>Livello ARA<select name="livello" defaultValue={catalogLevel??''}><option value="">Tutti</option>{[1,2,3,4,5].map(x=><option key={x} value={x}>{x}</option>)}</select></label>} {modulo==='iscrizioni'&&<input type="hidden" name="vista" value="elenco"/>}{medical&&stato&&<input type="hidden" name="stato" value={stato}/>} {personId&&memberTabForModule(modulo)&&<input type="hidden" name="persona" value={personId}/>} {module.fields.some(f=>f.name==='stagione_id')&&<label>Stagione<select name="stagione" defaultValue={seasonId}><option value="">Tutte</option>{(references.stagioni??[]).map(s=><option key={s.id} value={s.id}>{String(s.nome??'Stagione')}</option>)}</select></label>}{dateColumn&&<><label>Scadenza dal<input type="date" name="dal" defaultValue={dal}/></label><label>Scadenza al<input type="date" name="al" defaultValue={al}/></label></>}
+ {medical&&scope.archivio==='1'&&<input type="hidden" name="archivio" value="1"/>}{scopedEdition&&<input type="hidden" name="edizione" value={scopedEdition}/>} {modulo==='corsi'&&<label>Livello ARA<select name="livello" defaultValue={catalogLevel??''}><option value="">Tutti</option>{[1,2,3,4,5].map(x=><option key={x} value={x}>{x}</option>)}</select></label>} {modulo==='iscrizioni'&&<input type="hidden" name="vista" value="elenco"/>}{medical&&stato&&<input type="hidden" name="stato" value={stato}/>} {personId&&memberTabForModule(modulo)&&<input type="hidden" name="persona" value={personId}/>} {module.fields.some(f=>f.name==='stagione_id')&&<label>Stagione<select name="stagione" defaultValue={seasonId}><option value="">Tutte</option>{(references.stagioni??[]).map(s=><option key={s.id} value={s.id}>{String(s.nome??'Stagione')}</option>)}</select></label>}{dateColumn&&<><label>Scadenza dal<input type="date" name="dal" defaultValue={dal}/></label><label>Scadenza al<input type="date" name="al" defaultValue={al}/></label></>}
  {calendarModule&&<label>Piscina<select name="piscina" defaultValue={scopedPool}><option value="">Tutte</option>{(references.piscine??[]).map(r=><option key={r.id} value={r.id}>{String(r.nome)}</option>)}{scopedPool&&!references.piscine?.some(r=>r.id===scopedPool)&&<option value={scopedPool}>Piscina non disponibile</option>}</select></label>}
  {modulo==='prenotazioni'&&<><label>Corsia<select name="corsia_id" defaultValue={scopedLane}><option value="">Tutte</option>{(references.corsie??[]).map(r=><option key={r.id} value={r.id}>{String(r.calendar_label)}</option>)}</select></label><label>Lezione<select name="lezione" defaultValue={scopedLesson}><option value="">Tutte</option>{(references.lezioni??[]).map(r=><option key={r.id} value={r.id}>{String(r.calendar_label)}</option>)}</select></label><label>Dal<input name="dal" type="date" defaultValue={dal}/></label><label>Al<input name="al" type="date" defaultValue={al}/></label></>}
  {selectableFilters.length>0&&<label>Filtra per<select name="filtro_modulo" defaultValue={selectedFilter?selectedFilter.name+':'+filterValue:''}><option value="">Tutti</option>{selectableFilters.map(field=><optgroup key={field.name} label={field.label}>{field.options?.map(value=><option key={value} value={field.name+':'+value}>{value.replaceAll('_',' ')}</option>)}</optgroup>)}</select></label>}

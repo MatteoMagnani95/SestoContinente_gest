@@ -5,7 +5,7 @@ import {isCalendarDate,todayRome} from '@/lib/course-tools';
 import {markFormSaved} from '@/lib/dirty-navigation';
 import {createBrowserClient} from '@supabase/ssr';
 import {caricaCertificato,preparaCaricamento} from '@/app/area-personale/certificato/actions';
-export default function CertificateUploadForm({children}:{children:ReactNode}){
+export default function CertificateUploadForm({children,fromManagement=false}:{children:ReactNode;fromManagement?:boolean}){
  const lock=useRef(false),router=useRouter();
  const [pending,setPending]=useState(false),[error,setError]=useState('');
  async function submit(e:FormEvent<HTMLFormElement>){
@@ -27,7 +27,7 @@ export default function CertificateUploadForm({children}:{children:ReactNode}){
    }
    const result=await caricaCertificato(values);
    if(result.error){setError(result.error);return;}
-   form.reset();markFormSaved(form);router.replace('/area-personale/certificato?msg=ok&persona='+values.get('persona_id'));router.refresh();
+   form.reset();markFormSaved(form);router.replace('/area-personale/certificato?msg=ok&persona='+encodeURIComponent(String(values.get('persona_id')))+(fromManagement?'&origine=gestionale':''));router.refresh();
   }catch{setError('Esito non confermato. Controlla i certificati caricati prima di ripetere l’invio.');}
   finally{lock.current=false;setPending(false);}
  }
