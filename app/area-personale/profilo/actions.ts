@@ -69,10 +69,12 @@ export async function requestIdentityCorrection(form:FormData){
   if(sesso&&!['M','F'].includes(sesso))return {error:'Valore non valido.',field:'sesso_cf'};
   if(cf&&!/^[A-Z0-9]{16}$/.test(cf))return {error:'Inserisci il codice fiscale ufficiale di 16 caratteri.',field:'codice_fiscale'};
   const changes={nome,cognome,data_nascita,luogo_nascita:optional(form,'luogo_nascita',150),provincia_nascita:provincia||null,stato_nascita:optional(form,'stato_nascita',100),sesso_cf:sesso||null,codice_fiscale:cf||null};
-  const {data:pending,error:lookupError}=await supabase.from('rettifiche_anagrafiche').select('id,richiedente_id').eq('persona_id',person).eq('stato','in_attesa').maybeSingle();
+  const {data:pending,error:lookupError}=await supabase.from('rettifiche_anagrafiche').select('id,richiedente_id,revisione').eq('persona_id',person).eq('stato','in_attesa').maybeSingle();
   if(lookupError)return {error:'Impossibile verificare le rettifiche esistenti.'};
   if(pending&&pending.richiedente_id!==user.id)return {error:'Una rettifica è già in attesa, presentata da un altro account collegato.'};
-  const result=pending?await supabase.from('rettifiche_anagrafiche').update(changes).eq('id',pending.id).eq('persona_id',person).eq('stato','in_attesa').select('id').single():await supabase.from('rettifiche_anagrafiche').insert({persona_id:person,...changes}).select('id').single();
+  if(pending&&Number(read(form,'revisione'))!==pending.revisione)return {error:'La richiesta è stata modificata. Ricarica il profilo.'};
+  if(!pending&&read(form,'revisione'))return {error:'La richiesta non è più in attesa. Ricarica il profilo.'};
+  const result=pending?await supabase.from('rettifiche_anagrafiche').update(changes).eq('id',pending.id).eq('persona_id',person).eq('revisione',pending.revisione).eq('stato','in_attesa').select('id').single():await supabase.from('rettifiche_anagrafiche').insert({persona_id:person,...changes}).select('id').single();
   if(result.error)return {error:'Impossibile registrare la rettifica. Verifica eventuali richieste già presenti.'};
  }catch{return {error:'Controlla i dati anagrafici.'};}
  refresh(person);redirect(profile+'?msg=rettifica_ok');
