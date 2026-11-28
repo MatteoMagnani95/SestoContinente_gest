@@ -11,6 +11,7 @@ const db=createClient(url,service,{auth:{persistSession:false,autoRefreshToken:f
 const password='QA-only-'+randomUUID(), report=[];
 const output='artifacts/medical-e2e';await mkdir(output,{recursive:true});
 const check=(condition,label)=>{assert.ok(condition,label);report.push(label);console.log('PASS '+label);};
+process.on('uncaughtExceptionMonitor',()=>{console.error('Controlli completati prima del blocco:',JSON.stringify(report));});
 async function ok(query){const {data,error}=await query;if(error)throw Error(error.message);return data;}
 async function account(label,role){
  const email=label+'@example.invalid';
@@ -68,8 +69,19 @@ check(await row(page,'QA Storico').count()===0,'UI esclusione persona non iscrit
 check((await row(page,'QA Scadenza').innerText()).includes('In scadenza'),'UI scadenza 30 giorni');
 check((await row(page,'QA Scaduto').innerText()).includes('Scaduto'),'UI scadenza superata');
 await page.screenshot({path:output+'/desktop.png',fullPage:true});
-await page.getByRole('link',{name:/In scadenza/}).first().click();await row(page,'QA Scadenza').waitFor();check(await row(page,'QA Verifica').count()===1,'Filtro scadenza include certificato in verifica');check(await row(page,'QA Valido').count()===0,'Filtro scadenza esclude lungo termine');
-await openList(page);await page.getByRole('textbox',{name:'Cerca per nome o cognome'}).fill('Mancante Collaudo');await page.getByRole('button',{name:'Cerca',exact:true}).click();await row(page,'QA Mancante').waitFor();check(await row(page,'QA Valido').count()===0,'Ricerca nome e cognome in ordine inverso');
+const mobile=await webkit.launch();
+for(const [name,device] of [['ipad','iPad (gen 7)'],['iphone','iPhone 13']]){
+ const ctx=await mobile.newContext(devices[device]);const p=await ctx.newPage();await login(p,admin);await openList(p);
+ const dimensions=await p.evaluate(()=>({body:document.documentElement.scrollWidth,viewport:innerWidth,table:document.querySelector('.medical-table-scroll')?.scrollWidth,container:document.querySelector('.medical-table-scroll')?.clientWidth}));
+ check(dimensions.body<=dimensions.viewport+2,name+' nessun overflow globale');
+ check(dimensions.table>=dimensions.container,name+' tabella accessibile con scorrimento');
+ await p.screenshot({path:output+'/'+name+'.png',fullPage:true});await ctx.close();
+}
+
+await mobile.close();
+
+await page.getByRole('link',{name:/In scadenza/}).first().click();await page.waitForURL(u=>u.searchParams.get('stato')==='in_scadenza');await page.getByRole('heading',{name:'In scadenza',exact:true}).waitFor();await row(page,'QA Scadenza').waitFor();await row(page,'QA Valido').waitFor({state:'detached'});check(await row(page,'QA Verifica').count()===1,'Filtro scadenza include certificato in verifica');check(await row(page,'QA Valido').count()===0,'Filtro scadenza esclude lungo termine');
+await openList(page);await page.getByRole('textbox',{name:'Cerca per nome o cognome'}).fill('Mancante Collaudo');await page.getByRole('button',{name:'Cerca',exact:true}).click();await page.waitForURL(u=>u.searchParams.get('q')==='Mancante Collaudo');await row(page,'QA Mancante').waitFor();await row(page,'QA Valido').waitFor({state:'detached'});check(await row(page,'QA Valido').count()===0,'Ricerca nome e cognome in ordine inverso');
 await openList(page);const pr=row(page,'QA Verifica');await pr.getByRole('combobox').selectOption('valido');await pr.getByRole('button',{name:'Salva',exact:true}).click();
 await page.waitForFunction(()=>Array.from(document.querySelectorAll('tr')).some(r=>r.textContent.includes('QA Verifica')&&r.textContent.includes('In scadenza')));
 check((await ok(db.from('certificati_medici').select('esito_verifica').eq('id',pendingCert.id).single())).esito_verifica==='valido','UI verifica inline persiste nel database');
@@ -91,13 +103,5 @@ await memberPage.locator('input[name=rilasciato_il]').fill(date(-1));await membe
 await openList(page);check((await row(page,'QA Mancante').innerText()).includes('In attesa di verifica'),'Documento caricato appare in verifica');
 check(await row(page,'QA Mancante').getByRole('button',{name:'Invia notifica'}).count()===0,'Sollecito non disponibile dopo caricamento');
 const secretaryContext=await browser.newContext(),secretaryPage=await secretaryContext.newPage();await login(secretaryPage,secretary);await openList(secretaryPage);check(true,'Segreteria autorizzata alla pagina');
-const mobile=await webkit.launch();
-for(const [name,device] of [['ipad','iPad (gen 7)'],['iphone','iPhone 13']]){
- const ctx=await mobile.newContext(devices[device]);const p=await ctx.newPage();await login(p,admin);await openList(p);
- const dimensions=await p.evaluate(()=>({body:document.documentElement.scrollWidth,viewport:innerWidth,table:document.querySelector('.medical-table-scroll')?.scrollWidth,container:document.querySelector('.medical-table-scroll')?.clientWidth}));
- check(dimensions.body<=dimensions.viewport+2,name+' nessun overflow globale');
- check(dimensions.table>=dimensions.container,name+' tabella accessibile con scorrimento');
- await p.screenshot({path:output+'/'+name+'.png',fullPage:true});await ctx.close();
-}
 check(errorLogs.length===0,'Nessuna eccezione JavaScript desktop');
-await mobile.close();await browser.close();await writeFile(output+'/report.json',JSON.stringify({passed:report.length,checks:report},null,2));
+await browser.close();await writeFile(output+'/report.json',JSON.stringify({passed:report.length,checks:report},null,2));
