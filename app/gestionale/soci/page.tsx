@@ -29,6 +29,7 @@ export default async function SociPage({searchParams}:{searchParams:Promise<{q?:
  if(q)query=query.or(`nome.ilike.%${q}%,cognome.ilike.%${q}%,codice_fiscale.ilike.%${q}%`);
  const {data,error,count}=await query.order('cognome',{ascending:true}).order('nome',{ascending:true}).order('adesione_id')
   .range((desiredPage-1)*perPage,desiredPage*perPage-1);
+ const {data:pending,error:pendingError,count:pendingCount}=await supabase.from('rettifiche_anagrafiche').select('id,persona_id,nome,cognome,creata_il',{count:'exact'}).eq('stato','in_attesa').order('creata_il').order('id').limit(50);
  const rows=(data??[]) as unknown as SocioRow[];
  const filters={q,stagione:chosen,stato};
  const pageCount=Math.max(1,Math.ceil((count??0)/perPage));
@@ -37,6 +38,7 @@ export default async function SociPage({searchParams}:{searchParams:Promise<{q?:
   <div className="page-intro"><p className="eyebrow">Segreteria · Anagrafiche</p><h1>Soci e allievi</h1>
    <p>Ricerca per nominativo o codice fiscale, elenco per stagione e accesso alla scheda personale unificata.</p></div>
   {params.msg&&<p className="notice warning">{params.msg==='eliminato'?'Adesione rimossa.':'Rimozione non consentita: verifica i dati collegati e i permessi.'}</p>}
+  <section className="panel stack"><h2>Rettifiche anagrafiche da verificare {pendingError?'': '('+(pendingCount??0)+')'}</h2>{pendingError?<p role="alert">Impossibile caricare le rettifiche.</p>:pending?.length?<ul>{pending.map(r=><li key={r.id}><Link href={'/gestionale/soci/'+r.persona_id+'#anagrafica'}>{r.cognome} {r.nome}</Link> · {formatValue(r.creata_il)}</li>)}</ul>:<p className="muted">Nessuna richiesta in attesa.</p>}{(pendingCount??0)>50&&<p>Prime 50 richieste: elaborale per vedere le successive.</p>}</section>
   {seasonError&&<p className="notice error">Impossibile caricare le stagioni. Verifica il database.</p>}
   <div className="panel member-filter-panel">
    <form method="get" className="member-filters">
