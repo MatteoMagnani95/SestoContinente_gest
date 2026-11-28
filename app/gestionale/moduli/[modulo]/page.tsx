@@ -15,7 +15,7 @@ import EligibleEnrollmentSelect from '@/components/EligibleEnrollmentSelect';
 import CourseEnrollmentSelect from '@/components/CourseEnrollmentSelect';
 
 type Row=Record<string,unknown> & {id:string};
-const status:Record<string,string>={socio_non_iscrivibile:'Solo soci con adesione attiva e tessera attiva e valida per la stagione possono essere iscritti.',eliminato:'Record rimosso.',elimina_conferma:'Conferma la rimozione del record.',elimina_collegati:'Rimozione non consentita: sono presenti dati collegati oppure il record è protetto.',iscrizione_non_attiva:'Seleziona un allievo iscritto a un corso attivo della stagione attiva.',iscrizione_vincolata:'Non è possibile riassegnare una quota esistente a un’altra iscrizione.',salvato:'Dati salvati nel database.',vincolo:'Operazione non consentita: controlla duplicati, capienza, date e collegamenti.',
+const status:Record<string,string>={socio_non_iscrivibile:'Solo soci con adesione attiva e tessera attiva e valida per la stagione possono essere iscritti.',eliminato:'Record rimosso.',elimina_conferma:'Conferma la rimozione del record.',elimina_collegati:'Rimozione non consentita: sono presenti dati collegati oppure il record è protetto.',iscrizione_non_attiva:'Seleziona un allievo iscritto a un corso attivo della stagione attiva.',iscrizione_vincolata:'Non è possibile riassegnare una quota esistente a un’altra iscrizione.',salvato:'Dati salvati nel database.',vincolo:'Operazione non consentita: controlla duplicati, date e collegamenti.',
  cf:'Codice fiscale non coerente, oppure luogo di nascita non identificato. Verifica i dati e il CF ufficiale.',omocodia:'Omocodia: conferma la verifica documentale e indica la motivazione.', dati:'Controlla i campi obbligatori e i formati.',database:'Impossibile salvare. Verifica le autorizzazioni e la migrazione SQL.',permessi:'Operazione non consentita.',
  corsia_duplicata:'Questa corsia è già associata alla stessa lezione. Controlla le prenotazioni esistenti.'};
 function labelOf(record:Row,labels:readonly string[]){
@@ -43,7 +43,7 @@ function FieldInput({field,value,references}:{field:Field;value?:unknown;referen
 }
 const sezioniEditor:Record<string,Record<string,string[]>>={
  anagrafiche:{'Anagrafica':['nome','cognome','data_nascita','luogo_nascita','provincia_nascita','stato_nascita','sesso_cf','codice_fiscale','cf_omocodia_verificata','cf_override_motivo'],'Residenza e recapiti':['indirizzo','cap','comune','provincia_residenza','stato_residenza','email','telefono']},
- edizioni:{'Corso e direzione':['corso_id','nome','direttore_id','programma_versione_id'],'Stagione e calendario':['stagione_id','inizio','fine','stato'],'Organizzazione':['massimo_partecipanti','costo_corso','note']},
+ edizioni:{'Corso e direzione':['corso_id','nome','direttore_id','programma_versione_id'],'Stagione e calendario':['stagione_id','inizio','fine','stato'],'Organizzazione':['costo_corso','note']},
  brevetti:{'Allievo e corso':['persona_id','edizione_id'],'Dati del brevetto':['titolo','ente','numero_brevetto','ottenuto_il','scade_il','note']},
  certificati:{'Intestatario e periodo':['persona_id','rilasciato_il','scade_il'],'Verifica amministrativa':['esito_verifica','note_amministrative']},
 };
