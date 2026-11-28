@@ -33,7 +33,7 @@ function FieldInput({field,value,references}:{field:Field;value?:unknown;referen
  return <label htmlFor={id}>{field.label}
  {field.type==='textarea'?<textarea {...common} rows={3} defaultValue={display}/>
  :field.type==='checkbox'?<input {...common} type="checkbox" defaultChecked={value===true}/>
- :field.type==='select'?<select {...common} defaultValue={display}><option value="">Seleziona...</option>{field.options?.map(o=><option key={o} value={o}>{o.replaceAll('_',' ')}</option>)}</select>
+ :field.type==='select'?<select {...common} defaultValue={display}><option value="">Seleziona...</option>{field.options?.map(o=><option key={o} value={o}>{field.name==='esito_verifica'?statoSingolo(o):o.replaceAll('_',' ')}</option>)}</select>
  :field.type==='reference'?<select {...common} defaultValue={display}><option value="">Seleziona...</option>
  {(references[field.ref?.table??'']??[]).map(row=><option key={row.id} value={row.id}>{labelOf(row,field.ref?.labels??['id']) || row.id.slice(0,8)}</option>)}</select>
  :<input {...common} type={field.type==='datetime'?'datetime-local':field.type==='number'?'number':field.type==='date'?'date':field.type==='email'?'email':'text'}
@@ -51,11 +51,11 @@ function Editor({module,moduleKey,record,references,admin=false}:{module:Module;
  const sezioni=sezioniEditor[moduleKey];
  const gruppi=sezioni?Object.entries(sezioni).map(([titolo,nomi])=>({titolo,fields:module.fields.filter(f=>nomi.includes(f.name))})):[{titolo:'Dati della scheda',fields:module.fields}];
  return <><EditForm action={saveModuleRecord} className="module-form stack">
- <h3>{record?'Modifica':'Nuovo record'} · {module.label}{record?' · '+([record.sort_cognome,record.sort_nome,record.nome,record.titolo].filter(Boolean).join(' ')||record.id.slice(0,8)):''}</h3>
+ <h3>{moduleKey==='certificati'?(record?'Verifica o aggiorna certificato':'Registra dati del certificato'):(record?'Modifica':'Nuovo record')+' · '+module.label}{record?' · '+([record.sort_cognome,record.sort_nome,record.nome,record.titolo].filter(Boolean).join(' ')||record.id.slice(0,8)):''}</h3>
  <input type="hidden" name="modulo" value={moduleKey}/>
  {record&&<input type="hidden" name="id" value={record.id}/>}{record&&moduleKey==='certificati'&&<input type="hidden" name="documento_atteso" value={String(record.documento_id??'')}/>}
  {gruppi.map(({titolo,fields})=><fieldset key={titolo}><legend>{titolo}</legend><div className="form-grid">{moduleKey==='iscrizioni'&&!record&&<EligibleEnrollmentSelect editions={(references.edizioni_corsi??[]) as unknown as {id:string;nome:string;stagione_id:string;stato:string}[]} eligible={(references.gest_soci_iscrivibili??[]) as unknown as {persona_id:string;stagione_id:string;nome:string;cognome:string}[]}/>} {fields.filter(f=>!(moduleKey==='iscrizioni'&&!record&&['edizione_id','persona_id','stato'].includes(f.name))).map(f=>moduleKey==='addebiti'&&f.name==='iscrizione_id'?<EnrollmentInput key={f.name} field={f} value={record?.[f.name]} references={references} editing={!!record}/>:(moduleKey==='iscrizioni'||moduleKey==='brevetti')&&record&&['persona_id','edizione_id'].includes(f.name)?<label key={f.name}>{f.label}<input type="hidden" name={f.name} value={String(record[f.name]??'')}/><input readOnly value={labelOf(references[f.ref?.table??'']?.find(r=>r.id===record[f.name])??({id:''} as Row),f.ref?.labels??['id'])||'Non acquisito'}/></label>:<FieldInput key={`${record?.id??'new'}-${f.name}`} field={moduleKey==='iscrizioni'&&record&&f.name==='stato'?{...f,options:f.options?.filter(o=>o===record.stato||!['in_attesa','iscritto'].includes(o)||((references.edizioni_corsi??[]).some(e=>e.id===record.edizione_id&&['programmato','attivo'].includes(String(e.stato)))&&(references.gest_soci_iscrivibili??[]).some(e=>e.persona_id===record.persona_id&&e.stagione_id===(references.edizioni_corsi??[]).find(x=>x.id===record.edizione_id)?.stagione_id)))}:f} value={record?.[f.name]??(moduleKey==='certificati'&&f.name==='esito_verifica'&&record?(record.idoneita_verificata?'valido':record.documento_id?'in_attesa':'non_valido'):undefined)??(!record&&moduleKey==='anagrafiche'&&['stato_nascita','stato_residenza'].includes(f.name)?'Italia':undefined)} references={references}/>)}</div></fieldset>)}
- {moduleKey==='anagrafiche'&&<CodiceFiscaleAssist/>}<div className="form-actions"><button type="submit" className="button">{record?'Salva modifiche':'Crea nuovo'}</button><CancelEditButton/></div>
+ {moduleKey==='anagrafiche'&&<CodiceFiscaleAssist/>}<div className="form-actions"><button type="submit" className="button">{moduleKey==='certificati'?(record?'Salva verifica e modifiche':'Registra certificato'):(record?'Salva modifiche':'Crea nuovo')}</button><CancelEditButton/></div>
  </EditForm>
  {record&&!module.appendOnly&&<RemoveRecord moduleKey={moduleKey} id={record.id}/>}
  {record&&moduleKey==='certificati'&&<Cronologia tipo="certificato" id={record.id}/>}
@@ -87,20 +87,27 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  const personViews=new Set(['adesioni', 'iscrizioni_corsi', 'assegnazioni_istruttori', 'qualifiche_istruttori', 'brevetti_allievi', 'certificati_medici', 'presenze', 'assegnazioni_attrezzature', 'quote_associative', 'saldi_quote', 'saldi_corsi', 'tesseramenti', 'addebiti_corsi']);
  const personSorted=personViews.has(module.table);
  const medical=modulo==='certificati';
- const senzaFile=medical?await supabase.from('allievi_senza_certificato').select('id,nome,cognome',{count:'exact'}).order('cognome').order('nome').order('id').range((page-1)*perPage,page*perPage-1):null;
- const filtri=medical?await Promise.all(Object.entries(statiCertificato).map(async ([k,label])=>{const {count,error}=await supabase.from('stato_certificati').select('id',{head:true,count:'exact'}).eq('stato_certificato',k);return {k,label,n:error||(k==='mancante'&&senzaFile?.error)?'—':(count??0)+(k==='mancante'?(senzaFile?.count??0):0)};})):[];
+ const editId=edit&&/^[0-9a-f-]{36}$/i.test(edit)?edit:null;
+ const medicalSearch=q.trim().slice(0,80).replace(/[%_\\(),.]/g,' ').split(/\s+/).filter(Boolean);
+ let missingQuery=supabase.from('allievi_senza_certificato').select('id,nome,cognome',{count:'exact'});
+ if(medical)for(const token of medicalSearch)missingQuery=missingQuery.or(`cognome.ilike.%${token}%,nome.ilike.%${token}%`);
+ const [senzaFile,missingTotal]=medical?await Promise.all([
+  missingQuery.order('cognome').order('nome').order('id').range((page-1)*perPage,page*perPage-1),
+  supabase.from('allievi_senza_certificato').select('id',{head:true,count:'exact'})
+ ]):[null,null];
+ const filtri=medical?await Promise.all(Object.entries(statiCertificato).map(async ([k,label])=>{const {count,error}=await supabase.from('stato_certificati').select('id',{head:true,count:'exact'}).eq('stato_certificato',k);return {k,label,n:error||(k==='mancante'&&missingTotal?.error)?'—':(count??0)+(k==='mancante'?(missingTotal?.count??0):0)};})):[];
  let query=supabase.from(medical?'stato_certificati':personSorted?`gest_elenco_${module.table}`:module.table).select('*',{count:'exact'});
- if(medical&&stato&&Object.hasOwn(statiCertificato,stato))query=query.eq('stato_certificato',stato);
+ if(medical&&!editId&&stato&&Object.hasOwn(statiCertificato,stato))query=query.eq('stato_certificato',stato);
  const searchField=module.fields.find(f=>f.type==='text' || (!f.type&&f.name!=='codice_fiscale'));
  const safeSearch=q.trim().slice(0,80).replace(/[%_\\]/g,'');
- if(safeSearch&&(personSorted||module.table==='persone')){const cleaned=safeSearch.replace(/[(),.]/g,' ').trim();if(cleaned)query=query.or(`${personSorted?'sort_cognome':'cognome'}.ilike.%${cleaned}%,${personSorted?'sort_nome':'nome'}.ilike.%${cleaned}%`);}
+ if(medical){if(!editId)for(const token of medicalSearch)query=query.or(`sort_cognome.ilike.%${token}%,sort_nome.ilike.%${token}%`);}
+ else if(safeSearch&&(personSorted||module.table==='persone')){const cleaned=safeSearch.replace(/[(),.]/g,' ').trim();if(cleaned)query=query.or(`${personSorted?'sort_cognome':'cognome'}.ilike.%${cleaned}%,${personSorted?'sort_nome':'nome'}.ilike.%${cleaned}%`);}
  else if(safeSearch&&searchField)query=query.ilike(searchField.name,`%${safeSearch}%`);
- const editId=edit&&/^[0-9a-f-]{36}$/i.test(edit)?edit:null;
  if(editId)query=query.eq('id',editId);
  const primary=personSorted?'sort_cognome':module.table==='persone'?'cognome':module.fields.find(f=>['nome','titolo','codice','tipo'].includes(f.name))?.name??module.order??'id';
  query=query.order(primary,{ascending:true,nullsFirst:false});
  if(personSorted||module.table==='persone')query=query.order(personSorted?'sort_nome':'nome',{ascending:true});
- const {data,error,count}=await query.order('id',{ascending:true}).range((page-1)*perPage,page*perPage-1);
+ const {data,error,count}=await query.order('id',{ascending:true}).range(medical&&editId?0:(page-1)*perPage,medical&&editId?perPage-1:page*perPage-1);
  const refs=[...new Set(module.fields.map(f=>f.ref?.table).filter((v):v is string=>Boolean(v)))];
  const references:Record<string,Row[]>={};
  let enrollmentLoadError=false;
@@ -165,6 +172,68 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
   const existing=references.edizioni_corsi??[];references.edizioni_corsi=[...available,...existing.filter(r=>!available.some(e=>e.id===r.id)&&!['programmato','attivo'].includes(String(r.stato)))];
  }
  const rows=(data??[]) as Row[];
+
+ if(medical){
+  const base='/gestionale/moduli/certificati';
+  const active=stato&&Object.hasOwn(statiCertificato,stato)?stato:'';
+  const href=(filter:string,pn=1,selected?:string)=>{const sp=new URLSearchParams();if(filter)sp.set('stato',filter);if(q)sp.set('q',q);if(pn>1)sp.set('p',String(pn));if(selected)sp.set('edit',selected);return base+(sp.size?'?'+sp.toString():'');};
+  const tones:Record<string,{bg:string;fg:string;hint:string}>={
+   in_attesa:{bg:'#fff3dd',fg:'#80520b',hint:'Controlla i documenti ricevuti'},
+   scaduto:{bg:'#ffeaec',fg:'#a62d40',hint:'Da rinnovare'},
+   mancante:{bg:'#fff3dd',fg:'#80520b',hint:'Da acquisire'},
+   non_valido:{bg:'#ffeaec',fg:'#a62d40',hint:'Da regolarizzare'},
+   valido:{bg:'#e5f4eb',fg:'#246d43',hint:'In regola'}
+  };
+  const names:Record<string,string>={in_attesa:'Da verificare',scaduto:'Scaduti',mancante:'Mancanti',non_valido:'Non validi',valido:'Validi'};
+  const showMissing=!active||active==='mancante';
+  const totalPages=Math.max(count??0,showMissing?senzaFile?.count??0:0);
+  const grid={display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%, 180px),1fr))',gap:12};
+  const rowGrid={display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%, 145px),1fr))',gap:12,alignItems:'center'};
+  const nameOf=(row:Row)=>[row.sort_cognome,row.sort_nome].filter(Boolean).join(' ')||labelOf(references.persone?.find(p=>p.id===row.persona_id)??({id:''} as Row),['cognome','nome'])||'Intestatario non disponibile';
+  const upload=(id:unknown)=>'/area-personale/certificato?persona='+encodeURIComponent(String(id??''));
+  const selected=editId?rows.find(row=>row.id===editId):undefined;
+  return <>
+   <div className="page-intro"><p className="eyebrow">Gestionale · Salute e idoneità</p><h1>Certificati medici</h1><p>Controlla i certificati ricevuti, verifica le scadenze e individua chi deve consegnare un documento.</p></div>
+   {feedback&&<p className={`notice ${['salvato','eliminato'].includes(msg)?'success':'warning'}`} role="status">{feedback}</p>}
+   {editId?<section className="panel stack">
+    <Link className="button ghost" href={href(active,page)}>← Torna ai certificati</Link>
+    {error?<p className="notice error" role="alert">Impossibile caricare il certificato. Riprova.</p>:selected?<><h2>{nameOf(selected)}</h2><p>Stato attuale: <strong>{statoSingolo(String(selected.stato_certificato))}</strong> · Scadenza {formatValue(selected.scade_il)}</p>
+     <div className="buttons">{selected.documento_id?<Link className="button" href={'/documenti/'+selected.documento_id}>Apri documento da controllare</Link>:<Link className="button" href={upload(selected.persona_id)}>Carica certificato</Link>}{!!selected.documento_id&&<Link className="button ghost" href={upload(selected.persona_id)}>Carica un nuovo documento</Link>}</div>
+     <details open={msg!=='salvato'} className="module-editor"><summary>Verifica, date e note amministrative</summary><Editor module={module} moduleKey={modulo} record={selected} references={references} admin={isAdministrator===true}/></details></>:<p>Certificato non trovato o non accessibile.</p>}
+   </section>:<>
+    <nav aria-label="Situazione certificati" style={grid}>
+     {['in_attesa','scaduto','mancante','non_valido','valido'].map(k=>{const f=filtri.find(item=>item.k===k),t=tones[k];return <Link key={k} href={href(k)} aria-current={active===k?'page':undefined} className="panel" style={{padding:18,textDecoration:'none',borderColor:active===k?t.fg:undefined,boxShadow:active===k?`inset 0 0 0 1px ${t.fg}`:undefined}}><span style={{color:t.fg,fontWeight:700}}>{names[k]}</span><strong style={{display:'block',fontSize:30,color:t.fg,margin:'6px 0'}}>{f?.n??'—'}</strong><span style={{fontSize:13,color:'var(--muted)'}}>{t.hint}</span></Link>;})}
+    </nav>
+    <div className="module-toolbar">
+     <form method="get" className="search-line">{active&&<input type="hidden" name="stato" value={active}/>}<input name="q" aria-label="Cerca per nome o cognome" placeholder="Cerca nome o cognome" defaultValue={q}/><button className="button ghost">Cerca</button></form>
+     <div className="buttons"><Link className="button ghost" aria-current={!active?'page':undefined} href={href('')}>Tutti i certificati</Link>{q&&<Link className="button ghost" href={base+(active?'?stato='+active:'')}>Azzera ricerca</Link>}<Link className="button ghost" href="/gestionale/esporta/certificati">Esporta CSV</Link></div>
+    </div>
+    <details className="panel module-editor"><summary><strong>+ Registra o carica un certificato</strong></summary>
+     <p>Se hai il documento, scegli l’intestatario e caricalo. Se devi registrare soltanto i dati amministrativi, usa il modulo sottostante.</p>
+     <form className="search-line" action="/area-personale/certificato" method="get"><select name="persona" aria-label="Intestatario del certificato" required defaultValue=""><option value="">Scegli intestatario…</option>{(references.persone??[]).map(person=><option key={person.id} value={person.id}>{labelOf(person,['cognome','nome'])}</option>)}</select><button className="button">Carica documento</button></form>
+     <Editor module={module} moduleKey={modulo} references={references}/>
+    </details>
+    <section className="stack" aria-label="Elenco certificati"><h2>{active?names[active]:'Certificati registrati'}</h2>
+     {error?<p className="notice error" role="alert">Impossibile leggere i certificati. Riprova o verifica i permessi.</p>:rows.length?rows.map(row=>{
+      const key=String(row.stato_certificato),t=tones[key]??{bg:'#edf1f4',fg:'#47606d',hint:''};
+      return <article className="panel" key={row.id} style={{padding:18}}><div style={rowGrid}>
+       <div><h3 style={{margin:0}}>{nameOf(row)}</h3><span style={{display:'inline-block',background:t.bg,color:t.fg,padding:'5px 10px',borderRadius:20,marginTop:8,fontSize:13,fontWeight:700}}>{statoSingolo(key)}</span></div>
+       <div><span className="hint">Scadenza</span><strong style={{display:'block'}}>{formatValue(row.scade_il)}</strong><span className="hint">Rilasciato: {formatValue(row.rilasciato_il)}</span></div>
+       <div><span className="hint">Documento</span><strong style={{display:'block'}}>{row.documento_id?'Presente':'Non caricato'}</strong></div>
+       <div className="buttons">{key==='in_attesa'&&row.documento_id?<Link className="button" href={href(active,page,row.id)}>Verifica certificato</Link>:!row.documento_id?<Link className="button" href={upload(row.persona_id)}>Carica certificato</Link>:<Link className="button ghost" href={'/documenti/'+row.documento_id}>Apri documento</Link>}
+       {!(key==='in_attesa'&&row.documento_id)&&<Link className="button ghost" href={href(active,page,row.id)}>Gestisci</Link>}</div>
+      </div></article>;
+     }):<p className="panel">Nessun certificato registrato corrisponde alla ricerca.</p>}
+    </section>
+    {showMissing&&<section className="stack" style={{marginTop:24}}><h2>Allievi senza certificato registrato</h2><p>Questi allievi non hanno ancora una registrazione nell’archivio.</p>
+     {senzaFile?.error?<p className="notice error" role="alert">Impossibile caricare gli allievi senza certificato.</p>:senzaFile?.data?.length?senzaFile.data.map(person=><article key={person.id} className="panel" style={{padding:18,display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}><div><h3 style={{margin:0}}>{person.cognome} {person.nome}</h3><span className="hint">Documento mancante</span></div><Link className="button" href={upload(person.id)}>Carica certificato</Link></article>):<p className="panel">Nessun allievo senza certificato in questa selezione.</p>}
+    </section>}
+    <div className="pager"><span>{count??0} certificati registrati{showMissing?' · '+(senzaFile?.count??0)+' allievi senza registrazione':''} · Pagina {page}</span><div className="buttons">{page>1&&<Link className="button ghost" href={href(active,page-1)}>Precedente</Link>}{page*perPage<totalPages&&<Link className="button ghost" href={href(active,page+1)}>Successiva</Link>}</div></div>
+    <p className="hint">Dati sanitari riservati: registra solo informazioni amministrative, senza diagnosi o informazioni cliniche.</p>
+   </>}
+  </>;
+ }
+
  return <>
  <div className="page-intro"><p className="eyebrow">Gestionale · {module.label}</p><h1>{module.label}</h1><p>{module.description}</p></div>
  {feedback&&<p className={`notice ${['salvato','eliminato'].includes(msg)?'success': 'warning'}`} role="status">{feedback}</p>}
