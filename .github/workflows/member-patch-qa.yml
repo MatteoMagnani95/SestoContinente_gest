@@ -77,7 +77,15 @@ jobs:
               if not m: raise RuntimeError('Missing config section '+name)
               body=m.group(2)
               for key,value in values.items():
-                  rx=r'(?m)^'+re.escape(key)+r'\s*=.*
+                  rx=r'(?m)^'+re.escape(key)+r'\s*=.*$'
+                  if re.search(rx,body): body=re.sub(rx,lambda _:key+' = '+value,body)
+                  else: body+='\n'+key+' = '+value+'\n'
+              s=s[:m.start(2)]+body+s[m.end(2):]
+          section('auth',{'site_url':'"http://127.0.0.1:3000"','additional_redirect_urls':'["http://127.0.0.1:3000/**"]'})
+          section('auth.email',{'enable_confirmations':'true','double_confirm_changes':'true','max_frequency':'"1s"'})
+          p.write_text(s)
+          PY
+          supabase start -x studio,imgproxy,realtime,edge-runtime,logflare,vector,supavisor,postgres-meta
           supabase status -o env > /tmp/member-local.env
           set -a
           source /tmp/member-local.env
@@ -126,26 +134,6 @@ jobs:
             /tmp/member-next.log
           if-no-files-found: warn
           retention-days: 7
-      - name: Arresta il database locale
-        if: always()
-        run: supabase stop --no-backup || true
-
-                  if re.search(rx,body): body=re.sub(rx,lambda _:key+' = '+value,body)
-                  else: body+='\n'+key+' = '+value+'\n'
-              s=s[:m.start(2)]+body+s[m.end(2):]
-          section('auth',{'site_url':'"http://127.0.0.1:3000"','additional_redirect_urls':'["http://127.0.0.1:3000/auth/callback", "http://127.0.0.1:3000/auth/callback?next=%2Farea-personale%2Fprofilo%3Fmsg%3Demail_verifica"]'})
-          section('auth.email',{'enable_confirmations':'true','double_confirm_changes':'true','max_frequency':'"1s"'})
-          p.write_text(s)
-          PY
-          supabase start -x studio,imgproxy,realtime,edge-runtime,logflare,vector,supavisor,postgres-meta
-          supabase status -o env > /tmp/member-local.env
-          set -a
-          source /tmp/member-local.env
-          set +a
-          [[ "$API_URL" == http://127.0.0.1:* || "$API_URL" == http://localhost:* ]]
-          [[ "$DB_URL" == *"@127.0.0.1:"* || "$DB_URL" == *"@localhost:"* ]]
-          echo "::add-mask::$DB_URL"
-          MEMBER_QA_DATABASE_URL="$DB_URL" node scripts/test-area-personale-iscrizioni-brevetti.cjs
       - name: Arresta il database locale
         if: always()
         run: supabase stop --no-backup || true
