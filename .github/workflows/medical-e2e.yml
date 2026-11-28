@@ -1,0 +1,62 @@
+name: QA certificati end-to-end locale
+on:
+  push:
+    branches: [feature/certificati-medici-ux]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser-and-rls:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      EMAIL_AUTOMATIC_NOTIFICATIONS: 'false'
+      NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.54.11
+      - run: npm install --no-package-lock --no-audit --no-fund
+      - run: npm install --no-save --no-package-lock playwright@1.56.1
+      - run: npx playwright install --with-deps chromium webkit
+      - name: Start disposable Supabase
+        run: |
+          supabase init
+          supabase start -x studio,imgproxy,realtime,edge-runtime,logflare,vector,supavisor,postgres-meta,mailpit
+          supabase status -o env > /tmp/medical-local.env
+          set -a
+          source /tmp/medical-local.env
+          set +a
+          [[ "$API_URL" == http://127.0.0.1:* || "$API_URL" == http://localhost:* ]]
+          test -n "$ANON_KEY"
+          test -n "$SERVICE_ROLE_KEY"
+          echo "::add-mask::$ANON_KEY"
+          echo "::add-mask::$SERVICE_ROLE_KEY"
+          echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL" >> "$GITHUB_ENV"
+          echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY" >> "$GITHUB_ENV"
+          echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
+      - name: Compile
+        run: npm run build
+      - name: Start local app and execute browser checks
+        run: |
+          npm run start -- --hostname 127.0.0.1 > /tmp/medical-next.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3000/accedi >/dev/null; then break; fi
+            sleep 2
+          done
+          node scripts/medical-e2e.mjs
+      - name: Upload QA screenshots and report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: medical-e2e
+          path: |
+            artifacts/medical-e2e
+            /tmp/medical-next.log
+          if-no-files-found: warn
+          retention-days: 7
