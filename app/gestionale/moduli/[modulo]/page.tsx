@@ -95,8 +95,10 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
  let roster:MedicalRow[]|null=null,rosterError=false;
  if(medical&&!archive&&!editId){try{roster=await medicalRoster(supabase);}catch{rosterError=true;roster=[];}}
  const rosterState=stato&&MEDICAL_FILTERS.some(k=>k===stato)?stato:'';
- const filteredRoster=roster?.filter(row=>(!rosterState||row.stato_certificato===rosterState)&&medicalSearch.every(token=>(row.sort_nome+' '+row.sort_cognome).toLocaleLowerCase('it').includes(token.toLocaleLowerCase('it'))));
- const filtri=roster!==null?MEDICAL_FILTERS.map(k=>({k,label:k,n:rosterError?'—':roster!.filter(row=>row.stato_certificato===k).length})):medical&&archive?await Promise.all(Object.entries(statiCertificato).map(async ([k,label])=>{const {count,error}=await supabase.from('stato_certificati').select('id',{head:true,count:'exact'}).eq('stato_certificato',k);return {k,label,n:error?'—':count??0};})):[];
+ const dueDates=medicalDates();
+ const matchesState=(row:MedicalRow,key:string)=>key==='in_scadenza'?Boolean(row.documento_id&&typeof row.scade_il==='string'&&row.scade_il>=dueDates.today&&row.scade_il<=dueDates.limit):row.stato_certificato===key;
+ const filteredRoster=roster?.filter(row=>(!rosterState||matchesState(row,rosterState))&&medicalSearch.every(token=>(row.sort_nome+' '+row.sort_cognome).toLocaleLowerCase('it').includes(token.toLocaleLowerCase('it'))));
+ const filtri=roster!==null?MEDICAL_FILTERS.map(k=>({k,label:k,n:rosterError?'—':roster!.filter(row=>matchesState(row,k)).length})):medical&&archive?await Promise.all(Object.entries(statiCertificato).map(async ([k,label])=>{const {count,error}=await supabase.from('stato_certificati').select('id',{head:true,count:'exact'}).eq('stato_certificato',k);return {k,label,n:error?'—':count??0};})):[];
  let query=supabase.from(medical?'stato_certificati':personSorted?`gest_elenco_${module.table}`:module.table).select('*',{count:'exact'});
  if(medical&&!editId&&stato&&Object.hasOwn(statiCertificato,stato))query=query.eq('stato_certificato',stato);
  const searchField=module.fields.find(f=>f.type==='text' || (!f.type&&f.name!=='codice_fiscale'));
@@ -215,7 +217,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
      <form className="search-line" action="/area-personale/certificato" method="get"><input type="hidden" name="origine" value="gestionale"/><select name="persona" aria-label="Intestatario del certificato" required defaultValue=""><option value="">Scegli intestatario…</option>{(references.persone??[]).map(person=><option key={person.id} value={person.id}>{labelOf(person,['cognome','nome'])}</option>)}</select><button className="button">Carica documento</button></form>
      <Editor module={module} moduleKey={modulo} references={references}/>
     </details>
-    <section className="stack" aria-label="Elenco certificati"><h2>{active?names[active]:archive?'Archivio certificati':'Tutte le persone iscritte'}</h2><p>{archive?'Tutti i certificati registrati, incluse le edizioni precedenti.':'Soci e allievi della stagione attiva, una riga per persona. Scadenza imminente: entro 30 giorni.'}</p>
+    <section className="stack" aria-label="Elenco certificati"><h2>{active?names[active]:archive?'Archivio certificati':'Tutte le persone iscritte'}</h2><p>{archive?'Tutti i certificati registrati, incluse le edizioni precedenti.':'Soci e allievi della stagione attiva, una riga per persona. Scadenza imminente: entro 30 giorni, anche per documenti in attesa di verifica.'}</p>
      {error&&<p className="notice error" role="alert">Impossibile leggere i certificati. Riprova o verifica i permessi.</p>}
      <div className="panel table-panel"><table style={{minWidth:940}}><thead><tr><th scope="col">Nome e cognome</th><th scope="col">Certificato</th><th scope="col">Documento</th><th scope="col">Scadenza</th><th scope="col">Cambia esito</th><th scope="col">Azioni</th></tr></thead><tbody>
      {!error&&rows.map(row=>{
