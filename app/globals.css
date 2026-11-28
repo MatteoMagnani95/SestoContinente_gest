@@ -269,3 +269,17 @@ td strong{color:#1c3441}
 .medical-scroll-hint{display:none}
 @media(max-width:1250px){.medical-scroll-hint{display:block}}
 @media(max-width:560px){.medical-table th[scope="row"]{white-space:normal!important;min-width:120px;max-width:140px;overflow-wrap:anywhere}.medical-table thead th:first-child{min-width:120px}}
+
+
+/* Sei indicatori equilibrati, nominativi più leggibili e controlli adattivi. */
+nav[aria-label="Situazione certificati"]{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+.medical-table th[scope="row"]{color:var(--navy);font-size:14px;font-weight:650;text-transform:none;letter-spacing:normal;border-top:1px solid var(--line)}
+.medical-table-scroll .button:disabled{opacity:.55;cursor:not-allowed}
+.medical-table-scroll .button{white-space:normal}
+@media(max-width:700px){
+ nav[aria-label="Situazione certificati"]{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ nav[aria-label="Situazione certificati"]>.panel{padding:12px!important;min-width:0;overflow-wrap:anywhere}
+ .staff-content:has(.medical-table-scroll) .module-toolbar .search-line{min-width:0;width:100%;max-width:100%}
+ .staff-content:has(.medical-table-scroll) .module-toolbar .search-line>input{min-width:0}
+ .staff-content:has(.medical-table-scroll) .module-toolbar .buttons{max-width:100%}
+}
