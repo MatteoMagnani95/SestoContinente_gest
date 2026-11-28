@@ -25,9 +25,9 @@ const message:Record<string,string>={
  iscritto:'Iscrizione aggiornata.',istruttore:'Assegnazione istruttore aggiornata.',lezione_creata:'Lezione e corsie salvate.',
  presenze_salvate:'Presenze salvate.',programma_salvato:'Programma associato al corso.',
  elimina_conferma:'Conferma esplicitamente la rimozione.',elimina_collegati:'Rimozione non consentita: il record è protetto o contiene dati collegati. Per una lezione o un corso puoi usare l’annullamento.',elimina_errore:'Impossibile rimuovere il corso. Verifica i permessi e la migrazione 0012.',
- vincolo:'Operazione non eseguita: controlla la capienza, i duplicati o le autorizzazioni.',
+ vincolo:'Operazione non eseguita: controlla i duplicati o le autorizzazioni.',
  stato:'Operazione non consentita nello stato attuale del corso.',adesione:'Servono adesione attiva e tessera attiva non scaduta nella stessa stagione.',eliminato:'Elemento rimosso.',database:'Rimozione non riuscita.',
- iscrizione:'Impossibile salvare l’iscrizione: controlla i duplicati e la capienza.',
+ iscrizione:'Impossibile salvare l’iscrizione: controlla i duplicati e i requisiti.',
  assegnazione:'Impossibile assegnare: potrebbe esserci già un responsabile o lo stesso istruttore.',
  qualifica:'L’istruttore selezionato non ha qualifiche registrate. Completa prima la sua scheda.',
  responsabile:'Il responsabile non può essere rimosso direttamente: puoi sostituirlo dal modulo istruttori.',
@@ -40,7 +40,7 @@ function Section({id,title,children}:{id:string;title:string;children:React.Reac
 export default async function EditionDetail({params,searchParams}:{params:Promise<{id:string}>;searchParams:Promise<{msg?:string;lezione?:string}>}){
  const {id}=await params;if(!UUID_RE.test(id))notFound();
  const {supabase}=await requireStaff();const p=await searchParams;
- const {data:ed,error:editionError}=await supabase.from('edizioni_corsi').select('id,corso_id,stagione_id,nome,inizio,fine,massimo_partecipanti,costo_corso,stato,note,programma_versione_id,direttore_id,duplicato_storico').eq('id',id).maybeSingle();
+ const {data:ed,error:editionError}=await supabase.from('edizioni_corsi').select('id,corso_id,stagione_id,nome,inizio,fine,costo_corso,stato,note,programma_versione_id,direttore_id,duplicato_storico').eq('id',id).maybeSingle();
  if(editionError||!ed)notFound();
  const [{data:cat},{data:season},{data:enrollData,error:enrollError},{data:teacherData,error:teacherError},{data:lessonData,error:lessonError},
   {data:allPeople},{data:qualifications},{data:pools},{data:lanes},{data:activeMemberships},{data:programVersions}]=await Promise.all([
@@ -92,7 +92,7 @@ export default async function EditionDetail({params,searchParams}:{params:Promis
   {([['responsabile','Istruttori'],['aiuto','Aiuto-istruttori']] as const).map(([role,label])=><div key={role}><h3>{label}</h3><p>{assignments.filter(a=>a.ruolo===role).map(a=>displayPerson(a.persona_id,people)).join(', ')||'Nessuna assegnazione'}</p></div>)}
   {enrollError?<p role="alert">Elenco iscritti non disponibile.</p>:<><h3>Iscritti ({confirmed.length})</h3><ul>{confirmed.map(e=><li key={e.id}>{e.sort_nome} {e.sort_cognome}</li>)}</ul></>}<a href="#allievi">Gestisci iscrizioni</a></section>
   <div className="course-overview">
-   <div className="panel"><span className="k">Capienza</span><strong>{ed.massimo_partecipanti}</strong></div>
+   <div className="panel"><span className="k">Allievi iscritti</span><strong>{confirmed.length}</strong></div>
    <div className="panel"><span className="k">Richieste in attesa</span><strong>{enrollments.filter(x=>x.stato==='in_attesa').length}</strong></div>
    <div className="panel"><span className="k">Istruttori assegnati</span><strong>{assignments.length}</strong></div>
    <div className="panel"><span className="k">Lezioni</span><strong>{lessons.length}</strong></div>
@@ -101,11 +101,11 @@ export default async function EditionDetail({params,searchParams}:{params:Promis
   <div className="course-sections">
    <Section id="configurazione" title="Configurazione dell'edizione"><EditForm action={updateEdition} className="stack"><input type="hidden" name="edizione_id" value={id}/>
     <div className="form-grid"><label>Direttore del corso<select name="direttore_id" required defaultValue={ed.direttore_id??''}><option value="">Da assegnare</option>{people.map(t=><option key={t.id} value={t.id}>{t.cognome} {t.nome}</option>)}</select></label><label>Nome edizione<input name="nome" maxLength={160} required defaultValue={ed.nome}/></label><label>Stato<select name="stato" defaultValue={ed.stato}>{COURSE_STATES.map(s=><option key={s} value={s}>{s}</option>)}</select></label>
-    <label>Capienza<input type="number" name="massimo_partecipanti" min={1} max={500} step={1} defaultValue={ed.massimo_partecipanti} required/></label><label>Stagione / periodo<input readOnly value={`${season?.nome??'—'} · ${ed.inizio} – ${ed.fine}`}/></label></div>
+    <label>Stagione / periodo<input readOnly value={`${season?.nome??'—'} · ${ed.inizio} – ${ed.fine}`}/></label></div>
     <label>Costo del corso (€)<input name="costo_corso" type="number" list="listino-edit" step="0.01" min="0" required defaultValue={ed.costo_corso??''}/></label><datalist id="listino-edit">{prices?.map(p=><option key={p.importo} value={p.importo}/>)}</datalist>
     <label>Note<textarea name="note" maxLength={2000} rows={2} defaultValue={ed.note??''}/></label>
     <div className="actions"><button className="button">Salva modifiche</button><Link className="button ghost" href={`/gestionale/moduli/edizioni?edit=${id}`}>Modifica avanzata</Link><CancelEditButton/></div>
-    <p className="tiny muted">Non è possibile ridurre la capienza sotto gli iscritti confermati. Conclusione e annullamento bloccano le nuove iscrizioni dalla scheda guidata.</p>
+    <p className="tiny muted">Conclusione e annullamento bloccano le nuove iscrizioni dalla scheda guidata.</p>
    </EditForm>
    <details className="calendar-danger"><summary className="button danger">Rimuovi</summary><form action={deleteEdition} className="stack">
     <input type="hidden" name="edizione_id" value={id}/><p>La rimozione è definitiva e possibile solo se non ci sono dati collegati. Per conservare lo storico usa lo stato Annullato.</p>
@@ -120,7 +120,7 @@ export default async function EditionDetail({params,searchParams}:{params:Promis
     {canEdit&&assignments.some(a=>a.ruolo==='responsabile')&&<form className="course-inline-form" action={replaceResponsible}><input type="hidden" name="edizione_id" value={id}/><label>Sostituisci il responsabile<select name="persona_id" required defaultValue=""><option value="">Scegli un nuovo responsabile</option>{teacherCandidates.map(t=><option key={t.id} value={t.id}>{t.cognome} {t.nome}</option>)}</select></label><span className="tiny muted">Per scegliere un aiuto già assegnato, rimuovi prima il suo incarico di aiuto.</span><button className="button ghost" disabled={!teacherCandidates.length}>Sostituisci</button></form>}
     <p className="tiny muted">È ammesso un solo responsabile per edizione. La presenza di una qualifica in archivio non equivale alla verifica dell'abilitazione richiesta per la disciplina: confermala prima dell'assegnazione. <Link href="/gestionale/moduli/qualifiche">Gestisci qualifiche</Link>.</p>
    </Section>
-   <Section id="allievi" title="Iscrizioni e allievi"><p className="muted tiny">Puoi iscrivere soltanto soci con adesione attiva e tessera valida per questa stagione. La capienza è controllata dal database.</p>
+   <Section id="allievi" title="Iscrizioni e allievi"><p className="muted tiny">Puoi iscrivere soltanto soci con adesione attiva e tessera valida per questa stagione.</p>
     <div className="panel table-panel"><table><thead><tr><th>Allievo</th><th>Adesione</th><th>Certificato</th><th>Stato iscrizione</th><th>Apri</th></tr></thead><tbody>
     {enrollments.map(i=>{const cert=certificateList.find(x=>x.persona_id===i.persona_id);return <tr key={i.id}>
      <td>{displayPerson(i.persona_id,people)}</td><td>{activeIds.has(i.persona_id)?'Tesserato':'Non iscrivibile'}</td><td>{cert?statoSingolo(cert.stato_certificato)+' · '+cert.scade_il:'Documento mancante'}</td>
