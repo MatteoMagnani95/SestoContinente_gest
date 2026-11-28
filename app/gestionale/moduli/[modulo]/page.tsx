@@ -219,7 +219,7 @@ export default async function ModulePage({params,searchParams}:{params:Promise<{
     </details>
     <section className="stack" aria-label="Elenco certificati"><h2>{active?names[active]:archive?'Archivio certificati':'Tutte le persone iscritte'}</h2><p>{archive?'Tutti i certificati registrati, incluse le edizioni precedenti.':'Soci e allievi della stagione attiva, una riga per persona. Scadenza imminente: entro 30 giorni, anche per documenti in attesa di verifica.'}</p>
      {error&&<p className="notice error" role="alert">Impossibile leggere i certificati. Riprova o verifica i permessi.</p>}
-     <div className="panel table-panel"><table style={{minWidth:940}}><thead><tr><th scope="col">Nome e cognome</th><th scope="col">Certificato</th><th scope="col">Documento</th><th scope="col">Scadenza</th><th scope="col">Cambia esito</th><th scope="col">Azioni</th></tr></thead><tbody>
+     <p className="hint medical-scroll-hint">Scorri la tabella orizzontalmente per visualizzare tutte le azioni.</p><div className="panel table-panel medical-table-scroll" tabIndex={0} role="region" aria-label="Registro certificati, scorrimento orizzontale"><table className="medical-table"><thead><tr><th scope="col">Nome e cognome</th><th scope="col">Certificato</th><th scope="col">Documento</th><th scope="col">Scadenza</th><th scope="col">Cambia esito</th><th scope="col">Azioni</th></tr></thead><tbody>
      {!error&&rows.map(row=>{
       const key=String(row.stato_certificato),t=tones[key]??{bg:'#edf1f4',fg:'#47606d',hint:''};
       const nome=nameOf(row),doc=String(row.documento_id??''),previous=String(row.esito_verifica??'');
