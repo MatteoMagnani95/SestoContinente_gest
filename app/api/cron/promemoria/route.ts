@@ -27,7 +27,7 @@ export async function GET(request:Request){
   // Solo notifiche recenti, per impedire invii di arretrati dopo il collaudo.
   const recent=new Date(Math.max(Date.parse(since),Date.now()-7*86400000)).toISOString();
   const {data:notifications,error:readError}=await db.from('notifiche')
-   .select('id,utente_id,tipo,riferimento,titolo,messaggio').is('email_inviata_il',null).gte('creata_il',recent).order('creata_il',{ascending:true}).limit(50);
+   .select('id,utente_id,tipo,riferimento,titolo,messaggio').neq('tipo','sollecito_certificato').is('email_inviata_il',null).gte('creata_il',recent).order('creata_il',{ascending:true}).limit(50);
   if(readError)return NextResponse.json({ok:false,error:'Lettura notifiche non riuscita'},{status:500});
   const deadline=Date.now()+40000;
   for(const n of notifications??[]){

@@ -1,0 +1,27 @@
+name: QA certificati medici (isolata)
+on:
+  push:
+    branches: [feature/certificati-medici-ux]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://example.invalid
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: qa-placeholder-not-a-credential
+      NEXT_TELEMETRY_DISABLED: '1'
+      EMAIL_AUTOMATIC_NOTIFICATIONS: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-package-lock --no-audit --no-fund
+      - run: npm run check:source
+      - run: npm run typecheck
+      - run: node --test tests/medical-roster.test.mjs tests/medical-actions.test.mjs tests/v23-certificati.test.mjs
+      - run: npm run test:static
+      - run: npm run build
