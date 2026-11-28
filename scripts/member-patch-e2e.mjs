@@ -112,7 +112,7 @@ try{
  await courseDialog.getByRole('button',{name:'Richiedi iscrizione',exact:true}).click();await p.getByText('Richiesta d’iscrizione registrata.',{exact:true}).or(p.getByText("Richiesta d'iscrizione registrata.",{exact:true})).waitFor();
  const req=await ok(db.from('iscrizioni_corsi').select('id,stato').eq('edizione_id',edition).eq('persona_id',student.id).single());
  check(req.stato==='in_attesa','Richiesta senza tessera in attesa');
- await p.goto(origin+courses+'?tab=catalogo');await courseCard.waitFor();check(await courseCard.getByRole('button',{name:'Richiedi iscrizione'}).count()===0||await courseCard.getByRole('button',{name:'Richiedi iscrizione'}).isDisabled(),'Doppia richiesta disabilitata');
+ await p.goto(origin+courses+'?tab=catalogo');await courseCard.waitFor();check(await courseCard.getByRole('button',{name:'Richiedi iscrizione'}).count()===0,'Doppia richiesta disabilitata');
  await s.goto(origin+staffCourses+'?tab=allievi');await s.getByRole('heading',{name:editionName,exact:true}).waitFor();
  check(await s.locator('[name=massimo_partecipanti]').count()===0,'Capienza assente dalla scheda corso');
  const requestRow=s.getByRole('row').filter({hasText:'Collaudo approvato'});await requestRow.waitFor();await requestRow.getByRole('button',{name:'Cambia stato'}).click();check(await s.getByRole('dialog').locator('option[value=iscritto]').isDisabled(),'Conferma vietata senza tessera');
