@@ -32,7 +32,7 @@ export async function medicalRoster(db:SupabaseClient){
  const {data:seasons,error:seasonError}=await db.from('stagioni').select('id').eq('attiva',true);
  if(seasonError)throw Error('Stagioni non disponibili');
  const ids=(seasons??[]).map(s=>s.id);
- if(!ids.length)return [];
+ if(!ids.length)throw Error('Nessuna stagione attiva configurata');
  // Tutte le adesioni non cessate della stagione attiva, più gli allievi iscritti ai corsi della stessa stagione.
  for(let offset=0;;offset+=500){
   const {data,error}=await db.from('schede_soci').select('adesione_id,persona_id,nome,cognome').in('stagione_id',ids).in('stato',['attiva','da_perfezionare','sospesa']).order('adesione_id').range(offset,offset+499);
