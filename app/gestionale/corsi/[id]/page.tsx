@@ -1,4 +1,3 @@
-import Emergenza from '@/components/Emergenza';
 import {statoSingolo} from '@/lib/certificati';
 import EditForm from '@/components/EditForm';
 import CancelEditButton from '@/components/CancelEditButton';
@@ -120,7 +119,7 @@ export default async function EditionDetail({params,searchParams}:{params:Promis
     {canEdit&&assignments.some(a=>a.ruolo==='responsabile')&&<form className="course-inline-form" action={replaceResponsible}><input type="hidden" name="edizione_id" value={id}/><label>Sostituisci il responsabile<select name="persona_id" required defaultValue=""><option value="">Scegli un nuovo responsabile</option>{teacherCandidates.map(t=><option key={t.id} value={t.id}>{t.cognome} {t.nome}</option>)}</select></label><span className="tiny muted">Per scegliere un aiuto già assegnato, rimuovi prima il suo incarico di aiuto.</span><button className="button ghost" disabled={!teacherCandidates.length}>Sostituisci</button></form>}
     <p className="tiny muted">È ammesso un solo responsabile per edizione. La presenza di una qualifica in archivio non equivale alla verifica dell'abilitazione richiesta per la disciplina: confermala prima dell'assegnazione. <Link href="/gestionale/moduli/qualifiche">Gestisci qualifiche</Link>.</p>
    </Section>
-   <Section id="allievi" title="Iscrizioni e allievi"><p className="muted tiny">Puoi iscrivere soltanto soci con adesione attiva e tessera valida per questa stagione.</p>
+   <Section id="allievi" title="Iscrizioni e allievi"><p className="muted tiny">Per confermare un'iscrizione occorrono adesione attiva e tessera valida nella stagione. Le richieste possono essere presentate prima della verifica del tesseramento.</p>
     <div className="panel table-panel"><table><thead><tr><th>Allievo</th><th>Adesione</th><th>Certificato</th><th>Stato iscrizione</th><th>Apri</th></tr></thead><tbody>
     {enrollments.map(i=>{const cert=certificateList.find(x=>x.persona_id===i.persona_id);return <tr key={i.id}>
      <td>{displayPerson(i.persona_id,people)}</td><td>{activeIds.has(i.persona_id)?'Tesserato':'Non iscrivibile'}</td><td>{cert?statoSingolo(cert.stato_certificato)+' · '+cert.scade_il:'Documento mancante'}</td>
@@ -130,7 +129,7 @@ export default async function EditionDetail({params,searchParams}:{params:Promis
     {!enrollments.length&&<tr><td colSpan={5} className="empty-cell">Nessuna iscrizione registrata.</td></tr>}
     </tbody></table></div>
     {canEdit&&<form action={addEnrollment} className="course-inline-form"><input type="hidden" name="edizione_id" value={id}/><label>Allievo<select name="persona_id" required defaultValue=""><option value="">Seleziona...</option>{candidates.map(x=><option key={x.id} value={x.id}>{x.cognome} {x.nome} · tesserato</option>)}</select></label>
-    <Emergenza/><input type="hidden" name="stato" value="iscritto"/><span>Stato: Iscritto</span><button className="button" disabled={!candidates.length}>Aggiungi allievo</button></form>}
+    <input type="hidden" name="stato" value="iscritto"/><span>Stato: Iscritto</span><button className="button" disabled={!candidates.length}>Aggiungi allievo</button></form>}
     <p className="tiny muted">La scadenza del certificato è solo un'indicazione amministrativa. Verifica anche i requisiti didattici e le norme applicabili prima delle attività in acqua. Elenco fino a 1.000 soci idonei: per archivi più grandi usa i moduli generici.</p>
    </Section>
    <Section id="didattica" title="Programma didattico"><p className="muted tiny">Puoi collegare soltanto una versione approvata della stessa disciplina. Le versioni approvate sono protette dalle modifiche.</p>
