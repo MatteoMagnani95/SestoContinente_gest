@@ -67,7 +67,7 @@ create table public.rettifiche_anagrafiche (
  richiedente_id uuid not null default auth.uid(),
  nome text not null check(length(btrim(nome)) between 1 and 100),
  cognome text not null check(length(btrim(cognome)) between 1 and 100),
- data_nascita date,
+ data_nascita date check(data_nascita is null or data_nascita>='1900-01-01'),
  luogo_nascita text check(length(luogo_nascita)<=150),
  provincia_nascita text check(provincia_nascita is null or provincia_nascita ~ '^[A-Z]{2}$'),
  stato_nascita text check(length(stato_nascita)<=100),
@@ -78,7 +78,9 @@ create table public.rettifiche_anagrafiche (
  revisione integer not null default 1 check(revisione>0),
  creata_il timestamptz not null default now(),
  decisa_il timestamptz,
- decisa_da uuid
+ decisa_da uuid,
+ motivazione_esito text check(length(motivazione_esito)<=500),
+ check((stato='in_attesa' and decisa_il is null and decisa_da is null and motivazione_esito is null) or (stato in ('applicata','respinta') and decisa_il is not null and decisa_da is not null and (stato<>'respinta' or length(btrim(coalesce(motivazione_esito,'')))>=3)))
 );
 create unique index rettifiche_anagrafiche_una_aperta on public.rettifiche_anagrafiche(persona_id) where stato='in_attesa';
 create index rettifiche_anagrafiche_persona on public.rettifiche_anagrafiche(persona_id,creata_il desc);
@@ -88,10 +90,10 @@ grant select,insert,update on public.rettifiche_anagrafiche to authenticated;
 create policy rettifiche_read on public.rettifiche_anagrafiche for select to authenticated
  using (public.is_staff() or public.owns_person(persona_id));
 create policy rettifiche_insert on public.rettifiche_anagrafiche for insert to authenticated
- with check (public.owns_person(persona_id) and richiedente_id=auth.uid() and stato='in_attesa' and decisa_il is null and decisa_da is null);
+ with check (public.owns_person(persona_id) and richiedente_id=auth.uid() and stato='in_attesa' and decisa_il is null and decisa_da is null and motivazione_esito is null);
 create policy rettifiche_self_update on public.rettifiche_anagrafiche for update to authenticated
  using (public.owns_person(persona_id) and richiedente_id=auth.uid() and stato='in_attesa')
- with check (public.owns_person(persona_id) and richiedente_id=auth.uid() and stato='in_attesa' and decisa_il is null and decisa_da is null);
+ with check (public.owns_person(persona_id) and richiedente_id=auth.uid() and stato='in_attesa' and decisa_il is null and decisa_da is null and motivazione_esito is null);
 create policy rettifiche_staff_update on public.rettifiche_anagrafiche for update to authenticated
  using (public.is_staff()) with check (public.is_staff());
 create policy rettifiche_account_abilitato on public.rettifiche_anagrafiche as restrictive for all to authenticated
@@ -100,6 +102,7 @@ create policy rettifiche_account_abilitato on public.rettifiche_anagrafiche as r
 create or replace function public.prepara_rettifica_anagrafica()
 returns trigger language plpgsql set search_path to '' as $$
 begin
+ if new.data_nascita is not null and new.data_nascita>(now() at time zone 'Europe/Rome')::date then raise exception 'Data di nascita futura' using errcode='22023'; end if;
  if tg_op='INSERT' then
   select jsonb_build_array(p.nome,p.cognome,p.data_nascita,p.luogo_nascita,p.provincia_nascita,p.stato_nascita,p.sesso_cf,p.codice_fiscale,p.codice_catastale_nascita,p.cf_omocodia_verificata,p.cf_override_motivo)
   into new.base_dati from public.persone p where p.id=new.persona_id;
@@ -116,7 +119,7 @@ begin
 end $$;
 create trigger prepara_rettifica_anagrafica before insert or update on public.rettifiche_anagrafiche for each row execute function public.prepara_rettifica_anagrafica();
 
-create or replace function public.decidi_rettifica_anagrafica(p_id uuid,p_revisione integer,p_esito text,p_codice_catastale text,p_omocodia boolean,p_motivo text)
+create or replace function public.decidi_rettifica_anagrafica(p_id uuid,p_revisione integer,p_esito text,p_codice_catastale text,p_omocodia boolean,p_motivo text,p_motivazione_esito text default null)
 returns void language plpgsql security invoker set search_path to '' as $$
 declare r public.rettifiche_anagrafiche%rowtype; attuale jsonb;
 begin
@@ -125,6 +128,7 @@ begin
  select * into r from public.rettifiche_anagrafiche where id=p_id and stato='in_attesa' for update;
  if not found then raise exception 'Rettifica non disponibile' using errcode='22023'; end if;
  if r.revisione is distinct from p_revisione then raise exception 'Rettifica modificata nel frattempo' using errcode='40001'; end if;
+ if length(coalesce(p_motivazione_esito,''))>500 or (p_esito='respinta' and length(btrim(coalesce(p_motivazione_esito,'')))<3) then raise exception 'Motivazione esito non valida' using errcode='22023'; end if;
  if p_esito='applicata' then
   select jsonb_build_array(p.nome,p.cognome,p.data_nascita,p.luogo_nascita,p.provincia_nascita,p.stato_nascita,p.sesso_cf,p.codice_fiscale,p.codice_catastale_nascita,p.cf_omocodia_verificata,p.cf_override_motivo)
   into attuale from public.persone p where p.id=r.persona_id for update;
@@ -136,10 +140,10 @@ begin
    codice_catastale_nascita=p_codice_catastale,cf_omocodia_verificata=coalesce(p_omocodia,false),cf_override_motivo=case when p_omocodia then p_motivo else null end
   where id=r.persona_id;
  end if;
- update public.rettifiche_anagrafiche set stato=p_esito,decisa_il=now(),decisa_da=auth.uid() where id=p_id;
+ update public.rettifiche_anagrafiche set stato=p_esito,decisa_il=now(),decisa_da=auth.uid(),motivazione_esito=nullif(btrim(coalesce(p_motivazione_esito,'')),'') where id=p_id;
 end $$;
-revoke all on function public.decidi_rettifica_anagrafica(uuid,integer,text,text,boolean,text) from public,anon;
-grant execute on function public.decidi_rettifica_anagrafica(uuid,integer,text,text,boolean,text) to authenticated;
+revoke all on function public.decidi_rettifica_anagrafica(uuid,integer,text,text,boolean,text,text) from public,anon;
+grant execute on function public.decidi_rettifica_anagrafica(uuid,integer,text,text,boolean,text,text) to authenticated;
 
 -- Brevetti esterni: l'origine è esplicita, distinta dalla firma interna.
 -- I record storici conservano la provenienza preesistente (origine NULL).
